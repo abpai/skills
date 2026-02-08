@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: validate-skills
+        name: Validate skills
+        entry: scripts/validate-skills.sh
+        language: system
+        pass_filenames: false
