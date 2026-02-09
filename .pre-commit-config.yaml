@@ -6,3 +6,8 @@ repos:
         entry: scripts/validate-skills.sh
         language: system
         pass_filenames: false
+      - id: skill-scanner
+        name: skill-scanner
+        entry: uv run --with cisco-ai-skill-scanner==1.0.1 --with python-dotenv==1.0.1 python scripts/run_skill_scanner.py --path . --format summary --recursive --fail-on-findings --use-behavioral
+        language: system
+        pass_filenames: false

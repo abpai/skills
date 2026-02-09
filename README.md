@@ -48,3 +48,13 @@ scripts/validate-skills.sh
 - `project-memory`
 - `slidev`
 - `vibe-kanban`
+
+## Security scanning
+
+This repository is configured with [Cisco Skill Scanner](https://github.com/cisco-ai-defense/skill-scanner)
+via pre-commit.
+
+1. Install pre-commit: `uv tool install pre-commit`
+2. Install hooks: `uvx pre-commit install`
+3. (Optional) copy `.env.example` to `.env` and customize scanner settings
+4. Run manually: `uvx pre-commit run --all-files`

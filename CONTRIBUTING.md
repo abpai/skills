@@ -45,7 +45,8 @@ If `skills-ref` is installed, this uses official validation. Otherwise it perfor
 To run skill validation automatically before each commit, install pre-commit hooks:
 
 ```bash
-pre-commit install
+uv tool install pre-commit
+uvx pre-commit install
 ```
 
 Then commits will run:
