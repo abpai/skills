@@ -42,6 +42,9 @@ scripts/validate-skills.sh
 ## Existing Skills
 
 - `cli-design-expert`
+- `beautiful-mermaid`
+- `code-simplifier`
 - `codex`
 - `project-memory`
+- `slidev`
 - `vibe-kanban`

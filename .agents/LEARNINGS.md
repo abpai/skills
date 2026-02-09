@@ -23,11 +23,14 @@
 - Run skill reviews in parallel with one worker subagent per skill folder to improve speed and avoid edit conflicts.
 - Verify latest OpenAI/Codex model names in official OpenAI docs before updating skill defaults.
 - Add `.pre-commit-config.yaml` local hooks for repeatable pre-commit checks.
+- For forked/adapted skills, keep explicit upstream attribution in `SKILL.md` and run `scripts/validate-skills.sh` immediately after creation.
+- When imported `SKILL.md` links many `references/*.md` files, copy the full `references/` folder to avoid broken in-skill links.
 
 ## Patterns That Don't Work
 
 - Relying on memory of the standard without a local validation command.
 - Using vague skill names that do not communicate intent.
+- Running dependent filesystem operations in parallel (for example, reading a file before its copy command completes).
 
 ## Domain Notes
 
