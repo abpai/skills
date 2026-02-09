@@ -18,6 +18,7 @@
 
 ## Patterns That Work
 
+- When adapting non-skill agent prompts into this repo, strip non-spec frontmatter fields and rewrite `description` as explicit trigger conditions.
 - Add repo-level `README.md` + `CONTRIBUTING.md` that encode the publishing standard and checklist.
 - Provide a local `scripts/validate-skills.sh` entrypoint that uses `skills-ref validate` when available and falls back to structural checks.
 - Run skill reviews in parallel with one worker subagent per skill folder to improve speed and avoid edit conflicts.

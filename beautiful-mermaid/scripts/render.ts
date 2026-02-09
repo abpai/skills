@@ -203,9 +203,9 @@ async function main(): Promise<void> {
 
   const beautifulMermaid = await ensurePackage("beautiful-mermaid");
   const renderMermaid = beautifulMermaid.renderMermaid;
-  const THEMES = beautifulMermaid.THEMES;
+  const libraryThemes = beautifulMermaid.THEMES;
 
-  const themeConfig = THEMES?.[args.theme] ?? getThemeConfig(args.theme);
+  const themeConfig = libraryThemes?.[args.theme] ?? getThemeConfig(args.theme);
   console.log(`Using theme: bg=${themeConfig.bg}, fg=${themeConfig.fg}`);
 
   const svg = await renderMermaid(mermaidCode, themeConfig);

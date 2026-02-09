@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Cisco Skill Scanner with repo-local defaults for pre-commit."""
+"""Run cisco-ai-skill-scanner with repo-local defaults for pre-commit."""
 
 from __future__ import annotations
 
@@ -55,21 +55,20 @@ def _build_scan_args(args: argparse.Namespace) -> list[str]:
 
 
 def _run_skill_scanner(scan_args: list[str]) -> int:
-    commands = [["skill-scanner", *scan_args]]
+    candidates = [["skill-scanner", *scan_args]]
     if importlib.util.find_spec("skill_scanner") and importlib.util.find_spec(
         "skill_scanner.cli"
     ):
-        commands.append([sys.executable, "-m", "skill_scanner.cli", *scan_args])
+        candidates.append([sys.executable, "-m", "skill_scanner.cli", *scan_args])
 
-    for command in commands:
+    for candidate in candidates:
         try:
-            completed = subprocess.run(command, check=False)
-            return completed.returncode
+            return subprocess.run(candidate, check=False).returncode
         except FileNotFoundError:
             continue
 
     print(
-        "skill-scanner command was not found. Install cisco-ai-skill-scanner.",
+        "skill-scanner not found. Install cisco-ai-skill-scanner.",
         file=sys.stderr,
     )
     return 127
