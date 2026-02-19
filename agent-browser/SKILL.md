@@ -12,6 +12,7 @@ metadata:
 
 Every browser automation follows this pattern:
 
+0. **Connect** (if `$AGENT_BROWSER_CDP_PORT` is set): `agent-browser connect $AGENT_BROWSER_CDP_PORT` — see CDP section below
 1. **Navigate**: `agent-browser open <url>`
 2. **Snapshot**: `agent-browser snapshot -i` (get element refs like `@e1`, `@e2`)
 3. **Interact**: Use refs to click, fill, select
@@ -27,6 +28,53 @@ agent-browser fill @e2 "password123"
 agent-browser click @e3
 agent-browser wait --load networkidle
 agent-browser snapshot -i  # Check result
+```
+
+## CDP Connection (Authenticated Browser)
+
+If `AGENT_BROWSER_CDP_PORT` is set, connect to an existing Chrome instance instead of
+launching a fresh browser. This preserves logged-in sessions, cookies, and extensions.
+
+### Connect
+
+At the start of any browser session, connect to the CDP browser:
+
+```bash
+agent-browser connect $AGENT_BROWSER_CDP_PORT
+```
+
+If the connection fails (Chrome not running), launch it first:
+
+```bash
+# Check if browser is listening
+lsof -i :$AGENT_BROWSER_CDP_PORT -sTCP:LISTEN >/dev/null 2>&1
+
+# If not running, launch via AGENT_BROWSER_CDP_LAUNCH
+if [ -n "$AGENT_BROWSER_CDP_LAUNCH" ]; then
+  eval "$AGENT_BROWSER_CDP_LAUNCH" &
+  sleep 3
+fi
+
+# Then connect
+agent-browser connect $AGENT_BROWSER_CDP_PORT
+```
+
+Once connected, **all commands work normally** — no extra flags needed:
+
+```bash
+agent-browser open https://example.com
+agent-browser snapshot -i
+agent-browser click @e1
+agent-browser screenshot
+```
+
+### Clean Session (No Profile)
+
+When the user explicitly asks for a "clean", "fresh", or "incognito" session,
+skip CDP — use the default ephemeral browser regardless of env vars:
+
+```bash
+agent-browser open <url>          # Without connect = fresh browser
 ```
 
 ## Essential Commands
