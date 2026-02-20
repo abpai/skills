@@ -24,7 +24,9 @@ if command -v skills-ref >/dev/null 2>&1; then
   exit $failed
 fi
 
-echo "skills-ref not found; running basic checks..."
+echo "skills-ref not found on PATH; running basic checks..."
+echo "Install official validator:"
+echo "  uv tool install \"git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref\""
 
 failed=0
 name_regex='^[a-z0-9]+(-[a-z0-9]+)*$'

@@ -32,6 +32,12 @@ When importing from upstream:
 
 ## Validation
 
+Install the official validator (recommended):
+
+```bash
+uv tool install "git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref"
+```
+
 Run:
 
 ```bash

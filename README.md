@@ -33,11 +33,19 @@ Before publishing any skill from this repo:
    - `name`
    - `description`
 2. Ensure the `name` matches the skill directory name.
-3. Validate the skill against the spec using:
+3. Install the official reference validator:
+
+```bash
+uv tool install "git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref"
+```
+
+4. Validate the skill against the spec using:
 
 ```bash
 scripts/validate-skills.sh
 ```
+
+If `skills-ref` is unavailable on `PATH`, the script falls back to basic local checks.
 
 ## Existing Skills
 
@@ -49,6 +57,7 @@ scripts/validate-skills.sh
 - `codex`
 - `project-memory`
 - `slidev`
+- `socratic-code-owner`
 - `vibe-kanban`
 
 ## Security scanning
