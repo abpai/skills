@@ -1,7 +1,9 @@
 ---
 name: agent-browser
 description: Browser automation CLI for AI agents. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating any browser task. Triggers include requests to "open a website", "fill out a form", "click a button", "take a screenshot", "scrape data from a page", "test this web app", "login to a site", "automate browser actions", or any task requiring programmatic web interaction.
-allowed-tools: Bash(agent-browser:*)
+allowed-tools:
+  - Bash
+  - Bash(agent-browser:*)
 metadata:
   upstream_skill: https://github.com/vercel-labs/agent-browser/tree/main/skills/agent-browser
 ---
@@ -20,6 +22,7 @@ Every browser automation follows this pattern:
 
 ```bash
 agent-browser open https://example.com/form
+agent-browser get url
 agent-browser snapshot -i
 # Output: @e1 [input type="email"], @e2 [input type="password"], @e3 [button] "Submit"
 
@@ -29,6 +32,18 @@ agent-browser click @e3
 agent-browser wait --load networkidle
 agent-browser snapshot -i  # Check result
 ```
+
+### Open Confirmation (Required)
+
+After every `open`, confirm the browser actually reached the target page before continuing:
+
+```bash
+agent-browser open <url>
+agent-browser get url
+agent-browser get title
+```
+
+If `get url` is still `about:blank`, the page closes immediately, or load does not stabilize, stop and report this to the user before taking more actions.
 
 ## CDP Connection (Authenticated Browser)
 
@@ -59,6 +74,39 @@ fi
 agent-browser connect $AGENT_BROWSER_CDP_PORT
 ```
 
+### Command-Runner Note (Isolated)
+
+In some command-runner environments, launching Chrome with direct binary + `&` can be cleaned up when that command exits. If this happens, use a detached macOS launch command and verify the listener before connecting:
+
+```bash
+if ! lsof -i :$AGENT_BROWSER_CDP_PORT -sTCP:LISTEN >/dev/null 2>&1; then
+  open -na "Google Chrome" --args \
+    --remote-debugging-port="$AGENT_BROWSER_CDP_PORT" \
+    --user-data-dir="$HOME/Projects/ai-chrome-profile"
+  sleep 3
+fi
+
+lsof -i :$AGENT_BROWSER_CDP_PORT -sTCP:LISTEN >/dev/null 2>&1
+agent-browser connect $AGENT_BROWSER_CDP_PORT
+```
+
+After connect succeeds, verify navigation worked (do not assume it did):
+
+```bash
+agent-browser open https://example.com
+agent-browser wait --load networkidle
+agent-browser get url
+```
+
+If `AGENT_BROWSER_CDP_PORT` is set but CDP still fails after retrying launch/connect, do **not** silently switch methods. Explain the failure to the user and ask for a fallback choice:
+
+- `headed fresh session`: `agent-browser --headed open <url>`
+- `headless fresh session`: `agent-browser open <url>`
+
+Example message:
+
+`I couldn't connect through CDP on port $AGENT_BROWSER_CDP_PORT after retrying. Would you like me to continue with a headed fresh browser session or a headless fresh session?`
+
 Once connected, **all commands work normally** — no extra flags needed:
 
 ```bash
@@ -66,6 +114,14 @@ agent-browser open https://example.com
 agent-browser snapshot -i
 agent-browser click @e1
 agent-browser screenshot
+```
+
+For workflows split across separate command invocations, `--cdp` per command can be more robust:
+
+```bash
+agent-browser --cdp $AGENT_BROWSER_CDP_PORT open https://example.com
+agent-browser --cdp $AGENT_BROWSER_CDP_PORT snapshot -i
+agent-browser --cdp $AGENT_BROWSER_CDP_PORT click @e1
 ```
 
 ### Clean Session (No Profile)

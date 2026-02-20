@@ -41,6 +41,7 @@ scripts/validate-skills.sh
 
 ## Existing Skills
 
+- `agent-browser`
 - `beautiful-mermaid`
 - `cli-design-expert`
 - `code-review-and-commit`
