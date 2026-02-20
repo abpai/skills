@@ -10,7 +10,9 @@ metadata:
   clawdbot:
     emoji: "\U0001F4CB"
     requires:
-      bins: ["vk", "bun"]
+      bins:
+        - "vk"
+        - "bun"
 ---
 
 # Vibe Kanban — Task Board Skill
