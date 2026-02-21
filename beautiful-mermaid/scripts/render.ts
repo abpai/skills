@@ -144,6 +144,13 @@ async function ensurePackage(name: string): Promise<any> {
     }
     return await import(name);
   } catch {
+    if (runtime === "deno") {
+      console.error(
+        `${name} not found. Deno resolves npm: packages natively; try: deno cache npm:${name}`
+      );
+      process.exit(1);
+    }
+
     console.error(`${name} not found. Installing...`);
 
     const { execSync } = await import("node:child_process");
@@ -151,8 +158,6 @@ async function ensurePackage(name: string): Promise<any> {
     try {
       if (runtime === "bun") {
         execSync(`bun add ${name}`, { stdio: "inherit" });
-      } else if (runtime === "deno") {
-        return await import(`npm:${name}`);
       } else {
         execSync(`npm install ${name}`, { stdio: "inherit" });
       }

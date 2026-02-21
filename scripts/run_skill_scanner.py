@@ -11,6 +11,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+if sys.version_info < (3, 9):
+    sys.exit("Error: run_skill_scanner.py requires Python 3.9+. Current: " + sys.version)
+
 try:
     from dotenv import load_dotenv
 except Exception:  # pragma: no cover - optional dependency in local runs

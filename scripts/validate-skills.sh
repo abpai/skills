@@ -4,7 +4,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-mapfile -t SKILL_FILES < <(find . -mindepth 2 -maxdepth 2 -type f -name 'SKILL.md' | sort)
+SKILL_FILES=()
+while IFS= read -r f; do
+  SKILL_FILES+=("$f")
+done < <(find . -mindepth 2 -maxdepth 2 -type f -name 'SKILL.md' | sort)
 
 if [[ ${#SKILL_FILES[@]} -eq 0 ]]; then
   echo "No SKILL.md files found."
