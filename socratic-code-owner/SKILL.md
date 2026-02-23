@@ -9,7 +9,7 @@ description: >
   "walk me through what you built", "onboard me", or "code owner briefing".
 license: MIT
 metadata:
-  author: agentskills-community
+  author: Andy Pai
   version: "1.0"
   upstream_source: "agentskills-community"
   tags: "learning socratic onboarding code-review architecture"

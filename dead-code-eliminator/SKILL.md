@@ -12,7 +12,7 @@ description: >
   "audit what's actually used", or "find orphaned functions".
 license: MIT
 metadata:
-  author: agentskills-community
+  author: Andy Pai
   version: "1.0"
   tags: "dead-code cleanup refactor audit unused imports"
 ---

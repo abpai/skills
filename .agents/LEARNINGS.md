@@ -9,6 +9,8 @@
 | 2026-02-07 | user   | Manual validation relied on ad-hoc runs            | Wire `scripts/validate-skills.sh` into pre-commit to enforce checks pre-commit |
 | 2026-02-19 | user   | New `agent-browser` skill missed upstream credit in frontmatter metadata | Add `metadata.upstream_skill` with the source URL for imported/adapted skills |
 | 2026-02-20 | user   | Docs referenced `skills-ref` checks but omitted install guidance | Document install commands in README/CONTRIBUTING and print hint in validation scripts |
+| 2026-02-21 | self   | Assumed Bun TS config should pin a `types` entry | Prefer Bun's current `docs/runtime/typescript.md` defaults; avoid extra `types` overrides unless needed |
+| 2026-02-21 | self   | Bun examples drifted to outdated imports/flags (`bun:redis`, older test flag names) | Re-verify Bun APIs and CLI flags against `bun.com/docs` and local `bun --help` before publishing skill updates |
 
 ## User Preferences
 
@@ -17,6 +19,7 @@
 - For cross-skill quality passes, use distinct subagents with explicit per-file ownership.
 - Prefer automated local quality gates (pre-commit hooks) for skill validation.
 - Use `.agents/LEARNINGS.md` going forward as the single project memory file.
+- For locally authored skills, prefer `metadata.author: Andy Pai`; keep upstream credit in separate metadata fields.
 
 ## Patterns That Work
 
@@ -32,6 +35,8 @@
 - For scanner integration, keep existing hooks and append `skill-scanner` as another local hook invoked through `uv run --with ...` to avoid global Python dependency drift.
 - When adding env-driven scanner features (for example, LLM mode), include commented required API variables in `.env.example` so setup is self-documenting.
 - Use block-style YAML lists/maps in SKILL frontmatter; `skills-ref`/StrictYAML rejects JSON-style flow syntax (for example, `bins: ["vk", "bun"]`).
+- For Bun-focused skills, verify release chronology and feature introduction points against `https://bun.com/blog.md` + linked release notes before finalizing timelines/CLI guidance.
+- For Bun-focused skills, prefer evergreen doc-backed guidance over hard-coded benchmark percentages and long version timelines.
 
 ## Patterns That Don't Work
 
