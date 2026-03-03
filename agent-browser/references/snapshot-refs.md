@@ -80,7 +80,7 @@ agent-browser click @e12
 
 ## Ref Lifecycle
 
-**IMPORTANT**: Refs are invalidated when the page changes!
+**IMPORTANT**: Refs are invalidated when the page changes.
 
 ```bash
 # Get initial snapshot
@@ -174,8 +174,8 @@ agent-browser snapshot -i
 ### Element Not Visible in Snapshot
 
 ```bash
-# Scroll to reveal element
-agent-browser scroll --bottom
+# Scroll down to reveal element
+agent-browser scroll down 1000
 agent-browser snapshot -i
 
 # Or wait for dynamic content

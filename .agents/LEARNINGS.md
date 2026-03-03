@@ -11,6 +11,7 @@
 | 2026-02-20 | user   | Docs referenced `skills-ref` checks but omitted install guidance | Document install commands in README/CONTRIBUTING and print hint in validation scripts |
 | 2026-02-21 | self   | Assumed Bun TS config should pin a `types` entry | Prefer Bun's current `docs/runtime/typescript.md` defaults; avoid extra `types` overrides unless needed |
 | 2026-02-21 | self   | Bun examples drifted to outdated imports/flags (`bun:redis`, older test flag names) | Re-verify Bun APIs and CLI flags against `bun.com/docs` and local `bun --help` before publishing skill updates |
+| 2026-03-02 | self   | Draft skill passed content review but failed publish gate due to folder/name mismatch (`dokploy` vs `dokploy-cli`) | Run `scripts/validate-skills.sh` immediately after drafting or renaming a skill, before broader polish |
 
 ## User Preferences
 
@@ -37,6 +38,7 @@
 - Use block-style YAML lists/maps in SKILL frontmatter; `skills-ref`/StrictYAML rejects JSON-style flow syntax (for example, `bins: ["vk", "bun"]`).
 - For Bun-focused skills, verify release chronology and feature introduction points against `https://bun.com/blog.md` + linked release notes before finalizing timelines/CLI guidance.
 - For Bun-focused skills, prefer evergreen doc-backed guidance over hard-coded benchmark percentages and long version timelines.
+- In bash templates, pull repeated condition logic into small helpers first, then flatten nested branches; this keeps behavior stable while improving readability.
 
 ## Patterns That Don't Work
 

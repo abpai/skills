@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept Walkthrough — Reference Template</title>
+<!--
+  Reference template for the visual-explainer skill: interactive walkthroughs.
+  Editorial palette with violet tint — step-through navigation for concepts,
+  processes, or tutorials that benefit from progressive disclosure.
+  Key patterns demonstrated:
+  - Editorial palette (white bg, Merriweather headings, Inter body)
+  - Violet tint for educational/walkthrough feel
+  - Vanilla JS — no Preact, no Tailwind, no HTM
+  - Step navigation: STEPS array, prev/next buttons, clickable dots, keyboard arrows
+  - Accessibility: aria-live, aria-labels, aria-current, focus rings, input guard
+  - Animations: fadeIn on visual, slideUp on text, prefers-reduced-motion
+  - Both light and dark themes via prefers-color-scheme
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME ============ */
+  :root {
+    --font-heading: 'Merriweather', Georgia, serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #ffffff;
+    --bg-secondary: #f8fafc;
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface-recessed: #f1f5f9;
+
+    --border: #e2e8f0;
+    --border-bright: #cbd5e1;
+
+    --text: #0f172a;
+    --text-secondary: #475569;
+    --text-dim: #94a3b8;
+
+    --accent: #0891b2;
+    --accent-hover: #0e7490;
+    --accent-dim: rgba(8, 145, 178, 0.08);
+
+    --tint: #7c3aed;
+    --tint-dim: rgba(124, 58, 237, 0.08);
+
+    --green: #16a34a;  --green-dim: rgba(22, 163, 74, 0.08);
+    --red: #dc2626;    --red-dim: rgba(220, 38, 38, 0.08);
+    --amber: #d97706;  --amber-dim: rgba(217, 119, 6, 0.08);
+    --blue: #2563eb;   --blue-dim: rgba(37, 99, 235, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #09090b;
+      --bg-secondary: #18181b;
+      --surface: #18181b;
+      --surface-elevated: #27272a;
+      --surface-recessed: #09090b;
+
+      --border: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(255, 255, 255, 0.14);
+
+      --text: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-dim: #71717a;
+
+      --accent: #22d3ee;
+      --accent-hover: #67e8f9;
+      --accent-dim: rgba(34, 211, 238, 0.12);
+
+      --tint: #a78bfa;
+      --tint-dim: rgba(167, 139, 250, 0.12);
+
+      --green: #4ade80;  --green-dim: rgba(74, 222, 128, 0.10);
+      --red: #f87171;    --red-dim: rgba(248, 113, 113, 0.10);
+      --amber: #fbbf24;  --amber-dim: rgba(251, 191, 36, 0.10);
+      --blue: #60a5fa;   --blue-dim: rgba(96, 165, 250, 0.10);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+  }
+
+  ::selection { background: var(--tint-dim); color: var(--text); }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.985); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in, .animate-slide-up {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+
+  /* ============ LAYOUT ============ */
+  .container { width: 100%; max-width: 520px; }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+  }
+
+  .breadcrumb .sep { color: var(--border-bright); }
+  .breadcrumb .current { color: var(--text-secondary); }
+
+  /* ============ CARD ============ */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .card { box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4); }
+  }
+
+  /* ============ VISUAL AREA ============ */
+  .visual {
+    aspect-ratio: 16 / 9;
+    background: var(--surface-recessed);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .visual-grid {
+    position: absolute;
+    inset: 0;
+    opacity: 0.06;
+    background-image: radial-gradient(var(--text-dim) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(circle at center, black 55%, transparent 78%);
+    -webkit-mask-image: radial-gradient(circle at center, black 55%, transparent 78%);
+  }
+
+  .visual-content { position: relative; z-index: 1; }
+
+  .step-counter {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: var(--surface-recessed);
+    border: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  /* ============ TEXT AREA ============ */
+  .text-area { padding: 32px; }
+
+  .step-title {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .step-description {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+  }
+
+  /* ============ CONTROLS ============ */
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px 32px;
+    gap: 16px;
+  }
+
+  .dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .dot-btn {
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    border-radius: 12px;
+  }
+
+  .dot-btn:focus-visible {
+    outline: 2px solid var(--tint);
+    outline-offset: 2px;
+  }
+
+  .dot-inner {
+    display: block;
+    height: 6px;
+    border-radius: 3px;
+    transition: width 0.3s ease, background 0.3s ease;
+    width: 6px;
+    background: var(--border-bright);
+  }
+
+  .dot-btn[aria-current="step"] .dot-inner {
+    width: 24px;
+    background: var(--tint);
+  }
+
+  .buttons { display: flex; gap: 8px; }
+
+  .btn {
+    height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--tint);
+    outline-offset: 2px;
+  }
+
+  .btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+  }
+
+  .btn-prev {
+    width: 32px;
+    background: transparent;
+    color: var(--text-secondary);
+  }
+
+  .btn-prev:hover:not(:disabled) {
+    background: var(--bg-secondary);
+    color: var(--text);
+  }
+
+  .btn-next {
+    padding: 0 12px 0 14px;
+    gap: 6px;
+    background: var(--text);
+    color: var(--bg);
+    border-color: var(--text);
+  }
+
+  .btn-next:hover:not(:disabled) {
+    opacity: 0.85;
+  }
+
+  .btn svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ============ TIP ============ */
+  .tip {
+    margin-top: 32px;
+    text-align: center;
+    transition: opacity 0.5s ease;
+  }
+
+  .tip-text {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--surface-recessed);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .tip.hidden { opacity: 0; pointer-events: none; }
+
+  /* ============ VISUAL ELEMENTS ============ */
+  .icon-box {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .pulse-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pulse-dot .dot {
+    position: relative;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--tint);
+  }
+
+  .pulse-dot .ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--tint-dim);
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(2.2); opacity: 0; }
+  }
+
+  .pulse-dot .label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+  }
+
+  .progress-bar {
+    width: 144px;
+  }
+
+  .progress-track {
+    height: 8px;
+    background: var(--surface-elevated);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 66%;
+    background: var(--tint);
+    border-radius: 4px;
+    opacity: 0.8;
+  }
+
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .badge svg { color: var(--green); }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 580px) {
+    body { padding: 16px; }
+    .text-area { padding: 24px; }
+    .controls { padding: 0 24px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <span>Docs</span>
+    <span class="sep">/</span>
+    <span class="current" aria-current="page">Workflow</span>
+  </nav>
+
+  <div class="card">
+
+    <div class="visual">
+      <div class="visual-grid"></div>
+      <div class="visual-content" id="visual"></div>
+      <div class="step-counter" id="counter"></div>
+    </div>
+
+    <div class="sr-only" aria-live="polite" id="announce"></div>
+
+    <div class="text-area">
+      <div id="text-content">
+        <h2 class="step-title" id="title"></h2>
+        <p class="step-description" id="description"></p>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="dots" role="tablist" aria-label="Steps" id="dots"></div>
+      <div class="buttons">
+        <button class="btn btn-prev" id="prev" aria-label="Previous step" title="Previous">
+          <svg viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+        </button>
+        <button class="btn btn-next" id="next" aria-label="Next step" title="Next">
+          <span>Next</span>
+          <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="tip" id="tip">
+    <span class="tip-text">Tip: Arrow keys navigate steps</span>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  // ─── Content ────────────────────────────────────────────────────
+  var STEPS = [
+    {
+      title: 'Ingestion',
+      description: 'The system accepts raw payloads and validates schema integrity before processing.',
+      visual: '<div style="display:flex;flex-direction:column;align-items:center;gap:12px">'
+        + '<div class="icon-box"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22v-10"/></svg></div>'
+        + '<div class="pulse-dot"><span class="dot"><span class="ring"></span></span><span class="label">Active</span></div>'
+        + '</div>'
+    },
+    {
+      title: 'Transformation',
+      description: 'Data is normalized. Sensitive fields are hashed and timestamps converted to UTC.',
+      visual: '<div class="progress-bar">'
+        + '<div class="progress-track"><div class="progress-fill"></div></div>'
+        + '<div class="progress-labels"><span>0x8F...A2</span><span>Processing</span></div>'
+        + '</div>'
+    },
+    {
+      title: 'Distribution',
+      description: 'Finalized objects are pushed to the edge network for low-latency access.',
+      visual: '<div class="badge">'
+        + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+        + '<span>Synced</span>'
+        + '</div>'
+    }
+  ];
+
+  // ─── State ──────────────────────────────────────────────────────
+  var step = 0;
+  var total = STEPS.length;
+
+  // ─── DOM ────────────────────────────────────────────────────────
+  var visualEl = document.getElementById('visual');
+  var counterEl = document.getElementById('counter');
+  var titleEl = document.getElementById('title');
+  var descEl = document.getElementById('description');
+  var announceEl = document.getElementById('announce');
+  var textContent = document.getElementById('text-content');
+  var dotsEl = document.getElementById('dots');
+  var prevBtn = document.getElementById('prev');
+  var nextBtn = document.getElementById('next');
+  var tipEl = document.getElementById('tip');
+
+  // ─── Build dots ─────────────────────────────────────────────────
+  STEPS.forEach(function(s, i) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'dot-btn';
+    btn.setAttribute('aria-label', 'Go to step ' + (i + 1) + ': ' + s.title);
+    btn.setAttribute('title', 'Step ' + (i + 1));
+    btn.innerHTML = '<span class="dot-inner"></span>';
+    btn.addEventListener('click', function() { goTo(i); });
+    dotsEl.appendChild(btn);
+  });
+
+  // ─── Render ─────────────────────────────────────────────────────
+  function render() {
+    var current = STEPS[step];
+    var pad = function(n) { return n < 10 ? '0' + n : '' + n; };
+
+    // Counter
+    counterEl.textContent = pad(step + 1) + ' / ' + pad(total);
+
+    // Visual (with animation)
+    visualEl.innerHTML = current.visual;
+    visualEl.className = 'visual-content animate-fade-in';
+
+    // Text (with animation)
+    titleEl.textContent = current.title;
+    descEl.textContent = current.description;
+    textContent.className = 'animate-slide-up';
+
+    // Re-trigger animation by forcing reflow
+    void visualEl.offsetWidth;
+    void textContent.offsetWidth;
+
+    // Announce for screen readers
+    announceEl.textContent = 'Step ' + (step + 1) + ' of ' + total + ': ' + current.title;
+
+    // Update dots
+    var dotBtns = dotsEl.querySelectorAll('.dot-btn');
+    for (var i = 0; i < dotBtns.length; i++) {
+      if (i === step) {
+        dotBtns[i].setAttribute('aria-current', 'step');
+      } else {
+        dotBtns[i].removeAttribute('aria-current');
+      }
+    }
+
+    // Update buttons
+    prevBtn.disabled = step === 0;
+    nextBtn.disabled = step === total - 1;
+  }
+
+  // ─── Navigation ─────────────────────────────────────────────────
+  function goTo(i) {
+    step = Math.max(0, Math.min(i, total - 1));
+    render();
+  }
+
+  prevBtn.addEventListener('click', function() { goTo(step - 1); });
+  nextBtn.addEventListener('click', function() { goTo(step + 1); });
+
+  // ─── Keyboard ───────────────────────────────────────────────────
+  function isTypingTarget(el) {
+    if (!el) return false;
+    var tag = (el.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    if (el.isContentEditable) return true;
+    return false;
+  }
+
+  window.addEventListener('keydown', function(e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (isTypingTarget(e.target)) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); goTo(step + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(step - 1); }
+  }, { passive: false });
+
+  // ─── Tip fade ───────────────────────────────────────────────────
+  setTimeout(function() { tipEl.classList.add('hidden'); }, 2200);
+
+  // ─── Init ───────────────────────────────────────────────────────
+  render();
+})();
+</script>
+
+</body>
+</html>

@@ -3,6 +3,11 @@
 # Purpose: Login once, save state, reuse for subsequent runs
 # Usage: ./authenticated-session.sh <login-url> [state-file]
 #
+# RECOMMENDED: Use the auth vault instead of this template:
+#   echo "<pass>" | agent-browser auth save myapp --url <login-url> --username <user> --password-stdin
+#   agent-browser auth login myapp
+# The auth vault stores credentials securely and the LLM never sees passwords.
+#
 # Environment variables:
 #   APP_USERNAME - Login username/email
 #   APP_PASSWORD - Login password
@@ -22,6 +27,32 @@ set -euo pipefail
 LOGIN_URL="${1:?Usage: $0 <login-url> [state-file]}"
 STATE_FILE="${2:-./auth-state.json}"
 
+is_login_url() {
+    local url="$1"
+    [[ "$url" == *"login"* ]] || [[ "$url" == *"signin"* ]]
+}
+
+restore_saved_session() {
+    if ! agent-browser --state "$STATE_FILE" open "$LOGIN_URL" 2>/dev/null; then
+        echo "Failed to load state, re-authenticating..."
+        return 1
+    fi
+
+    agent-browser wait --load networkidle
+    local current_url
+    current_url=$(agent-browser get url)
+
+    if ! is_login_url "$current_url"; then
+        echo "Session restored successfully"
+        agent-browser snapshot -i
+        return 0
+    fi
+
+    echo "Session expired, performing fresh login..."
+    agent-browser close 2>/dev/null || true
+    return 1
+}
+
 echo "Authentication workflow: $LOGIN_URL"
 
 # ================================================================
@@ -29,17 +60,9 @@ echo "Authentication workflow: $LOGIN_URL"
 # ================================================================
 if [[ -f "$STATE_FILE" ]]; then
     echo "Loading saved state from $STATE_FILE..."
-    agent-browser state load "$STATE_FILE"
-    agent-browser open "$LOGIN_URL"
-    agent-browser wait --load networkidle
-
-    CURRENT_URL=$(agent-browser get url)
-    if [[ "$CURRENT_URL" != *"login"* ]] && [[ "$CURRENT_URL" != *"signin"* ]]; then
-        echo "Session restored successfully"
-        agent-browser snapshot -i
+    if restore_saved_session; then
         exit 0
     fi
-    echo "Session expired, performing fresh login..."
     rm -f "$STATE_FILE"
 fi
 

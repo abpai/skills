@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sprint Health Dashboard — Reference Template</title>
+<!--
+  Reference template for the visual-explainer skill: dashboards / metrics overview.
+  Editorial palette with coral tint — warm, action-oriented feel for KPIs and metrics.
+  Key patterns demonstrated:
+  - Editorial palette (white bg, Merriweather headings, Inter body)
+  - Coral tint for warm, action-oriented dashboard feel
+  - Hero KPI row: 4 metric cards with large numbers, trend arrows, countUp animation
+  - Sparkline section: inline SVG polyline sparklines in cards
+  - Progress bars: CSS linear-gradient bars showing completion percentages
+  - Summary section with status indicators
+  - Responsive: auto-fit grid → single column on mobile
+  - Both light and dark themes via prefers-color-scheme
+  - Staggered fadeScale animation on KPI cards, fadeUp on sections
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME ============ */
+  :root {
+    --font-heading: 'Merriweather', Georgia, serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+    --bg: #ffffff;
+    --bg-secondary: #f8fafc;
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface-recessed: #f1f5f9;
+
+    --border: #e2e8f0;
+    --border-bright: #cbd5e1;
+
+    --text: #0f172a;
+    --text-secondary: #475569;
+    --text-dim: #94a3b8;
+
+    --accent: #0891b2;
+    --accent-dim: rgba(8, 145, 178, 0.08);
+
+    --tint: #e11d48;
+    --tint-dim: rgba(225, 29, 72, 0.06);
+
+    --green: #16a34a;  --green-dim: rgba(22, 163, 74, 0.08);
+    --red: #dc2626;    --red-dim: rgba(220, 38, 38, 0.08);
+    --amber: #d97706;  --amber-dim: rgba(217, 119, 6, 0.08);
+    --blue: #2563eb;   --blue-dim: rgba(37, 99, 235, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #09090b;
+      --bg-secondary: #18181b;
+      --surface: #18181b;
+      --surface-elevated: #27272a;
+      --surface-recessed: #09090b;
+
+      --border: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(255, 255, 255, 0.14);
+
+      --text: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-dim: #71717a;
+
+      --accent: #22d3ee;
+      --accent-dim: rgba(34, 211, 238, 0.12);
+
+      --tint: #fb7185;
+      --tint-dim: rgba(251, 113, 133, 0.10);
+
+      --green: #4ade80;  --green-dim: rgba(74, 222, 128, 0.10);
+      --red: #f87171;    --red-dim: rgba(248, 113, 113, 0.10);
+      --amber: #fbbf24;  --amber-dim: rgba(251, 191, 36, 0.10);
+      --blue: #60a5fa;   --blue-dim: rgba(96, 165, 250, 0.10);
+    }
+  }
+
+  /* ============ RESET + BASE ============ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 48px 32px;
+    min-height: 100vh;
+  }
+
+  /* ============ ANIMATION ============ */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeScale {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @property --count {
+    syntax: '<integer>';
+    initial-value: 0;
+    inherits: false;
+  }
+
+  @keyframes countUp {
+    to { --count: var(--target); }
+  }
+
+  .animate {
+    animation: fadeUp 0.4s ease-out both;
+    animation-delay: calc(var(--i, 0) * 0.06s);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============ CONTAINER ============ */
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  /* ============ HEADER ============ */
+  h1 {
+    font-family: var(--font-heading);
+    font-size: 36px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+    text-wrap: balance;
+  }
+
+  .subtitle {
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    margin-bottom: 32px;
+  }
+
+  h2 {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 16px;
+  }
+
+  /* ============ KPI HERO ROW ============ */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    animation: fadeScale 0.35s ease-out both;
+    animation-delay: calc(var(--i, 0) * 0.06s);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .kpi-card { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
+  }
+
+  .kpi-card__value {
+    font-family: var(--font-heading);
+    font-size: 36px;
+    font-weight: 900;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kpi-card__value--animated {
+    counter-reset: val var(--count);
+    animation: countUp 1.2s ease-out forwards;
+  }
+
+  .kpi-card__value--animated::after {
+    content: counter(val);
+  }
+
+  .kpi-card__label {
+    font-family: var(--font-heading);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+
+  .kpi-card__trend {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  .kpi-card__trend--up { color: var(--green); }
+  .kpi-card__trend--down { color: var(--red); }
+  .kpi-card__trend--flat { color: var(--text-dim); }
+
+  /* ============ SPARKLINE CARDS ============ */
+  .sparkline-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 32px;
+  }
+
+  .sparkline-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .sparkline-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+
+  .sparkline-card__title {
+    font-family: var(--font-heading);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  .sparkline-card__value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .sparkline-card svg {
+    display: block;
+    width: 100%;
+    height: 40px;
+  }
+
+  /* ============ PROGRESS SECTION ============ */
+  .progress-section {
+    margin-bottom: 32px;
+  }
+
+  .progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .progress-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+
+  .progress-item__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .progress-item__label {
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .progress-item__pct {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+  }
+
+  .progress-bar {
+    height: 6px;
+    background: var(--surface-recessed);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s ease-out;
+  }
+
+  .progress-fill--green { background: var(--green); }
+  .progress-fill--blue { background: var(--blue); }
+  .progress-fill--amber { background: var(--amber); }
+  .progress-fill--tint { background: var(--tint); }
+
+  /* ============ SUMMARY SECTION ============ */
+  .summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+  }
+
+  .summary__title {
+    font-family: var(--font-heading);
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .summary__text {
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+  }
+
+  .status-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+
+  .status::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .status--green { background: var(--green-dim); color: var(--green); }
+  .status--amber { background: var(--amber-dim); color: var(--amber); }
+  .status--red { background: var(--red-dim); color: var(--red); }
+  .status--blue { background: var(--blue-dim); color: var(--blue); }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 768px) {
+    body { padding: 16px; }
+    h1 { font-size: 28px; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .sparkline-row { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 480px) {
+    .kpi-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1 class="animate" style="--i:0">Sprint Health</h1>
+  <p class="subtitle animate" style="--i:1">sprint 14 &mdash; feb 10 – feb 24 &mdash; team velocity dashboard</p>
+
+  <!-- Hero KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi-card" style="--i:2">
+      <div class="kpi-card__value kpi-card__value--animated" style="--target:47"></div>
+      <div class="kpi-card__label">Story Points</div>
+      <div class="kpi-card__trend kpi-card__trend--up">&#9650; 12% vs last sprint</div>
+    </div>
+    <div class="kpi-card" style="--i:3">
+      <div class="kpi-card__value kpi-card__value--animated" style="--target:89"></div>
+      <div class="kpi-card__label">Completion %</div>
+      <div class="kpi-card__trend kpi-card__trend--up">&#9650; 5% vs target</div>
+    </div>
+    <div class="kpi-card" style="--i:4">
+      <div class="kpi-card__value kpi-card__value--animated" style="--target:3"></div>
+      <div class="kpi-card__label">Blocked Items</div>
+      <div class="kpi-card__trend kpi-card__trend--down">&#9660; 2 from last week</div>
+    </div>
+    <div class="kpi-card" style="--i:5">
+      <div class="kpi-card__value kpi-card__value--animated" style="--target:12"></div>
+      <div class="kpi-card__label">PRs Merged</div>
+      <div class="kpi-card__trend kpi-card__trend--flat">&#9644; on track</div>
+    </div>
+  </div>
+
+  <!-- Sparkline Section -->
+  <h2 class="animate" style="--i:6">Trends</h2>
+  <div class="sparkline-row animate" style="--i:7">
+    <div class="sparkline-card">
+      <div class="sparkline-card__header">
+        <span class="sparkline-card__title">Velocity (last 8 sprints)</span>
+        <span class="sparkline-card__value">47 pts</span>
+      </div>
+      <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+        <polyline points="0,35 28,30 56,32 84,24 112,28 140,20 168,18 200,10"
+          fill="none" stroke="var(--tint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="0,35 28,30 56,32 84,24 112,28 140,20 168,18 200,10"
+          fill="url(#sparkGrad1)" stroke="none"/>
+        <defs>
+          <linearGradient id="sparkGrad1" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--tint)" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="var(--tint)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <div class="sparkline-card">
+      <div class="sparkline-card__header">
+        <span class="sparkline-card__title">Bug Rate (per sprint)</span>
+        <span class="sparkline-card__value">4 bugs</span>
+      </div>
+      <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+        <polyline points="0,10 28,15 56,8 84,20 112,18 140,25 168,22 200,30"
+          fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="0,10 28,15 56,8 84,20 112,18 140,25 168,22 200,30"
+          fill="url(#sparkGrad2)" stroke="none"/>
+        <defs>
+          <linearGradient id="sparkGrad2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--amber)" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="var(--amber)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <div class="sparkline-card">
+      <div class="sparkline-card__header">
+        <span class="sparkline-card__title">Deploy Frequency (daily)</span>
+        <span class="sparkline-card__value">2.3/day</span>
+      </div>
+      <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+        <polyline points="0,30 28,25 56,28 84,15 112,20 140,12 168,10 200,8"
+          fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="0,30 28,25 56,28 84,15 112,20 140,12 168,10 200,8"
+          fill="url(#sparkGrad3)" stroke="none"/>
+        <defs>
+          <linearGradient id="sparkGrad3" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--green)" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="var(--green)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Progress Bars -->
+  <h2 class="animate" style="--i:8">Milestone Progress</h2>
+  <div class="progress-section animate" style="--i:9">
+    <div class="progress-list">
+      <div class="progress-item">
+        <div class="progress-item__header">
+          <span class="progress-item__label">Auth Rewrite</span>
+          <span class="progress-item__pct">92%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill progress-fill--green" style="width:92%"></div>
+        </div>
+      </div>
+      <div class="progress-item">
+        <div class="progress-item__header">
+          <span class="progress-item__label">API v2 Migration</span>
+          <span class="progress-item__pct">67%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill progress-fill--blue" style="width:67%"></div>
+        </div>
+      </div>
+      <div class="progress-item">
+        <div class="progress-item__header">
+          <span class="progress-item__label">Performance Audit</span>
+          <span class="progress-item__pct">45%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill progress-fill--amber" style="width:45%"></div>
+        </div>
+      </div>
+      <div class="progress-item">
+        <div class="progress-item__header">
+          <span class="progress-item__label">Design System Tokens</span>
+          <span class="progress-item__pct">28%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill progress-fill--tint" style="width:28%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary animate" style="--i:10">
+    <div class="summary__title">Sprint Summary</div>
+    <p class="summary__text">
+      Sprint 14 is on track for a clean close. Auth rewrite is nearly complete with one remaining PR in review.
+      API migration hit a dependency issue with the billing service — the team is routing around it with a feature flag.
+      Three blocked items are all waiting on external design assets, expected by Wednesday.
+    </p>
+    <div class="status-row">
+      <span class="status status--green">On Track</span>
+      <span class="status status--amber">3 Blocked</span>
+      <span class="status status--blue">12 PRs Merged</span>
+      <span class="status status--red">1 At Risk</span>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
