@@ -11,7 +11,7 @@ description: Run Codex CLI for code analysis and automated edits. Use when users
    - New run: use `codex exec`.
    - Continue prior run: use `codex exec ... resume --last` with stdin prompt.
 2. Set defaults unless user overrides:
-   - Model: `gpt-5.3-codex`.
+   - Model: `gpt-5.4`.
    - Reasoning effort: ask user to choose `xhigh`, `high`, `medium`, or `low`.
    - Sandbox: `read-only` unless edits/network are required.
 3. Build command with required flags:
@@ -37,7 +37,7 @@ description: Run Codex CLI for code analysis and automated edits. Use when users
 
 ```bash
 codex exec --skip-git-repo-check \
-  --model gpt-5.3-codex \
+  --model gpt-5.4 \
   --config model_reasoning_effort="high" \
   --sandbox read-only \
   "your prompt here" 2>/dev/null
@@ -55,13 +55,14 @@ When resuming, do not add configuration flags unless the user explicitly asks fo
 
 ## Model Options
 
-| Model                | Best for                                          | Context window    | Key features                                      |
-| -------------------- | ------------------------------------------------- | ----------------- | ------------------------------------------------- |
-| `gpt-5.3-codex` ⭐   | Default for most coding tasks in Codex            | N/A in this skill | Most capable recommended Codex coding model       |
-| `gpt-5.2-codex`      | Strong fallback if `gpt-5.3-codex` is unavailable | N/A in this skill | Advanced coding model; succeeded by GPT-5.3-Codex |
-| `gpt-5.1-codex-mini` | Faster/cost-effective option for lighter tasks    | N/A in this skill | Smaller, less-capable option                      |
+| Model          | Best for                                       | Context window    | Key features                                              |
+| -------------- | ---------------------------------------------- | ----------------- | --------------------------------------------------------- |
+| `gpt-5.4` ⭐   | Default for most coding tasks in Codex         | N/A in this skill | OpenAI's recommended default for general-purpose coding   |
+| `gpt-5.4-pro` | Harder problems that benefit from more compute | N/A in this skill | More compute for deeper reasoning on difficult tasks      |
+| `gpt-5-mini`  | Faster/cost-effective option for lighter tasks | N/A in this skill | Smaller GPT-5 model for lower-cost coding and chat tasks  |
+| `gpt-5.3-codex` | Legacy specialized alternative                | N/A in this skill | Prior Codex-tuned model; generally superseded by GPT-5.4  |
 
-`gpt-5.3-codex` is the default for software engineering tasks.
+`gpt-5.4` is the default for software engineering tasks.
 
 ### Reasoning Effort
 
@@ -84,7 +85,7 @@ When resuming, do not add configuration flags unless the user explicitly asks fo
 
 ## CLI Version
 
-Use a current Codex CLI version that supports `gpt-5.3-codex`. Check with:
+Use a current Codex CLI version that supports `gpt-5.4`. Check with:
 
 ```bash
 codex --version
