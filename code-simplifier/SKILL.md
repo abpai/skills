@@ -49,9 +49,33 @@ Do not:
 1. Run available lint/test checks when practical.
 1. Summarize only meaningful structural changes.
 
+## Repeated Passes
+
+If the user asks to simplify recursively, keep going until no changes remain, or uses command-like phrasing such as `/code-simplifier 5`, switch to loop mode instead of a single pass.
+
+Loop mode workflow:
+
+1. Parse an optional max iteration count from the request.
+1. Default to `5` when no number is provided.
+1. Execute the bundled runner script:
+   `bash <skill_dir>/scripts/run-codex-simplifier-loop.sh --max-iterations <N>`
+1. Prefer `--dry-run` only when the user asks for preview mode.
+1. Report:
+   - number of rounds attempted
+   - whether each round changed files
+   - whether loop stopped early due to no changes
+
+Loop mode parameters:
+
+- `--max-iterations N`: Maximum rounds to run (default `5`)
+- `--codex-cmd "..."`: Optional custom Codex command (default `codex exec --full-auto`)
+- `--prompt "..."`: Optional custom instruction prompt
+- `--dry-run`: Print planned commands without executing Codex
+
 ## Decision Heuristics
 
 - If two versions are equivalent, choose the one a new teammate can understand fastest.
 - Keep useful abstractions; remove only those that add indirection without value.
 - Prefer straightforward flow over reduced line count.
 - Stop when readability gains flatten out.
+- In loop mode, stop immediately when a round produces no working-tree changes.

@@ -52,6 +52,7 @@ If `skills-ref` is unavailable on `PATH`, the script falls back to basic local c
 - `agent-browser`
 - `beautiful-mermaid`
 - `bun-expert`
+- `claude`
 - `cli-design-expert`
 - `code-review-and-commit`
 - `code-simplifier`
@@ -62,7 +63,6 @@ If `skills-ref` is unavailable on `PATH`, the script falls back to basic local c
 - `project-memory`
 - `socratic-code-owner`
 - `try`
-- `vibe-kanban`
 - `visual-explainer`
 
 ## Security scanning
