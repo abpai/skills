@@ -13,6 +13,10 @@
 | 2026-02-21 | self   | Bun examples drifted to outdated imports/flags (`bun:redis`, older test flag names) | Re-verify Bun APIs and CLI flags against `bun.com/docs` and local `bun --help` before publishing skill updates |
 | 2026-03-02 | self   | Draft skill passed content review but failed publish gate due to folder/name mismatch (`dokploy` vs `dokploy-cli`) | Run `scripts/validate-skills.sh` immediately after drafting or renaming a skill, before broader polish |
 | 2026-03-03 | self   | Removed/added skills without updating the root README skill list | When adding/removing skills, update `README.md` skill inventory in the same commit |
+| 2026-03-08 | self   | Generated an execution-flow explainer with hand-built HTML boxes instead of the Excalidraw flowchart pipeline | For execution flow / code flow explainers, the primary diagram itself should render through the Excalidraw pipeline, not just mimic a flow layout with CSS |
+| 2026-03-08 | self   | Removed the exported Excalidraw SVG width/height, which collapsed the rendered diagram to `0x0` even though the SVG existed in the DOM | Preserve or restore intrinsic SVG dimensions from `viewBox`, then scale responsively with CSS instead of stripping sizing attrs |
+| 2026-03-08 | self   | Used `git write-tree` and `eval` in a loop wrapper, which missed unstaged edits and let prompt text hit shell parsing | For agent wrappers, detect changes from `git status --porcelain` and pass user prompt text as a literal argv entry instead of shell-evaluating it |
+| 2026-03-09 | user   | A review note claimed `agent-browser` lacked `--native`, but upstream now documents `--native` and `AGENT_BROWSER_NATIVE=1` | Re-check the latest upstream README/skill before removing or downgrading agent-browser flags that may have changed recently |
 
 ## User Preferences
 
@@ -22,6 +26,10 @@
 - Prefer automated local quality gates (pre-commit hooks) for skill validation.
 - Use `.agents/LEARNINGS.md` going forward as the single project memory file.
 - For locally authored skills, prefer `metadata.author: Andy Pai`; keep upstream credit in separate metadata fields.
+- For `visual-explainer`, prefer Excalidraw-style diagram rendering over plain Mermaid when possible.
+- For editorial UI, prefer Medium-like styling aligned with `threaded` (Merriweather + Inter, slate palette, restrained visuals).
+- For execution flow / code flow visuals, explicitly route to Excalidraw flowchart rendering.
+- For `agent-browser`, prefer a CDP attach-once workflow (`agent-browser connect ...`) over repeatedly launching fresh browser instances when session reuse is desired.
 
 ## Patterns That Work
 
@@ -41,6 +49,10 @@
 - For Bun-focused skills, prefer evergreen doc-backed guidance over hard-coded benchmark percentages and long version timelines.
 - In bash templates, pull repeated condition logic into small helpers first, then flatten nested branches; this keeps behavior stable while improving readability.
 - Update root docs (`README.md` skill inventory) whenever skill folders are added, renamed, or removed.
+- For `visual-explainer` execution-flow pages, pair one real Excalidraw-rendered flowchart with supporting editorial sections instead of replacing the flowchart with static HTML boxes.
+- For exported Excalidraw SVGs in standalone HTML, keep intrinsic dimensions and apply responsive scaling with `width: 100%`, `height: auto`, and a `max-width` derived from `viewBox`.
+- For Codex-related skills, prefer `gpt-5.4` as the default model; OpenAI now recommends the general-purpose GPT-5.4 over `gpt-5.3-codex` for most coding tasks.
+- For `agent-browser`, use `agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"` to reuse a logged-in Chrome, and use an empty config plus unset persistence env vars for truly clean sessions.
 
 ## Patterns That Don't Work
 
