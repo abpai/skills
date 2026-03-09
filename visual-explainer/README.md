@@ -16,7 +16,7 @@ Ask your agent to explain a system architecture, review a diff, or compare requi
 > /review ~/docs/refactor-plan.md
 ```
 
-Each one produces a single `.html` file with real typography, dark/light theme support, and interactive Mermaid diagrams with zoom and pan. No build step, no dependencies beyond a browser.
+Each one produces a single `.html` file with real typography, dark/light theme support, and Excalidraw-style flowcharts (with Mermaid fallback) plus zoom and pan controls. No build step, no dependencies beyond a browser.
 
 https://github.com/user-attachments/assets/55ebc81b-8732-40f6-a4b1-7c3781aa96ec
 
@@ -82,25 +82,30 @@ SKILL.md (workflow + design principles)
     ↓
 references/           ← agent reads before each generation
 ├── css-patterns.md   (layouts, animations, theming, depth tiers)
-├── libraries.md      (Mermaid theming, font pairings)
+├── libraries.md      (Excalidraw flowchart pipeline, Mermaid fallback, font pairings)
 └── responsive-nav.md (sticky sidebar TOC for multi-section pages)
     ↓
 templates/            ← agent reads the matching reference template
-├── mermaid-flowchart.html (Mermaid + ELK + handDrawn — emerald tint)
+├── mermaid-flowchart.html (Excalidraw flowchart render + Mermaid fallback — editorial slate style)
+├── architecture.html (text-heavy or hybrid system diagrams — CSS Grid + Mermaid overview)
 ├── data-table.html   (tables with KPIs and badges — indigo tint)
+├── dashboard.html    (metrics, status, and operational summaries)
+├── timeline.html     (roadmaps, milestones, linear process views)
 └── walkthrough.html  (interactive step-through — violet tint)
     ↓
 ~/.agent/diagrams/filename.html → opens in browser
 ```
 
-The agent picks an aesthetic direction, reads the right reference template, generates a self-contained HTML file with both light and dark themes, and opens it. All three templates share a unified editorial palette (white bg, Merriweather headings, Inter body) with per-template tint colors for subtle differentiation. The skill handles Mermaid diagrams (flowcharts, sequences, ER, state machines, mind maps), CSS Grid architecture layouts, HTML tables, interactive walkthroughs, and dashboards — routing to the right approach automatically.
+The agent picks an aesthetic direction, reads the right reference template, generates a self-contained HTML file with both light and dark themes, and opens it. The default editorial baseline is Medium-like (Merriweather + Inter, slate palette, generous whitespace). For diagrams, flowcharts render through Excalidraw conversion for cleaner output, while non-flowchart Mermaid types use Mermaid fallback. The skill also handles CSS Grid architecture layouts, HTML tables, interactive walkthroughs, and dashboards.
 
 To customize the output directory, browser command, or add your own diagram types and CSS patterns, edit the files directly. The agent reads them fresh each time.
 
 ## Limitations
 
 - Requires a browser to view — no inline terminal rendering
-- Switching OS theme requires a page refresh for Mermaid SVGs (CSS-styled elements respond instantly)
+- Flowchart conversion quality depends on `@excalidraw/mermaid-to-excalidraw` feature support
+- Non-flowchart Mermaid types still rely on Mermaid rendering
+- Rendered diagrams use the color scheme detected at page load; refresh after a dark/light theme change
 - Results vary by model capability — the skill provides design guidance, not pixel-perfect specs
 
 ## Credits

@@ -89,6 +89,8 @@ The system default. White background, serif headings, generous whitespace. See e
 
 **Font pairing:** Merriweather (heading, 700/900) + Inter (body, 400-600) + JetBrains Mono (code).
 
+> **Variation note:** Don't use Merriweather + Inter every time. Swap to one of the named pairings in `libraries.md` (DM Sans + Fira Code, Instrument Serif + JetBrains Mono, IBM Plex Sans + IBM Plex Mono, Bricolage Grotesque + Fragment Mono, Plus Jakarta Sans + Azeret Mono). The editorial *palette* stays the same — only the fonts rotate.
+
 Palette is defined in all existing templates and `css-patterns.md`. No need to duplicate here — use those as the source of truth.
 
 ---
@@ -174,6 +176,8 @@ body {
 
 ## 4. Neon Dashboard
 
+> **Deprecation warning:** This palette uses cyan-magenta-pink accents and glowing shadows that have become strongly associated with generic AI output. Use sparingly and only when the neon aesthetic is genuinely appropriate (monitoring dashboards, retro-futurism). Prefer Blueprint, IDE-inspired, or Monochrome Terminal for dark-theme pages.
+
 Saturated accents on deep dark. Use for monitoring dashboards, real-time data, and high-energy presentations.
 
 **Font pairing:** Outfit (heading, 500-700) + Space Mono (body + labels).
@@ -250,7 +254,7 @@ body {
 
 **Glow border pattern** for cards:
 ```css
-.node { border-color: rgba(0, 240, 255, 0.2); box-shadow: 0 0 20px rgba(0, 240, 255, 0.05); }
+.ve-card { border-color: rgba(0, 240, 255, 0.2); box-shadow: 0 0 20px rgba(0, 240, 255, 0.05); }
 ```
 
 ---
@@ -610,7 +614,7 @@ Maximum information per pixel. Small type, tight spacing, no decorative elements
 ```css
 body { font-size: 12px; line-height: 1.45; padding: 16px; }
 h1 { font-size: 16px; font-weight: 600; }
-.node { padding: 8px 12px; border-radius: 4px; }
+.ve-card { padding: 8px 12px; border-radius: 4px; }
 .kpi-card { padding: 10px 12px; }
 .kpi-card__value { font-size: 24px; }
 .data-table td { padding: 6px 10px; }
@@ -621,6 +625,8 @@ h1 { font-size: 16px; font-weight: 600; }
 ---
 
 ## 9. Gradient Mesh
+
+> **Deprecation warning:** This palette's indigo-pink gradient mesh and glassmorphism have become the default "AI product" aesthetic. Every SaaS landing page now looks like this. Use only when glassmorphism is genuinely appropriate (product launches with strong brand identity). For modern-but-distinctive pages, consider Paper/Ink or IDE-inspired instead.
 
 Bold gradients, glassmorphism, modern SaaS feel. Use for product launches, feature announcements, landing-page-style explainers.
 
@@ -699,7 +705,7 @@ body {
 
 **Glassmorphism card pattern:**
 ```css
-.node {
+.ve-card {
   background: var(--surface);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);

@@ -8,6 +8,37 @@ Use for flowcharts, sequence diagrams, ER diagrams, state machines, mind maps, c
 
 Do NOT use for dashboards — CSS Grid card layouts with inline SVG sparklines look better for those. Data tables use `<table>` elements.
 
+### Flowchart Default: Excalidraw Pipeline
+
+For `flowchart` / `graph` Mermaid syntax, this skill defaults to Excalidraw conversion and SVG export:
+
+```html
+<script type="module">
+  import { parseMermaidToExcalidraw } from 'https://esm.sh/@excalidraw/mermaid-to-excalidraw@2.0.0?bundle';
+  import { convertToExcalidrawElements, exportToSvg } from 'https://esm.sh/@excalidraw/excalidraw@0.18.0?bundle';
+
+  const { elements, files } = await parseMermaidToExcalidraw(definition, {
+    themeVariables: { fontSize: '16px' }
+  });
+  const excalidrawElements = convertToExcalidrawElements(elements);
+  const svg = await exportToSvg({
+    elements: excalidrawElements,
+    files: files || {},
+    appState: { exportBackground: false, viewBackgroundColor: 'transparent' }
+  });
+</script>
+```
+
+Use Mermaid as fallback when:
+- the diagram is not a flowchart (for example `sequenceDiagram`, `erDiagram`, `stateDiagram-v2`)
+- conversion throws an error
+- you need Mermaid-only features unavailable in Excalidraw conversion
+
+Known caveats from Excalidraw docs:
+- strongest support is flowcharts
+- some Mermaid shapes degrade to rectangles
+- unsupported diagram types can fall back to images in Excalidraw contexts
+
 **CDN:**
 ```html
 <script type="module">
@@ -213,7 +244,7 @@ A[handleRequest] --> B[query users]
 userSvc["User Service"] --> authSvc["Auth Service"]
 ```
 
-**Max 15-20 nodes per diagram.** Beyond that, readability collapses even with ELK layout. Use `subgraph` blocks to group related nodes, or split into multiple diagrams:
+**Max 15 nodes per diagram** (hard ceiling; soft target 10-12). Beyond that, readability collapses even with ELK layout. Use `subgraph` blocks to group related nodes, or split into multiple diagrams. For complex systems with 15+ elements, use the hybrid pattern: a simplified 5-8 node Mermaid overview + CSS Grid detail cards (see `templates/architecture.html`).
 
 ```
 subgraph Auth
@@ -234,6 +265,15 @@ Auth --> API
 | `==>` | Thick | Critical or highlighted path |
 | `--x` | Cross | Rejected or blocked |
 | `-->\|label\|` | Labeled | Decision branches, data descriptions |
+
+**Layout direction — TD vs LR.** Prefer `flowchart TD` (top-down) for diagrams with 5+ nodes. Vertical flow reads naturally and scales better on narrow viewports. Use `flowchart LR` (left-right) only for simple 3-4 node linear flows where the horizontal reading feels natural (e.g., `Input → Process → Output`).
+
+**Forbidden themeVariables colors.** Do not use these in `themeVariables` — they are Tailwind/AI-product defaults that make every diagram look the same:
+- `#8b5cf6`, `#7c3aed`, `#6366f1` (indigo/violet family) — the default "AI purple"
+- `#06b6d4`, `#22d3ee` (cyan) — overused in dark-mode AI dashboards
+- `#ec4899`, `#f472b6` (magenta/pink) — the other half of the AI gradient cliche
+
+Instead, pick accent colors from the chosen palette in `aesthetic-palettes.md`, or use muted, earthy, or scheme-specific colors (teal, slate-blue, amber, olive).
 
 **Escape pipes in labels.** If a label contains a literal `|`, use `#124;` (HTML entity) or rephrase to avoid it — pipes delimit edge labels in flowcharts.
 
@@ -268,20 +308,24 @@ Define as CSS variables for easy reference:
 }
 ```
 
-**Font suggestions** (rotate — never use the same pairing twice in a row):
+**Font pairings** (rotate — never use the same pairing twice in a row):
 
-| Body / Headings | Mono / Labels | Feel |
-|---|---|---|
-| **Merriweather + Inter** | JetBrains Mono | **Editorial default** — system standard |
-| Outfit | Space Mono | Clean geometric, modern |
-| Instrument Serif | JetBrains Mono | Refined, traditional |
-| Sora | IBM Plex Mono | Technical, precise |
-| Fraunces | Source Code Pro | Warm, distinctive |
-| Bricolage Grotesque | Fragment Mono | Bold, characterful |
-| Crimson Pro | Noto Sans Mono | Scholarly, serious |
-| Plus Jakarta Sans | Azeret Mono | Rounded, approachable |
+> **Forbidden as generic primary body font:** Roboto, Arial, Helvetica. These are invisible defaults — they signal "no design decision was made." Use them only as system fallbacks in the `font-family` stack. Inter is allowed when intentionally paired (for example, Merriweather + Inter editorial mode).
 
-Merriweather + Inter is the system default. When varying the aesthetic, swap fonts but always pick a heading font with character.
+| Pairing | Mono / Labels | Feel | Notes |
+|---|---|---|---|
+| **DM Sans + Fira Code** | Fira Code | Clean, modern, distinctive | **Recommended default** — good weight range, ligatures in mono |
+| **Instrument Serif + JetBrains Mono** | JetBrains Mono | Refined editorial | Serif with character; good for reviews and reports |
+| **IBM Plex Sans + IBM Plex Mono** | IBM Plex Mono | Technical, precise | Matched family; professional feel |
+| **Bricolage Grotesque + Fragment Mono** | Fragment Mono | Bold, characterful | Strong headings; pairs with hand-drawn aesthetic |
+| **Plus Jakarta Sans + Azeret Mono** | Azeret Mono | Rounded, approachable | Friendly but professional |
+| Merriweather + Inter | JetBrains Mono | Classic editorial | Still valid but don't use every time — rotate |
+| Outfit + Space Mono | Space Mono | Clean geometric | Modern, techy |
+| Sora + IBM Plex Mono | IBM Plex Mono | Technical, precise | Good for architecture diagrams |
+| Fraunces + Source Code Pro | Source Code Pro | Warm, distinctive | Works well with gradient mesh palette |
+| Crimson Pro + Noto Sans Mono | Noto Sans Mono | Scholarly, serious | Good for documentation |
+
+The top 5 pairings (bolded) are the preferred rotation. Pick one per page and commit. Always pick a heading font with character — if you replaced it with Arial and nobody noticed, you haven't designed anything.
 
 ## Prism.js — Syntax Highlighting
 

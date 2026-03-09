@@ -3,107 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CI/CD Pipeline — Reference Template</title>
+<title>CI/CD Pipeline - Reference Template</title>
 <!--
-  Reference template for the visual-explainer skill: Mermaid diagrams.
-  Editorial palette with emerald tint — process/flow feel for diagrams.
+  Reference template for the visual-explainer skill: Excalidraw-first flowcharts.
   Key patterns demonstrated:
-  - Editorial palette (white bg, Merriweather headings, Inter body)
-  - Emerald tint for process/flow feel
-  - ESM import of Mermaid + @mermaid-js/layout-elk
-  - Mermaid theme: 'base' + full themeVariables, fontSize: 16px
-  - CSS overrides: .nodeLabel 16px, .edgeLabel 13px
-  - look: 'handDrawn' for sketchy aesthetic (toggle to 'classic')
-  - layout: 'elk' for better node positioning
+  - Threaded-style editorial baseline (Merriweather + Inter, slate palette)
+  - Flowchart pipeline: Mermaid text -> parseMermaidToExcalidraw -> exportToSvg
+  - Mermaid fallback for non-flowchart diagram types and conversion failures
   - Zoom controls with scroll-to-zoom and drag-to-pan
-  - Both light and dark themes via prefers-color-scheme
-  - Staggered fade-in, reduced motion respect
+  - SVG download button for the currently rendered diagram
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
-  /* ============ THEME ============ */
   :root {
     --font-heading: 'Merriweather', Georgia, serif;
     --font-body: 'Inter', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --font-mono: 'SF Mono', 'JetBrains Mono', Consolas, monospace;
 
     --bg: #ffffff;
-    --bg-secondary: #f8fafc;
     --surface: #ffffff;
-    --surface-elevated: #ffffff;
-    --surface-recessed: #f1f5f9;
-
+    --surface-subtle: #f8fafc;
     --border: #e2e8f0;
-    --border-bright: #cbd5e1;
 
-    --text: #0f172a;
-    --text-secondary: #475569;
-    --text-dim: #94a3b8;
+    --text: #1e293b;
+    --text-secondary: #334155;
+    --text-dim: #64748b;
 
-    --accent: #0891b2;
-    --accent-dim: rgba(8, 145, 178, 0.08);
-
-    --tint: #059669;
-    --tint-dim: rgba(5, 150, 105, 0.08);
-
-    --green: #16a34a;  --green-dim: rgba(22, 163, 74, 0.08);
-    --red: #dc2626;    --red-dim: rgba(220, 38, 38, 0.08);
-    --amber: #d97706;  --amber-dim: rgba(217, 119, 6, 0.08);
-    --blue: #2563eb;   --blue-dim: rgba(37, 99, 235, 0.08);
+    --accent: #2563eb;
+    --accent-dim: rgba(37, 99, 235, 0.08);
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #09090b;
-      --bg-secondary: #18181b;
       --surface: #18181b;
-      --surface-elevated: #27272a;
-      --surface-recessed: #09090b;
+      --surface-subtle: #27272a;
+      --border: rgba(255, 255, 255, 0.1);
 
-      --border: rgba(255, 255, 255, 0.08);
-      --border-bright: rgba(255, 255, 255, 0.14);
+      --text: #f5f5f5;
+      --text-secondary: #d4d4d8;
+      --text-dim: #a1a1aa;
 
-      --text: #fafafa;
-      --text-secondary: #a1a1aa;
-      --text-dim: #71717a;
-
-      --accent: #22d3ee;
-      --accent-dim: rgba(34, 211, 238, 0.12);
-
-      --tint: #34d399;
-      --tint-dim: rgba(52, 211, 153, 0.10);
-
-      --green: #4ade80;  --green-dim: rgba(74, 222, 128, 0.10);
-      --red: #f87171;    --red-dim: rgba(248, 113, 113, 0.10);
-      --amber: #fbbf24;  --amber-dim: rgba(251, 191, 36, 0.10);
-      --blue: #60a5fa;   --blue-dim: rgba(96, 165, 250, 0.10);
+      --accent: #60a5fa;
+      --accent-dim: rgba(96, 165, 250, 0.14);
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --danger: #f87171;
     }
   }
 
-  /* ============ RESET + BASE ============ */
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-body);
     font-size: 15px;
-    line-height: 1.7;
+    line-height: 1.75;
     padding: 48px 32px;
     min-height: 100vh;
   }
 
-  /* ============ ANIMATION ============ */
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
   .animate {
-    animation: fadeUp 0.4s ease-out both;
-    animation-delay: calc(var(--i, 0) * 0.06s);
+    animation: fadeUp 0.35s ease-out both;
+    animation-delay: calc(var(--i, 0) * 0.05s);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -112,64 +85,100 @@
       animation-delay: 0ms !important;
       transition-duration: 0.01ms !important;
     }
-    .mermaid-wrap .mermaid { transition: none; }
+    .diagram-content {
+      transition: none;
+    }
   }
 
-  /* ============ LAYOUT ============ */
   .container {
-    max-width: 720px;
+    max-width: 760px;
     margin: 0 auto;
   }
 
   h1 {
     font-family: var(--font-heading);
-    font-size: 36px;
-    font-weight: 900;
-    letter-spacing: -0.5px;
-    margin-bottom: 6px;
+    font-size: 42px;
+    line-height: 1.18;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 10px;
     text-wrap: balance;
   }
 
   .subtitle {
-    color: var(--text-dim);
     font-family: var(--font-mono);
     font-size: 12px;
-    margin-bottom: 32px;
+    color: var(--text-dim);
+    margin-bottom: 28px;
   }
 
   .description {
-    font-size: 15px;
-    line-height: 1.7;
+    font-size: 18px;
     color: var(--text-secondary);
     margin-bottom: 24px;
-    max-width: 700px;
+    max-width: 68ch;
   }
 
   .description code {
     font-family: var(--font-mono);
     font-size: 12px;
-    background: var(--tint-dim);
-    color: var(--tint);
+    background: var(--accent-dim);
+    color: var(--accent);
     padding: 1px 5px;
-    border-radius: 3px;
+    border-radius: 4px;
   }
 
-  /* ============ MERMAID CONTAINER ============ */
+  .renderer-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 10px;
+    margin-bottom: 16px;
+    background: var(--surface-subtle);
+  }
+
+  .renderer-chip-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+
   .mermaid-wrap {
     position: relative;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 32px 24px;
+    border-radius: 10px;
+    padding: 24px;
     overflow: auto;
     margin-bottom: 24px;
   }
 
-  .mermaid-wrap .mermaid {
+  .diagram-stage {
     display: flex;
     justify-content: center;
-    transition: transform 0.2s ease;
+  }
+
+  .diagram-content {
+    display: inline-flex;
+    justify-content: center;
     transform-origin: top center;
+    transition: transform 0.18s ease;
+  }
+
+  .diagram-content svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .mermaid-source {
+    display: none;
   }
 
   .zoom-controls {
@@ -202,7 +211,7 @@
   }
 
   .zoom-controls button:hover {
-    background: var(--surface-recessed);
+    background: var(--surface-subtle);
     color: var(--text);
   }
 
@@ -210,6 +219,7 @@
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
+
   .mermaid-wrap::-webkit-scrollbar { width: 6px; height: 6px; }
   .mermaid-wrap::-webkit-scrollbar-track { background: transparent; }
   .mermaid-wrap::-webkit-scrollbar-thumb {
@@ -221,28 +231,6 @@
   .mermaid-wrap.is-zoomed { cursor: grab; }
   .mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
 
-  /* ============ MERMAID SVG OVERRIDES ============ */
-  .mermaid .nodeLabel {
-    font-family: var(--font-body) !important;
-    font-size: 16px !important;
-  }
-
-  .mermaid .edgeLabel {
-    font-family: var(--font-mono) !important;
-    font-size: 13px !important;
-  }
-
-  .mermaid .node rect,
-  .mermaid .node circle,
-  .mermaid .node polygon {
-    stroke-width: 1.5px !important;
-  }
-
-  .mermaid .edge-pattern-solid {
-    stroke-width: 1.5px !important;
-  }
-
-  /* ============ LEGEND ============ */
   .legend {
     display: flex;
     gap: 20px;
@@ -264,34 +252,35 @@
     border-radius: 3px;
   }
 
-  /* ============ CALLOUT ============ */
   .callout {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-left: 3px solid var(--tint);
+    border-left: 3px solid var(--accent);
     border-radius: 0 8px 8px 0;
     padding: 16px 20px;
     font-size: 13px;
-    line-height: 1.6;
+    line-height: 1.65;
     color: var(--text-secondary);
     margin-top: 24px;
   }
 
-  .callout strong { color: var(--text); }
+  .callout strong {
+    color: var(--text);
+  }
 
   .callout code {
     font-family: var(--font-mono);
     font-size: 11px;
-    background: var(--tint-dim);
-    color: var(--tint);
+    background: var(--accent-dim);
+    color: var(--accent);
     padding: 1px 5px;
     border-radius: 3px;
   }
 
-  /* ============ RESPONSIVE ============ */
   @media (max-width: 768px) {
     body { padding: 16px; }
-    h1 { font-size: 28px; }
+    h1 { font-size: 34px; }
+    .description { font-size: 17px; }
     .mermaid-wrap { padding: 16px 12px; }
   }
 </style>
@@ -301,7 +290,7 @@
 <div class="container">
 
   <h1 class="animate" style="--i:0">CI/CD Pipeline</h1>
-  <p class="subtitle animate" style="--i:1">github actions &rarr; staging &rarr; production</p>
+  <p class="subtitle animate" style="--i:1">github actions -> staging -> production</p>
 
   <p class="description animate" style="--i:2">
     Every push to <code>main</code> triggers the full pipeline. Tests and linting run in parallel,
@@ -309,48 +298,54 @@
     manual approval via a GitHub environment gate.
   </p>
 
-  <div class="mermaid-wrap animate" style="--i:3">
+  <div class="renderer-chip animate" id="rendererChip" style="--i:3">
+    <span class="renderer-chip-dot"></span>
+    <span id="rendererChipText">Renderer: Excalidraw Flowchart</span>
+  </div>
+
+  <div class="mermaid-wrap animate" style="--i:4">
     <div class="zoom-controls">
       <button onclick="zoomDiagram(this, 1.2)" title="Zoom in">+</button>
       <button onclick="zoomDiagram(this, 0.8)" title="Zoom out">&minus;</button>
       <button onclick="resetZoom(this)" title="Reset zoom">&#8634;</button>
       <button onclick="downloadSVG(this)" title="Download SVG" style="width:auto;padding:0 8px;font-size:12px;">&#8681; SVG</button>
     </div>
-    <pre class="mermaid">
-      graph TD
-        A[Push to main] --> B{Branch?}
-        B -->|main| C[Run Tests]
-        B -->|feature| I[Run Tests]
-        I --> J[Preview Deploy]
-        C --> D[Lint + Type Check]
-        C --> E[Unit Tests]
-        C --> F[Integration Tests]
-        D --> G[Build Docker Image]
-        E --> G
-        F --> G
-        G --> H[Deploy to Staging]
-        H --> K{Smoke Tests Pass?}
-        K -->|Yes| L[Manual Approval]
-        K -->|No| M[Alert + Rollback]
-        L --> N[Deploy to Production]
-        N --> O[Health Check]
-        O --> P[Done]
-    </pre>
+    <div class="diagram-stage" id="diagramStage">
+      <div class="diagram-content" id="diagramContent"></div>
+      <pre class="mermaid-source" id="diagramSource">
+flowchart TD
+  A[Push to main] --> B{Branch?}
+  B -->|main| C[Run Tests]
+  B -->|feature| I[Run Tests]
+  I --> J[Preview Deploy]
+  C --> D[Lint + Type Check]
+  C --> E[Unit Tests]
+  C --> F[Integration Tests]
+  D --> G[Build Docker Image]
+  E --> G
+  F --> G
+  G --> H[Deploy to Staging]
+  H --> K{Smoke Tests Pass?}
+  K -->|Yes| L[Manual Approval]
+  K -->|No| M[Alert + Rollback]
+  L --> N[Deploy to Production]
+  N --> O[Health Check]
+  O --> P[Done]
+      </pre>
+    </div>
   </div>
 
-  <div class="legend animate" style="--i:4">
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--tint)"></div> Automated step</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--amber)"></div> Decision gate</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--red)"></div> Failure path</div>
-    <div class="legend-item"><div class="legend-swatch" style="background:var(--blue)"></div> Success</div>
+  <div class="legend animate" style="--i:5">
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--success)"></div> Automated step</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--warning)"></div> Decision gate</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--danger)"></div> Failure path</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:var(--accent)"></div> Success</div>
   </div>
 
-  <div class="callout animate" style="--i:5">
-    <strong>Hand-drawn mode.</strong> This template uses <code>look: 'handDrawn'</code> for a sketchy aesthetic.
-    Switch to <code>look: 'classic'</code> in the Mermaid config for clean, precise lines.
-    The <code>layout: 'elk'</code> engine provides better node positioning for complex graphs —
-    it requires the separate <code>@mermaid-js/layout-elk</code> package (imported above). Without it,
-    Mermaid silently falls back to dagre.
+  <div class="callout animate" style="--i:6">
+    <strong>Rendering pipeline.</strong>
+    Flowcharts use <code>@excalidraw/mermaid-to-excalidraw</code> and export as SVG.
+    Non-flowchart Mermaid types, or failed conversions, fall back to Mermaid rendering.
   </div>
 
 </div>
@@ -358,38 +353,112 @@
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
   import elkLayouts from 'https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk/dist/mermaid-layout-elk.esm.min.mjs';
+  import { parseMermaidToExcalidraw } from 'https://esm.sh/@excalidraw/mermaid-to-excalidraw@2.0.0?bundle';
+  import { convertToExcalidrawElements, exportToSvg } from 'https://esm.sh/@excalidraw/excalidraw@0.18.0?bundle';
 
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const sourceEl = document.getElementById('diagramSource');
+  const contentEl = document.getElementById('diagramContent');
+  const chipTextEl = document.getElementById('rendererChipText');
+  const definition = sourceEl.textContent.trim();
 
-  mermaid.registerLayoutLoaders(elkLayouts);
-  mermaid.initialize({
-    startOnLoad: true,
-    theme: 'base',
-    look: 'handDrawn',
-    layout: 'elk',
-    themeVariables: {
-      primaryColor: isDark ? '#27272a' : '#f1f5f9',
-      primaryBorderColor: isDark ? '#34d399' : '#059669',
-      primaryTextColor: isDark ? '#fafafa' : '#0f172a',
-      secondaryColor: isDark ? '#27272a' : '#f1f5f9',
-      secondaryBorderColor: isDark ? '#60a5fa' : '#2563eb',
-      secondaryTextColor: isDark ? '#fafafa' : '#0f172a',
-      tertiaryColor: isDark ? '#27272a' : '#f1f5f9',
-      tertiaryBorderColor: isDark ? '#fbbf24' : '#d97706',
-      tertiaryTextColor: isDark ? '#fafafa' : '#0f172a',
-      lineColor: isDark ? '#71717a' : '#94a3b8',
-      fontSize: '16px',
-      fontFamily: "'Inter', system-ui, sans-serif",
-      noteBkgColor: isDark ? '#27272a' : '#fefce8',
-      noteTextColor: isDark ? '#fafafa' : '#0f172a',
-      noteBorderColor: isDark ? '#fbbf24' : '#d97706',
+  function stripFrontmatter(text) {
+    const trimmed = text.trimStart();
+    if (!trimmed.startsWith('---')) {
+      return text;
     }
-  });
+    const end = trimmed.indexOf('\n---', 3);
+    if (end === -1) {
+      return text;
+    }
+    return trimmed.slice(end + 4);
+  }
+
+  function isFlowchartDefinition(text) {
+    const body = stripFrontmatter(text);
+    return /^\s*(flowchart|graph)\b/m.test(body);
+  }
+
+  async function renderWithExcalidraw(def) {
+    const parsed = await parseMermaidToExcalidraw(def, {
+      themeVariables: { fontSize: '16px' }
+    });
+    const excalidrawElements = convertToExcalidrawElements(parsed.elements);
+    const svg = await exportToSvg({
+      elements: excalidrawElements,
+      files: parsed.files || {},
+      appState: {
+        exportBackground: false,
+        viewBackgroundColor: 'transparent',
+        exportWithDarkMode: isDark,
+      },
+    });
+    const viewBox = svg.viewBox && svg.viewBox.baseVal;
+    if (viewBox && viewBox.width && viewBox.height) {
+      svg.setAttribute('width', String(viewBox.width));
+      svg.setAttribute('height', String(viewBox.height));
+      svg.style.maxWidth = Math.ceil(viewBox.width) + 'px';
+    } else {
+      svg.style.maxWidth = '100%';
+    }
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+    contentEl.replaceChildren(svg);
+    chipTextEl.textContent = 'Renderer: Excalidraw Flowchart';
+  }
+
+  async function renderWithMermaidFallback(def) {
+    mermaid.registerLayoutLoaders(elkLayouts);
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'base',
+      look: 'classic',
+      layout: 'elk',
+      themeVariables: {
+        primaryColor: isDark ? '#27272a' : '#f1f5f9',
+        primaryBorderColor: isDark ? '#60a5fa' : '#2563eb',
+        primaryTextColor: isDark ? '#fafafa' : '#0f172a',
+        secondaryColor: isDark ? '#27272a' : '#f1f5f9',
+        secondaryBorderColor: isDark ? '#4ade80' : '#16a34a',
+        secondaryTextColor: isDark ? '#fafafa' : '#0f172a',
+        tertiaryColor: isDark ? '#27272a' : '#f1f5f9',
+        tertiaryBorderColor: isDark ? '#fbbf24' : '#d97706',
+        tertiaryTextColor: isDark ? '#fafafa' : '#0f172a',
+        lineColor: isDark ? '#71717a' : '#94a3b8',
+        fontSize: '16px',
+        fontFamily: "'Inter', system-ui, sans-serif",
+      },
+    });
+
+    const id = 'diagram-' + Math.random().toString(36).slice(2, 10);
+    const result = await mermaid.render(id, def);
+    const parsed = new DOMParser().parseFromString(result.svg, 'image/svg+xml');
+    const svg = parsed.documentElement;
+    if (svg.tagName.toLowerCase() !== 'svg') {
+      throw new Error('Mermaid fallback did not return an SVG root');
+    }
+    contentEl.replaceChildren(svg);
+    chipTextEl.textContent = 'Renderer: Mermaid Fallback';
+  }
+
+  (async () => {
+    try {
+      if (isFlowchartDefinition(definition)) {
+        await renderWithExcalidraw(definition);
+      } else {
+        await renderWithMermaidFallback(definition);
+      }
+    } catch (error) {
+      console.warn('Excalidraw conversion failed, using Mermaid fallback:', error);
+      await renderWithMermaidFallback(definition);
+      chipTextEl.textContent = 'Renderer: Mermaid Fallback (conversion error)';
+    }
+  })();
 </script>
 <script>
   function downloadSVG(btn) {
     var wrap = btn.closest('.mermaid-wrap');
-    var svg = wrap.querySelector('.mermaid svg');
+    var svg = wrap.querySelector('svg');
     if (!svg) return;
     var clone = svg.cloneNode(true);
     clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
@@ -403,14 +472,14 @@
   }
 
   function updateZoomState(wrap) {
-    var target = wrap.querySelector('.mermaid');
+    var target = wrap.querySelector('.diagram-content');
     var zoom = parseFloat(target.dataset.zoom || '1');
     wrap.classList.toggle('is-zoomed', zoom > 1);
   }
 
   function zoomDiagram(btn, factor) {
     var wrap = btn.closest('.mermaid-wrap');
-    var target = wrap.querySelector('.mermaid');
+    var target = wrap.querySelector('.diagram-content');
     var current = parseFloat(target.dataset.zoom || '1');
     var next = Math.min(Math.max(current * factor, 0.3), 5);
     target.dataset.zoom = next;
@@ -420,18 +489,17 @@
 
   function resetZoom(btn) {
     var wrap = btn.closest('.mermaid-wrap');
-    var target = wrap.querySelector('.mermaid');
+    var target = wrap.querySelector('.diagram-content');
     target.dataset.zoom = '1';
     target.style.transform = 'scale(1)';
     updateZoomState(wrap);
   }
 
   document.querySelectorAll('.mermaid-wrap').forEach(function(wrap) {
-    // Scroll-to-zoom (Ctrl/Cmd + wheel)
     wrap.addEventListener('wheel', function(e) {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
-      var target = wrap.querySelector('.mermaid');
+      var target = wrap.querySelector('.diagram-content');
       var current = parseFloat(target.dataset.zoom || '1');
       var factor = e.deltaY < 0 ? 1.1 : 0.9;
       var next = Math.min(Math.max(current * factor, 0.3), 5);
@@ -440,11 +508,14 @@
       updateZoomState(wrap);
     }, { passive: false });
 
-    // Drag-to-pan
-    var startX, startY, scrollL, scrollT;
+    var startX;
+    var startY;
+    var scrollL;
+    var scrollT;
+
     wrap.addEventListener('mousedown', function(e) {
       if (e.target.closest('.zoom-controls')) return;
-      var target = wrap.querySelector('.mermaid');
+      var target = wrap.querySelector('.diagram-content');
       if (parseFloat(target.dataset.zoom || '1') <= 1) return;
       wrap.classList.add('is-panning');
       startX = e.clientX;
@@ -452,11 +523,13 @@
       scrollL = wrap.scrollLeft;
       scrollT = wrap.scrollTop;
     });
+
     window.addEventListener('mousemove', function(e) {
       if (!wrap.classList.contains('is-panning')) return;
       wrap.scrollLeft = scrollL - (e.clientX - startX);
       wrap.scrollTop = scrollT - (e.clientY - startY);
     });
+
     window.addEventListener('mouseup', function() {
       wrap.classList.remove('is-panning');
     });

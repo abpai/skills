@@ -8,9 +8,9 @@ Always define both light and dark palettes via custom properties. Start with whi
 
 ```css
 :root {
-  --font-heading: 'Merriweather', Georgia, serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --font-heading: 'DM Sans', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'Fira Code', 'SF Mono', Consolas, monospace;
 
   --bg: #ffffff;
   --bg-secondary: #f8fafc;
@@ -96,12 +96,12 @@ body {
 }
 ```
 
-## Section / Node Cards
+## Section / Card Components
 
-The fundamental building block. A colored card representing a system component, pipeline step, or data entity.
+The fundamental building block. A colored card representing a system component, pipeline step, or data entity. Named `.ve-card` (not `.node`) to avoid collision with Mermaid's internal `.node` class on SVG elements.
 
 ```css
-.node {
+.ve-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -110,34 +110,34 @@ The fundamental building block. A colored card representing a system component, 
 }
 
 /* Colored accent border (left or top) */
-.node--accent-a {
+.ve-card--accent-a {
   border-left: 3px solid var(--accent);
 }
 
 /* --- Depth tiers: vary card depth to signal importance --- */
 
 /* Elevated: KPIs, key sections, anything that should pop */
-.node--elevated {
+.ve-card--elevated {
   background: var(--surface-elevated);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* Recessed: code blocks, secondary content, detail panels */
-.node--recessed {
+.ve-card--recessed {
   background: color-mix(in srgb, var(--bg) 70%, var(--surface) 30%);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
   border-color: var(--border);
 }
 
 /* Hero: executive summaries, focal elements — demands attention */
-.node--hero {
+.ve-card--hero {
   background: color-mix(in srgb, var(--surface) 92%, var(--accent) 8%);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
   border-color: color-mix(in srgb, var(--border) 50%, var(--accent) 50%);
 }
 
 /* Section label */
-.node__label {
+.ve-card__label {
   font-family: var(--font-heading);
   font-size: 14px;
   font-weight: 700;
@@ -149,7 +149,7 @@ The fundamental building block. A colored card representing a system component, 
 }
 
 /* Colored dot indicator */
-.node__label::before {
+.ve-card__label::before {
   content: '';
   width: 8px;
   height: 8px;
@@ -666,7 +666,7 @@ Define the keyframe once, then stagger via a `--i` CSS variable set per element.
   to { opacity: 1; transform: translateY(0); }
 }
 
-.node {
+.ve-card {
   animation: fadeUp 0.4s ease-out both;
   animation-delay: calc(var(--i, 0) * 0.05s);
 }
@@ -1073,6 +1073,168 @@ function downloadSVG(btn) {
 
 The clone ensures we don't modify the live SVG. The `xmlns` attribute is required for standalone SVG files. The filename is derived from the page title.
 
+## Link Styling
+
+Never rely on browser default link colors. They vary across browsers and are invisible in dark mode. Always style links explicitly.
+
+```css
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--text);
+}
+
+a:visited {
+  color: color-mix(in srgb, var(--accent) 70%, var(--text-dim) 30%);
+}
+```
+
+## Code Blocks
+
+For review pages and architecture docs with code snippets. Use `white-space: pre-wrap` to prevent horizontal overflow. Add an optional file header for context.
+
+```css
+.code-block {
+  background: var(--surface-recessed);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.code-block__header {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.code-block pre {
+  padding: 16px;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text);
+  max-height: 400px;
+  overflow-y: auto;
+}
+```
+
+### HTML
+
+```html
+<div class="code-block">
+  <div class="code-block__header">src/auth/middleware.ts</div>
+  <pre><code>export function authMiddleware(req, res, next) {
+  const token = req.headers.authorization;
+  if (!token) return res.status(401).json({ error: 'No token' });
+  next();
+}</code></pre>
+</div>
+```
+
+## CSS Zoom for Mermaid Scaling
+
+Prefer CSS `zoom` over `transform: scale()` for scaling Mermaid diagrams inside containers. `zoom` actually changes the element's layout size, so the container scrolls correctly. `transform: scale()` only visually scales — the element's layout box stays the same size, causing clipping or excess whitespace.
+
+```css
+/* Preferred — layout-aware scaling */
+.mermaid-wrap .mermaid {
+  zoom: 1.3;
+}
+
+/* Fallback for Firefox (doesn't support zoom) */
+@supports not (zoom: 1) {
+  .mermaid-wrap .mermaid {
+    transform: scale(1.3);
+    transform-origin: top center;
+  }
+}
+```
+
+Note: The zoom controls JS (see Mermaid Zoom Controls above) still uses `transform: scale()` for interactive zoom because it needs fractional values and smooth transitions. The CSS `zoom` approach is for setting a static base scale.
+
+## Prose Page Elements
+
+For review pages, architecture docs, and other text-heavy pages that need editorial typography.
+
+### Lead Paragraph
+
+```css
+.lead {
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  max-width: 640px;
+  margin-bottom: 32px;
+}
+```
+
+### Pull Quote
+
+```css
+.pull-quote {
+  border-left: 3px solid var(--accent);
+  padding: 16px 24px;
+  margin: 24px 0;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--text);
+  font-style: italic;
+}
+
+.pull-quote cite {
+  display: block;
+  font-style: normal;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+```
+
+### Section Divider
+
+```css
+.section-divider {
+  border: none;
+  height: 1px;
+  background: var(--border);
+  margin: 40px 0;
+}
+```
+
+### Callout Box
+
+```css
+.callout-box {
+  background: var(--accent-dim);
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.callout-box--warn {
+  background: var(--amber-dim);
+  border-color: color-mix(in srgb, var(--amber) 20%, transparent);
+}
+
+.callout-box--danger {
+  background: var(--red-dim);
+  border-color: color-mix(in srgb, var(--red) 20%, transparent);
+}
+```
+
 ## Print Styles
 
 Generated HTML pages should print cleanly via Cmd+P / Ctrl+P. Add this `@media print` block to any page that might be exported as a PDF.
@@ -1101,7 +1263,7 @@ Generated HTML pages should print cleanly via Cmd+P / Ctrl+P. Add this `@media p
   details.collapsible > * { display: block !important; }
 
   /* Page break hints */
-  .node, .kpi-card, tr { break-inside: avoid; }
+  .ve-card, .kpi-card, tr { break-inside: avoid; }
   h2, h3 { break-after: avoid; }
   section, .mermaid-wrap { break-before: auto; break-inside: avoid; }
 

@@ -1,5 +1,49 @@
 # Changelog
 
+## [0.5.2] - 2026-03-08
+
+### Excalidraw Import Fix
+
+- Switched the `@excalidraw/excalidraw` and `@excalidraw/mermaid-to-excalidraw` browser imports in the flowchart reference template to ESM-friendly CDN entries so Excalidraw rendering works in standalone HTML pages.
+- Updated `references/libraries.md` to document the same import path for future generated diagrams.
+- Regenerated the `skills` repo pre-commit explainer so its execution flow uses the real Excalidraw pipeline.
+
+## [0.5.1] - 2026-03-04
+
+### Execution/Code Flow Routing Clarification
+
+- **`SKILL.md`** now explicitly treats execution flow and code flow requests as flowcharts.
+- Added an explicit priority rule: execution flow / code flow / pipeline chain requests should use the Excalidraw flowchart pipeline by default.
+- **`prompts/generate-web-diagram.md`** updated so execution/code flow requests are routed to Excalidraw rendering (not Mermaid-only).
+
+## [0.5.0] - 2026-03-04
+
+### Excalidraw Flowchart Rendering
+
+- **`mermaid-flowchart.html`** now uses an Excalidraw-first pipeline for flowcharts:
+  - `parseMermaidToExcalidraw()` from `@excalidraw/mermaid-to-excalidraw`
+  - `convertToExcalidrawElements()` + `exportToSvg()` from `@excalidraw/excalidraw`
+- Added automatic fallback to Mermaid rendering for:
+  - non-flowchart diagram types (`sequenceDiagram`, `erDiagram`, `stateDiagram-v2`, etc.)
+  - flowchart conversion failures
+- Kept zoom, pan, and SVG download controls across both render paths.
+
+### Visual Direction Update
+
+- Updated `mermaid-flowchart.html` styling to a closer Medium-style editorial baseline:
+  - Merriweather + Inter pairing
+  - slate-forward palette
+  - restrained borders and generous reading rhythm
+
+### Documentation Updates
+
+- **`SKILL.md`** now specifies:
+  - Excalidraw-first flowchart behavior
+  - Mermaid fallback behavior
+  - Threaded/Medium-style editorial default when requested
+- **`references/libraries.md`** now includes the Excalidraw CDN pipeline and fallback guidance.
+- **`README.md`** updated to reflect Excalidraw flowchart output and fallback limitations.
+
 ## [0.3.0] - 2026-02-26
 
 ### New Templates: 3 → 5
