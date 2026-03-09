@@ -11,19 +11,21 @@ metadata:
 
 # Browser Automation with agent-browser
 
-> **MANDATORY**: When `$AGENT_BROWSER_CDP_PORT` is set, you MUST run `agent-browser connect $AGENT_BROWSER_CDP_PORT` before any browser interaction. Do NOT use MCP chrome-devtools tools — always use the `agent-browser` CLI for all browser automation.
+> **MANDATORY**: Always use the `agent-browser` CLI for browser automation — do NOT use MCP chrome-devtools tools. To reuse an existing Chrome session, prefer `agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"` so later commands stay attached to the same browser; use `--cdp <port>` or `--auto-connect` for one-off calls. For faster startup, `--native` and `AGENT_BROWSER_NATIVE=1` are supported upstream, but the native daemon is still experimental.
 
 ## Core Workflow
 
-Every browser automation follows this pattern:
+Every browser automation follows one of these patterns:
 
-0. **Connect** (if `$AGENT_BROWSER_CDP_PORT` is set): `agent-browser connect $AGENT_BROWSER_CDP_PORT` — see CDP section below
-1. **Navigate**: `agent-browser open <url>`
-2. **Snapshot**: `agent-browser snapshot -i` (get element refs like `@e1`, `@e2`)
-3. **Interact**: Use refs to click, fill, select
-4. **Re-snapshot**: After navigation or DOM changes, get fresh refs
+1. **Fresh browser**: `agent-browser open <url>` when the user wants a new ephemeral browser.
+2. **Reuse existing Chrome (preferred for logged-in state and fewer browser instances)**:
+   `agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"`
+3. **Snapshot**: `agent-browser snapshot -i` (get element refs like `@e1`, `@e2`)
+4. **Interact**: Use refs to click, fill, select
+5. **Re-snapshot**: After navigation or DOM changes, get fresh refs
 
 ```bash
+agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"
 agent-browser open https://example.com/form
 agent-browser get url
 agent-browser snapshot -i
@@ -48,93 +50,73 @@ agent-browser get title
 
 If `get url` is still `about:blank`, the page closes immediately, or load does not stabilize, stop and report this to the user before taking more actions.
 
-## CDP Connection (Authenticated Browser)
+## Connecting to Existing Chrome
 
-If `AGENT_BROWSER_CDP_PORT` is set, connect to an existing Chrome instance instead of
-launching a fresh browser. This preserves logged-in sessions, cookies, and extensions.
-
-### Connect
-
-At the start of any browser session, connect to the CDP browser:
+When the user wants to reuse an authenticated Chrome, extensions, or a browser already launched with remote debugging, attach once with `connect` and keep using plain `agent-browser` commands afterward. If the environment already sets `AGENT_BROWSER_CDP_PORT`, do not assume the CLI reads it automatically; pass it explicitly:
 
 ```bash
-agent-browser connect $AGENT_BROWSER_CDP_PORT
-```
-
-If the connection fails (Chrome not running), launch it first:
-
-```bash
-# Check if browser is listening
-lsof -i :$AGENT_BROWSER_CDP_PORT -sTCP:LISTEN >/dev/null 2>&1
-
-# If not running, launch via AGENT_BROWSER_CDP_LAUNCH
-if [ -n "$AGENT_BROWSER_CDP_LAUNCH" ]; then
-  eval "$AGENT_BROWSER_CDP_LAUNCH" &
-  sleep 3
-fi
-
-# Then connect
-agent-browser connect $AGENT_BROWSER_CDP_PORT
-```
-
-### Command-Runner Note (Isolated)
-
-In some command-runner environments, launching Chrome with direct binary + `&` can be cleaned up when that command exits. If this happens, use a detached macOS launch command and verify the listener before connecting:
-
-```bash
-if ! lsof -i :$AGENT_BROWSER_CDP_PORT -sTCP:LISTEN >/dev/null 2>&1; then
-  open -na "Google Chrome" --args \
-    --remote-debugging-port="$AGENT_BROWSER_CDP_PORT" \
-    --user-data-dir="$HOME/Projects/ai-chrome-profile"
-  sleep 3
-fi
-
-lsof -i :$AGENT_BROWSER_CDP_PORT -sTCP:LISTEN >/dev/null 2>&1
-agent-browser connect $AGENT_BROWSER_CDP_PORT
-```
-
-After connect succeeds, verify navigation worked (do not assume it did):
-
-```bash
+agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"
 agent-browser open https://example.com
-agent-browser wait --load networkidle
-agent-browser get url
+agent-browser snapshot -i
 ```
 
-If `AGENT_BROWSER_CDP_PORT` is set but CDP still fails after retrying launch/connect, do **not** silently switch methods. Explain the failure to the user and ask for a fallback choice:
+For one-off commands, or when attaching to a remote WebSocket endpoint, pass `--cdp` directly:
+
+```bash
+agent-browser --cdp "${AGENT_BROWSER_CDP_PORT:-9222}" snapshot -i
+agent-browser --cdp "wss://your-browser-service.com/cdp?token=..." snapshot -i
+```
+
+Use `--auto-connect` when Chrome is already exposing remote debugging but the port is dynamic or unknown:
+
+```bash
+agent-browser --auto-connect open https://example.com
+agent-browser --auto-connect snapshot -i
+```
+
+### Launching Chrome for Debugging
+
+If Chrome isn't running with remote debugging, launch it first:
+
+```bash
+# macOS — detached launch (survives command-runner cleanup)
+open -na "Google Chrome" --args \
+  --remote-debugging-port="${AGENT_BROWSER_CDP_PORT:-9222}" \
+  --user-data-dir="$HOME/Projects/ai-chrome-profile"
+sleep 3
+
+agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"
+agent-browser open https://example.com
+```
+
+### Fallback
+
+If `connect`, `--auto-connect`, or `--cdp` fails, do **not** silently switch. Ask the user:
 
 - `headed fresh session`: `agent-browser --headed open <url>`
 - `headless fresh session`: `agent-browser open <url>`
 
-Example message:
+### Clean Session
 
-`I couldn't connect through CDP on port $AGENT_BROWSER_CDP_PORT after retrying. Would you like me to continue with a headed fresh browser session or a headless fresh session?`
-
-Once connected, **all commands work normally** — no extra flags needed:
+When the user asks for a "clean", "fresh", or "incognito" session, avoid `connect`, `--auto-connect`, `--cdp`, and any persisted browser state from config or env (`--profile`, `--session-name`, saved session names):
 
 ```bash
-agent-browser open https://example.com
-agent-browser snapshot -i
-agent-browser click @e1
-agent-browser screenshot
+tmp_config="$(mktemp -t agent-browser-clean)"
+printf '{}\n' > "$tmp_config"
+
+env -u AGENT_BROWSER_PROFILE \
+  -u AGENT_BROWSER_SESSION_NAME \
+  -u AGENT_BROWSER_SESSION \
+  -u AGENT_BROWSER_STATE \
+  -u AGENT_BROWSER_CDP_PORT \
+  -u AGENT_BROWSER_AUTO_CONNECT \
+  AGENT_BROWSER_CONFIG="$tmp_config" \
+  agent-browser open <url>
 ```
 
-For workflows split across separate command invocations, `--cdp` per command can be more robust:
+Do not proactively run `agent-browser close` here. In a CDP reuse workflow, that can close the user's existing Chrome session instead of just isolating the next run.
 
-```bash
-agent-browser --cdp $AGENT_BROWSER_CDP_PORT open https://example.com
-agent-browser --cdp $AGENT_BROWSER_CDP_PORT snapshot -i
-agent-browser --cdp $AGENT_BROWSER_CDP_PORT click @e1
-```
-
-### Clean Session (No Profile)
-
-When the user explicitly asks for a "clean", "fresh", or "incognito" session,
-skip CDP — use the default ephemeral browser regardless of env vars:
-
-```bash
-agent-browser open <url>          # Without connect = fresh browser
-```
+If the user wants the clean browser visible, add `--headed` to the final command.
 
 ## Command Chaining
 
@@ -157,6 +139,7 @@ agent-browser open https://example.com && agent-browser wait --load networkidle 
 
 ```bash
 # Navigation
+agent-browser connect <port|ws-url>   # Attach the daemon to an existing Chrome via CDP
 agent-browser open <url>              # Navigate (aliases: goto, navigate)
 agent-browser close                   # Close browser
 
@@ -302,17 +285,6 @@ agent-browser --session site1 snapshot -i
 agent-browser --session site2 snapshot -i
 
 agent-browser session list
-```
-
-### Connect to Existing Chrome
-
-```bash
-# Auto-discover running Chrome with remote debugging enabled
-agent-browser --auto-connect open https://example.com
-agent-browser --auto-connect snapshot
-
-# Or with explicit CDP port
-agent-browser --cdp 9222 snapshot
 ```
 
 ### Color Scheme (Dark Mode)
