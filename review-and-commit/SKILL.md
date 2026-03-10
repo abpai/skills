@@ -1,5 +1,5 @@
 ---
-name: code-review-and-commit
+name: review-and-commit
 description: Review uncommitted Git changes for correctness, quality, and project convention alignment, then apply fixes and prepare a safe, atomic commit plan. Use when users ask to review code before committing, improve local changes, split work into logical conventional commits, or execute `git add`/`git commit` with clear staging boundaries.
 ---
 
@@ -7,7 +7,7 @@ description: Review uncommitted Git changes for correctness, quality, and projec
 
 Perform a high-signal review of working-tree changes, fix meaningful issues, and produce an understandable commit history.
 
-Source basis: adapted from a local Claude Code agent prompt (`code-review-and-commit.md`).
+Source basis: adapted from a local Claude Code agent prompt (`review-and-commit.md`).
 
 ## Workflow
 
