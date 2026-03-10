@@ -4,6 +4,7 @@
 
 | Date       | Source | What Went Wrong                                    | What To Do Instead                                                           |
 | ---------- | ------ | -------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 2026-03-10 | user   | `arch-council` could leave a `tail -f` monitor running when interrupted | Track monitor PIDs and kill them in an `EXIT/INT/TERM` cleanup path |
 | 2026-02-07 | user   | Skill name `napkin` was unclear                    | Prefer clearer, intent-based skill names (for example, `project-memory`)    |
 | 2026-02-07 | user   | Reviewed all skills in a single-agent pass         | Use a different subagent per skill for reviews and improvements              |
 | 2026-02-07 | user   | Manual validation relied on ad-hoc runs            | Wire `scripts/validate-skills.sh` into pre-commit to enforce checks pre-commit |
@@ -17,6 +18,8 @@
 | 2026-03-08 | self   | Removed the exported Excalidraw SVG width/height, which collapsed the rendered diagram to `0x0` even though the SVG existed in the DOM | Preserve or restore intrinsic SVG dimensions from `viewBox`, then scale responsively with CSS instead of stripping sizing attrs |
 | 2026-03-08 | self   | Used `git write-tree` and `eval` in a loop wrapper, which missed unstaged edits and let prompt text hit shell parsing | For agent wrappers, detect changes from `git status --porcelain` and pass user prompt text as a literal argv entry instead of shell-evaluating it |
 | 2026-03-09 | user   | A review note claimed `agent-browser` lacked `--native`, but upstream now documents `--native` and `AGENT_BROWSER_NATIVE=1` | Re-check the latest upstream README/skill before removing or downgrading agent-browser flags that may have changed recently |
+| 2026-03-09 | self   | A multi-mode shell script treated preview and prebuilt-input flows like full live execution | Gate required args and binary checks by the execution mode so `--dry-run` and `--context-file` paths stay usable |
+| 2026-03-09 | self   | `arch-council` passed full prompt files as argv strings and used GNU-only `find -maxdepth`, breaking large runs and stock macOS | For shell skills, stream large prompts over stdin and prefer BSD/POSIX-friendly directory traversal patterns when macOS is a target |
 
 ## User Preferences
 
@@ -53,6 +56,7 @@
 - For exported Excalidraw SVGs in standalone HTML, keep intrinsic dimensions and apply responsive scaling with `width: 100%`, `height: auto`, and a `max-width` derived from `viewBox`.
 - For Codex-related skills, prefer `gpt-5.4` as the default model; OpenAI now recommends the general-purpose GPT-5.4 over `gpt-5.3-codex` for most coding tasks.
 - For `agent-browser`, use `agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"` to reuse a logged-in Chrome, and use an empty config plus unset persistence env vars for truly clean sessions.
+- For skill renames, update the skill folder name, `SKILL.md` `name` field, and root `README.md` inventory atomically, then run a repository-wide text check for stale references.
 
 ## Patterns That Don't Work
 

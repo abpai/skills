@@ -50,11 +50,12 @@ If `skills-ref` is unavailable on `PATH`, the script falls back to basic local c
 ## Existing Skills
 
 - `agent-browser`
+- `arch-council`
 - `beautiful-mermaid`
 - `bun-expert`
 - `claude`
 - `cli-design-expert`
-- `code-review-and-commit`
+- `review-and-commit`
 - `code-simplifier`
 - `codex`
 - `dead-code-eliminator`
