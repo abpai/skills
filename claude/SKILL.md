@@ -11,21 +11,25 @@ description: Run Claude Code CLI for code analysis and automated edits. Use when
    - New run: use `claude -p`.
    - Continue prior run: use `claude -c -p` with stdin prompt.
    - Resume specific session: use `claude -r <session-id> -p`.
-2. Set defaults unless user overrides:
+2. Choose session strategy before picking other flags:
+   - Ephemeral one-shot run: include `--no-session-persistence` (default).
+   - Resumable run: omit `--no-session-persistence` only when the user is likely to continue or resume later.
+3. Set defaults unless user overrides:
    - Model: `sonnet` (default).
    - Effort: `high` (default for delegated work).
    - Permission mode: `plan` unless edits are required.
-3. Build command with required flags:
+4. Build command with required flags:
    - Always include `-p` (print mode) for non-interactive execution.
-   - Always include `--no-session-persistence` unless the user will need to resume the session later.
-4. For long or multi-line prompts, write prompt text to a temp file and pass it via command substitution to avoid shell-escaping issues:
+   - Include exactly one session flag path: plain `-p`, `-c -p`, or `-r <session-id> -p`.
+   - Include `--no-session-persistence` only for ephemeral runs.
+5. For long or multi-line prompts, prefer stdin over argv so large prompts do not hit shell-escaping or argument-length issues:
    - `cat > /tmp/claude_prompt.txt <<'EOF' ... EOF`
-   - `claude -p ... \"$(cat /tmp/claude_prompt.txt)\"`
-5. Run command and validate output quality:
+   - `claude -p ... < /tmp/claude_prompt.txt`
+6. Run command and validate output quality:
    - If exit code is non-zero: handle as failure.
-   - If exit code is zero but stdout is empty/whitespace: treat as a soft failure and retry once using the temp-file prompt pattern plus an explicit output contract (for example: "Reply in sections 1..N").
-6. Summarize outcome and ask what to do next.
-7. After completion, if session persistence was enabled for the run, remind user they can continue with `claude -c -p` or resume a specific session with `claude -r <session-id> -p`.
+   - If exit code is zero but stdout is empty/whitespace: treat as a soft failure and retry once using the stdin prompt pattern plus an explicit output contract (for example: "Reply in sections 1..N").
+7. Summarize outcome and ask what to do next.
+8. After completion, if session persistence was enabled for the run, remind user they can continue with `claude -c -p` or resume a specific session with `claude -r <session-id> -p`.
 
 ### Quick Reference
 
@@ -67,7 +71,7 @@ claude -p \
   --effort high \
   --permission-mode plan \
   --no-session-persistence \
-  "$(cat /tmp/claude_prompt.txt)"
+  < /tmp/claude_prompt.txt
 ```
 
 ### New run with edits
@@ -147,6 +151,12 @@ claude -p \
 
 `sonnet` is the default for software engineering tasks.
 
+## Session Strategy
+
+- Default to ephemeral one-shot runs with `--no-session-persistence` for delegated tasks, scripts, and automations.
+- Use persistent sessions only when the user explicitly wants follow-up turns, resume support, or iterative collaboration within Claude itself.
+- Do not combine "resumable" guidance with ephemeral flags in the same example. Pick one session strategy and keep the command shape consistent.
+
 ### Effort Levels
 
 - `high` - Default for delegated work (deep analysis, thorough implementation)
@@ -163,6 +173,8 @@ claude -p \
 | `dontAsk`         | Auto-approve all tool use without confirmation      | `danger-full-access`       |
 | `bypassPermissions` | Skip all permission checks (sandboxed envs only) | N/A                        |
 
+Treat the Codex sandbox column as a rough mental model, not a literal one-to-one mapping. The CLIs expose different controls and approval semantics.
+
 ## Following Up
 
 - After every run, ask for next steps or clarifications.
@@ -174,7 +186,7 @@ claude -p \
 - If `claude --version` or `claude -p` exits non-zero, report failure and ask before retrying.
 - Ask permission before high-impact flags unless already granted: `--permission-mode dontAsk`, `--dangerously-skip-permissions`.
 - If output includes warnings or partial results, summarize and ask how to proceed.
-- If `claude -p` exits `0` but returns empty output, rerun once with the robust temp-file prompt pattern and a stricter output instruction; if still empty, report the run as failed/indeterminate.
+- If `claude -p` exits `0` but returns empty output, rerun once with the robust stdin prompt pattern and a stricter output instruction; if still empty, report the run as failed/indeterminate.
 
 ## CLI Version
 

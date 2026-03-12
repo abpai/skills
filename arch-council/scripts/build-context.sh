@@ -61,6 +61,40 @@ done
 # Validate required binaries.
 command -v git >/dev/null 2>&1 || { echo "Error: git is required" >&2; exit 1; }
 
+# Prefer ripgrep when available so pattern scans stay fast and boundary-aware.
+scan_code_patterns() {
+  local repo_dir="$1"
+  local pattern="$2"
+  local limit="$3"
+  local empty_message="$4"
+  local matches=""
+
+  if command -v rg >/dev/null 2>&1; then
+    matches="$(
+      rg -n -i --pcre2 \
+        -g '*.ts' -g '*.js' -g '*.py' -g '*.go' -g '*.rs' \
+        -g '!node_modules/**' -g '!.git/**' -g '!dist/**' -g '!build/**' -g '!.next/**' \
+        "${pattern}" "${repo_dir}" 2>/dev/null || true
+    )"
+  else
+    matches="$(
+      grep -rn --include='*.ts' --include='*.js' --include='*.py' --include='*.go' --include='*.rs' \
+        -iE "${pattern}" "${repo_dir}" 2>/dev/null \
+        | grep -v 'node_modules' \
+        | grep -v '.git/' \
+        | grep -v '/dist/' \
+        | grep -v '/build/' \
+        | grep -v '/.next/' || true
+    )"
+  fi
+
+  if [[ -n "${matches}" ]]; then
+    printf '%s\n' "${matches}" | sed -n "1,${limit}p"
+  else
+    echo "${empty_message}"
+  fi
+}
+
 # Ensure output directory exists.
 mkdir -p "$(dirname "${output}")"
 
@@ -102,7 +136,7 @@ for repo_dir in "${repo_list[@]}"; do
     # Top-level files.
     echo "### Top-level files"
     echo '```'
-    ls -1 "${repo_dir}" 2>/dev/null | head -40
+    ls -1 "${repo_dir}" 2>/dev/null | sed -n '1,40p'
     echo '```'
     echo ""
 
@@ -112,7 +146,7 @@ for repo_dir in "${repo_list[@]}"; do
     (cd "${repo_dir}" && find . \
       \( -type d \( -name .git -o -name node_modules -o -name dist -o -name build -o -name __pycache__ -o -name .next \) -prune \) \
       -o -type f -print \
-      2>/dev/null | awk -F/ 'NF <= 4' | sort | head -"${max_lines}")
+      2>/dev/null | awk -F/ 'NF <= 4' | sort | sed -n "1,${max_lines}p")
     echo '```'
     echo ""
 
@@ -132,24 +166,20 @@ for repo_dir in "${repo_list[@]}"; do
     # API surface patterns.
     echo "### API surface"
     echo '```'
-    grep -rn --include='*.ts' --include='*.js' --include='*.py' --include='*.go' --include='*.rs' \
-      -iE '(router|express|fastapi|gin|grpc|openapi|graphql|app\.(get|post|put|delete|patch)|@app\.route|handler|endpoint)' \
-      "${repo_dir}" 2>/dev/null \
-      | grep -v 'node_modules' \
-      | grep -v '.git/' \
-      | head -50 || echo "(no API patterns found)"
+    scan_code_patterns "${repo_dir}" \
+      '(\b(router|express|fastapi|gin|grpc|openapi|graphql|endpoint)s?\b|\b(app|router)\.(get|post|put|delete|patch)\b|@app\.route\b|\bhandlers?\b)' \
+      50 \
+      "(no API patterns found)"
     echo '```'
     echo ""
 
     # Auth patterns.
     echo "### Auth patterns"
     echo '```'
-    grep -rn --include='*.ts' --include='*.js' --include='*.py' --include='*.go' --include='*.rs' \
-      -iE '(auth|jwt|session|oauth|token|bearer|middleware.*auth|passport|clerk|nextauth|supabase.*auth)' \
-      "${repo_dir}" 2>/dev/null \
-      | grep -v 'node_modules' \
-      | grep -v '.git/' \
-      | head -30 || echo "(no auth patterns found)"
+    scan_code_patterns "${repo_dir}" \
+      '(\b(auth|jwt|session|oauth|token|bearer|passport|clerk|nextauth)\b|\bmiddleware\b.{0,40}\bauth\b|\bsupabase\b.{0,20}\bauth\b)' \
+      30 \
+      "(no auth patterns found)"
     echo '```'
     echo ""
     echo "---"
