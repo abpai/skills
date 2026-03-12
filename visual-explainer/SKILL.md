@@ -12,6 +12,19 @@ metadata:
 
 Generate self-contained HTML files for technical diagrams, visualizations, and data tables. Always open the result in the browser. Never fall back to ASCII art when this skill is loaded.
 
+**Visuals are required.** When this skill is loaded, the output must contain at least one primary visual artifact that carries real information, not just decorative styling around prose. Valid primary visuals include:
+- an architecture, flow, sequence, state, ER, or dependency diagram
+- a timeline, roadmap, or execution path visual
+- a dashboard or KPI band with charts, bars, or status visual encoding
+- a semantic HTML table for comparisons, audits, or inventories
+- a walkthrough strip, stepper, or before/after comparison layout
+
+If the page is a report, review, recap, audit, or plan analysis, include **at least two visual forms**:
+- one structural visual: diagram, flow, architecture map, timeline, or dependency view
+- one evidence visual: table, KPI dashboard, comparison panel, heatmap-style status grid, or other compact evidence display
+
+Pure prose sections, even if well-designed, do not satisfy this requirement.
+
 **Proactive table rendering.** When you're about to present tabular data as an ASCII box-drawing table in the terminal (comparisons, audits, feature matrices, status reports, any structured rows/columns), generate an HTML page instead. The threshold: if the table has 4+ rows or 3+ columns, it belongs in the browser. Don't wait for the user to ask — render it as HTML automatically and tell them the file path. You can still include a brief text summary in the chat, but the table itself should be the HTML page.
 
 ## Workflow
@@ -50,7 +63,7 @@ Vary the choice each time. If the last diagram was dark and technical, make the 
 
 **For CSS/layout patterns and SVG connectors**, read `./references/css-patterns.md`.
 
-**For pages with 4+ sections** (reviews, recaps, dashboards), also read `./references/responsive-nav.md` for section navigation with sticky sidebar TOC on desktop and horizontal scrollable bar on mobile.
+**For pages with 4+ sections** (reviews, recaps, dashboards), also read the "Section Navigation" section in `./references/css-patterns.md` for sticky sidebar TOC on desktop and horizontal scrollable bar on mobile.
 
 **Choosing a rendering approach:**
 
@@ -66,11 +79,22 @@ Vary the choice each time. If the last diagram was dark and technical, make the 
 | Timeline | CSS (central line + cards) | Simple linear layout doesn't need a layout engine |
 | Dashboard | CSS Grid + inline SVG | Card grid with sparklines and progress bars |
 
+**Report composition rule.** For reports, reviews, recaps, audits, and plan explainers, do not build a page that is mostly stacked text cards. Start by choosing the visual anchor first, then add supporting sections around it. The default shape is:
+1. one hero visual near the top
+2. one compact evidence section near the top half of the page
+3. prose only after the visual model is established
+
+**Visual anchor rule.** Put the main diagram, timeline, walkthrough, or dashboard in the first screenful when possible. If the most important thing on load is a paragraph, the page is under-visualized.
+
+**Visual fallback ladder.** If the ideal diagram type is blocked by missing data or rendering limits, downgrade to the next best visual form instead of dropping to prose:
+1. Excalidraw flowchart or Mermaid diagram
+2. CSS architecture map / walkthrough / timeline
+3. KPI dashboard plus semantic table
+4. before/after comparison panels
+
+Never skip the visual entirely.
+
 For code-heavy pages (reviews, architecture docs), add Prism.js for syntax highlighting (see `libraries.md`).
-
-**Flowchart rendering default:** For Mermaid flowcharts, default to Excalidraw conversion (`@excalidraw/mermaid-to-excalidraw` + Excalidraw SVG export). If conversion fails, or the source is not a flowchart, fall back to Mermaid rendering.
-
-**Execution/code flow priority rule:** If the user asks for an execution flow, code flow, pipeline flow, hook chain, or step-by-step process map, treat it as a flowchart and use the Excalidraw pipeline by default.
 
 **Mermaid theming (fallback path):** Use `theme: 'base'` with custom `themeVariables` so colors match your page palette. Use `look: 'classic'` unless the user asks for sketch style. Use `layout: 'elk'` for complex graphs (requires `@mermaid-js/layout-elk` — see `./references/libraries.md`). Override Mermaid SVG classes with CSS for pixel-perfect control.
 
@@ -120,15 +144,40 @@ Load via `<link>` in `<head>`. Include a system font fallback in the `font-famil
 
 **Animation earns its place.** Use staggered `fadeUp` for cards, `fadeScale` for KPIs and badges, `countUp` for hero numbers. Always respect `prefers-reduced-motion`. CSS transitions and keyframes handle all cases.
 
+**Forbidden visual defaults** — these make every AI-generated page look the same:
+- **Colors** (as accent/primary in Mermaid themeVariables or CSS): `#8b5cf6`, `#7c3aed`, `#6366f1` (indigo/violet — the Tailwind "AI purple"); `#06b6d4`, `#22d3ee` (cyan — overused in dark-mode AI dashboards); `#ec4899`, `#f472b6` (magenta/pink — the gradient mesh cliche)
+- **Effects**: Animated glowing shadows on cards; emoji as section headers or bullet points; three-dot code chrome (`...` buttons at the top of fake code windows); gradient text for headings
+- **Layouts**: Uniform card grids where every card is the same size and weight — vary depth tiers; symmetric everything — visual weight should follow information hierarchy; identical spacing between all sections — hero sections get more breathing room
+
+**Prose quality** — prose in generated pages must not read like AI wrote it:
+- Forbidden vocabulary: delve, crucial, pivotal, landscape (abstract), tapestry, testament, intricate, interplay, leverage, utilize, facilitate, showcase, underscore, foster, Additionally. Replace with plain equivalents.
+- No promotional language ("boasts", "renowned", "groundbreaking"), significance inflation, pseudo-profound flourishes, or generic conclusions ("The future looks bright").
+- No filler phrases ("It's important to note", "In order to"), rule of three, inline-header bold lists as the only structural element, em dash overuse (>1 per paragraph), or contrastive negation ("Not just X, but Y").
+- Be specific: numbers, file paths, function names — not "various components." Use short words: "use" not "utilize." Vary sentence rhythm. State what happened, not what it "represents."
+
 ### 4. Deliver
 
+**Default to one file.** The ideal output is one self-contained HTML file that includes the visuals, narrative, styling, and any lightweight interactivity in a single deliverable.
+
 **Output location:** Write to `~/.agent/diagrams/`. Use a descriptive filename based on content: `modem-architecture.html`, `pipeline-flow.html`, `schema-overview.html`. The directory persists across sessions.
+
+**If multiple files are truly needed, make one main file.** The main HTML file must:
+- open cleanly on its own
+- explain what the companion files are for
+- link to every companion file with obvious labels
+- act as the index/entry point you open in the browser and share with the user
+
+Do not generate a loose set of sibling files with no clear starting page.
 
 **Open in browser:**
 - macOS: `open ~/.agent/diagrams/filename.html`
 - Linux: `xdg-open ~/.agent/diagrams/filename.html`
 
 **Tell the user** the file path so they can re-open or share it.
+
+**In the chat response, name the visuals you included.** Example: "Created a report with an execution flow diagram and a risk table at `~/.agent/diagrams/foo.html`." This makes the visual output explicit and nudges future runs away from prose-only reports.
+
+If companion files were generated, name the main file first and mention that it links to the supporting files.
 
 ## Diagram Types
 
@@ -188,6 +237,9 @@ Every diagram is a single self-contained `.html` file. No external assets except
 ## Quality Checks
 
 Before delivering, verify:
+- **Visual minimum met** (see requirements above).
+- **First screen test**: Without scrolling, can the reader already see a meaningful visual model of the subject?
+- **Single-file preference respected**: If you generated more than one file, there was a real reason, and the main file links to each supporting file.
 - **Both themes**: Toggle your OS between light and dark mode. Both should look intentional, not broken.
 - **Information completeness**: Does the diagram actually convey what the user asked for? Pretty but incomplete is a failure.
 - **No overflow**: Resize the browser to different widths. No content should clip or escape its container. Every grid and flex child needs `min-width: 0`. Side-by-side panels need `overflow-wrap: break-word`. See the Overflow Protection section in `./references/css-patterns.md`.
@@ -201,59 +253,12 @@ Hard rules — not guidelines. Violating these creates broken or unusable output
 
 - **Max 15 Mermaid nodes per diagram** (soft target 10-12). Beyond this, use `subgraph` to group, split into multiple diagrams, or use the hybrid pattern (simplified Mermaid overview + CSS Grid detail cards). For systems with 15+ elements, the hybrid pattern in `templates/architecture.html` is preferred.
 - **Prefer `flowchart TD` for 5+ nodes.** Top-down vertical flow reads naturally and scales on narrow viewports. Use `flowchart LR` only for simple 3-4 node linear flows.
-- **Section navigation required for pages with 4+ sections.** Read `responsive-nav.md` and include the TOC. Long pages without navigation are hostile to readers.
+- **Section navigation required for pages with 4+ sections.** Read the Section Navigation section in `css-patterns.md` and include the TOC. Long pages without navigation are hostile to readers.
 - **Pagination or virtual scroll for tables with 50+ rows.** Either paginate (show 25 at a time with prev/next) or truncate with a "Show all" toggle. Large DOM tables are slow and unusable.
 - **Never exceed 1000 lines of HTML.** If approaching this, split into multiple pages or collapse secondary sections with `<details>`.
 - **Never use `innerHTML` with user-provided content.** Use `textContent` or DOM APIs. This prevents XSS in interactive elements.
 - **Maximum 5 KPI cards in a row.** More than 5 gets cramped. Use a second row or collapse less important metrics.
 - **Test Mermaid syntax separately.** If the diagram is complex (10+ nodes), validate the Mermaid syntax in isolation before embedding. A broken diagram = a broken page.
+- **Report pages must not be prose-dominant.** If more than half of the main sections are plain narrative cards with no visual encoding, redesign the page.
+- **Do not split output across multiple files unless needed.** If you do, one main HTML file must link to all companion files and serve as the clear entry point.
 
-## Anti-Slop: Visual
-
-Forbidden defaults that make every AI-generated page look the same. If you catch yourself reaching for any of these, stop and pick something with character.
-
-**Forbidden fonts** (as primary body/heading):
-- Roboto, Arial, Helvetica — invisible defaults
-- Use only as system fallbacks in the `font-family` stack
-
-**Forbidden colors** (as accent/primary in Mermaid themeVariables or CSS):
-- `#8b5cf6`, `#7c3aed`, `#6366f1` (indigo/violet) — the Tailwind "AI purple"
-- `#06b6d4`, `#22d3ee` (cyan) — overused in dark-mode AI dashboards
-- `#ec4899`, `#f472b6` (magenta/pink) — the gradient mesh cliche
-
-**Forbidden effects**:
-- Animated glowing shadows on cards
-- Emoji as section headers or bullet points
-- Three-dot code chrome (`...` buttons at the top of fake code windows)
-- Gradient text for headings
-
-**Forbidden layouts**:
-- Uniform card grids where every card is the same size and weight — vary depth tiers
-- Symmetric everything — visual weight should follow information hierarchy
-- Identical spacing between all sections — hero sections get more breathing room
-
-## Anti-Slop: Prose
-
-Generated HTML pages contain prose (executive summaries, risk assessments, review commentary, rationale cards). That prose must not read like AI wrote it.
-
-**Forbidden vocabulary in generated pages:**
-delve, crucial, pivotal, landscape (abstract), tapestry, testament, intricate, interplay, leverage, utilize, facilitate, showcase, underscore, foster, Additionally. Replace with plain equivalents.
-
-**Forbidden patterns:**
-- Promotional language ("boasts", "renowned", "groundbreaking")
-- Significance inflation ("marks a pivotal moment", "underscores the importance")
-- Pseudo-profound flourishes ("This changes everything", "The implications are staggering")
-- Generic conclusions ("The future looks bright")
-- Filler phrases ("It's important to note", "In order to")
-
-**Forbidden structure tells:**
-- Rule of three (forced groups of 3 items for rhetorical effect)
-- Inline-header bold lists as the only structural element
-- Em dash overuse (more than 1 per paragraph)
-- Contrastive negation as rhetorical device ("Not just X, but Y")
-
-**Positive guidance:**
-- Be specific: numbers, file paths, function names — not "various components"
-- Use short words: "use" not "utilize", "help" not "facilitate"
-- Vary sentence rhythm: short punchy sentences, then longer ones
-- State what happened, not what it "represents" or "signifies"

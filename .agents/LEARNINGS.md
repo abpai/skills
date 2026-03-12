@@ -20,6 +20,8 @@
 | 2026-03-09 | user   | A review note claimed `agent-browser` lacked `--native`, but upstream now documents `--native` and `AGENT_BROWSER_NATIVE=1` | Re-check the latest upstream README/skill before removing or downgrading agent-browser flags that may have changed recently |
 | 2026-03-09 | self   | A multi-mode shell script treated preview and prebuilt-input flows like full live execution | Gate required args and binary checks by the execution mode so `--dry-run` and `--context-file` paths stay usable |
 | 2026-03-09 | self   | `arch-council` passed full prompt files as argv strings and used GNU-only `find -maxdepth`, breaking large runs and stock macOS | For shell skills, stream large prompts over stdin and prefer BSD/POSIX-friendly directory traversal patterns when macOS is a target |
+| 2026-03-11 | user   | `visual-explainer` reports could still come out prose-heavy with too little actual diagramming | In the skill and report prompts, require a structural visual plus an evidence visual for report-style pages and add a first-screen visual check |
+| 2026-03-11 | user   | `visual-explainer` could leave users with several output files and no obvious starting point | Default to one HTML file; if multiple files are necessary, make the main file an index that links to every companion file |
 
 ## User Preferences
 

@@ -1,6 +1,6 @@
 # Aesthetic Palettes
 
-Ready-made `:root` variable blocks for each of the 9 aesthetics in SKILL.md. Each palette includes light + dark versions, a recommended font pairing, and usage guidance.
+Ready-made `:root` variable blocks for each of the 9 aesthetics in SKILL.md. Each palette includes light + dark versions and a recommended font pairing.
 
 ## 1. Monochrome Terminal
 
@@ -69,37 +69,25 @@ Green-on-black hacker terminal. Use for developer tool output, CLI visualization
 }
 ```
 
-**Amber variant:** Replace all `#00ff41` greens with `#ffb000` amber for a warmer retro feel.
-
-**Background atmosphere:** Faint dot grid or scanline overlay works well:
-```css
-body {
-  background-image: repeating-linear-gradient(
-    0deg, transparent, transparent 2px,
-    rgba(0, 255, 65, 0.03) 2px, rgba(0, 255, 65, 0.03) 4px
-  );
-}
-```
+Amber variant: Replace all `#00ff41` greens with `#ffb000` amber. Background: scanline overlay works well.
 
 ---
 
 ## 2. Editorial
 
-The system default. White background, serif headings, generous whitespace. See existing templates (`data-table.html`, `mermaid-flowchart.html`, `walkthrough.html`) for complete implementations.
+The system default. White background, serif headings, generous whitespace.
 
-**Font pairing:** Merriweather (heading, 700/900) + Inter (body, 400-600) + JetBrains Mono (code).
+**Font pairing:** Merriweather (heading) + Inter (body) + JetBrains Mono (code). Rotate fonts via `libraries.md` named pairings — the editorial *palette* stays the same, only fonts change.
 
-> **Variation note:** Don't use Merriweather + Inter every time. Swap to one of the named pairings in `libraries.md` (DM Sans + Fira Code, Instrument Serif + JetBrains Mono, IBM Plex Sans + IBM Plex Mono, Bricolage Grotesque + Fragment Mono, Plus Jakarta Sans + Azeret Mono). The editorial *palette* stays the same — only the fonts rotate.
-
-Palette is defined in all existing templates and `css-patterns.md`. No need to duplicate here — use those as the source of truth.
+Palette is defined in `css-patterns.md` Theme Setup and all existing templates. Use those as the source of truth.
 
 ---
 
 ## 3. Blueprint
 
-Technical drawing on dark navy. Use for architecture diagrams, infrastructure layouts, and engineering schematics.
+Technical drawing on dark navy. Use for architecture diagrams, infrastructure layouts, engineering schematics.
 
-**Font pairing:** Sora (heading) + IBM Plex Mono (body + labels). The mono body text reinforces the technical precision feel.
+**Font pairing:** Sora (heading) + IBM Plex Mono (body + labels).
 
 ```css
 /* Dark-first — blueprint is inherently dark */
@@ -162,25 +150,17 @@ Technical drawing on dark navy. Use for architecture diagrams, infrastructure la
 }
 ```
 
-**Background atmosphere:** Grid pattern reinforces the blueprint feel:
-```css
-body {
-  background-image:
-    linear-gradient(var(--border) 1px, transparent 1px),
-    linear-gradient(90deg, var(--border) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-```
+Background: grid pattern reinforces the blueprint feel (`linear-gradient` grid lines at 40px intervals).
 
 ---
 
 ## 4. Neon Dashboard
 
-> **Deprecation warning:** This palette uses cyan-magenta-pink accents and glowing shadows that have become strongly associated with generic AI output. Use sparingly and only when the neon aesthetic is genuinely appropriate (monitoring dashboards, retro-futurism). Prefer Blueprint, IDE-inspired, or Monochrome Terminal for dark-theme pages.
+> **Use sparingly.** Cyan-magenta-pink accents and glowing shadows are strongly associated with generic AI output. Prefer Blueprint, IDE-inspired, or Monochrome Terminal for dark-theme pages.
 
-Saturated accents on deep dark. Use for monitoring dashboards, real-time data, and high-energy presentations.
+Saturated accents on deep dark. Use for monitoring dashboards, real-time data.
 
-**Font pairing:** Outfit (heading, 500-700) + Space Mono (body + labels).
+**Font pairing:** Outfit (heading) + Space Mono (body + labels).
 
 ```css
 /* Dark-first — neon requires dark background */
@@ -243,27 +223,15 @@ Saturated accents on deep dark. Use for monitoring dashboards, real-time data, a
 }
 ```
 
-**Background atmosphere:** Gradient mesh with glowing focal points:
-```css
-body {
-  background-image:
-    radial-gradient(at 20% 30%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
-    radial-gradient(at 80% 60%, rgba(200, 80, 255, 0.06) 0%, transparent 50%);
-}
-```
-
-**Glow border pattern** for cards:
-```css
-.ve-card { border-color: rgba(0, 240, 255, 0.2); box-shadow: 0 0 20px rgba(0, 240, 255, 0.05); }
-```
+Background: gradient mesh with glowing focal points. Glow border: `box-shadow: 0 0 20px rgba(0, 240, 255, 0.05)`.
 
 ---
 
 ## 5. Paper / Ink
 
-Warm cream background with dark ink text. Use for documentation, reports, proposals, and anything that should feel printed.
+Warm cream background with dark ink text. Use for documentation, reports, proposals.
 
-**Font pairing:** Crimson Pro (heading, 600-800) + Noto Sans Mono (labels) + Inter (body).
+**Font pairing:** Crimson Pro (heading) + Inter (body) + Noto Sans Mono (labels).
 
 ```css
 /* Light-first — paper aesthetic is inherently light */
@@ -326,15 +294,15 @@ Warm cream background with dark ink text. Use for documentation, reports, propos
 }
 ```
 
-**Background atmosphere:** Flat cream — whitespace IS the atmosphere, same as editorial. No patterns needed.
+Background: flat cream — whitespace IS the atmosphere.
 
 ---
 
 ## 6. Hand-drawn / Sketch
 
-Soft, informal, whiteboard feel. Pairs with Mermaid `look: 'handDrawn'`. Use for brainstorming, ideation, informal explanations.
+Soft, informal, whiteboard feel. Pairs with Mermaid `look: 'handDrawn'`.
 
-**Font pairing:** Bricolage Grotesque (heading, 600-800) + Fragment Mono (labels) + Inter (body).
+**Font pairing:** Bricolage Grotesque (heading) + Inter (body) + Fragment Mono (labels).
 
 ```css
 /* Light-first — sketch aesthetic works best on light backgrounds */
@@ -397,23 +365,15 @@ Soft, informal, whiteboard feel. Pairs with Mermaid `look: 'handDrawn'`. Use for
 }
 ```
 
-**Mermaid config:** Always use `look: 'handDrawn'` with this palette.
-
-**Background atmosphere:** Faint dot grid to suggest graph paper:
-```css
-body {
-  background-image: radial-gradient(circle, var(--border) 0.5px, transparent 0.5px);
-  background-size: 20px 20px;
-}
-```
+Always use `look: 'handDrawn'` with this palette. Background: faint dot grid (20px intervals).
 
 ---
 
 ## 7. IDE-inspired
 
-Borrow a real editor color scheme. Four popular options below — pick one and commit.
+Borrow a real editor color scheme. Pick one and commit.
 
-**Font pairing:** Plus Jakarta Sans (heading, 600-700) + Azeret Mono (code/labels) + Inter (body). Or go full monospace for a pure IDE feel.
+**Font pairing:** Plus Jakarta Sans (heading) + Azeret Mono (code/labels) + Inter (body). Or go full monospace.
 
 ### Dracula
 
@@ -539,18 +499,18 @@ Borrow a real editor color scheme. Four popular options below — pick one and c
 }
 ```
 
-**Note:** IDE themes are dark-first. For light mode, either invert to the light variant (e.g., Solarized Light, Catppuccin Latte) or use a subtle light adaptation that preserves the accent colors.
+IDE themes are dark-first. For light mode, invert to the light variant (e.g., Solarized Light, Catppuccin Latte).
 
 ---
 
 ## 8. Data-dense
 
-Maximum information per pixel. Small type, tight spacing, no decorative elements. Use for audit reports, dependency matrices, large tables, and monitoring views.
+Maximum information per pixel. Use for audit reports, dependency matrices, large tables, monitoring views.
 
 **Font pairing:** Inter (heading, 600) + JetBrains Mono (body + labels). Body at 12px, headings at 14-16px.
 
 ```css
-/* Light-first — data density works better on light backgrounds for readability */
+/* Light-first — data density works better on light backgrounds */
 :root {
   --font-heading: 'Inter', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
@@ -610,27 +570,17 @@ Maximum information per pixel. Small type, tight spacing, no decorative elements
 }
 ```
 
-**Key overrides** for data-dense pages:
-```css
-body { font-size: 12px; line-height: 1.45; padding: 16px; }
-h1 { font-size: 16px; font-weight: 600; }
-.ve-card { padding: 8px 12px; border-radius: 4px; }
-.kpi-card { padding: 10px 12px; }
-.kpi-card__value { font-size: 24px; }
-.data-table td { padding: 6px 10px; }
-```
-
-**Background atmosphere:** Flat — no patterns, no gradients. Every pixel is for data.
+Key overrides: `body { font-size: 12px; line-height: 1.45; }`, compact card padding, `kpi-card__value` at 24px. Background: flat — every pixel is for data.
 
 ---
 
 ## 9. Gradient Mesh
 
-> **Deprecation warning:** This palette's indigo-pink gradient mesh and glassmorphism have become the default "AI product" aesthetic. Every SaaS landing page now looks like this. Use only when glassmorphism is genuinely appropriate (product launches with strong brand identity). For modern-but-distinctive pages, consider Paper/Ink or IDE-inspired instead.
+> **Use sparingly.** Indigo-pink gradient mesh and glassmorphism have become the default "AI product" aesthetic. Consider Paper/Ink or IDE-inspired instead.
 
-Bold gradients, glassmorphism, modern SaaS feel. Use for product launches, feature announcements, landing-page-style explainers.
+Bold gradients, glassmorphism, modern SaaS feel. Use for product launches, feature announcements.
 
-**Font pairing:** Fraunces (heading, 700-900) + Source Code Pro (labels) + Inter (body).
+**Font pairing:** Fraunces (heading) + Inter (body) + Source Code Pro (labels).
 
 ```css
 /* Light-first — gradient mesh works well in both modes */
@@ -693,23 +643,4 @@ Bold gradients, glassmorphism, modern SaaS feel. Use for product launches, featu
 }
 ```
 
-**Background atmosphere:** Multi-point gradient mesh is the signature:
-```css
-body {
-  background-image:
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.10) 0%, transparent 50%),
-    radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 50%);
-}
-```
-
-**Glassmorphism card pattern:**
-```css
-.ve-card {
-  background: var(--surface);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-}
-```
+Background: multi-point gradient mesh. Cards: `backdrop-filter: blur(20px)` for glassmorphism.

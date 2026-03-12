@@ -41,7 +41,7 @@ git clone https://github.com/nicobailon/visual-explainer.git ~/.claude/skills/vi
 # or paste its contents into your system prompt
 ```
 
-For Pi, restart after cloning. To get the slash commands (`/review`, `/project-recap`, etc.), copy the prompt templates:
+For Pi, restart after cloning. To get the slash commands (`/review`, `/fact-check`), copy the prompt templates:
 
 ```bash
 cp ~/.pi/agent/skills/visual-explainer/prompts/*.md ~/.pi/agent/prompts/
@@ -53,27 +53,27 @@ If you have [surf-cli](https://github.com/nicobailon/surf-cli) installed, the sk
 
 The agent loads the skill when you mention diagrams, architecture, flowcharts, schemas, or visualizations. It also kicks in automatically when it's about to dump a complex table in the terminal (4+ rows or 3+ columns) — it renders HTML instead and opens it in the browser. Output goes to `~/.agent/diagrams/`.
 
-The skill ships with four prompt templates:
+The skill ships with two prompt templates:
 
 | Command | What it does |
 |---------|-------------|
-| `/generate-web-diagram` | Generate an HTML diagram for any topic |
-| `/review` | Visual diff review or plan review (auto-detects from input) |
-| `/project-recap` | Mental model snapshot for context-switching back to a project |
+| `/review` | Visual diff review, plan review, or project recap (auto-detects from input) |
 | `/fact-check` | Verify accuracy of a review page or plan doc against actual code |
 
-`/review` is probably the most useful. It auto-detects whether you're reviewing a diff or a plan:
+`/review` is probably the most useful. It auto-detects whether you're reviewing a diff, a plan, or recent project activity:
 
 ```
-/review                        # diff review: feature branch vs main (default)
+/review                        # project recap: last 2 weeks (default)
+/review HEAD                   # diff review: current commit
 /review abc123                 # diff review: single commit
 /review #42                    # diff review: pull request
 /review ~/docs/refactor-plan.md  # plan review: compare plan against codebase
+/review 30d                    # project recap: last 30 days
 ```
 
 For diffs, it generates before/after architecture diagrams, KPI dashboard, structured Good/Bad/Ugly code review, decision log with confidence indicators, and re-entry context. For plans, it cross-references every claim against the actual codebase, produces current vs. planned architecture diagrams, and flags risks and gaps.
 
-`/project-recap` is designed for context-switching back to a project after days away. It scans recent git activity and produces an architecture snapshot, decision log, and cognitive debt hotspots. `/fact-check` takes any document that makes claims about code and verifies every one of them.
+Project recap mode is designed for context-switching back to a project after days away. It scans recent git activity and produces an architecture snapshot, decision log, and cognitive debt hotspots. `/fact-check` takes any document that makes claims about code and verifies every one of them.
 
 ## How It Works
 
@@ -83,7 +83,7 @@ SKILL.md (workflow + design principles)
 references/           ← agent reads before each generation
 ├── css-patterns.md   (layouts, animations, theming, depth tiers)
 ├── libraries.md      (Excalidraw flowchart pipeline, Mermaid fallback, font pairings)
-└── responsive-nav.md (sticky sidebar TOC for multi-section pages)
+└── aesthetic-palettes.md (ready-made palette blocks for each visual direction)
     ↓
 templates/            ← agent reads the matching reference template
 ├── mermaid-flowchart.html (Excalidraw flowchart render + Mermaid fallback — editorial slate style)
