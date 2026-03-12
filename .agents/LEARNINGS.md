@@ -22,6 +22,12 @@
 | 2026-03-09 | self   | `arch-council` passed full prompt files as argv strings and used GNU-only `find -maxdepth`, breaking large runs and stock macOS | For shell skills, stream large prompts over stdin and prefer BSD/POSIX-friendly directory traversal patterns when macOS is a target |
 | 2026-03-11 | user   | `visual-explainer` reports could still come out prose-heavy with too little actual diagramming | In the skill and report prompts, require a structural visual plus an evidence visual for report-style pages and add a first-screen visual check |
 | 2026-03-11 | user   | `visual-explainer` could leave users with several output files and no obvious starting point | Default to one HTML file; if multiple files are necessary, make the main file an index that links to every companion file |
+| 2026-03-12 | self   | `arch-council` context scanning used bare substrings like `gin`, which matched unrelated words like `margin` and polluted the API surface section | For heuristic code scanners, use word boundaries or syntax-shaped patterns, and prefer `rg --pcre2` over loose substring grep when available |
+| 2026-03-12 | self   | Used a bare zsh glob against `/tmp/arch-council-fixture.*`, which failed with `nomatch` when the pattern didn't expand | In this environment, prefer `find`, `ls`, or quoted/glob-safe patterns over bare zsh globs for ad-hoc temp paths |
+| 2026-03-12 | self   | Ran `rg` with a pattern that began with `--`, so ripgrep parsed it as flags instead of a search pattern | When searching for literals or regexes that start with dashes, insert `rg -- <pattern> <paths>` so option parsing stops first |
+| 2026-03-12 | self   | The `claude` skill recommended temp-file command substitution for long prompts, which still pushes the full prompt through argv | For CLI skills, prefer stdin-first examples (`< file` or pipes) over `$(cat file)` when prompts can be large or multi-line |
+| 2026-03-12 | self   | Used `status` as a shell variable name in this zsh environment, but `$status` is read-only | In ad-hoc shell snippets here, use names like `rc` or `exit_code` instead of `status` |
+| 2026-03-12 | self   | Tried to run multiple `git add`/`git commit` sequences in parallel, which collided on `.git/index.lock` and blurred commit boundaries | Serialize staged Git operations; never parallelize commits or other index-mutating commands in the same repo |
 
 ## User Preferences
 
