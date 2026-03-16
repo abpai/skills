@@ -57,7 +57,7 @@ Run:
 scripts/validate-skills.sh
 ```
 
-If `skills-ref` is installed, this uses official validation. Otherwise it performs basic local checks and reports failures.
+If `skills-ref` is installed, the script runs official validation and still enforces the local version/manifest checks. Otherwise it falls back to local structural checks plus the version/manifest checks.
 
 ## Pre-commit Hook
 
