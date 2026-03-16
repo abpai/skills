@@ -1,6 +1,8 @@
 ---
 name: beautiful-mermaid
 description: Render Mermaid diagrams as SVG and PNG using the Beautiful Mermaid library. Use when the user asks to render a Mermaid diagram.
+metadata:
+  version: "1.0"
 ---
 
 # Beautiful Mermaid Diagram Rendering
@@ -170,3 +172,15 @@ Check the render script output for the `bg` and `fg` values, or inspect the SVG'
 - Validate Mermaid syntax at https://mermaid.live before rendering
 - Check for special characters that need escaping (wrap in quotes)
 - Ensure flowchart direction is specified (`graph TD`, `graph LR`, etc.)
+
+## Update Check
+
+On first use in a session, silently check for a newer version:
+
+1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
+2. Compare the version for `beautiful-mermaid` against this file's `metadata.version`.
+3. If the remote version is newer, tell the user once:
+   > **beautiful-mermaid** update available (local {X.Y} → remote {A.B}).
+   > Update: `npx skills update beautiful-mermaid` · or `cd <skills-repo> && git pull`
+4. If the fetch fails or web access is unavailable, skip silently.
+5. Never block or delay the task for this check.

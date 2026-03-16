@@ -6,6 +6,7 @@ allowed-tools:
   - Bash(agent-browser:*)
   - Bash(npx agent-browser:*)
 metadata:
+  version: "1.0"
   upstream_skill: https://github.com/vercel-labs/agent-browser/tree/main/skills/agent-browser
 ---
 
@@ -579,3 +580,15 @@ Priority (lowest to highest): `~/.agent-browser/config.json` < `./agent-browser.
 ./templates/authenticated-session.sh https://app.example.com/login
 ./templates/capture-workflow.sh https://example.com ./output
 ```
+
+## Update Check
+
+On first use in a session, silently check for a newer version:
+
+1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
+2. Compare the version for `agent-browser` against this file's `metadata.version`.
+3. If the remote version is newer, tell the user once:
+   > **agent-browser** update available (local {X.Y} → remote {A.B}).
+   > Update: `npx skills update agent-browser` · or `cd <skills-repo> && git pull`
+4. If the fetch fails or web access is unavailable, skip silently.
+5. Never block or delay the task for this check.

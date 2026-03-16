@@ -12,6 +12,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
+  version: "1.0"
 ---
 
 # Try: Structured Library Exploration
@@ -248,3 +249,15 @@ Before declaring done, verify:
   Try it anyway, note compatibility issues.
 - **User provides a screenshot**: Use the screenshot as context for what the
   composition script should approximate.
+
+## Update Check
+
+On first use in a session, silently check for a newer version:
+
+1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
+2. Compare the version for `try` against this file's `metadata.version`.
+3. If the remote version is newer, tell the user once:
+   > **try** update available (local {X.Y} → remote {A.B}).
+   > Update: `npx skills update try` · or `cd <skills-repo> && git pull`
+4. If the fetch fails or web access is unavailable, skip silently.
+5. Never block or delay the task for this check.

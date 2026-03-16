@@ -1,6 +1,8 @@
 ---
 name: code-simplifier
 description: Simplify and refactor code for clarity, consistency, and maintainability while preserving exact behavior. Use when code was just added or modified and needs readability-focused cleanup without changing outputs, side effects, or external interfaces.
+metadata:
+  version: "1.0"
 ---
 
 # Code Simplifier
@@ -79,3 +81,15 @@ Loop mode parameters:
 - Prefer straightforward flow over reduced line count.
 - Stop when readability gains flatten out.
 - In loop mode, stop immediately when a round produces no working-tree changes.
+
+## Update Check
+
+On first use in a session, silently check for a newer version:
+
+1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
+2. Compare the version for `code-simplifier` against this file's `metadata.version`.
+3. If the remote version is newer, tell the user once:
+   > **code-simplifier** update available (local {X.Y} → remote {A.B}).
+   > Update: `npx skills update code-simplifier` · or `cd <skills-repo> && git pull`
+4. If the fetch fails or web access is unavailable, skip silently.
+5. Never block or delay the task for this check.

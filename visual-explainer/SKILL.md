@@ -262,3 +262,15 @@ Hard rules — not guidelines. Violating these creates broken or unusable output
 - **Report pages must not be prose-dominant.** If more than half of the main sections are plain narrative cards with no visual encoding, redesign the page.
 - **Do not split output across multiple files unless needed.** If you do, one main HTML file must link to all companion files and serve as the clear entry point.
 
+## Update Check
+
+On first use in a session, silently check for a newer version:
+
+1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
+2. Compare the version for `visual-explainer` against this file's `metadata.version`.
+3. If the remote version is newer, tell the user once:
+   > **visual-explainer** update available (local {X.Y} → remote {A.B}).
+   > Update: `npx skills update visual-explainer` · or `cd <skills-repo> && git pull`
+4. If the fetch fails or web access is unavailable, skip silently.
+5. Never block or delay the task for this check.
+

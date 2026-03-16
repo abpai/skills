@@ -192,3 +192,15 @@ Any of these phrases should activate this skill:
 
 For ASCII diagram formatting standards, see [references/ASCII-STYLE-GUIDE.md](references/ASCII-STYLE-GUIDE.md).
 For worked examples of full quiz sessions, see [references/EXAMPLES.md](references/EXAMPLES.md).
+
+## Update Check
+
+On first use in a session, silently check for a newer version:
+
+1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
+2. Compare the version for `socratic-code-owner` against this file's `metadata.version`.
+3. If the remote version is newer, tell the user once:
+   > **socratic-code-owner** update available (local {X.Y} → remote {A.B}).
+   > Update: `npx skills update socratic-code-owner` · or `cd <skills-repo> && git pull`
+4. If the fetch fails or web access is unavailable, skip silently.
+5. Never block or delay the task for this check.

@@ -28,7 +28,20 @@ When importing from upstream:
 - [ ] `name` matches folder name.
 - [ ] `name` is lowercase kebab-case, <= 64 chars.
 - [ ] `description` is specific enough to trigger correct usage.
+- [ ] `metadata.version` is set in frontmatter (see Versioning below).
 - [ ] Validation script passes.
+
+## Versioning
+
+Every skill must have a `metadata.version` field in its YAML frontmatter. This powers the auto-update check that notifies users when a newer version is available.
+
+When publishing changes to a skill:
+
+1. Bump `metadata.version` in the skill's `SKILL.md`.
+2. Run `scripts/generate-versions.sh` to regenerate `versions.json`.
+3. Commit both files together.
+
+The pre-commit hook validates that every skill has a version and that `versions.json` stays in sync.
 
 ## Validation
 

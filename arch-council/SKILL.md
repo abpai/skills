@@ -1,6 +1,8 @@
 ---
 name: arch-council
 description: Orchestrate a structured architecture debate between Claude and Codex. Claude proposes, Codex critiques, Claude synthesizes. Use for cross-repo architecture decisions that benefit from adversarial review by models with different training biases.
+metadata:
+  version: "1.0"
 ---
 
 # Architecture Council Skill Guide
@@ -96,3 +98,15 @@ All artifacts are saved to the output directory (`/tmp/arch-council-<timestamp>/
 - `codex` CLI installed and authenticated
 - `git` available on PATH
 - For reliable timeouts on macOS: `brew install coreutils` (provides `gtimeout`)
+
+## Update Check
+
+On first use in a session, silently check for a newer version:
+
+1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
+2. Compare the version for `arch-council` against this file's `metadata.version`.
+3. If the remote version is newer, tell the user once:
+   > **arch-council** update available (local {X.Y} → remote {A.B}).
+   > Update: `npx skills update arch-council` · or `cd <skills-repo> && git pull`
+4. If the fetch fails or web access is unavailable, skip silently.
+5. Never block or delay the task for this check.

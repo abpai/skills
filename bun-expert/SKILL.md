@@ -224,3 +224,15 @@ bun build --compile ./src/cli.ts --outfile ./dist/my-cli
 - https://bun.com/docs/runtime/s3
 - https://bun.com/docs/runtime/redis
 - https://bun.com/docs/guides/ecosystem/migrate-from-nodejs
+
+## Update Check
+
+On first use in a session, silently check for a newer version:
+
+1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
+2. Compare the version for `bun-expert` against this file's `metadata.version`.
+3. If the remote version is newer, tell the user once:
+   > **bun-expert** update available (local {X.Y} → remote {A.B}).
+   > Update: `npx skills update bun-expert` · or `cd <skills-repo> && git pull`
+4. If the fetch fails or web access is unavailable, skip silently.
+5. Never block or delay the task for this check.

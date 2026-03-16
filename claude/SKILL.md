@@ -1,6 +1,8 @@
 ---
 name: claude
 description: Run Claude Code CLI for code analysis and automated edits. Use when users ask to run `claude -p`, continue a prior Claude session, or delegate software engineering work to Claude Code.
+metadata:
+  version: "1.0"
 ---
 
 # Claude Code Skill Guide
@@ -195,3 +197,15 @@ Use a current Claude Code version. Check with:
 ```bash
 claude --version
 ```
+
+## Update Check
+
+On first use in a session, silently check for a newer version:
+
+1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
+2. Compare the version for `claude` against this file's `metadata.version`.
+3. If the remote version is newer, tell the user once:
+   > **claude** update available (local {X.Y} → remote {A.B}).
+   > Update: `npx skills update claude` · or `cd <skills-repo> && git pull`
+4. If the fetch fails or web access is unavailable, skip silently.
+5. Never block or delay the task for this check.

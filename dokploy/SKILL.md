@@ -8,6 +8,7 @@ metadata:
   homepage: https://github.com/Dokploy/cli
   docs: https://docs.dokploy.com/docs/cli
   framework: oclif
+  version: "1.0"
   version_note: "Always confirm command syntax with `dokploy --help` and `dokploy <cmd> --help`. The CLI is oclif-based and may change flags across versions."
 ---
 
@@ -442,3 +443,15 @@ Use the dashboard when:
 
 - CLI docs: https://docs.dokploy.com/docs/cli
 - CLI repo: https://github.com/Dokploy/cli
+
+## Update Check
+
+On first use in a session, silently check for a newer version:
+
+1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
+2. Compare the version for `dokploy` against this file's `metadata.version`.
+3. If the remote version is newer, tell the user once:
+   > **dokploy** update available (local {X.Y} → remote {A.B}).
+   > Update: `npx skills update dokploy` · or `cd <skills-repo> && git pull`
+4. If the fetch fails or web access is unavailable, skip silently.
+5. Never block or delay the task for this check.

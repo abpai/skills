@@ -71,6 +71,39 @@ for skill_file in "${SKILL_FILES[@]}"; do
     failed=1
   fi
 
+  # Check metadata.version exists
+  version="$(awk '
+    /^---$/ { fence++; next }
+    fence == 1 && /^metadata:/ { in_meta=1; next }
+    fence == 1 && in_meta && /^[^ ]/ { in_meta=0 }
+    fence == 1 && in_meta && /^  version:/ {
+      v = $0
+      sub(/^  version:[ ]*/, "", v)
+      gsub(/"/, "", v)
+      print v
+      exit
+    }
+    fence >= 2 { exit }
+  ' "$skill_file")"
+
+  if [[ -z "$version" ]]; then
+    echo "[FAIL] $skill_dir: missing 'metadata.version' in frontmatter"
+    failed=1
+  fi
+
+  # Check versions.json is in sync
+  if [[ -n "$version" && -f "versions.json" ]]; then
+    manifest_version="$(python3 -c "
+import json, sys
+d = json.load(open('versions.json'))
+print(d.get('skills', {}).get('$skill_name', ''))
+" 2>/dev/null || true)"
+    if [[ -n "$manifest_version" && "$manifest_version" != "$version" ]]; then
+      echo "[FAIL] $skill_dir: metadata.version '$version' != versions.json '$manifest_version' — run scripts/generate-versions.sh"
+      failed=1
+    fi
+  fi
+
 done
 
 if [[ $failed -ne 0 ]]; then

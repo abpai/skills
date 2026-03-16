@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "skills": {
+    "agent-browser": "1.0",
+    "arch-council": "1.0",
+    "beautiful-mermaid": "1.0",
+    "bun-expert": "1.1",
+    "claude": "1.0",
+    "cli-design-expert": "1.1.0",
+    "code-simplifier": "1.0",
+    "codex": "1.0",
+    "dead-code-eliminator": "1.0",
+    "dokploy": "1.0",
+    "human-writer": "1.2",
+    "project-memory": "1.0",
+    "review-and-commit": "1.0",
+    "socratic-code-owner": "1.0",
+    "try": "1.0",
+    "visual-explainer": "0.5.2"
+  }
+}
