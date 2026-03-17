@@ -58,6 +58,7 @@ agent-browser get value @e1       # Get input value
 agent-browser get attr @e1 href   # Get attribute
 agent-browser get title           # Get page title
 agent-browser get url             # Get current URL
+agent-browser get cdp-url         # Get CDP WebSocket URL
 agent-browser get count ".item"   # Count matching elements
 agent-browser get box @e1         # Get bounding box
 agent-browser get styles @e1      # Get computed styles (font, color, bg, etc.)
@@ -77,6 +78,8 @@ agent-browser is checked @e1      # Check if checked
 agent-browser screenshot          # Save to temporary directory
 agent-browser screenshot path.png # Save to specific path
 agent-browser screenshot --full   # Full page
+agent-browser screenshot --screenshot-dir ./shots           # Save to directory
+agent-browser screenshot --screenshot-format jpeg --screenshot-quality 80  # Format/quality
 agent-browser pdf output.pdf      # Save as PDF
 ```
 
@@ -129,6 +132,7 @@ agent-browser find nth 2 "a" hover
 
 ```bash
 agent-browser set viewport 1920 1080          # Set viewport size
+agent-browser set viewport 1920 1080 2        # Retina / HiDPI (scale factor)
 agent-browser set device "iPhone 14"          # Emulate device
 agent-browser set geo 37.7749 -122.4194       # Set geolocation (alias: geolocation)
 agent-browser set offline on                  # Toggle offline mode
@@ -245,6 +249,7 @@ agent-browser console --clear             # Clear console
 agent-browser errors                      # View page errors
 agent-browser errors --clear              # Clear errors
 agent-browser highlight @e1               # Highlight element
+agent-browser inspect                     # Open DevTools inspector
 agent-browser trace start                 # Start recording trace
 agent-browser trace stop trace.zip        # Stop and save trace
 agent-browser profiler start              # Start Chrome DevTools profiling
@@ -259,5 +264,12 @@ AGENT_BROWSER_EXECUTABLE_PATH="/path/chrome" # Custom browser path
 AGENT_BROWSER_EXTENSIONS="/ext1,/ext2"       # Comma-separated extension paths
 AGENT_BROWSER_PROVIDER="browserbase"         # Cloud browser provider
 AGENT_BROWSER_STREAM_PORT="9223"             # WebSocket streaming port
+AGENT_BROWSER_SESSION_NAME="myapp"          # Default session name for auto-save/restore
+AGENT_BROWSER_STATE="./state.json"          # State file to load on startup
+AGENT_BROWSER_AUTO_CONNECT="1"              # Auto-connect to existing Chrome
+AGENT_BROWSER_PROFILE="./browser-data"      # Chrome user-data directory for persistence
 AGENT_BROWSER_HOME="/path/to/agent-browser"  # Custom install location
+AGENT_BROWSER_IDLE_TIMEOUT_MS="60000"       # Daemon auto-shutdown timeout (ms)
+AGENT_BROWSER_HEADED="1"                    # Headed mode via env var
+AGENT_BROWSER_ENGINE="lightpanda"           # Browser engine selection
 ```

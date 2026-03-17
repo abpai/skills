@@ -6,6 +6,9 @@ Login flows, session persistence, OAuth, 2FA, and authenticated browsing.
 
 ## Contents
 
+- [Import Auth from Your Browser](#import-auth-from-your-browser)
+- [Persistent Profiles](#persistent-profiles)
+- [Session Persistence](#session-persistence)
 - [Basic Login Flow](#basic-login-flow)
 - [Saving Authentication State](#saving-authentication-state)
 - [Restoring Authentication](#restoring-authentication)
@@ -15,6 +18,62 @@ Login flows, session persistence, OAuth, 2FA, and authenticated browsing.
 - [Cookie-Based Auth](#cookie-based-auth)
 - [Token Refresh Handling](#token-refresh-handling)
 - [Security Best Practices](#security-best-practices)
+
+## Import Auth from Your Browser
+
+The fastest way to reuse an authenticated Chrome session:
+
+1. **Launch Chrome with remote debugging:**
+   ```bash
+   # macOS
+   open -na "Google Chrome" --args --remote-debugging-port=9222 --user-data-dir="$HOME/chrome-debug-profile"
+   # Linux
+   google-chrome --remote-debugging-port=9222 --user-data-dir="$HOME/chrome-debug-profile"
+   ```
+
+   If you use `--user-data-dir`, Chrome starts with a separate profile. Log into the target site in that browser window before continuing. If you already have Chrome running with remote debugging on your normal profile, you can reuse that instead.
+
+2. **Grab the authenticated state:**
+   ```bash
+   agent-browser --auto-connect state save ./browser-auth.json
+   ```
+
+3. **Reuse in automation:**
+   ```bash
+   agent-browser --state ./browser-auth.json open https://app.example.com/dashboard
+   ```
+
+## Persistent Profiles
+
+Use `--profile` to point at a Chrome user-data directory. All cookies, localStorage, extensions, and settings persist across runs:
+
+```bash
+# First run — login manually or programmatically
+agent-browser --profile ./browser-data open https://app.example.com/login
+# ... login flow ...
+agent-browser close
+
+# Subsequent runs — already authenticated
+agent-browser --profile ./browser-data open https://app.example.com/dashboard
+```
+
+The directory is a standard Chrome user-data dir, so you can also pre-seed it by launching Chrome directly with `--user-data-dir`.
+
+## Session Persistence
+
+Use `--session-name` to automatically save and restore cookies and localStorage across browser restarts:
+
+```bash
+# First run — login and state is auto-saved on close
+agent-browser --session-name myapp open https://app.example.com/login
+# ... login flow ...
+agent-browser close  # State auto-saved to ~/.agent-browser/sessions/
+
+# Next run — state is auto-loaded
+agent-browser --session-name myapp open https://app.example.com/dashboard
+```
+
+Session state is stored in `~/.agent-browser/sessions/`. Add `AGENT_BROWSER_ENCRYPTION_KEY` to encrypt state at rest.
 
 ## Basic Login Flow
 

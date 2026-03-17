@@ -6,13 +6,13 @@ allowed-tools:
   - Bash(agent-browser:*)
   - Bash(npx agent-browser:*)
 metadata:
-  version: "1.0"
+  version: "1.1"
   upstream_skill: https://github.com/vercel-labs/agent-browser/tree/main/skills/agent-browser
 ---
 
 # Browser Automation with agent-browser
 
-> **MANDATORY**: Always use the `agent-browser` CLI for browser automation — do NOT use MCP chrome-devtools tools. To reuse an existing Chrome session, prefer `agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"` so later commands stay attached to the same browser; use `--cdp <port>` or `--auto-connect` for one-off calls. For faster startup, `--native` and `AGENT_BROWSER_NATIVE=1` are supported upstream, but the native daemon is still experimental.
+> **MANDATORY**: Always use the `agent-browser` CLI for browser automation — do NOT use MCP chrome-devtools tools. To reuse an existing Chrome session, prefer `agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"` so later commands stay attached to the same browser; use `--cdp <port>` or `--auto-connect` for one-off calls.
 
 ## Core Workflow
 
@@ -119,6 +119,18 @@ Do not proactively run `agent-browser close` here. In a CDP reuse workflow, that
 
 If the user wants the clean browser visible, add `--headed` to the final command.
 
+## Handling Authentication
+
+Five approaches, from simplest to most secure:
+
+1. **Import from browser** — launch Chrome with `--remote-debugging-port`, grab auth state, reuse
+2. **Persistent profile** — `--profile ./browser-data` keeps a Chrome user-data directory
+3. **Session name** — `--session-name myapp` auto-saves/restores cookies and storage
+4. **Auth vault** — encrypted credential store; LLM never sees passwords
+5. **State file** — `state save` / `state load` for manual snapshot of cookies + storage
+
+See [Common Patterns](#common-patterns) below for detailed examples of Auth Vault and State Persistence workflows, and [references/authentication.md](references/authentication.md) for the full guide.
+
 ## Command Chaining
 
 Commands can be chained with `&&` in a single shell invocation. The browser persists between commands via a background daemon, so chaining is safe and more efficient than separate calls.
@@ -166,11 +178,15 @@ agent-browser scroll down 500 --selector "div.content"  # Scroll within a specif
 agent-browser get text @e1            # Get element text
 agent-browser get url                 # Get current URL
 agent-browser get title               # Get page title
+agent-browser get cdp-url             # Get CDP WebSocket URL
 
 # Wait
 agent-browser wait @e1                # Wait for element
 agent-browser wait --load networkidle # Wait for network idle
 agent-browser wait --url "**/page"    # Wait for URL pattern
+agent-browser wait --text "Welcome"   # Wait for text to appear
+agent-browser wait --fn "!document.body.innerText.includes('Loading...')"  # Wait for JS condition
+agent-browser wait "#spinner" --state hidden  # Wait for element to disappear
 agent-browser wait 2000               # Wait milliseconds
 
 # Downloads
@@ -182,7 +198,15 @@ agent-browser --download-path ./downloads open <url>  # Set default download dir
 agent-browser screenshot              # Screenshot to temp dir
 agent-browser screenshot --full       # Full page screenshot
 agent-browser screenshot --annotate   # Annotated screenshot with numbered element labels
+agent-browser screenshot --screenshot-dir ./shots           # Save to specific directory
+agent-browser screenshot --screenshot-format jpeg --screenshot-quality 80  # Format and quality
 agent-browser pdf output.pdf          # Save as PDF
+
+# Clipboard
+agent-browser clipboard read          # Read clipboard contents
+agent-browser clipboard write "Hello, World!"  # Write to clipboard
+agent-browser clipboard copy          # Copy current selection
+agent-browser clipboard paste         # Paste clipboard contents
 
 # Diff (compare page states)
 agent-browser diff snapshot                          # Compare current vs last snapshot
@@ -301,15 +325,38 @@ AGENT_BROWSER_COLOR_SCHEME=dark agent-browser open https://example.com
 agent-browser set media dark
 ```
 
+### Viewport & Responsive Testing
+
+```bash
+# Set viewport size
+agent-browser set viewport 1920 1080
+
+# Mobile viewport
+agent-browser set viewport 375 812
+
+# Retina / HiDPI — third parameter is the device scale factor
+# (e.g., 2 for Retina, 3 for iPhone Plus)
+agent-browser set viewport 1920 1080 2
+
+# Device emulation (viewport + user-agent + touch)
+agent-browser set device "iPhone 14"
+agent-browser set device "Pixel 7"
+```
+
+The `scale` parameter (device pixel ratio) controls how many physical pixels map to each CSS pixel. Use `2` for standard Retina displays, `3` for high-density mobile screens. This affects screenshot resolution and media queries like `(-webkit-min-device-pixel-ratio: 2)`.
+
 ### Visual Browser (Debugging)
 
 ```bash
 agent-browser --headed open https://example.com
 agent-browser highlight @e1          # Highlight element
+agent-browser inspect                # Open DevTools inspector
 agent-browser record start demo.webm # Record session
 agent-browser profiler start         # Start Chrome DevTools profiling
 agent-browser profiler stop trace.json # Stop and save profile (path optional)
 ```
+
+You can also enable headed mode via environment variable: `AGENT_BROWSER_HEADED=1 agent-browser open https://example.com`
 
 ### Local Files (PDFs, HTML)
 
@@ -423,7 +470,7 @@ agent-browser diff url https://staging.example.com https://prod.example.com --sc
 
 ## Timeouts and Slow Pages
 
-The default Playwright timeout is 25 seconds for local browsers. This can be overridden with the `AGENT_BROWSER_DEFAULT_TIMEOUT` environment variable (value in milliseconds). For slow websites or large pages, use explicit waits instead of relying on the default timeout:
+The default timeout is 25 seconds for local browsers. This can be overridden with the `AGENT_BROWSER_DEFAULT_TIMEOUT` environment variable (value in milliseconds). For slow websites or large pages, use explicit waits instead of relying on the default timeout:
 
 ```bash
 # Wait for network activity to settle (best for slow pages)
@@ -456,6 +503,12 @@ agent-browser --session agent2 open site-b.com
 
 # Check active sessions
 agent-browser session list
+```
+
+Set an idle timeout so the daemon auto-shuts down when inactive:
+
+```bash
+AGENT_BROWSER_IDLE_TIMEOUT_MS=60000 agent-browser open example.com
 ```
 
 Always close your browser session when done to avoid leaked processes:
@@ -554,6 +607,20 @@ Create `agent-browser.json` in the project root for persistent settings:
 ```
 
 Priority (lowest to highest): `~/.agent-browser/config.json` < `./agent-browser.json` < env vars < CLI flags. Use `--config <path>` or `AGENT_BROWSER_CONFIG` env var for a custom config file (exits with error if missing/invalid). All CLI options map to camelCase keys (e.g., `--executable-path` -> `"executablePath"`). Boolean flags accept `true`/`false` values (e.g., `--headed false` overrides config). Extensions from user and project configs are merged, not replaced.
+
+## Browser Engine Selection
+
+By default agent-browser uses Chromium via Playwright. You can switch to [Lightpanda](https://lightpanda.io), a lightweight headless browser optimized for AI scraping:
+
+```bash
+# Via flag
+agent-browser --engine lightpanda open https://example.com
+
+# Via environment variable
+AGENT_BROWSER_ENGINE=lightpanda agent-browser open https://example.com
+```
+
+**Lightpanda limitations:** No extensions, no persistent profiles/state files, and no `file://` local file access. It is best for fast text extraction and snapshot-based workflows.
 
 ## Deep-Dive Documentation
 

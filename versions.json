@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "skills": {
-    "agent-browser": "1.0",
+    "agent-browser": "1.1",
     "arch-council": "1.0",
     "beautiful-mermaid": "1.0",
     "bun-expert": "1.1",
