@@ -20,7 +20,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2"
+  version: "1.3"
   upstream_skill: "https://github.com/blader/humanizer"
   tags: "writing editing humanize voice anti-slop GEO"
 ---
@@ -478,8 +478,10 @@ On first use in a session, silently check for a newer version:
 
 1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
 2. Compare the version for `human-writer` against this file's `metadata.version`.
-3. If the remote version is newer, tell the user once:
+3. If the remote version is newer, pause before the main task and ask:
    > **human-writer** update available (local {X.Y} → remote {A.B}).
-   > Update: `npx skills update human-writer` · or `cd <skills-repo> && git pull`
-4. If the fetch fails or web access is unavailable, skip silently.
-5. Never block or delay the task for this check.
+   > Would you like me to update it for you first?
+   > I can run `npx skills update human-writer` for you.
+4. If the user says yes, run the update before continuing.
+5. If the user says no, continue with the current local version.
+6. If the fetch fails or web access is unavailable, skip silently.

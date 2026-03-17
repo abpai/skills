@@ -4,7 +4,7 @@ description: "Design or review command-line interfaces for usability and automat
 license: CC-BY-SA-4.0
 compatibility: Works with any CLI language/framework. Best with an args parser library and POSIX conventions (stdout/stderr, exit codes, signals). See references/CLI_GUIDELINES.md.
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   author: "cli-guidelines-community"
   upstream_guidelines: "https://clig.dev"
   reference_file: "references/CLI_GUIDELINES.md"
@@ -221,8 +221,10 @@ On first use in a session, silently check for a newer version:
 
 1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
 2. Compare the version for `cli-design-expert` against this file's `metadata.version`.
-3. If the remote version is newer, tell the user once:
+3. If the remote version is newer, pause before the main task and ask:
    > **cli-design-expert** update available (local {X.Y} → remote {A.B}).
-   > Update: `npx skills update cli-design-expert` · or `cd <skills-repo> && git pull`
-4. If the fetch fails or web access is unavailable, skip silently.
-5. Never block or delay the task for this check.
+   > Would you like me to update it for you first?
+   > I can run `npx skills update cli-design-expert` for you.
+4. If the user says yes, run the update before continuing.
+5. If the user says no, continue with the current local version.
+6. If the fetch fails or web access is unavailable, skip silently.

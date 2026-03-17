@@ -10,7 +10,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0"
+  version: "1.1"
   upstream_source: "agentskills-community"
   tags: "learning socratic onboarding code-review architecture"
 ---
@@ -199,8 +199,10 @@ On first use in a session, silently check for a newer version:
 
 1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
 2. Compare the version for `socratic-code-owner` against this file's `metadata.version`.
-3. If the remote version is newer, tell the user once:
+3. If the remote version is newer, pause before the main task and ask:
    > **socratic-code-owner** update available (local {X.Y} → remote {A.B}).
-   > Update: `npx skills update socratic-code-owner` · or `cd <skills-repo> && git pull`
-4. If the fetch fails or web access is unavailable, skip silently.
-5. Never block or delay the task for this check.
+   > Would you like me to update it for you first?
+   > I can run `npx skills update socratic-code-owner` for you.
+4. If the user says yes, run the update before continuing.
+5. If the user says no, continue with the current local version.
+6. If the fetch fails or web access is unavailable, skip silently.

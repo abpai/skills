@@ -2,7 +2,7 @@
 name: arch-council
 description: Orchestrate a structured architecture debate between Claude and Codex. Claude proposes, Codex critiques, Claude synthesizes. Use for cross-repo architecture decisions that benefit from adversarial review by models with different training biases.
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Architecture Council Skill Guide
@@ -105,8 +105,10 @@ On first use in a session, silently check for a newer version:
 
 1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
 2. Compare the version for `arch-council` against this file's `metadata.version`.
-3. If the remote version is newer, tell the user once:
+3. If the remote version is newer, pause before the main task and ask:
    > **arch-council** update available (local {X.Y} → remote {A.B}).
-   > Update: `npx skills update arch-council` · or `cd <skills-repo> && git pull`
-4. If the fetch fails or web access is unavailable, skip silently.
-5. Never block or delay the task for this check.
+   > Would you like me to update it for you first?
+   > I can run `npx skills update arch-council` for you.
+4. If the user says yes, run the update before continuing.
+5. If the user says no, continue with the current local version.
+6. If the fetch fails or web access is unavailable, skip silently.

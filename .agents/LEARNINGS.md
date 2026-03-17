@@ -28,6 +28,9 @@
 | 2026-03-12 | self   | The `claude` skill recommended temp-file command substitution for long prompts, which still pushes the full prompt through argv | For CLI skills, prefer stdin-first examples (`< file` or pipes) over `$(cat file)` when prompts can be large or multi-line |
 | 2026-03-12 | self   | Used `status` as a shell variable name in this zsh environment, but `$status` is read-only | In ad-hoc shell snippets here, use names like `rc` or `exit_code` instead of `status` |
 | 2026-03-12 | self   | Tried to run multiple `git add`/`git commit` sequences in parallel, which collided on `.git/index.lock` and blurred commit boundaries | Serialize staged Git operations; never parallelize commits or other index-mutating commands in the same repo |
+| 2026-03-16 | self   | Wrote a Python heredoc that referenced `$tmpdir` inside a single-quoted heredoc body, so the temp path stayed literal and the check hit the wrong file | For ad-hoc Python snippets with temp paths, pass the path as `sys.argv` (or via env) instead of relying on shell expansion inside the heredoc |
+| 2026-03-17 | self   | Added `agent-browser` doc examples before checking the installed CLI surface, which let unsupported commands and flags slip into the skill docs | For external CLI-backed skills, verify new commands/options against the installed tool's `--help` output before updating `SKILL.md` or references |
+| 2026-03-17 | user   | Passive "update available" notices were too easy to ignore during skill startup | For skill update checks, pause before task work, ask whether to update now, and explicitly offer to run the update command on the user's behalf |
 
 ## User Preferences
 

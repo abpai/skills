@@ -2,7 +2,7 @@
 name: review-and-commit
 description: Review uncommitted Git changes for correctness, quality, and project convention alignment, then apply fixes and prepare a safe, atomic commit plan. Use when users ask to review code before committing, improve local changes, split work into logical conventional commits, or execute `git add`/`git commit` with clear staging boundaries.
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Code Review and Commit
@@ -127,8 +127,10 @@ On first use in a session, silently check for a newer version:
 
 1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
 2. Compare the version for `review-and-commit` against this file's `metadata.version`.
-3. If the remote version is newer, tell the user once:
+3. If the remote version is newer, pause before the main task and ask:
    > **review-and-commit** update available (local {X.Y} → remote {A.B}).
-   > Update: `npx skills update review-and-commit` · or `cd <skills-repo> && git pull`
-4. If the fetch fails or web access is unavailable, skip silently.
-5. Never block or delay the task for this check.
+   > Would you like me to update it for you first?
+   > I can run `npx skills update review-and-commit` for you.
+4. If the user says yes, run the update before continuing.
+5. If the user says no, continue with the current local version.
+6. If the fetch fails or web access is unavailable, skip silently.
