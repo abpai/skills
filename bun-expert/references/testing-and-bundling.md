@@ -38,6 +38,7 @@ bun test --only
 bun test --coverage
 bun test --coverage-reporter text
 bun test --coverage-reporter lcov
+bun test --path-ignore-patterns "*/fixtures/*"
 ```
 
 Notes:
@@ -104,6 +105,13 @@ expect(spy).toHaveBeenCalledWith("alice");
 spy.mockRestore();
 ```
 
+Both `mock()` and `spyOn()` support `Symbol.dispose`, enabling auto-cleanup with the `using` keyword:
+
+```typescript
+using fn = mock(() => "hello");
+// fn is automatically restored when scope exits
+```
+
 ### Module mocking
 
 ```typescript
@@ -130,6 +138,7 @@ bun build ./src/index.ts --target=browser --outfile ./dist/app.js
 bun build ./src/index.ts --minify
 bun build ./src/index.ts --sourcemap=external
 bun build ./src/cli.ts --compile --outfile ./dist/my-cli
+bun build ./src/app.ts --compile --target=browser  # self-contained HTML output
 ```
 
 ### JavaScript API

@@ -9,7 +9,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2"
+  version: "1.3"
   upstream_skill: "https://bun.com/docs"
   tags: "bun javascript typescript runtime server bundler test"
 ---
@@ -108,6 +108,8 @@ bun index.ts
 bun run start
 bun --watch index.ts
 bun --hot index.ts
+bun run --parallel script1 script2    # run concurrently
+bun run --sequential script1 script2  # run one after another
 ```
 
 ### Environment variables
@@ -163,6 +165,7 @@ Bun.serve({
 | SQL databases | `sql`, `SQL`, `Bun.sql`, `Bun.SQL` |
 | S3-compatible storage | `s3`, `S3Client` |
 | Redis | `redis`, `RedisClient` |
+| Scheduled tasks (cron) | `Bun.cron`, `Bun.cron.parse` |
 | Shell scripting | `Bun.$` / `$` |
 | Local files | `Bun.file`, `Bun.write` |
 | SQLite (embedded) | `bun:sqlite` |
@@ -181,6 +184,7 @@ bun test --test-name-pattern "auth"
 bun test --bail
 bun test --coverage
 bun test --coverage-reporter text
+bun test --path-ignore-patterns "*/fixtures/*"
 ```
 
 ### Bundling
@@ -189,6 +193,7 @@ bun test --coverage-reporter text
 bun build ./src/index.ts --outdir ./dist
 bun build --target=bun ./src/server.ts --outfile ./dist/server.js
 bun build --compile ./src/cli.ts --outfile ./dist/my-cli
+bun build --compile --target=browser ./src/app.ts  # self-contained HTML output
 ```
 
 ---
@@ -207,7 +212,7 @@ bun build --compile ./src/cli.ts --outfile ./dist/my-cli
 
 | Reference | Contents |
 |-----------|----------|
-| [references/builtin-apis.md](references/builtin-apis.md) | `Bun.serve`, SQL, S3, Redis, shell, filesystem, crypto/password utilities |
+| [references/builtin-apis.md](references/builtin-apis.md) | `Bun.serve`, SQL, S3, Redis, cron, shell, filesystem, crypto/password utilities |
 | [references/testing-and-bundling.md](references/testing-and-bundling.md) | `bun test` usage, mocking patterns, `bun build` CLI and API |
 | [references/node-migration.md](references/node-migration.md) | Practical Node-to-Bun migration steps and compatibility guidance |
 
@@ -223,6 +228,7 @@ bun build --compile ./src/cli.ts --outfile ./dist/my-cli
 - https://bun.com/docs/runtime/sql
 - https://bun.com/docs/runtime/s3
 - https://bun.com/docs/runtime/redis
+- https://bun.com/docs/runtime/cron
 - https://bun.com/docs/guides/ecosystem/migrate-from-nodejs
 
 ## Update Check

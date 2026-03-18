@@ -173,6 +173,34 @@ await custom.close();
 
 ---
 
+## Bun.cron
+
+Register and manage OS-level cron jobs (crontab on Linux, launchd on macOS, Task Scheduler on Windows).
+
+### Parse a cron expression
+
+```typescript
+const next = Bun.cron.parse("*/5 * * * *"); // next matching Date
+```
+
+### Register a cron job
+
+```typescript
+Bun.cron("cleanup-temp", "0 3 * * *", {
+  scheduled() {
+    console.log("Running nightly cleanup");
+  },
+});
+```
+
+### Remove a registered job
+
+```typescript
+Bun.cron.remove("cleanup-temp");
+```
+
+---
+
 ## Bun.$ (Shell)
 
 ```typescript
@@ -212,6 +240,7 @@ const ok = await Bun.password.verify("secret", passwordHash);
 - https://bun.com/docs/runtime/sqlite
 - https://bun.com/docs/runtime/s3
 - https://bun.com/docs/runtime/redis
+- https://bun.com/docs/runtime/cron
 - https://bun.com/docs/runtime/shell
 - https://bun.com/docs/api/file-io
 - https://bun.com/docs/api/hashing
