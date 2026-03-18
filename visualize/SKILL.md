@@ -64,6 +64,14 @@ For the full Threaded design tokens (colors, typography, motion), see `./referen
 - **Interactive when it helps** comprehension (step-through, hover, collapse)
 - **Never use `innerHTML` with user-provided content** (XSS prevention)
 
+## Avoiding Escaped Backticks in Output
+
+The Write tool can corrupt JavaScript template literals, writing literal `\`` and `\${` instead of real backticks and interpolations. This breaks all htm tagged templates. To prevent it:
+
+1. **Extract data into separate `const` variables** above the htm templates. Mermaid chart definition strings, config arrays, long text — declare them as plain constants first, then reference the variable inside `html\`...\``.
+2. **Keep htm expressions simple.** Pass variables by reference (`${myVar}`, `${myArray.map(...)}`). Do not build complex multi-line strings or nested template literals inline within an `html\`...\`` block.
+3. **Verify after writing.** Re-read the first 30 lines of the `<script type="module">` block in the written file and confirm there are no escaped sequences (`\`` or `\${`). If Chrome DevTools MCP is available, check the browser console for `SyntaxError` after opening the file.
+
 ## Before Delivering
 
 - **First screen test**: is a meaningful visual visible without scrolling?
