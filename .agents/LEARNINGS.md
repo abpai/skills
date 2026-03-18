@@ -14,14 +14,13 @@
 | 2026-02-21 | self   | Bun examples drifted to outdated imports/flags (`bun:redis`, older test flag names) | Re-verify Bun APIs and CLI flags against `bun.com/docs` and local `bun --help` before publishing skill updates |
 | 2026-03-02 | self   | Draft skill passed content review but failed publish gate due to folder/name mismatch (`dokploy` vs `dokploy-cli`) | Run `scripts/validate-skills.sh` immediately after drafting or renaming a skill, before broader polish |
 | 2026-03-03 | self   | Removed/added skills without updating the root README skill list | When adding/removing skills, update `README.md` skill inventory in the same commit |
-| 2026-03-08 | self   | Generated an execution-flow explainer with hand-built HTML boxes instead of the Excalidraw flowchart pipeline | For execution flow / code flow explainers, the primary diagram itself should render through the Excalidraw pipeline, not just mimic a flow layout with CSS |
-| 2026-03-08 | self   | Removed the exported Excalidraw SVG width/height, which collapsed the rendered diagram to `0x0` even though the SVG existed in the DOM | Preserve or restore intrinsic SVG dimensions from `viewBox`, then scale responsively with CSS instead of stripping sizing attrs |
+| 2026-03-08 | self   | Generated an execution-flow explainer with hand-built HTML boxes instead of a diagram engine | For execution flow / code flow explainers, use Mermaid.js for the primary diagram instead of mimicking a flow layout with CSS |
 | 2026-03-08 | self   | Used `git write-tree` and `eval` in a loop wrapper, which missed unstaged edits and let prompt text hit shell parsing | For agent wrappers, detect changes from `git status --porcelain` and pass user prompt text as a literal argv entry instead of shell-evaluating it |
 | 2026-03-09 | user   | A review note claimed `agent-browser` lacked `--native`, but upstream now documents `--native` and `AGENT_BROWSER_NATIVE=1` | Re-check the latest upstream README/skill before removing or downgrading agent-browser flags that may have changed recently |
 | 2026-03-09 | self   | A multi-mode shell script treated preview and prebuilt-input flows like full live execution | Gate required args and binary checks by the execution mode so `--dry-run` and `--context-file` paths stay usable |
 | 2026-03-09 | self   | `arch-council` passed full prompt files as argv strings and used GNU-only `find -maxdepth`, breaking large runs and stock macOS | For shell skills, stream large prompts over stdin and prefer BSD/POSIX-friendly directory traversal patterns when macOS is a target |
-| 2026-03-11 | user   | `visual-explainer` reports could still come out prose-heavy with too little actual diagramming | In the skill and report prompts, require a structural visual plus an evidence visual for report-style pages and add a first-screen visual check |
-| 2026-03-11 | user   | `visual-explainer` could leave users with several output files and no obvious starting point | Default to one HTML file; if multiple files are necessary, make the main file an index that links to every companion file |
+| 2026-03-11 | user   | `visualize` reports could still come out prose-heavy with too little actual diagramming | In the skill and report prompts, require a structural visual plus an evidence visual for report-style pages and add a first-screen visual check |
+| 2026-03-11 | user   | `visualize` could leave users with several output files and no obvious starting point | Default to one HTML file; if multiple files are necessary, make the main file an index that links to every companion file |
 | 2026-03-12 | self   | `arch-council` context scanning used bare substrings like `gin`, which matched unrelated words like `margin` and polluted the API surface section | For heuristic code scanners, use word boundaries or syntax-shaped patterns, and prefer `rg --pcre2` over loose substring grep when available |
 | 2026-03-12 | self   | Used a bare zsh glob against `/tmp/arch-council-fixture.*`, which failed with `nomatch` when the pattern didn't expand | In this environment, prefer `find`, `ls`, or quoted/glob-safe patterns over bare zsh globs for ad-hoc temp paths |
 | 2026-03-12 | self   | Ran `rg` with a pattern that began with `--`, so ripgrep parsed it as flags instead of a search pattern | When searching for literals or regexes that start with dashes, insert `rg -- <pattern> <paths>` so option parsing stops first |
@@ -40,9 +39,8 @@
 - Prefer automated local quality gates (pre-commit hooks) for skill validation.
 - Use `.agents/LEARNINGS.md` going forward as the single project memory file.
 - For locally authored skills, prefer `metadata.author: Andy Pai`; keep upstream credit in separate metadata fields.
-- For `visual-explainer`, prefer Excalidraw-style diagram rendering over plain Mermaid when possible.
+- For `visualize`, use Mermaid with Threaded theming for all diagrams.
 - For editorial UI, prefer Medium-like styling aligned with `threaded` (Merriweather + Inter, slate palette, restrained visuals).
-- For execution flow / code flow visuals, explicitly route to Excalidraw flowchart rendering.
 - For `agent-browser`, prefer a CDP attach-once workflow (`agent-browser connect ...`) over repeatedly launching fresh browser instances when session reuse is desired.
 
 ## Patterns That Work
@@ -63,8 +61,7 @@
 - For Bun-focused skills, prefer evergreen doc-backed guidance over hard-coded benchmark percentages and long version timelines.
 - In bash templates, pull repeated condition logic into small helpers first, then flatten nested branches; this keeps behavior stable while improving readability.
 - Update root docs (`README.md` skill inventory) whenever skill folders are added, renamed, or removed.
-- For `visual-explainer` execution-flow pages, pair one real Excalidraw-rendered flowchart with supporting editorial sections instead of replacing the flowchart with static HTML boxes.
-- For exported Excalidraw SVGs in standalone HTML, keep intrinsic dimensions and apply responsive scaling with `width: 100%`, `height: auto`, and a `max-width` derived from `viewBox`.
+- For `visualize` execution-flow pages, pair one Mermaid-rendered flowchart with supporting editorial sections instead of replacing the flowchart with static HTML boxes.
 - For Codex-related skills, prefer `gpt-5.4` as the default model; OpenAI now recommends the general-purpose GPT-5.4 over `gpt-5.3-codex` for most coding tasks.
 - For `agent-browser`, use `agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"` to reuse a logged-in Chrome, and use an empty config plus unset persistence env vars for truly clean sessions.
 - For skill renames, update the skill folder name, `SKILL.md` `name` field, and root `README.md` inventory atomically, then run a repository-wide text check for stale references.

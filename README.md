@@ -64,7 +64,7 @@ If `skills-ref` is unavailable on `PATH`, the script falls back to basic local c
 - `project-memory`
 - `socratic-code-owner`
 - `try`
-- `visual-explainer`
+- `visualize`
 
 ## Security scanning
 

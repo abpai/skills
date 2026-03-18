@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.0] - 2026-03-17
+
+### Rewrite as `visualize`
+
+Complete rewrite. The skill is renamed from `visual-explainer` to `visualize` and rebuilt around a single Preact + Tailwind base template with the Threaded design system.
+
+**Breaking changes:**
+- Skill renamed from `visual-explainer` to `visualize` — update install paths
+- `/review` and `/fact-check` slash commands removed (may return as a separate skill)
+- Excalidraw rendering removed — all diagrams use Mermaid.js
+- 6 HTML templates and 3 reference docs replaced by 1 template + 2 reference docs
+
+**Added:**
+- `templates/base.html` — single Preact + htm + Tailwind reference template with Threaded styling
+- `references/design-system.md` — condensed Threaded design tokens (colors, typography, layout, motion)
+- `references/mermaid-tips.md` — Mermaid syntax tips and Threaded theming configuration
+
+**Removed:**
+- `templates/` — architecture.html, dashboard.html, data-table.html, mermaid-flowchart.html, timeline.html, walkthrough.html
+- `references/` — aesthetic-palettes.md, css-patterns.md, libraries.md
+- `prompts/` — review.md, fact-check.md
+- `banner.png`
+
 ## [0.5.2] - 2026-03-08
 
 ### Excalidraw Import Fix
