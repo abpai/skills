@@ -30,6 +30,9 @@
 | 2026-03-16 | self   | Wrote a Python heredoc that referenced `$tmpdir` inside a single-quoted heredoc body, so the temp path stayed literal and the check hit the wrong file | For ad-hoc Python snippets with temp paths, pass the path as `sys.argv` (or via env) instead of relying on shell expansion inside the heredoc |
 | 2026-03-17 | self   | Added `agent-browser` doc examples before checking the installed CLI surface, which let unsupported commands and flags slip into the skill docs | For external CLI-backed skills, verify new commands/options against the installed tool's `--help` output before updating `SKILL.md` or references |
 | 2026-03-17 | user   | Passive "update available" notices were too easy to ignore during skill startup | For skill update checks, pause before task work, ask whether to update now, and explicitly offer to run the update command on the user's behalf |
+| 2026-03-21 | self   | The `claude` skill documented shell commands like `claude config list` that are not real CLI subcommands and missed current flags/behaviors | For Claude Code updates, verify both the installed `claude --help` surface and Anthropic's current Claude Code docs, and prefer harness-tested flows over REPL-only affordances |
+| 2026-03-21 | self   | Repo-wide pre-commit validation failed on an unrelated commit because a new untracked skill folder existed without a matching `versions.json` entry yet | As soon as a new top-level skill folder with `SKILL.md` exists, regenerate `versions.json` before attempting unrelated commits, because validation scans the whole repo, not just staged files |
+| 2026-03-21 | self   | A `claude` streaming note promoted a local `--verbose` quirk as a hard requirement, even though Anthropic's docs show `stream-json` examples without it | For Claude Code behavior notes, treat official docs as the baseline and phrase local observations as optional unless reproduced and clearly documented upstream |
 
 ## User Preferences
 
