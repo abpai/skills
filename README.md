@@ -59,8 +59,10 @@ If `skills-ref` is unavailable on `PATH`, the script falls back to basic local c
 - `code-simplifier`
 - `codex`
 - `dead-code-eliminator`
+- `distill`
 - `dokploy`
 - `human-writer`
+- `lateral-thinking`
 - `project-memory`
 - `socratic-code-owner`
 - `try`
