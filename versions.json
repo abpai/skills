@@ -10,6 +10,7 @@
     "code-simplifier": "1.1",
     "codex": "1.1",
     "dead-code-eliminator": "1.1",
+    "dev-squad": "1.0",
     "distill": "1.0",
     "dokploy": "1.1",
     "human-writer": "1.3",

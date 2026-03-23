@@ -1,0 +1,57 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [{
+          "type": "command",
+          "command": "./.claude/hooks/log-intent.sh",
+          "async": true
+        }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{
+          "type": "command",
+          "command": "./.claude/hooks/track-and-log.sh",
+          "async": true
+        }]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{
+          "type": "command",
+          "command": "./.claude/hooks/log-bash-events.sh",
+          "async": true
+        }]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [{
+          "type": "command",
+          "command": "./.claude/hooks/log-agent-start.sh",
+          "async": true
+        }]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [{
+          "type": "command",
+          "command": "./.claude/hooks/log-agent-stop.sh",
+          "async": true
+        }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{
+          "type": "command",
+          "command": "./.claude/hooks/review-gate.sh"
+        }]
+      }
+    ]
+  }
+}
