@@ -190,6 +190,13 @@ agent-browser dialog accept [text]  # Accept dialog
 agent-browser dialog dismiss        # Dismiss dialog
 ```
 
+## Confirmations
+
+```bash
+agent-browser confirm <id>          # Approve a pending action
+agent-browser deny <id>             # Deny a pending action
+```
+
 ## JavaScript
 
 ```bash
@@ -227,6 +234,14 @@ agent-browser --headed ...            # Show browser window (not headless)
 agent-browser --full ...              # Full page screenshot (-f)
 agent-browser --cdp <port> ...        # Connect via Chrome DevTools Protocol
 agent-browser -p <provider> ...       # Cloud browser provider (--provider)
+agent-browser --content-boundaries ... # Wrap page output in boundary markers
+agent-browser --max-output <n> ...    # Truncate page output
+agent-browser --allowed-domains <list> # Restrict navigation domains
+agent-browser --action-policy <path>  # Action policy JSON file
+agent-browser --confirm-actions <list> # Actions requiring confirmation
+agent-browser --confirm-interactive   # Interactive confirmation prompts
+agent-browser --engine <name> ...     # Browser engine: chrome, lightpanda
+agent-browser --native                # Experimental native Rust daemon
 agent-browser --proxy <url> ...       # Use proxy server
 agent-browser --proxy-bypass <hosts>  # Hosts to bypass proxy
 agent-browser --headers <json> ...    # HTTP headers scoped to URL's origin
@@ -272,4 +287,11 @@ AGENT_BROWSER_HOME="/path/to/agent-browser"  # Custom install location
 AGENT_BROWSER_IDLE_TIMEOUT_MS="60000"       # Daemon auto-shutdown timeout (ms)
 AGENT_BROWSER_HEADED="1"                    # Headed mode via env var
 AGENT_BROWSER_ENGINE="lightpanda"           # Browser engine selection
+AGENT_BROWSER_CONTENT_BOUNDARIES="1"        # Wrap page output in boundary markers
+AGENT_BROWSER_MAX_OUTPUT="50000"            # Limit page output size
+AGENT_BROWSER_ALLOWED_DOMAINS="example.com" # Restrict navigation domains
+AGENT_BROWSER_ACTION_POLICY="./policy.json" # Action policy file
+AGENT_BROWSER_CONFIRM_ACTIONS="download"    # Actions requiring confirmation
+AGENT_BROWSER_CONFIRM_INTERACTIVE="1"       # Prompt interactively when possible
+AGENT_BROWSER_NATIVE="1"                    # Use native Rust daemon
 ```

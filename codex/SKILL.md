@@ -1,99 +1,115 @@
 ---
 name: codex
-description: Run Codex CLI for code analysis and automated edits. Use when users ask to run `codex exec`/`codex resume`, continue a prior Codex session, or delegate software engineering work to OpenAI Codex.
+description: >
+  Run the Codex CLI for non-interactive coding work. Use when users ask to run
+  `codex exec`, `codex review`, or `codex exec resume`, continue a prior Codex
+  session, or delegate software engineering work to OpenAI Codex from the
+  terminal.
 metadata:
-  version: "1.1"
+  author: Andy Pai
+  version: "1.2"
 ---
 
-# Codex Skill Guide
+# Codex CLI
 
-## Workflow
+Use this skill when you need the local `codex` CLI from a terminal harness.
+Bias toward non-interactive runs. Use the interactive Codex UI only when the
+user explicitly wants to stay inside it.
 
-1. Confirm task mode:
-   - New run: use `codex exec`.
-   - Continue prior run: use `codex exec ... resume --last` with stdin prompt.
-2. Set defaults unless user overrides:
-   - Model: `gpt-5.4`.
-   - Reasoning effort: ask user to choose `xhigh`, `high`, `medium`, or `low`.
-   - Sandbox: `read-only` unless edits/network are required.
-3. Build command with required flags:
-   - Always include `--skip-git-repo-check`.
-   - Add `2>/dev/null` by default to suppress thinking tokens on stderr.
-   - Show stderr only if user asks or debugging is needed.
-4. Run command, summarize outcome, and ask what to do next.
-5. After completion, remind user they can continue with `codex resume`.
+## First Check
 
-### Quick Reference
-
-| Use case                       | Sandbox mode            | Key flags                                                                     |
-| ------------------------------ | ----------------------- | ----------------------------------------------------------------------------- |
-| Read-only review or analysis   | `read-only`             | `--sandbox read-only 2>/dev/null`                                             |
-| Apply local edits              | `workspace-write`       | `--sandbox workspace-write --full-auto 2>/dev/null`                           |
-| Permit network or broad access | `danger-full-access`    | `--sandbox danger-full-access --full-auto 2>/dev/null`                        |
-| Resume recent session          | Inherited from original | `echo "prompt" \| codex exec --skip-git-repo-check resume --last 2>/dev/null` |
-| Run from another directory     | Match task needs        | `-C <DIR>` plus other flags `2>/dev/null`                                     |
-
-## Command Patterns
-
-### New run
-
-```bash
-codex exec --skip-git-repo-check \
-  --model gpt-5.4 \
-  --config model_reasoning_effort="high" \
-  --sandbox read-only \
-  "your prompt here" 2>/dev/null
-```
-
-### Resume latest session
-
-Use stdin and keep flags between `exec` and `resume`.
-
-```bash
-echo "your prompt here" | codex exec --skip-git-repo-check resume --last 2>/dev/null
-```
-
-When resuming, do not add configuration flags unless the user explicitly asks for changes (for example, different model or reasoning effort).
-
-## Model Options
-
-| Model          | Best for                                       | Context window    | Key features                                              |
-| -------------- | ---------------------------------------------- | ----------------- | --------------------------------------------------------- |
-| `gpt-5.4` ⭐   | Default for most coding tasks in Codex         | N/A in this skill | OpenAI's recommended default for general-purpose coding   |
-| `gpt-5.4-pro` | Harder problems that benefit from more compute | N/A in this skill | More compute for deeper reasoning on difficult tasks      |
-| `gpt-5-mini`  | Faster/cost-effective option for lighter tasks | N/A in this skill | Smaller GPT-5 model for lower-cost coding and chat tasks  |
-| `gpt-5.3-codex` | Legacy specialized alternative                | N/A in this skill | Prior Codex-tuned model; generally superseded by GPT-5.4  |
-
-`gpt-5.4` is the default for software engineering tasks.
-
-### Reasoning Effort
-
-- `xhigh` - Ultra-complex tasks (deep problem analysis, complex reasoning, deep understanding of the problem)
-- `high` - Complex tasks (refactoring, architecture, security analysis, performance optimization)
-- `medium` - Standard tasks (refactoring, code organization, feature additions, bug fixes)
-- `low` - Simple tasks (quick fixes, simple changes, code formatting, documentation)
-
-## Following Up
-
-- After every run, ask for next steps or clarifications.
-- When proposing another run, restate model, reasoning effort, and sandbox mode.
-- For continuation, use stdin with `resume --last`.
-
-## Error Handling
-
-- If `codex --version` or `codex exec` exits non-zero, report failure and ask before retrying.
-- Ask permission before high-impact flags unless already granted: `--full-auto`, `--sandbox danger-full-access`, `--skip-git-repo-check`.
-- If output includes warnings or partial results, summarize and ask how to proceed.
-
-## CLI Version
-
-Use a current Codex CLI version that supports `gpt-5.4`. Check with:
+Confirm the CLI is available before you build a workflow around it:
 
 ```bash
 codex --version
 ```
 
-Use `/model` inside Codex to switch models, or set defaults in `~/.codex/config.toml`.
+If that fails, stop and report the setup issue instead of retrying the task.
+
+## Default Stance
+
+Unless the user asks for something else:
+
+- Use `codex exec` for one-shot work.
+- Use `codex review` for code-review requests.
+- Use `codex exec resume --last` to continue the most recent saved session.
+- Use `gpt-5.4` as the default model.
+- Use `medium` reasoning for ordinary work, `high` for harder tasks, and `low` for tiny checks.
+- Use `--sandbox read-only` for `codex exec` analysis runs, and use `codex review` for review tasks.
+- Expand to `workspace-write` or `--full-auto` only when Codex should edit files.
+- Use `--json` or `--output-schema` only when another tool will parse the result.
+
+Do not hide stderr by default, and do not add `--skip-git-repo-check` unless you
+are intentionally running outside a Git repo.
+
+For the current flag surface and example command matrix, see
+`./references/codex-cli.md`.
+
+## Pick The Run Shape
+
+### One-shot run
+
+Default choice for most delegated work:
+
+```bash
+codex exec \
+  --model gpt-5.4 \
+  --sandbox read-only \
+  -c model_reasoning_effort="medium" \
+  "Summarize the uncommitted changes"
+```
+
+### Code review
+
+Use the dedicated review subcommand instead of hand-rolling a review prompt
+through `exec`:
+
+```bash
+codex review --uncommitted \
+  "Focus on bugs, regressions, and missing tests. Findings first."
+```
+
+### Resume the latest session
+
+Use stdin when the follow-up prompt is large or multi-line:
+
+```bash
+printf '%s\n' "Continue and focus on the failing tests only" | \
+  codex exec resume --last -
+```
+
+When resuming, keep prior settings unless the user explicitly wants to change
+model, sandbox, or autonomy level.
+
+## Codex-Specific Gotchas
+
+- `codex review` is the default review path when the task is code review.
+- `codex exec` reads instructions from stdin when the prompt argument is omitted or set to `-`.
+- `codex exec resume --last` is the non-interactive continuation path; do not replace it with the top-level interactive `codex resume` command.
+- `--full-auto` is only a convenience alias for editable autonomous runs. It is not appropriate for read-only analysis.
+- `--skip-git-repo-check` is a situational escape hatch, not a default.
+- `--ephemeral` is useful for disposable runs when session persistence would add noise.
+
+## Structured Output
+
+Use structured output only when another tool needs to consume the result:
+
+```bash
+codex exec \
+  --model gpt-5.4 \
+  --sandbox read-only \
+  --output-schema schema.json \
+  "Review the current diff"
+```
+
+## Troubleshooting
+
+- If `codex --version` fails, report a CLI issue.
+- If `codex exec` or `codex review` exits non-zero, treat the run as failed.
+- If a non-interactive run needs too much context, switch from argv text to stdin.
+- If the task is review-oriented, use `codex review` before inventing a custom `exec` prompt.
+- If a run needs edits, change the sandbox and autonomy deliberately instead of piling on flags by habit.
+- If output includes warnings or partial results, summarize what Codex completed and what remains uncertain.
 
 ## Update Check
 

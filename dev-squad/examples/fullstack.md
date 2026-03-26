@@ -27,10 +27,13 @@ Interview answers:
 
 .agents/
 ├── timeline.sh
-├── workspace.sh
 ├── timeline.log             ← gitignored
 └── .review-queue            ← gitignored
 ```
+
+For the full tmux layout with Orb and a live timeline pane, launch the repo with
+the optional `tmux-squad` helper instead of a generated project-local workspace
+script.
 
 ## Customized reviewer.md
 

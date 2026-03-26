@@ -8,135 +8,123 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2"
+  version: "1.4"
 ---
 
 # Claude Code CLI
 
-Use this skill when you need the local `claude` CLI, especially from a Codex-style
-terminal harness where non-interactive runs, safe permissions, and structured
-output matter more than the interactive REPL.
-
-This skill is intentionally biased toward `claude -p` workflows. Prefer interactive
-Claude only when the user explicitly wants to stay inside Claude itself.
+Use this skill when you need the local `claude` CLI from a Codex-style harness.
+Bias toward non-interactive `claude -p` runs. Use the interactive REPL only when
+the user explicitly wants to stay inside Claude.
 
 ## First Check
 
-Before relying on CLI behavior, confirm the installed version and current auth state:
+Confirm the CLI works before you build a workflow around it:
 
 ```bash
 claude --version
 claude auth status --text
 ```
 
-If auth is missing or broken, stop and report that before proposing retries.
+If either command fails, stop and report the setup problem instead of retrying
+the task.
 
-## Codex Harness Defaults
+## Default Stance
 
-For this harness, start with these defaults unless the user asks for something else:
+Unless the user asks for something else:
 
-- Use `-p` / `--print` for almost all delegated runs.
-- Use `--no-session-persistence` for one-shot tasks.
-- Use `--permission-mode plan` for read-only analysis and review.
-- Use `--permission-mode acceptEdits` only when Claude should modify local files.
-- Use `--output-format json` when you need machine-readable output or reliable post-processing.
+- Use `claude -p` for one-shot runs.
+- Use `--no-session-persistence` for disposable runs.
+- Use `--permission-mode plan` for analysis, review, and read-only exploration.
+- Use `--permission-mode acceptEdits` only when Claude should change files.
 - Use `sonnet` as the default model alias.
-- Use `high` effort for real delegated work; `medium` for ordinary tasks; `low` for simple checks.
+- Use `medium` effort for ordinary work, `high` for harder tasks, `low` for tiny checks.
+- Use `--output-format json` only when another tool will parse the result.
 
-Avoid `--dangerously-skip-permissions` unless the user explicitly wants it and the
-environment is already safely sandboxed.
+Avoid `--dangerously-skip-permissions` unless the user explicitly wants it and
+the environment is already safely sandboxed.
 
-## Workflow
+## Pick The Run Shape
 
-1. Choose the session pattern:
-   - New one-shot run: `claude -p`
-   - Continue the most recent session in this directory: `claude -c -p`
-   - Resume a specific session: `claude -r <session-id> -p`
-   - Resume but branch into a new session: add `--fork-session`
-2. Pick the permission mode:
-   - `plan` for analysis, review, and read-only exploration
-   - `acceptEdits` for local edits
-   - `dontAsk` only when broad tool autonomy is explicitly intended
-   - `auto` only when the user specifically wants Claude's automatic permission behavior
-3. Decide whether persistence is useful:
-   - Add `--no-session-persistence` for disposable one-shot runs
-   - Omit it only when follow-up turns or future resume support are desirable
-4. Add structure and limits when helpful:
-   - `--output-format json` for machine-readable results
-   - `--json-schema ...` for validated structured output
-   - `--max-turns N` to cap agentic loops
-   - `--max-budget-usd X` to bound spend in print mode
-5. Run the command.
-6. Validate the result:
-   - non-zero exit code = failure
-   - empty stdout = soft failure; retry once with a tighter prompt and explicit output contract
-7. Summarize the useful output for the user and state what flags mattered.
+### One-shot run
 
-## Tool Control
-
-Claude has three related knobs that do different things:
-
-- `--tools`: restrict which built-in tools exist at all
-- `--allowedTools`: tools that may run without permission prompts
-- `--disallowedTools`: tools removed from Claude's context and blocked from use
-
-Use them in this order:
-
-1. `--disallowedTools` when you want to remove a few dangerous tools
-2. `--allowedTools` when you want to auto-approve a safe subset
-3. `--tools` only when you need a hard built-in tool restriction and are willing
-   to test the exact behavior on the installed CLI first
-
-Observed locally: aggressive `--tools` restrictions can behave worse than a
-lighter `--allowedTools` / `--disallowedTools` combination, so do not treat
-`--tools` as the default choice for ordinary harness runs.
-
-Examples:
+Default choice for most delegated work:
 
 ```bash
-# Keep the full toolset, but block editing
 claude -p \
-  --disallowedTools "Edit" \
-  --permission-mode plan \
-  --no-session-persistence \
-  "Review this repo for risky shell scripts"
-
-# Keep normal tools, but auto-allow a subset
-claude -p \
-  --allowedTools "Read Grep Glob Bash(git status) Bash(git diff *)" \
+  --model sonnet \
+  --effort medium \
   --permission-mode plan \
   --no-session-persistence \
   "Summarize the uncommitted changes"
 ```
 
-## Prompt Injection and System Prompt Flags
+### Continue the latest session
 
-Most of the time, prefer appending instructions instead of replacing Claude's
-built-in system prompt.
+Use when the user wants to keep going with the most recent Claude conversation
+in this directory:
 
-- Prefer `--append-system-prompt` or `--append-system-prompt-file`
-- Use `--system-prompt` or `--system-prompt-file` only when you truly want to replace the default behavior
+```bash
+printf '%s\n' "Continue and focus on the test failures only" | claude -c -p
+```
 
-This matches Anthropic's docs: append preserves Claude Code's built-in capabilities,
-while replacement is for full override scenarios.
+### Resume a specific session
 
-## Command Patterns
+Use `-r <session-id> -p` to resume, and add `--fork-session` if you want a new
+branch of that conversation instead of reusing the original session.
 
-### One-shot review
+```bash
+printf '%s\n' "Finish the refactor and summarize the remaining risks" | \
+  claude -r <session-id> -p
+```
+
+## Review Workflow
+
+When the user wants a Claude review of local changes, use one of these two
+paths. Do not bounce between several near-identical review commands.
+
+### Default: review the repo changes directly
+
+Use this first for normal "review my changes" requests:
 
 ```bash
 claude -p \
   --model sonnet \
-  --effort high \
+  --effort medium \
   --permission-mode plan \
   --no-session-persistence \
-  --output-format json \
-  "Review the current diff and return findings only"
+  "Review the current uncommitted changes in this repo. Focus on concrete bugs, regressions, misleading docs, packaging issues, and risky assumptions. Output sections in this exact order: Findings, Open questions, Residual risks. Findings should come first with file references. If there are no findings, say 'No findings'."
 ```
+
+Use `high` effort if the diff is large, subtle, or high-risk.
+
+### Narrow scope: review a specific diff
+
+Use this when the repo-wide review is too slow or when you want to isolate a
+known set of files:
+
+```bash
+git diff --unified=3 -- path/to/file1 path/to/file2 | \
+  claude -p \
+    --model sonnet \
+    --effort medium \
+    --permission-mode plan \
+    --no-session-persistence \
+    "Review this diff only. Focus on concrete bugs, regressions, misleading docs, packaging issues, and risky assumptions. Output sections in this exact order: Findings, Open questions, Residual risks. Findings should come first with file references. If there are no findings, say 'No findings'."
+```
+
+### Review rules
+
+- Start with the repo-native review unless you already know the diff must be narrowed.
+- If the first repo-native review is merely slow, wait before rerunning.
+- If the repo-native review fails, narrow the diff locally instead of rewriting the prompt repeatedly.
+- After Claude returns findings, verify exact line references from the local diff before presenting the final review.
+
+## Common Patterns
 
 ### Long or multi-line prompt
 
-Prefer stdin over argv when the prompt is large.
+Prefer stdin over a giant argv string:
 
 ```bash
 cat > /tmp/claude_prompt.txt <<'EOF'
@@ -167,28 +155,18 @@ claude -p \
   "Fix the failing tests in the current repo"
 ```
 
-### Continue the most recent session
+### Structured output
 
 ```bash
-printf '%s\n' "Continue and focus on the test failures only" | claude -c -p
+claude -p \
+  --output-format json \
+  --json-schema '{"type":"object","properties":{"summary":{"type":"string"},"issues":{"type":"array","items":{"type":"string"}}},"required":["summary","issues"]}' \
+  --no-session-persistence \
+  "Review the current diff"
 ```
 
-When continuing or resuming, do not restate model/effort/settings unless you
-intend to override them.
-
-### Resume a specific session
-
-```bash
-printf '%s\n' "Finish the refactor and summarize the remaining risks" | \
-  claude -r <session-id> -p
-```
-
-### Resume but branch into a new session
-
-```bash
-printf '%s\n' "Take a different approach that avoids database changes" | \
-  claude -r <session-id> -p --fork-session
-```
+Observed locally: `--output-format json` returns a result envelope with fields
+such as `result`, `session_id`, `num_turns`, `usage`, and `total_cost_usd`.
 
 ### Worktree isolation
 
@@ -201,62 +179,61 @@ claude -p -w feature-auth \
   "Investigate and fix the auth regression"
 ```
 
-### Structured output
+## Flags That Matter
+
+### Permission modes
+
+- `plan`: review, analysis, read-only exploration
+- `acceptEdits`: allow local file changes
+- `dontAsk`: broad autonomy only when the user explicitly wants it
+- `auto`: use only when the user specifically wants Claude's automatic permission behavior
+
+### Tool controls
+
+Claude exposes three different tool controls:
+
+- `--disallowedTools`: remove a few tools
+- `--allowedTools`: auto-approve a safe subset
+- `--tools`: replace the available built-in tool set entirely
+
+Prefer them in that order. `--tools` is the sharpest knob and should not be the
+default for ordinary harness runs.
 
 ```bash
 claude -p \
-  --output-format json \
-  --json-schema '{"type":"object","properties":{"summary":{"type":"string"},"issues":{"type":"array","items":{"type":"string"}}},"required":["summary","issues"]}' \
+  --disallowedTools "Edit" \
+  --permission-mode plan \
   --no-session-persistence \
-  "Review the current diff"
+  "Review this repo for risky shell scripts"
 ```
 
-Observed locally: `--output-format json` returns a result envelope with fields
-like `result`, `session_id`, `num_turns`, `usage`, and `total_cost_usd`, which
-is useful for automation and logging.
+### System prompt flags
 
-### Piped context
+Prefer `--append-system-prompt`. Use `--system-prompt` only when you truly want
+to replace Claude's built-in default behavior.
 
-Claude can consume stdin plus a query:
+### Streaming
 
-```bash
-cat logs.txt | claude -p "Summarize the root cause in one paragraph"
-```
+Use `--output-format stream-json` only for real streaming integrations.
 
-## Streaming Mode
+- `stream-json` is an event stream, not a single final blob
+- `--include-partial-messages` only works with `stream-json`
+- `--verbose` is optional, not required
 
-Use stream JSON only for advanced integrations. It is stricter than plain print mode.
+For most harness work, prefer plain `text` or `json`.
 
-- `--output-format stream-json` is for event streams, not a single final blob
-- `--include-partial-messages` only works with `--output-format stream-json`
-- add `--verbose` only when you want extra progress/detail during the run
+## Settings And Scope
 
-Unless you are building a streaming integration, prefer:
-
-- `--output-format text` for human-readable output
-- `--output-format json` for machine-readable output
-
-## Settings and Scope
-
-Do not invent a `claude config list` workflow. The interactive `/config` UI exists
-inside the REPL, but CLI automation should use:
+Do not invent shell commands for REPL-only features. For CLI automation, use:
 
 - `--settings <file-or-json>`
 - `--setting-sources user,project,local`
-- `--add-dir <dir>` for extra workspace access
+- `--add-dir <dir>`
 
-Anthropic's settings docs say precedence is:
-
-1. Managed
-2. Command-line arguments
-3. Local
-4. Project
-5. User
-
-So when this harness needs a temporary override, prefer CLI flags over mutating
+When this harness needs a temporary override, prefer CLI flags over mutating
 config files.
 
-## Useful Non-Interactive Commands
+Useful non-interactive commands:
 
 ```bash
 claude --version
@@ -265,28 +242,16 @@ claude agents
 claude doctor
 ```
 
-Remember that some REPL slash commands, like `/config`, are not standalone shell
-subcommands.
+## Troubleshooting
 
-## Model and Effort Notes
-
-- `sonnet` is the default model alias for most coding work
-- `opus` is for deeper analysis when the user wants to spend more
-- `haiku` is for speed-sensitive lightweight tasks
-- `max` effort is only available where the installed Claude version/model supports it; the docs currently note Opus 4.6 for `max`
-
-Use aliases like `sonnet` unless the user explicitly wants a pinned full model name.
-
-## Error Handling
-
-- If `claude --version` or `claude auth status --text` fails, report that the CLI/auth setup is broken
-- If `claude -p` exits non-zero, treat the run as failed
-- If stdout is empty, retry once with:
-  - a smaller prompt
-  - explicit output instructions
-  - `--output-format json` when parsing matters
-- If a streaming command errors, fall back to plain `json` or `text` unless streaming is required
-- If the user asks for unrestricted execution, restate the risk before using `dontAsk` or dangerous permission flags
+- If `claude --version` or `claude auth status --text` fails, report a CLI or auth issue.
+- If `claude -p` exits non-zero, treat the run as failed.
+- If stdout is empty, retry once with a smaller prompt and a tighter output contract.
+- If Claude reports a tool or configuration limit, treat that as a run failure
+  and rerun with a narrower diff or simpler prompt.
+- If a repo-native review is slow but still running, wait or narrow the diff; do not spam retries.
+- If a streaming command fails, fall back to `text` or `json` unless streaming is required.
+- If the user asks for unrestricted execution, restate the risk before using `dontAsk` or dangerous permission flags.
 
 ## Update Check
 

@@ -6,7 +6,7 @@ allowed-tools:
   - Bash(agent-browser:*)
   - Bash(npx agent-browser:*)
 metadata:
-  version: "1.2"
+  version: "1.3"
   upstream_skill: https://github.com/vercel-labs/agent-browser/tree/main/skills/agent-browser
 ---
 
@@ -147,6 +147,27 @@ agent-browser open https://example.com && agent-browser wait --load networkidle 
 ```
 
 **When to chain:** Use `&&` when you don't need to read the output of an intermediate command before proceeding (e.g., open + wait + screenshot). Run commands separately when you need to parse the output first (e.g., snapshot to discover refs, then interact using those refs).
+
+### Network Inspection and Dialogs
+
+When debugging flaky pages or testing browser-side behavior, inspect requests or handle dialogs explicitly instead of guessing what happened:
+
+```bash
+# Inspect or filter captured requests
+agent-browser network requests
+agent-browser network requests --filter api
+
+# Mock or block a specific request pattern
+agent-browser network route "**/api/*" --abort
+agent-browser network route "**/data.json" --body '{"mock": true}'
+
+# Handle alert/confirm/prompt dialogs
+agent-browser dialog accept
+agent-browser dialog accept "typed into prompt"
+agent-browser dialog dismiss
+```
+
+See [references/commands.md](references/commands.md) for the full command surface.
 
 ## Essential Commands
 
@@ -435,6 +456,17 @@ Example `policy.json`:
 
 Auth vault operations (`auth login`, etc.) bypass action policy but domain allowlist still applies.
 
+### Confirmation Policy
+
+If you want the browser to require explicit approval for risky actions, use confirmation controls in addition to action policies:
+
+```bash
+export AGENT_BROWSER_CONFIRM_ACTIONS="download,upload,navigate"
+export AGENT_BROWSER_CONFIRM_INTERACTIVE=1
+```
+
+In non-interactive environments, avoid relying on interactive confirmation prompts alone; pair them with action policy or domain restrictions.
+
 ### Output Limits
 
 Prevent context flooding from large pages:
@@ -610,15 +642,21 @@ Priority (lowest to highest): `~/.agent-browser/config.json` < `./agent-browser.
 
 ## Browser Engine Selection
 
-By default agent-browser uses Chromium via Playwright. You can switch to [Lightpanda](https://lightpanda.io), a lightweight headless browser optimized for AI scraping:
+By default agent-browser uses Chromium via Playwright. You can switch to the experimental native Rust daemon with `--native`, or use [Lightpanda](https://lightpanda.io), which also implies native mode:
 
 ```bash
+# Native daemon with the default Chrome engine
+agent-browser --native open https://example.com
+AGENT_BROWSER_NATIVE=1 agent-browser open https://example.com
+
 # Via flag
 agent-browser --engine lightpanda open https://example.com
 
 # Via environment variable
 AGENT_BROWSER_ENGINE=lightpanda agent-browser open https://example.com
 ```
+
+**Native caveat:** Treat `--native` as experimental and verify behavior on unusual pages before relying on it for critical flows.
 
 **Lightpanda limitations:** No extensions, no persistent profiles/state files, and no `file://` local file access. It is best for fast text extraction and snapshot-based workflows.
 

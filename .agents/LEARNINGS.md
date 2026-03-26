@@ -33,10 +33,20 @@
 | 2026-03-21 | self   | The `claude` skill documented shell commands like `claude config list` that are not real CLI subcommands and missed current flags/behaviors | For Claude Code updates, verify both the installed `claude --help` surface and Anthropic's current Claude Code docs, and prefer harness-tested flows over REPL-only affordances |
 | 2026-03-21 | self   | Repo-wide pre-commit validation failed on an unrelated commit because a new untracked skill folder existed without a matching `versions.json` entry yet | As soon as a new top-level skill folder with `SKILL.md` exists, regenerate `versions.json` before attempting unrelated commits, because validation scans the whole repo, not just staged files |
 | 2026-03-21 | self   | A `claude` streaming note promoted a local `--verbose` quirk as a hard requirement, even though Anthropic's docs show `stream-json` examples without it | For Claude Code behavior notes, treat official docs as the baseline and phrase local observations as optional unless reproduced and clearly documented upstream |
+| 2026-03-22 | self   | A hook-based review workflow template blocked on `Stop` without exempting the reviewer itself, which can deadlock the review pass | When a queue-clearing reviewer relies on a `Stop` hook, explicitly let the reviewer bypass that gate so it can finish and clear the queue |
+| 2026-03-22 | self   | A delegated reviewer template used stale non-interactive CLI assumptions for Codex/Gemini | Verify current CLI help for delegation tools and prefer stdin/headless flows like `codex review -` and `gemini -p ... < file` over vague or interactive invocations |
+| 2026-03-22 | self   | Assumed an MCP startup failure around `chrome-devtools` was a shell PATH issue before checking whether the configured launcher binary actually existed | For command-based MCP servers, verify the exact configured `command` first; interactive shell wrappers like lazy-loaded `nvm` can make `node --version` succeed while direct `npx` execution still fails |
+| 2026-03-24 | self   | The `claude` skill's review guidance was too generic, which led to repeated retries across stdin-vs-repo review modes and unusably low `--max-turns` caps | For Claude reviews, document one default repo-native path, one narrowed diff path, and explicit retry rules so review runs do not thrash |
+| 2026-03-24 | self   | The `claude` skill repeated the same guidance across too many sections, which made the intended workflow harder to follow | For CLI skills, consolidate overlapping advice into a small set of opinionated workflows and keep the sharp edges in one troubleshooting section |
+| 2026-03-25 | self   | Deep skill rewrites drifted toward long inline policy docs instead of reusable skill bodies | Keep `SKILL.md` focused on trigger, default flow, and gotchas; move matrices, examples, and report shapes into `references/`, and add scripts only when they remove real repeated mechanics |
+| 2026-03-25 | self   | Bumping a skill version in `SKILL.md` without updating `versions.json` breaks repo-wide validation | Keep `SKILL.md` and `versions.json` in sync whenever a skill version changes |
+| 2026-03-25 | self   | Upstream `agent-browser` docs exposed more features than I had surfaced locally, but not every tempting addition was verified in the installed CLI | For external CLI skill syncs, compare upstream docs against the installed `--help` output before documenting new commands, and only port the features that exist locally |
+| 2026-03-25 | self   | A `claude` skill rewrite carried over unsupported local flags like `--max-turns` and `--*-system-prompt-file` even though the installed CLI help no longer exposed them | For CLI skill refreshes, verify every documented flag against the current installed `--help` output before keeping legacy examples or fallback variants |
 
 ## User Preferences
 
 - Repository goal: publish created/forked skills that follow the Open Agent Skills specification (`https://agentskills.io/specification`).
+- For `dev-squad`, keep the skill focused on configuring Claude Code agents/hooks; treat `tmux-squad` as the optional launcher for Orb + timeline instead of generating a repo-local workspace script.
 - Prefer clear, descriptive skill names over metaphorical names.
 - For cross-skill quality passes, use distinct subagents with explicit per-file ownership.
 - Prefer automated local quality gates (pre-commit hooks) for skill validation.
@@ -49,6 +59,9 @@
 ## Patterns That Work
 
 - When adapting non-skill agent prompts into this repo, strip non-spec frontmatter fields and rewrite `description` as explicit trigger conditions.
+- For skill authoring/review, keep the core `SKILL.md` focused on trigger, category, decision rules, and gotchas; move long templates, examples, and rigid output contracts into `references/` when they start reducing flexibility.
+- For CLI-heavy skills, keep `SKILL.md` focused on triggers, decision rules, and high-signal gotchas; move volatile command recipes into `references/` or scripts when they start crowding the core workflow.
+- Keep `versions.json` aligned with any `metadata.version` change before running validation.
 - Add repo-level `README.md` + `CONTRIBUTING.md` that encode the publishing standard and checklist.
 - Provide a local `scripts/validate-skills.sh` entrypoint that uses `skills-ref validate` when available and falls back to structural checks.
 - Run skill reviews in parallel with one worker subagent per skill folder to improve speed and avoid edit conflicts.
