@@ -45,6 +45,7 @@
 | 2026-03-26 | self   | The `claude` skill still allowed ambiguous retry behavior and mixed stdin-plus-argv prompt shapes, which let review runs thrash instead of narrowing cleanly | For `claude`, document a failure-classified retry budget, require scope changes instead of prompt-only retries, and use exactly one prompt source per `claude -p` invocation |
 | 2026-03-26 | self   | Ran `git diff -- <absolute-path-outside-repo> <repo-path>`, which produced a misleading cross-file patch view during verification | When checking edits for files outside the repo root, inspect the file directly or diff one path at a time instead of mixing external absolute paths with repo-relative pathspecs |
 | 2026-03-26 | self   | Treated a quiet `claude -p` run as hung after empty intermediate polls even though the final result arrived on a later read | For `claude -p` in this harness, allow an extra final poll before declaring the run stuck; silence during intermediate reads is not by itself a failure |
+| 2026-03-31 | self   | Hand-editing a new skill into `versions.json` and patching frontmatter separately led to a stale manifest check and a missing opening `---` fence during release prep | For new or renamed skills, fix the `SKILL.md` frontmatter first, then run `scripts/generate-versions.sh` instead of manually editing `versions.json`, and validate immediately |
 
 ## User Preferences
 

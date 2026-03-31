@@ -8,6 +8,7 @@
     "claude": "1.5",
     "cli-design-expert": "1.1.1",
     "code-simplifier": "2.0",
+    "codex-exec": "1.2",
     "dead-code-eliminator": "1.2",
     "dev-squad": "1.2",
     "distill": "1.0",
