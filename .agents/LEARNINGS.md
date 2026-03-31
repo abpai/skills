@@ -42,6 +42,9 @@
 | 2026-03-25 | self   | Bumping a skill version in `SKILL.md` without updating `versions.json` breaks repo-wide validation | Keep `SKILL.md` and `versions.json` in sync whenever a skill version changes |
 | 2026-03-25 | self   | Upstream `agent-browser` docs exposed more features than I had surfaced locally, but not every tempting addition was verified in the installed CLI | For external CLI skill syncs, compare upstream docs against the installed `--help` output before documenting new commands, and only port the features that exist locally |
 | 2026-03-25 | self   | A `claude` skill rewrite carried over unsupported local flags like `--max-turns` and `--*-system-prompt-file` even though the installed CLI help no longer exposed them | For CLI skill refreshes, verify every documented flag against the current installed `--help` output before keeping legacy examples or fallback variants |
+| 2026-03-26 | self   | The `claude` skill still allowed ambiguous retry behavior and mixed stdin-plus-argv prompt shapes, which let review runs thrash instead of narrowing cleanly | For `claude`, document a failure-classified retry budget, require scope changes instead of prompt-only retries, and use exactly one prompt source per `claude -p` invocation |
+| 2026-03-26 | self   | Ran `git diff -- <absolute-path-outside-repo> <repo-path>`, which produced a misleading cross-file patch view during verification | When checking edits for files outside the repo root, inspect the file directly or diff one path at a time instead of mixing external absolute paths with repo-relative pathspecs |
+| 2026-03-26 | self   | Treated a quiet `claude -p` run as hung after empty intermediate polls even though the final result arrived on a later read | For `claude -p` in this harness, allow an extra final poll before declaring the run stuck; silence during intermediate reads is not by itself a failure |
 
 ## User Preferences
 
