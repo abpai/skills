@@ -55,9 +55,8 @@ If `skills-ref` is unavailable on `PATH`, the script falls back to basic local c
 - `bun-expert`
 - `claude`
 - `cli-design-expert`
-- `review-and-commit`
 - `code-simplifier`
-- `codex`
+- `review-and-commit`
 - `dead-code-eliminator`
 - `dev-squad`
 - `distill`
