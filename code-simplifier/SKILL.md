@@ -1,16 +1,13 @@
 ---
 name: code-simplifier
-description: Simplify and refactor code for clarity, consistency, and maintainability while preserving exact behavior. Use when code was just added or modified and needs readability-focused cleanup without changing outputs, side effects, or external interfaces.
+description: Simplify and refine code for clarity, consistency, and maintainability while preserving all functionality. Focuses on recently modified code unless instructed otherwise.
 metadata:
-  version: "1.1"
+  version: "2.0"
 ---
 
 # Code Simplifier
 
-Refine code so it is easier to read, reason about, and maintain without changing what it does.
-
-Source basis: adapted from Anthropic's `code-simplifier` skill:
-`https://github.com/anthropics/claude-plugins-official/blob/main/plugins/code-simplifier/agents/code-simplifier.md`
+Review changed code for reuse, quality, and efficiency, then simplify and fix any issues found.
 
 ## Core Rules
 
@@ -20,18 +17,68 @@ Source basis: adapted from Anthropic's `code-simplifier` skill:
 1. Prefer clarity over compactness.
 1. Avoid clever rewrites that reduce debuggability.
 
-## Simplification Targets
+## Scope
 
-Improve code by:
+- Default to the current task's changed files.
+- Focus on code the user just changed or that you changed in this conversation.
+- Keep fixes behavior-preserving unless the user explicitly asked for broader refactors.
 
-- Reducing unnecessary nesting and branching complexity.
-- Removing redundant abstractions and duplicate logic.
-- Renaming unclear identifiers to improve intent readability.
-- Splitting dense logic into coherent, single-purpose helpers.
-- Replacing fragile one-liners with explicit, readable control flow.
-- Removing comments that only restate obvious code behavior.
+## Phase 1: Identify Changes
 
-Prefer explicit conditionals over nested ternaries for multi-branch logic.
+1. Run `git diff`.
+1. If there are staged changes, prefer `git diff HEAD` so staged and unstaged edits are both visible.
+1. If there are no git changes, inspect the most recently modified files relevant to the task.
+
+## Phase 2: Run Three Reviews In Parallel
+
+If subagents are available, launch all three review agents concurrently in a single round and pass each agent the full diff.
+
+If subagents are not available, perform the same three review passes yourself.
+
+### Review 1: Code Reuse
+
+Check whether the change reimplements logic that already exists.
+
+- Search for existing helpers, utilities, and shared abstractions that could replace new code.
+- Look in utility directories, shared modules, and files adjacent to the changed code.
+- Flag new functions that duplicate existing behavior.
+- Flag inline logic that should use an existing utility instead of hand-rolled code.
+- Common duplication targets include string manipulation, path handling, env detection, parsing helpers, and type guards.
+
+### Review 2: Code Quality
+
+Check for structural and maintainability issues.
+
+- Redundant state: duplicated state, cached values that could be derived, effects that could be direct calls.
+- Parameter sprawl: new parameters added where restructuring or generalization would be cleaner.
+- Copy-paste variation: near-duplicate blocks that should share an abstraction.
+- Leaky abstractions: exposing internal details or breaking module boundaries.
+- Stringly-typed code: raw strings where constants, unions, or existing types should be used.
+- Unnecessary nesting and branching complexity.
+- Unclear identifiers that obscure intent.
+- Dense logic that should be split into coherent, single-purpose helpers.
+- Fragile one-liners that should be explicit, readable control flow.
+- Unnecessary comments: remove comments that only restate what the code does; keep only non-obvious why.
+
+### Review 3: Efficiency
+
+Check for unnecessary work and avoidable overhead.
+
+- Unnecessary work: redundant computation, repeated file reads, duplicate API calls, N+1 patterns.
+- Missed concurrency: independent work done sequentially when it could run in parallel.
+- Hot-path bloat: new blocking work in startup, render, request, or polling paths.
+- Recurring no-op updates: state or store writes that fire even when nothing changed.
+- Unnecessary existence checks: prefer operating directly and handling errors over TOCTOU pre-checks.
+- Memory issues: unbounded collections, missing cleanup, leaked listeners or subscriptions.
+- Overly broad operations: reading or loading more data than needed.
+
+## Phase 3: Simplify and Fix
+
+1. Aggregate the findings from all three review passes.
+1. Fix each worthwhile issue directly.
+1. If a finding is a false positive or not worth changing, skip it without debate.
+1. Re-check the edited code for correctness and local consistency.
+1. Run available lint, test, or targeted validation when practical.
 
 ## Boundaries
 
@@ -42,56 +89,17 @@ Do not:
 - Expand scope beyond recently touched code unless explicitly requested.
 - Over-normalize style at the expense of local codebase conventions.
 
-## Workflow
-
-1. Identify files and sections changed in the current task.
-1. Detect readability and maintainability issues in that scope.
-1. Apply minimal, behavior-preserving refactors.
-1. Re-check for regressions in logic, interfaces, and side effects.
-1. Run available lint/test checks when practical.
-1. Summarize only meaningful structural changes.
-
-## Repeated Passes
-
-If the user asks to simplify recursively, keep going until no changes remain, or uses command-like phrasing such as `/code-simplifier 5`, switch to loop mode instead of a single pass.
-
-Loop mode workflow:
-
-1. Parse an optional max iteration count from the request.
-1. Default to `5` when no number is provided.
-1. Execute the bundled runner script:
-   `bash <skill_dir>/scripts/run-codex-simplifier-loop.sh --max-iterations <N>`
-1. Prefer `--dry-run` only when the user asks for preview mode.
-1. Report:
-   - number of rounds attempted
-   - whether each round changed files
-   - whether loop stopped early due to no changes
-
-Loop mode parameters:
-
-- `--max-iterations N`: Maximum rounds to run (default `5`)
-- `--codex-cmd "..."`: Optional custom Codex command (default `codex exec --full-auto`)
-- `--prompt "..."`: Optional custom instruction prompt
-- `--dry-run`: Print planned commands without executing Codex
-
 ## Decision Heuristics
 
 - If two versions are equivalent, choose the one a new teammate can understand fastest.
 - Keep useful abstractions; remove only those that add indirection without value.
 - Prefer straightforward flow over reduced line count.
 - Stop when readability gains flatten out.
-- In loop mode, stop immediately when a round produces no working-tree changes.
 
-## Update Check
+## Output
 
-On first use in a session, silently check for a newer version:
+When finished, briefly summarize:
 
-1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
-2. Compare the version for `code-simplifier` against this file's `metadata.version`.
-3. If the remote version is newer, pause before the main task and ask:
-   > **code-simplifier** update available (local {X.Y} → remote {A.B}).
-   > Would you like me to update it for you first?
-   > I can run `npx skills update code-simplifier` for you.
-4. If the user says yes, run the update before continuing.
-5. If the user says no, continue with the current local version.
-6. If the fetch fails or web access is unavailable, skip silently.
+- what you fixed
+- what you intentionally skipped
+- whether the reviewed code was already clean

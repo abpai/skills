@@ -8,47 +8,41 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Claude Code CLI
 
 Use this skill when you need the local `claude` CLI from a Codex-style harness.
-Bias toward non-interactive `claude -p` runs. Use the interactive REPL only when
-the user explicitly wants to stay inside Claude.
+Bias toward non-interactive `claude -p` runs. Treat the CLI as an automation
+tool, not an interactive brainstorming partner, unless the user explicitly asks
+to stay inside Claude.
 
 ## First Check
 
-Confirm the CLI works before you build a workflow around it:
+Confirm the CLI is healthy before you build a workflow around it:
 
 ```bash
 claude --version
 claude auth status --text
 ```
 
-If either command fails, stop and report the setup problem instead of retrying
-the task.
+If either command fails, stop and report the setup or auth problem. Do not
+retry task prompts until preflight works.
 
-## Default Stance
+## Default Flows
 
-Unless the user asks for something else:
+Use exactly one prompt source per `claude -p` run:
 
-- Use `claude -p` for one-shot runs.
-- Use `--no-session-persistence` for disposable runs.
-- Use `--permission-mode plan` for analysis, review, and read-only exploration.
-- Use `--permission-mode acceptEdits` only when Claude should change files.
-- Use `sonnet` as the default model alias.
-- Use `medium` effort for ordinary work, `high` for harder tasks, `low` for tiny checks.
-- Use `--output-format json` only when another tool will parse the result.
+- short prompt: pass it as the trailing argument
+- long or multi-line prompt: pass it over stdin
 
-Avoid `--dangerously-skip-permissions` unless the user explicitly wants it and
-the environment is already safely sandboxed.
+Do not mix stdin with a trailing prompt argument. The CLI can merge both
+inputs, which makes harness behavior unreliable.
 
-## Pick The Run Shape
+### One-shot analysis
 
-### One-shot run
-
-Default choice for most delegated work:
+Default choice for summarization, critique, and read-only analysis:
 
 ```bash
 claude -p \
@@ -59,33 +53,65 @@ claude -p \
   "Summarize the uncommitted changes"
 ```
 
-### Continue the latest session
+### One-shot edits
 
-Use when the user wants to keep going with the most recent Claude conversation
-in this directory:
+Use this when Claude should change files in the current repo:
 
 ```bash
-printf '%s\n' "Continue and focus on the test failures only" | claude -c -p
+claude -p \
+  --model sonnet \
+  --effort high \
+  --permission-mode acceptEdits \
+  --no-session-persistence \
+  "Fix the failing tests in the current repo"
 ```
 
-### Resume a specific session
+Narrow the working set first if the change is broad or the repo is noisy.
 
-Use `-r <session-id> -p` to resume, and add `--fork-session` if you want a new
-branch of that conversation instead of reusing the original session.
+### Continue or resume
+
+Use persisted sessions only when you expect to continue later.
+
+- If you want a disposable one-shot run, keep `--no-session-persistence`.
+- If you want to continue later, omit that flag.
+- Prefer `-r <session-id> -p` when the exact session matters.
+- Use `-c -p` only when reusing the latest local conversation is clearly safe.
+
+```bash
+printf '%s\n' "Continue and focus on the failing tests only" | claude -c -p
+```
 
 ```bash
 printf '%s\n' "Finish the refactor and summarize the remaining risks" | \
   claude -r <session-id> -p
 ```
 
-## Review Workflow
+### Structured output
 
-When the user wants a Claude review of local changes, use one of these two
-paths. Do not bounce between several near-identical review commands.
+Use JSON only when another tool will parse the result:
 
-### Default: review the repo changes directly
+```bash
+claude -p \
+  --model sonnet \
+  --effort medium \
+  --permission-mode plan \
+  --no-session-persistence \
+  --output-format json \
+  "Summarize the current diff"
+```
 
-Use this first for normal "review my changes" requests:
+`--output-format json` returns an envelope, not raw model text. The main body is
+usually in `result`. Check `subtype` and `errors`, not only `is_error`.
+
+## Review And Plan Critique
+
+Use the same workflow for code review and implementation-plan critique. Start
+broad once, then narrow scope if needed. Do not keep retrying with slightly
+different wording.
+
+### Broad attempt
+
+Use repo-native review for ordinary local-change review:
 
 ```bash
 claude -p \
@@ -96,12 +122,26 @@ claude -p \
   "Review the current uncommitted changes in this repo. Focus on concrete bugs, regressions, misleading docs, packaging issues, and risky assumptions. Output sections in this exact order: Findings, Open questions, Residual risks. Findings should come first with file references. If there are no findings, say 'No findings'."
 ```
 
-Use `high` effort if the diff is large, subtle, or high-risk.
+Use stdin-only prompts for longer plan critique requests:
 
-### Narrow scope: review a specific diff
+```bash
+claude -p \
+  --model sonnet \
+  --effort medium \
+  --permission-mode plan \
+  --no-session-persistence \
+  < /tmp/claude_prompt.txt
+```
 
-Use this when the repo-wide review is too slow or when you want to isolate a
-known set of files:
+### Narrowing ladder
+
+If scope needs tightening, narrow in this order:
+
+1. `git diff --staged` when the user clearly means staged work
+2. `git diff --unified=3 -- <paths...>` when the worktree is noisy or large
+3. one file or subsystem at a time if the narrowed diff is still too broad
+
+Example narrowed diff review:
 
 ```bash
 git diff --unified=3 -- path/to/file1 path/to/file2 | \
@@ -113,145 +153,82 @@ git diff --unified=3 -- path/to/file1 path/to/file2 | \
     "Review this diff only. Focus on concrete bugs, regressions, misleading docs, packaging issues, and risky assumptions. Output sections in this exact order: Findings, Open questions, Residual risks. Findings should come first with file references. If there are no findings, say 'No findings'."
 ```
 
-### Review rules
+Repo-native review can inspect unrelated worktree changes. Use staged or
+file-scoped diffs when scope matters.
 
-- Start with the repo-native review unless you already know the diff must be narrowed.
-- If the first repo-native review is merely slow, wait before rerunning.
-- If the repo-native review fails, narrow the diff locally instead of rewriting the prompt repeatedly.
-- After Claude returns findings, verify exact line references from the local diff before presenting the final review.
+## Hard Rules
 
-## Common Patterns
+Treat every failed or suspicious run as one of these cases, then take the
+single next action listed here.
 
-### Long or multi-line prompt
+### Preflight failure
 
-Prefer stdin over a giant argv string:
+`claude --version` or `claude auth status --text` fails.
 
-```bash
-cat > /tmp/claude_prompt.txt <<'EOF'
-Review this repository change.
+Next action: stop and report the setup or auth problem.
 
-Output sections:
-1. Findings
-2. Open questions
-3. Suggested fixes
-EOF
+### Non-zero exit
 
-claude -p \
-  --model sonnet \
-  --effort high \
-  --permission-mode plan \
-  --no-session-persistence \
-  < /tmp/claude_prompt.txt
-```
+`claude -p` exits non-zero.
 
-### Local edits
+Next action: stop and report the exit reason or stderr. Do not rerun the same
+shape.
 
-```bash
-claude -p \
-  --model sonnet \
-  --effort high \
-  --permission-mode acceptEdits \
-  --no-session-persistence \
-  "Fix the failing tests in the current repo"
-```
+### Slow but still running
 
-### Structured output
+The command is still running and has not failed.
 
-```bash
-claude -p \
-  --output-format json \
-  --json-schema '{"type":"object","properties":{"summary":{"type":"string"},"issues":{"type":"array","items":{"type":"string"}}},"required":["summary","issues"]}' \
-  --no-session-persistence \
-  "Review the current diff"
-```
+Next action: wait once. If it remains too slow for the task, narrow scope.
 
-Observed locally: `--output-format json` returns a result envelope with fields
-such as `result`, `session_id`, `num_turns`, `usage`, and `total_cost_usd`.
+### Empty stdout
 
-### Worktree isolation
+The command exits cleanly but prints nothing useful.
 
-```bash
-claude -p -w feature-auth \
-  --model sonnet \
-  --effort high \
-  --permission-mode acceptEdits \
-  --no-session-persistence \
-  "Investigate and fix the auth regression"
-```
+Next action: inspect stderr, then rerun once in plain text with a smaller prompt.
+If that also fails, stop and report it.
 
-## Flags That Matter
+### JSON envelope issue
 
-### Permission modes
+JSON mode returns an envelope but the useful payload is missing or unusable.
 
-- `plan`: review, analysis, read-only exploration
-- `acceptEdits`: allow local file changes
-- `dontAsk`: broad autonomy only when the user explicitly wants it
-- `auto`: use only when the user specifically wants Claude's automatic permission behavior
+Next action: check `result`, `subtype`, and `errors`. If the envelope still does
+not give a usable answer, rerun once with `--output-format text`.
 
-### Tool controls
+### Scope too broad
 
-Claude exposes three different tool controls:
+Claude is slow, vague, or obviously reviewing the wrong surface.
 
-- `--disallowedTools`: remove a few tools
-- `--allowedTools`: auto-approve a safe subset
-- `--tools`: replace the available built-in tool set entirely
+Next action: switch to the narrowing ladder. Change scope, not wording.
 
-Prefer them in that order. `--tools` is the sharpest knob and should not be the
-default for ordinary harness runs.
+### Tool or configuration limit
 
-```bash
-claude -p \
-  --disallowedTools "Edit" \
-  --permission-mode plan \
-  --no-session-persistence \
-  "Review this repo for risky shell scripts"
-```
+Claude reports a tool limit, configuration limit, or similar execution problem.
 
-### System prompt flags
+Next action: simplify the scope or prompt. Do not retry the same broad command
+with slightly different phrasing.
 
-Prefer `--append-system-prompt`. Use `--system-prompt` only when you truly want
-to replace Claude's built-in default behavior.
+### Retry budget
 
-### Streaming
+For review and plan critique:
 
-Use `--output-format stream-json` only for real streaming integrations.
+- allow at most one broad attempt
+- allow at most one narrowed attempt
+- after that, stop and summarize what failed, what was tried, and the next
+  safest narrower attempt
 
-- `stream-json` is an event stream, not a single final blob
-- `--include-partial-messages` only works with `stream-json`
-- `--verbose` is optional, not required
+## Advanced Knobs
 
-For most harness work, prefer plain `text` or `json`.
+Keep the main workflow simple. Advanced flags drift more often and should be
+verified against the local CLI help before first use in a new environment.
 
-## Settings And Scope
+Read [references/claude-cli.md](references/claude-cli.md) only when you need:
 
-Do not invent shell commands for REPL-only features. For CLI automation, use:
-
-- `--settings <file-or-json>`
-- `--setting-sources user,project,local`
-- `--add-dir <dir>`
-
-When this harness needs a temporary override, prefer CLI flags over mutating
-config files.
-
-Useful non-interactive commands:
-
-```bash
-claude --version
-claude auth status --text
-claude agents
-claude doctor
-```
-
-## Troubleshooting
-
-- If `claude --version` or `claude auth status --text` fails, report a CLI or auth issue.
-- If `claude -p` exits non-zero, treat the run as failed.
-- If stdout is empty, retry once with a smaller prompt and a tighter output contract.
-- If Claude reports a tool or configuration limit, treat that as a run failure
-  and rerun with a narrower diff or simpler prompt.
-- If a repo-native review is slow but still running, wait or narrow the diff; do not spam retries.
-- If a streaming command fails, fall back to `text` or `json` unless streaming is required.
-- If the user asks for unrestricted execution, restate the risk before using `dontAsk` or dangerous permission flags.
+- tool allow or deny lists
+- system prompt control
+- streaming output
+- worktree mode
+- settings overrides
+- more detailed JSON behavior notes
 
 ## Update Check
 
