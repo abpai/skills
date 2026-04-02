@@ -1,0 +1,7 @@
+{
+  "name": "dev-squad",
+  "version": "1.2.0",
+  "description": "Set up or upgrade Claude Code repo automation. Scaffold hooks, review gates, custom agents, and team coding workflows.",
+  "author": { "name": "Andy Pai" },
+  "license": "MIT"
+}

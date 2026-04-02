@@ -1,0 +1,11 @@
+{
+  "name": "cli-design-expert",
+  "version": "1.1.1",
+  "description": "Design or review command-line interfaces for usability and automation: help text, args/flags, stdout vs stderr, exit codes, TTY behavior, config precedence.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}

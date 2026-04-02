@@ -1,0 +1,145 @@
+{
+  "name": "abpai-skills",
+  "metadata": {
+    "description": "Cross-domain thinking, multi-model tooling, and developer productivity plugins for Claude Code."
+  },
+  "owner": {
+    "name": "Andy Pai",
+    "url": "https://github.com/abpai"
+  },
+  "plugins": [
+    {
+      "name": "distill",
+      "description": "Iteratively decompose complex systems into their essential primitives.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "distill" },
+      "category": "productivity",
+      "keywords": ["distillation", "analysis", "primitives", "compression"]
+    },
+    {
+      "name": "lateral-thinking",
+      "description": "Generate non-obvious hypotheses by decomposing a problem to its mechanism and raiding distant fields.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "lateral-thinking" },
+      "category": "productivity",
+      "keywords": ["brainstorming", "cross-domain", "ideation", "mechanisms"]
+    },
+    {
+      "name": "codex-exec",
+      "description": "Run the Codex CLI for non-interactive coding work. Second opinions, adversarial review, and multi-model consensus.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "codex-exec" },
+      "category": "productivity",
+      "keywords": ["codex", "openai", "multi-model", "review"]
+    },
+    {
+      "name": "agent-browser",
+      "description": "Browser automation CLI for AI agents. Navigate pages, fill forms, click buttons, take screenshots, extract data.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "agent-browser" },
+      "category": "tools",
+      "keywords": ["browser", "automation", "web", "scraping", "testing"]
+    },
+    {
+      "name": "arch-council",
+      "description": "Orchestrate a structured architecture debate between Claude and Codex. Claude proposes, Codex critiques, Claude synthesizes.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "arch-council" },
+      "category": "productivity",
+      "keywords": ["architecture", "debate", "multi-model", "adversarial"]
+    },
+    {
+      "name": "beautiful-mermaid",
+      "description": "Render Mermaid diagrams as SVG and PNG using the Beautiful Mermaid library.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "beautiful-mermaid" },
+      "category": "tools",
+      "keywords": ["mermaid", "diagrams", "svg", "visualization"]
+    },
+    {
+      "name": "bun-expert",
+      "description": "Expert guidance for JavaScript/TypeScript development with the Bun runtime. Covers setup, servers, APIs, testing, bundling, and Node.js migration.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "bun-expert" },
+      "category": "languages",
+      "keywords": ["bun", "javascript", "typescript", "runtime"]
+    },
+    {
+      "name": "claude",
+      "description": "Run Claude Code CLI for code analysis and automated edits. Delegate tasks, continue sessions, get machine-readable output.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "claude" },
+      "category": "tools",
+      "keywords": ["claude", "cli", "delegation", "automation"]
+    },
+    {
+      "name": "cli-design-expert",
+      "description": "Design or review command-line interfaces for usability and automation: help text, flags, exit codes, TTY behavior.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "cli-design-expert" },
+      "category": "productivity",
+      "keywords": ["cli", "design", "usability", "ergonomics"]
+    },
+    {
+      "name": "code-simplifier",
+      "description": "Simplify and refine code for clarity, consistency, and maintainability while preserving all functionality.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code-simplifier" },
+      "category": "code-quality",
+      "keywords": ["simplification", "refactoring", "clarity", "maintainability"]
+    },
+    {
+      "name": "dead-code-eliminator",
+      "description": "Audit a codebase for dead code: unreachable functions, unused imports, orphaned classes, stale feature flags.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "dead-code-eliminator" },
+      "category": "code-quality",
+      "keywords": ["dead-code", "cleanup", "audit", "unused"]
+    },
+    {
+      "name": "dev-squad",
+      "description": "Set up or upgrade Claude Code repo automation. Scaffold hooks, review gates, custom agents, and team coding workflows.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "dev-squad" },
+      "category": "productivity",
+      "keywords": ["automation", "hooks", "agents", "team-workflows"]
+    },
+    {
+      "name": "dokploy",
+      "description": "Operate Dokploy via the official CLI. Manage projects, environments, apps, env vars, and databases from the terminal.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "dokploy" },
+      "category": "devops",
+      "keywords": ["dokploy", "deployment", "hosting", "cli"]
+    },
+    {
+      "name": "human-writer",
+      "description": "Edit prose so it sounds natural, specific, and human-written. Use when a draft feels generic or model-generated.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "human-writer" },
+      "category": "writing",
+      "keywords": ["prose", "editing", "deslop", "humanize"]
+    },
+    {
+      "name": "project-memory",
+      "description": "Always-on project memory workflow. Read and update .agents/LEARNINGS.md with mistakes, corrections, patterns, and preferences.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "project-memory" },
+      "category": "productivity",
+      "keywords": ["memory", "learnings", "patterns", "context"]
+    },
+    {
+      "name": "review-and-commit",
+      "description": "Review uncommitted Git changes for correctness, quality, and convention alignment, then prepare safe, atomic commits.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "review-and-commit" },
+      "category": "code-quality",
+      "keywords": ["review", "commit", "git", "conventions"]
+    },
+    {
+      "name": "socratic-code-owner",
+      "description": "Quiz the developer on code, architecture, or plans an AI agent built. Ensures the human has a bulletproof mental model.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "socratic-code-owner" },
+      "category": "learning",
+      "keywords": ["quiz", "understanding", "mental-model", "ownership"]
+    },
+    {
+      "name": "try",
+      "description": "Systematically explore and evaluate a library, tool, or GitHub repo in an isolated scratch environment.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "try" },
+      "category": "tools",
+      "keywords": ["explore", "evaluate", "library", "scratch"]
+    },
+    {
+      "name": "visualize",
+      "description": "Generate a self-contained HTML visualization to explain a system, plan, code flow, or concept.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "visualize" },
+      "category": "tools",
+      "keywords": ["visualization", "html", "diagrams", "explanation"]
+    }
+  ]
+}

@@ -94,4 +94,5 @@
 
 ## Domain Notes
 
-- Skills in this repository are stored as top-level folders, each with `SKILL.md`.
+- This repository now uses Claude plugin packaging: each top-level plugin folder contains `.claude-plugin/plugin.json` and skill content under `skills/<name>/SKILL.md` plus supporting files alongside that manifest.
+- For Codex compatibility, distinguish raw skills from plugins: raw Codex skills still expect a folder with root `SKILL.md`, while Codex plugins use `.codex-plugin/plugin.json` plus `skills/<name>/SKILL.md`.

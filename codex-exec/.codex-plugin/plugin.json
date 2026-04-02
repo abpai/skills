@@ -1,0 +1,11 @@
+{
+  "name": "codex-exec",
+  "version": "1.2.0",
+  "description": "Run the Codex CLI for non-interactive coding work. Delegate prompts, code review, and second opinions to OpenAI Codex.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}

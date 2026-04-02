@@ -1,0 +1,7 @@
+{
+  "name": "beautiful-mermaid",
+  "version": "1.1.0",
+  "description": "Render Mermaid diagrams as SVG and PNG using the Beautiful Mermaid library.",
+  "author": { "name": "Andy Pai" },
+  "license": "MIT"
+}
