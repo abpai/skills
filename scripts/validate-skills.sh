@@ -31,24 +31,88 @@ for plugin_dir in "${PLUGIN_DIRS[@]}"; do
 
   # Check plugin.json has required fields
   if ! python3 -c "
-import json, sys
-path, expected_name = sys.argv[1], sys.argv[2]
+import json, re, sys
+from pathlib import Path
+
+path, expected_name, name_regex = sys.argv[1], sys.argv[2], sys.argv[3]
+manifest_path = Path(path).resolve()
+plugin_dir = manifest_path.parent.parent
+meta_dir = manifest_path.parent
+
 try:
-    with open(path, encoding='utf-8') as f:
-        data = json.load(f)
+    data = json.loads(manifest_path.read_text(encoding='utf-8'))
 except Exception as exc:
     print(f'[FAIL] {path}: cannot parse JSON: {exc}')
     sys.exit(1)
+
 name = data.get('name')
 if not name:
-    print(f'[FAIL] {path}: missing name'); sys.exit(1)
+    print(f'[FAIL] {path}: missing name')
+    sys.exit(1)
 if name != expected_name:
-    print(f'[FAIL] {path}: name \"{name}\" does not match directory \"{expected_name}\"'); sys.exit(1)
-if not data.get('version'):
-    print(f'[FAIL] {path}: missing version'); sys.exit(1)
+    print(f'[FAIL] {path}: name \"{name}\" does not match directory \"{expected_name}\"')
+    sys.exit(1)
+if not re.fullmatch(name_regex, name):
+    print(f'[FAIL] {path}: name \"{name}\" must be lowercase kebab-case')
+    sys.exit(1)
+
+version = data.get('version')
+if not version:
+    print(f'[FAIL] {path}: missing version')
+    sys.exit(1)
+if not re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?', version):
+    print(f'[FAIL] {path}: version \"{version}\" is not semantic-version shaped')
+    sys.exit(1)
+
 if not data.get('description'):
-    print(f'[FAIL] {path}: missing description'); sys.exit(1)
-" "$manifest" "$plugin_name"; then
+    print(f'[FAIL] {path}: missing description')
+    sys.exit(1)
+
+extras = sorted(p.name for p in meta_dir.iterdir() if p.name != 'plugin.json')
+if extras:
+    joined = ', '.join(extras)
+    print(f'[FAIL] {meta_dir}: only plugin.json belongs in .claude-plugin (found: {joined})')
+    sys.exit(1)
+
+def validate_path_entry(key, entry):
+    if not isinstance(entry, str):
+        print(f'[FAIL] {path}: {key} entries must be strings')
+        sys.exit(1)
+    if not entry.startswith('./'):
+        print(f'[FAIL] {path}: {key} path \"{entry}\" must start with ./')
+        sys.exit(1)
+    resolved = (plugin_dir / entry[2:]).resolve()
+    try:
+        resolved.relative_to(plugin_dir)
+    except ValueError:
+        print(f'[FAIL] {path}: {key} path \"{entry}\" escapes the plugin root')
+        sys.exit(1)
+    if not resolved.exists():
+        print(f'[FAIL] {path}: {key} path \"{entry}\" does not exist')
+        sys.exit(1)
+
+for key in ('commands', 'agents', 'skills', 'outputStyles'):
+    value = data.get(key)
+    if value is None:
+        continue
+    entries = [value] if isinstance(value, str) else value
+    if not isinstance(entries, list):
+        print(f'[FAIL] {path}: {key} must be a string or list of strings')
+        sys.exit(1)
+    for entry in entries:
+        validate_path_entry(key, entry)
+
+for key in ('hooks', 'mcpServers', 'lspServers'):
+    value = data.get(key)
+    if value is None or isinstance(value, dict):
+        continue
+    entries = [value] if isinstance(value, str) else value
+    if not isinstance(entries, list):
+        print(f'[FAIL] {path}: {key} must be a relative path, list of relative paths, or inline object')
+        sys.exit(1)
+    for entry in entries:
+        validate_path_entry(key, entry)
+" "$manifest" "$plugin_name" "$name_regex"; then
     failed=1
     continue
   fi
@@ -59,9 +123,19 @@ if not data.get('description'):
     SKILL_FILES+=("$f")
   done < <(find "$plugin_dir/skills" -name 'SKILL.md' -type f 2>/dev/null | sort)
 
+  COMMAND_FILES=()
+  while IFS= read -r f; do
+    COMMAND_FILES+=("$f")
+  done < <(find "$plugin_dir/commands" -name '*.md' -type f 2>/dev/null | sort)
+
+  AGENT_FILES=()
+  while IFS= read -r f; do
+    AGENT_FILES+=("$f")
+  done < <(find "$plugin_dir/agents" -name '*.md' -type f 2>/dev/null | sort)
+
   if [[ ${#SKILL_FILES[@]} -eq 0 ]]; then
-    has_commands="$(find "$plugin_dir/commands" -name '*.md' -type f 2>/dev/null | head -1)"
-    has_agents="$(find "$plugin_dir/agents" -name '*.md' -type f 2>/dev/null | head -1)"
+    has_commands="$(printf '%s\n' "${COMMAND_FILES[@]}" | head -1)"
+    has_agents="$(printf '%s\n' "${AGENT_FILES[@]}" | head -1)"
     if [[ -z "$has_commands" && -z "$has_agents" ]]; then
       echo "[FAIL] $plugin_dir: no skills, commands, or agents found"
       failed=1
@@ -107,6 +181,117 @@ if not data.get('description'):
     fi
   done
 
+  # Validate each command markdown file
+  for command_file in "${COMMAND_FILES[@]}"; do
+    if ! python3 - "$command_file" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding='utf-8')
+if not text.startswith('---\n'):
+    print(f'[FAIL] {path}: missing opening frontmatter fence')
+    sys.exit(1)
+parts = text.split('\n---\n', 1)
+if len(parts) != 2:
+    print(f'[FAIL] {path}: missing closing frontmatter fence')
+    sys.exit(1)
+fields = {}
+for line in parts[0].splitlines()[1:]:
+    if not line or line.startswith((' ', '\t', '#')):
+        continue
+    if ':' in line:
+        key, value = line.split(':', 1)
+        fields[key.strip()] = value.strip().strip('"')
+if not fields.get('description'):
+    print(f"[FAIL] {path}: missing 'description' in frontmatter")
+    sys.exit(1)
+PY
+    then
+      failed=1
+    fi
+  done
+
+  # Validate each plugin agent file against Claude plugin conventions
+  for agent_file in "${AGENT_FILES[@]}"; do
+    expected_name="$(basename "$agent_file" .md)"
+    if ! python3 - "$agent_file" "$expected_name" "$name_regex" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+expected_name = sys.argv[2]
+name_regex = sys.argv[3]
+text = path.read_text(encoding='utf-8')
+if not text.startswith('---\n'):
+    print(f'[FAIL] {path}: missing opening frontmatter fence')
+    sys.exit(1)
+parts = text.split('\n---\n', 1)
+if len(parts) != 2:
+    print(f'[FAIL] {path}: missing closing frontmatter fence')
+    sys.exit(1)
+fields = {}
+for line in parts[0].splitlines()[1:]:
+    if not line or line.startswith((' ', '\t', '#')):
+        continue
+    if ':' in line:
+        key, value = line.split(':', 1)
+        fields[key.strip()] = value.strip().strip('"')
+name = fields.get('name')
+if not name:
+    print(f"[FAIL] {path}: missing 'name' in frontmatter")
+    sys.exit(1)
+if name != expected_name:
+    print(f"[FAIL] {path}: name '{name}' does not match file '{expected_name}.md'")
+    sys.exit(1)
+if not re.fullmatch(name_regex, name):
+    print(f"[FAIL] {path}: name '{name}' must be lowercase kebab-case")
+    sys.exit(1)
+if len(name) > 64:
+    print(f'[FAIL] {path}: name exceeds 64 chars')
+    sys.exit(1)
+if not fields.get('description'):
+    print(f"[FAIL] {path}: missing 'description' in frontmatter")
+    sys.exit(1)
+for unsupported in ('hooks', 'mcpServers', 'permissionMode'):
+    if unsupported in fields:
+        print(f"[FAIL] {path}: plugin agents must not declare unsupported '{unsupported}' frontmatter")
+        sys.exit(1)
+PY
+    then
+      failed=1
+    fi
+  done
+
+  hooks_file="$plugin_dir/hooks/hooks.json"
+  if [[ -f "$hooks_file" ]]; then
+    if ! python3 - "$hooks_file" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+try:
+    with open(path, encoding='utf-8') as f:
+        data = json.load(f)
+except Exception as exc:
+    print(f'[FAIL] {path}: cannot parse JSON: {exc}')
+    sys.exit(1)
+if not isinstance(data, dict):
+    print(f'[FAIL] {path}: hooks file must contain a JSON object')
+    sys.exit(1)
+if 'hooks' not in data:
+    print(f'[FAIL] {path}: missing top-level \"hooks\" object')
+    sys.exit(1)
+if not isinstance(data['hooks'], dict):
+    print(f'[FAIL] {path}: top-level \"hooks\" must be an object')
+    sys.exit(1)
+PY
+    then
+      failed=1
+    fi
+  fi
+
   echo "  [OK] $plugin_name"
 done
 
@@ -143,6 +328,54 @@ print(f'  [OK] marketplace.json ({len(plugins)} plugins)')
 " "$marketplace" || failed=1
 else
   echo "[WARN] No .claude-plugin/marketplace.json found"
+fi
+
+# ── Validate Codex marketplace ──
+
+codex_marketplace=".agents/plugins/marketplace.json"
+if [[ -f "$codex_marketplace" ]]; then
+  python3 -c "
+import json, sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding='utf-8'))
+except Exception as exc:
+    print(f'[FAIL] {path}: cannot parse JSON: {exc}')
+    sys.exit(1)
+
+plugins = data.get('plugins', [])
+if not isinstance(plugins, list):
+    print(f'[FAIL] {path}: plugins must be a list')
+    sys.exit(1)
+
+for i, plugin in enumerate(plugins):
+    name = plugin.get('name')
+    source = plugin.get('source', {})
+    rel_path = source.get('path')
+    if not name:
+        print(f'[FAIL] {path}: plugins[{i}] missing name')
+        sys.exit(1)
+    if not rel_path:
+        print(f'[FAIL] {path}: plugins[{i}] (\"{name}\") missing source.path')
+        sys.exit(1)
+    plugin_dir = Path(rel_path)
+    if not plugin_dir.exists():
+        print(f'[FAIL] {path}: plugins[{i}] (\"{name}\") points to missing path {rel_path!r}')
+        sys.exit(1)
+    codex_manifest = plugin_dir / '.codex-plugin' / 'plugin.json'
+    if not codex_manifest.exists():
+        print(
+            f'[FAIL] {path}: plugins[{i}] (\"{name}\") points to {rel_path!r} '
+            'but that folder has no .codex-plugin/plugin.json'
+        )
+        sys.exit(1)
+
+print(f'  [OK] {path} ({len(plugins)} plugins)')
+" "$codex_marketplace" || failed=1
+else
+  echo "[WARN] No .agents/plugins/marketplace.json found"
 fi
 
 # ── Validate versions.json ──

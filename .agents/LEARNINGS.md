@@ -47,10 +47,14 @@
 | 2026-03-26 | self   | Treated a quiet `claude -p` run as hung after empty intermediate polls even though the final result arrived on a later read | For `claude -p` in this harness, allow an extra final poll before declaring the run stuck; silence during intermediate reads is not by itself a failure |
 | 2026-03-31 | self   | Hand-editing a new skill into `versions.json` and patching frontmatter separately led to a stale manifest check and a missing opening `---` fence during release prep | For new or renamed skills, fix the `SKILL.md` frontmatter first, then run `scripts/generate-versions.sh` instead of manually editing `versions.json`, and validate immediately |
 | 2026-04-03 | self   | A newly added plugin folder picked up a stray `.DS_Store`, which is easy to miss when the whole directory is still untracked | Before committing a new plugin, scan the folder for Finder artifacts and remove them even if `.gitignore` would normally hide them |
+| 2026-04-04 | self   | Structured `claude -p` runs looked broken when the prompt was passed via a brittle argv shape during plugin auditing | For Claude CLI review helpers, prefer stdin-fed prompts over complex quoted argv prompts, especially when also passing JSON schema input |
+| 2026-04-04 | self   | `codex exec --output-schema` rejected a seemingly valid schema during Pi auditing | For Codex structured output, include `additionalProperties: false` on every object level in the schema before running the command |
+| 2026-04-04 | self   | Applied generic subagent and hook guidance to plugin-shipped agents without checking the plugin-specific restrictions | Validate plugin agents against the plugin docs specifically: keep `hooks`, `mcpServers`, and `permissionMode` out of plugin agents, and preload any required skills explicitly |
 
 ## User Preferences
 
 - Repository goal: publish created/forked skills that follow the Open Agent Skills specification (`https://agentskills.io/specification`).
+- `pi` should remain a Claude-only plugin; use the `codex` CLI inside it for secondary inference and critique instead of shipping a Codex plugin.
 - For `dev-squad`, keep the skill focused on configuring Claude Code agents/hooks; treat `tmux-squad` as the optional launcher for Orb + timeline instead of generating a repo-local workspace script.
 - Prefer clear, descriptive skill names over metaphorical names.
 - For cross-skill quality passes, use distinct subagents with explicit per-file ownership.
@@ -77,6 +81,7 @@
 - When imported `SKILL.md` links many `references/*.md` files, copy the full `references/` folder to avoid broken in-skill links.
 - For scanner integration, keep existing hooks and append `skill-scanner` as another local hook invoked through `uv run --with ...` to avoid global Python dependency drift.
 - When adding env-driven scanner features (for example, LLM mode), include commented required API variables in `.env.example` so setup is self-documenting.
+- For Claude-only plugins in this repo, document the exception in `README.md` and `CONTRIBUTING.md`, and enforce it by validating that the Codex marketplace only references folders with `.codex-plugin/plugin.json`.
 - Use block-style YAML lists/maps in SKILL frontmatter; `skills-ref`/StrictYAML rejects JSON-style flow syntax (for example, `bins: ["vk", "bun"]`).
 - For Bun-focused skills, verify release chronology and feature introduction points against `https://bun.com/blog.md` + linked release notes before finalizing timelines/CLI guidance.
 - For Bun-focused skills, prefer evergreen doc-backed guidance over hard-coded benchmark percentages and long version timelines.
