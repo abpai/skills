@@ -46,6 +46,7 @@
 | 2026-03-26 | self   | Ran `git diff -- <absolute-path-outside-repo> <repo-path>`, which produced a misleading cross-file patch view during verification | When checking edits for files outside the repo root, inspect the file directly or diff one path at a time instead of mixing external absolute paths with repo-relative pathspecs |
 | 2026-03-26 | self   | Treated a quiet `claude -p` run as hung after empty intermediate polls even though the final result arrived on a later read | For `claude -p` in this harness, allow an extra final poll before declaring the run stuck; silence during intermediate reads is not by itself a failure |
 | 2026-03-31 | self   | Hand-editing a new skill into `versions.json` and patching frontmatter separately led to a stale manifest check and a missing opening `---` fence during release prep | For new or renamed skills, fix the `SKILL.md` frontmatter first, then run `scripts/generate-versions.sh` instead of manually editing `versions.json`, and validate immediately |
+| 2026-04-03 | self   | A newly added plugin folder picked up a stray `.DS_Store`, which is easy to miss when the whole directory is still untracked | Before committing a new plugin, scan the folder for Finder artifacts and remove them even if `.gitignore` would normally hide them |
 
 ## User Preferences
 

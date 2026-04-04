@@ -145,6 +145,90 @@ else
   echo "[WARN] No .claude-plugin/marketplace.json found"
 fi
 
+# ── Validate versions.json ──
+
+versions_file="versions.json"
+if [[ -f "$versions_file" ]]; then
+  python3 -c "
+import json
+import sys
+from pathlib import Path
+
+def extract_version(path: Path) -> str | None:
+    in_frontmatter = False
+    in_metadata = False
+    for raw_line in path.read_text(encoding='utf-8').splitlines():
+        line = raw_line.rstrip('\n')
+        if line == '---':
+            if not in_frontmatter:
+                in_frontmatter = True
+                continue
+            break
+        if not in_frontmatter:
+            continue
+        if line.startswith('metadata:'):
+            in_metadata = True
+            continue
+        if in_metadata and line.startswith('  version:'):
+            return line.split(':', 1)[1].strip().strip('\"')
+        if in_metadata and line and not line.startswith('  '):
+            in_metadata = False
+    return None
+
+path = Path(sys.argv[1])
+try:
+    data = json.loads(path.read_text(encoding='utf-8'))
+except Exception as exc:
+    print(f'[FAIL] {path}: cannot parse JSON: {exc}')
+    sys.exit(1)
+
+expected = {}
+missing_versions = []
+for skill_file in sorted(Path('.').glob('*/skills/*/SKILL.md')):
+    skill_name = skill_file.parent.name
+    version = extract_version(skill_file)
+    if not version:
+        missing_versions.append(str(skill_file))
+        continue
+    expected[skill_name] = version
+
+if missing_versions:
+    for skill_file in missing_versions:
+        print(f'[FAIL] {skill_file}: missing metadata.version in frontmatter')
+    sys.exit(1)
+
+actual = data.get('skills')
+if data.get('schema_version') != 1:
+    print(f'[FAIL] {path}: schema_version must be 1')
+    sys.exit(1)
+if not isinstance(actual, dict):
+    print(f'[FAIL] {path}: skills must be an object')
+    sys.exit(1)
+if actual != expected:
+    missing = sorted(set(expected) - set(actual))
+    extra = sorted(set(actual) - set(expected))
+    mismatched = sorted(
+        skill for skill in expected
+        if skill in actual and actual[skill] != expected[skill]
+    )
+    if missing:
+        print(f'[FAIL] {path}: missing skills: {\", \".join(missing)}')
+    if extra:
+        print(f'[FAIL] {path}: unexpected skills: {\", \".join(extra)}')
+    for skill in mismatched:
+        print(
+            f'[FAIL] {path}: {skill} version {actual[skill]!r} does not match '
+            f'frontmatter {expected[skill]!r}'
+        )
+    sys.exit(1)
+
+print(f'  [OK] {path} ({len(expected)} skills)')
+" "$versions_file" || failed=1
+else
+  echo "[FAIL] $versions_file: missing file"
+  failed=1
+fi
+
 if [[ $failed -ne 0 ]]; then
   echo "Validation failed."
   exit 1
