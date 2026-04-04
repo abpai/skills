@@ -2,7 +2,7 @@
 name: code-simplifier
 description: Simplify and refine code for clarity, consistency, and maintainability while preserving all functionality. Focuses on recently modified code unless instructed otherwise.
 metadata:
-  version: "2.0"
+  version: "2.1"
 ---
 
 # Code Simplifier
@@ -35,7 +35,9 @@ If subagents are available, launch all three review agents concurrently in a sin
 
 If subagents are not available, perform the same three review passes yourself.
 
-### Review 1: Code Reuse
+Launch all three review agents in the same message. Give each agent the full diff so it can reason about the whole change, not just one file in isolation.
+
+### Review 1: Code Reuse Review
 
 Check whether the change reimplements logic that already exists.
 
@@ -45,7 +47,7 @@ Check whether the change reimplements logic that already exists.
 - Flag inline logic that should use an existing utility instead of hand-rolled code.
 - Common duplication targets include string manipulation, path handling, env detection, parsing helpers, and type guards.
 
-### Review 2: Code Quality
+### Review 2: Code Quality Review
 
 Check for structural and maintainability issues.
 
@@ -54,20 +56,21 @@ Check for structural and maintainability issues.
 - Copy-paste variation: near-duplicate blocks that should share an abstraction.
 - Leaky abstractions: exposing internal details or breaking module boundaries.
 - Stringly-typed code: raw strings where constants, unions, or existing types should be used.
+- Unnecessary JSX nesting: wrapper elements that add no layout or semantic value.
 - Unnecessary nesting and branching complexity.
 - Unclear identifiers that obscure intent.
 - Dense logic that should be split into coherent, single-purpose helpers.
 - Fragile one-liners that should be explicit, readable control flow.
 - Unnecessary comments: remove comments that only restate what the code does; keep only non-obvious why.
 
-### Review 3: Efficiency
+### Review 3: Efficiency Review
 
 Check for unnecessary work and avoidable overhead.
 
 - Unnecessary work: redundant computation, repeated file reads, duplicate API calls, N+1 patterns.
 - Missed concurrency: independent work done sequentially when it could run in parallel.
 - Hot-path bloat: new blocking work in startup, render, request, or polling paths.
-- Recurring no-op updates: state or store writes that fire even when nothing changed.
+- Recurring no-op updates: state or store writes that fire even when nothing changed; ensure wrapper updaters preserve no-change signals when a same-reference return should short-circuit downstream updates.
 - Unnecessary existence checks: prefer operating directly and handling errors over TOCTOU pre-checks.
 - Memory issues: unbounded collections, missing cleanup, leaked listeners or subscriptions.
 - Overly broad operations: reading or loading more data than needed.
@@ -79,6 +82,7 @@ Check for unnecessary work and avoidable overhead.
 1. If a finding is a false positive or not worth changing, skip it without debate.
 1. Re-check the edited code for correctness and local consistency.
 1. Run available lint, test, or targeted validation when practical.
+1. Briefly summarize what you fixed, what you skipped, and whether the reviewed code was already clean.
 
 ## Boundaries
 

@@ -1,6 +1,6 @@
 {
   "name": "code-simplifier",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Simplify and refine code for clarity, consistency, and maintainability while preserving all functionality.",
   "author": { "name": "Andy Pai" },
   "license": "MIT"
