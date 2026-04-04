@@ -1,40 +1,44 @@
 ---
 name: try
 description: >
-  Systematically explore and evaluate a library, tool, or GitHub repo in an isolated
-  scratch environment. Use this skill whenever the user asks to "try", "evaluate",
-  "explore", or "kick the tires" on a library/repo/tool, especially when they provide
-  a GitHub URL, npm/pip package name, or repo shorthand like "owner/repo". Use it when
-  they want real primitives, failure modes, and composability beyond quickstarts before
-  deciding on integration. Produces runnable scratch/ scripts demonstrating key primitives,
-  a composition script, and a Tutorial.md with honest findings. This is NOT for full
-  integration into an existing codebase.
+  Evaluate a new library, tool, or GitHub repo before adopting it. Uses the try CLI
+  for workspace management when available. Use this skill whenever the user asks to
+  "try", "evaluate", or "kick the tires" on a library/repo/tool, especially when they
+  provide a GitHub URL, npm/pip package name, or repo shorthand like "owner/repo". Use
+  it when they want real primitives, failure modes, and composability beyond quickstarts
+  before deciding on adoption. Produces runnable scripts demonstrating key primitives,
+  a prompt-driven composition demo, and a Tutorial.md with honest findings. This is for
+  deciding whether to adopt something new — not for understanding a project you already
+  have (use the `scratch` skill for that).
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1"
+  version: "1.2"
 ---
 
-# Try: Structured Library Exploration
+# Try: Structured Library Evaluation
 
-You are exploring a library the user wants to evaluate. Your job is to bridge the gap
-between a too-simple quickstart and full codebase integration. You will:
+You are evaluating a library the user wants to decide whether to adopt. Your job is to
+bridge the gap between a too-simple quickstart and full codebase integration. You will:
 
-1. Set up an isolated workspace
+1. Set up an isolated workspace using the try CLI (or fallback)
 2. Discover the library's real API surface (not just what the README shows)
 3. Write small, runnable scripts that each prove ONE primitive works
-4. Write a composition script that wires primitives together
+4. Write a composition script / prompt-driven demo that wires primitives together
 5. Document everything in Tutorial.md with an honest verdict
 
 Keep this scoped to disposable exploration only. Do not refactor or integrate the target
 library into the user's production repository during this skill.
 
+This is for evaluating something new for adoption. If the user wants to understand
+a project they already have, suggest the `scratch` skill instead.
+
 ## Invocation Patterns
 
 The user will say something like:
-- `/try ComposioHQ/agent-orchestrator`
-- `/try https://github.com/some/repo — help me build X`
-- `explore langgraph, I want to understand the state machine primitives`
+- `try ComposioHQ/agent-orchestrator`
+- `try https://github.com/some/repo — help me build X`
+- `evaluate langgraph, I want to understand the state machine primitives`
 - `kick the tires on better-auth`
 
 They may optionally provide:
@@ -42,40 +46,83 @@ They may optionally provide:
 - A specific angle ("focus on the streaming API")
 - A constraint ("I need this to work with Bun")
 
+**When NOT to use this skill**: If the user wants to understand a project they
+already work in, suggest the `scratch` skill instead. The `try` skill is for
+evaluating something new before committing to it.
+
 ## Phase 0: Setup
 
 ```
 WORKSPACE SETUP
 ───────────────
   ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-  │ User says    │     │ Clone repo   │     │ Create       │
-  │ "/try X"     │────>│ into         │────>│ scratch/     │
-  │              │     │ /tmp/try-X/  │     │ workspace    │
+  │ User asks to │     │ try CLI      │     │ Create       │
+  │ try X        │────>│ or fallback  │────>│ explorations/│
+  │              │     │ workspace    │     │ workspace    │
   └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
 1. **Determine the target**: Parse the repo URL, package name, or shorthand.
-2. **Clone or install** into an isolated directory:
-   - GitHub repo → `git clone --depth 1` into `/tmp/try-<name>/`
-   - npm package → `mkdir /tmp/try-<name> && cd $_ && npm init -y && npm i <pkg>`
-   - pip package → `mkdir /tmp/try-<name> && cd $_ && python -m venv .venv && source .venv/bin/activate && pip install <pkg>`
-3. **Create the scratch workspace** inside the clone:
-   ```
-   /tmp/try-<name>/
-   ├── scratch/           ← your scripts go here
-   │   ├── 01-<primitive>.{ts,py,js}
-   │   ├── 02-<primitive>.{ts,py,js}
-   │   ├── ...
-   │   └── 99-compose.{ts,py,js}
-   └── Tutorial.md        ← your writeup
-   ```
+2. **Check if the `try` CLI is available**: run `try --help`. If it succeeds,
+   use the try CLI workflow. If not, fall back to manual setup.
 
-If `try` CLI (github.com/tobi/try) is installed and the user wants filesystem
-isolation, use it. Otherwise, `/tmp/` is fine — this is disposable exploration.
+### Try CLI workflow (preferred)
+
+The `try` CLI manages ephemeral workspaces in `~/src/tries/` with date-prefixed
+directories, interactive selection, and lifecycle features (graduate, rename,
+delete).
+
+- **GitHub repo** → `try clone <url>` — creates `~/src/tries/YYYY-MM-DD-<name>/`
+- **npm/pip package** → use `try` interactive mode to create a new workspace,
+  then `cd` into it, init, and install the package:
+  - npm: `npm init -y && npm i <pkg>`
+  - pip: `python -m venv .venv && source .venv/bin/activate && pip install <pkg>`
+
+### Fallback (no try CLI)
+
+- GitHub repo → `git clone --depth 1` into `/tmp/try-<name>/`
+- npm package → `mkdir /tmp/try-<name> && cd $_ && npm init -y && npm i <pkg>`
+- pip package → `mkdir /tmp/try-<name> && cd $_ && python -m venv .venv && source .venv/bin/activate && pip install <pkg>`
+
+### Workspace structure
+
+Once the workspace exists, create an `explorations/` subdirectory for all
+generated scripts and Tutorial.md. This keeps your artifacts separate from
+cloned repo content.
+
+```
+~/src/tries/YYYY-MM-DD-<name>/     (via try CLI)
+├── <cloned repo content>
+└── explorations/
+    ├── 01-<primitive>.{ts,py,js}
+    ├── 02-<primitive>.{ts,py,js}
+    ├── ...
+    ├── 99-compose.{ts,py,js}
+    └── Tutorial.md
+```
 
 ## Phase 1: Recon
 
 **Goal**: Understand the library's actual surface area. Do NOT start writing code yet.
+
+```
+DISTILL CHECK
+─────────────
+  Is the distill skill available in this session?
+    YES → use it for a primitive inventory
+    NO  → manual recon (see below)
+```
+
+**If the `distill` skill is available** (check the current host's available skills):
+1. Use the `distill` skill on the cloned repo.
+2. Request a **primitive inventory** as the output shape — a concise list of
+   5-8 primitives with one-line descriptions. This is a first-pass
+   identification, not a full iterative distillation.
+3. Provide the user's stated goal or angle as context.
+4. Use distill's output as your primitive inventory. Skip the manual recon
+   below and proceed to Phase 2.
+
+**If the `distill` skill is NOT available**, perform manual recon:
 
 ```
 RECON SEQUENCE
@@ -116,7 +163,7 @@ primitives to what's relevant. If not, cover the top 5-8 most important ones.
 ```
 SCRIPT STRUCTURE
 ────────────────
-  ┌─ scratch/01-<name>.ts ──────────────────────────┐
+  ┌─ explorations/01-<name>.ts ──────────────────────┐
   │                                                   │
   │  // PRIMITIVE: <Name>                             │
   │  // WHAT: <one-line description>                  │
@@ -138,7 +185,7 @@ Rules for primitive scripts:
 - **One concept per file**. No script should exercise more than one primitive.
 - **Actually run each script** after writing it. Capture stdout/stderr.
 - **If it fails**, debug it. The failure itself is valuable intel — note it in FINDINGS.
-- **If the docs are wrong**, note it. This is one of the main values of /try.
+- **If the docs are wrong**, note it. This is one of the main values of the `try` skill.
 - **Use the library's native patterns**, not wrappers. You want to feel the raw API.
 - **Name files with numeric prefix** for reading order: 01-, 02-, 03-, etc.
 - **Match the library's language**. If it's a TS library, write TS. If Python, write Python.
@@ -151,8 +198,8 @@ if you discover something unexpected.
 **Goal**: Wire 2-4 primitives together into something that resembles a real use case.
 
 ```
-  scratch/99-compose.ts
-  ─────────────────────
+  explorations/99-compose.ts
+  ──────────────────────────
   // COMPOSITION: <what this demonstrates>
   // PRIMITIVES USED: 01, 03, 05
   // SCENARIO: <realistic-ish use case>
@@ -166,12 +213,17 @@ there are impedance mismatches. The composition script should:
 - Handle at least one error case
 - Print clear output showing what happened at each step
 
-If the user provided a screenshot or description of what they want to build,
-the composition should approximate that.
+**If the user provided a prompt, screenshot, or description of what they want
+to build, the composition script MUST target that scenario.** This is the
+primary deliverable — a demo that answers their specific question.
+
+If no specific prompt was given, compose the most natural real-world use case
+that emerged from recon. Pick the scenario that exercises the most interesting
+primitive interactions discovered during Phase 2.
 
 ## Phase 4: Tutorial.md
 
-Write `Tutorial.md` in the repo root. Structure:
+Write `explorations/Tutorial.md`. Structure:
 
 ```markdown
 # Trying: <library-name>
@@ -184,14 +236,14 @@ Write `Tutorial.md` in the repo root. Structure:
 ## Key Primitives
 
 ### 1. <Primitive Name>
-<What it does. What surprised you. Link to scratch/01-*.>
+<What it does. What surprised you. Link to explorations/01-*.>
 
 ### 2. <Primitive Name>
 ...
 
 ## Composition
 <How the primitives wire together. What worked. What was awkward.
-Link to scratch/99-compose.>
+Link to explorations/99-compose.>
 
 ## Gotchas
 <Bulleted list. Things the docs don't tell you. Failure modes.
@@ -229,10 +281,10 @@ LOOP (per script)
 Before declaring done, verify:
 
 ```
-  ✓ scratch/ contains 3-8 numbered primitive scripts
-  ✓ scratch/99-compose.{ts,py} exists and runs
-  ✓ Every script in scratch/ was actually executed
-  ✓ Tutorial.md exists with all sections filled
+  ✓ explorations/ contains 3-8 numbered primitive scripts
+  ✓ explorations/99-compose.{ts,py} exists and runs
+  ✓ Every script in explorations/ was actually executed
+  ✓ explorations/Tutorial.md exists with all sections filled
   ✓ Tutorial.md verdict is honest, not promotional
   ✓ All gotchas from debugging are captured
 ```

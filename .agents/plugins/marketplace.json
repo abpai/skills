@@ -197,6 +197,18 @@
       "category": "Code Quality"
     },
     {
+      "name": "scratch",
+      "source": {
+        "source": "local",
+        "path": "./scratch"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Learning"
+    },
+    {
       "name": "socratic-code-owner",
       "source": {
         "source": "local",

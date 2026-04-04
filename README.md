@@ -68,6 +68,7 @@ marketplace flow above.
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
 | **dev-squad** | Scaffold Claude Code hooks, review gates, agents, and team workflows |
 | **project-memory** | Always-on memory via `.agents/LEARNINGS.md` — mistakes, patterns, preferences |
+| **scratch** | Understand a project's internals through runnable .scratch/ exploration scripts |
 | **socratic-code-owner** | Quiz the developer on AI-built code to ensure understanding |
 
 ### Tools
@@ -77,7 +78,7 @@ marketplace flow above.
 | **agent-browser** | Browser automation: navigate, fill forms, click, screenshot, extract data |
 | **beautiful-mermaid** | Render Mermaid diagrams as SVG and PNG |
 | **claude** | Run Claude Code CLI for delegation, session continuation, machine-readable output |
-| **try** | Explore and evaluate a library or repo in an isolated scratch environment |
+| **try** | Evaluate a new library, tool, or repo before adopting it — prompt-driven demos |
 | **visualize** | Generate self-contained HTML visualizations for systems, plans, or code flows |
 
 ### Languages & Platforms

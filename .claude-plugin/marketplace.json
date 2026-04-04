@@ -121,6 +121,13 @@
       "keywords": ["review", "commit", "git", "conventions"]
     },
     {
+      "name": "scratch",
+      "description": "Understand an existing project by playing with its real modules in a .scratch/ workspace.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "scratch" },
+      "category": "learning",
+      "keywords": ["understand", "codebase", "mental-model", "primitives", "modules"]
+    },
+    {
       "name": "socratic-code-owner",
       "description": "Quiz the developer on code, architecture, or plans an AI agent built. Ensures the human has a bulletproof mental model.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "socratic-code-owner" },
@@ -129,10 +136,10 @@
     },
     {
       "name": "try",
-      "description": "Systematically explore and evaluate a library, tool, or GitHub repo in an isolated scratch environment.",
+      "description": "Evaluate a new library, tool, or GitHub repo before adopting it. Prompt-driven demos and honest findings.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "try" },
       "category": "tools",
-      "keywords": ["explore", "evaluate", "library", "scratch"]
+      "keywords": ["evaluate", "library", "try", "demo"]
     },
     {
       "name": "visualize",

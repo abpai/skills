@@ -1,7 +1,7 @@
 {
   "name": "try",
-  "version": "1.1.0",
-  "description": "Systematically explore and evaluate a library, tool, or GitHub repo in an isolated scratch environment.",
+  "version": "1.2.0",
+  "description": "Evaluate a new library, tool, or GitHub repo before adopting it. Prompt-driven demos and honest findings.",
   "author": { "name": "Andy Pai" },
   "license": "MIT"
 }
