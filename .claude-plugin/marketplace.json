@@ -37,11 +37,11 @@
       "keywords": ["browser", "automation", "web", "scraping", "testing"]
     },
     {
-      "name": "arch-council",
-      "description": "Orchestrate a structured architecture debate between Claude and Codex. Claude proposes, Codex critiques, Claude synthesizes.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "arch-council" },
+      "name": "debate",
+      "description": "Structured architecture debate: Claude proposes, Codex critiques, Claude synthesizes into a final ADR with concrete next steps.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "debate" },
       "category": "productivity",
-      "keywords": ["architecture", "debate", "multi-model", "adversarial"]
+      "keywords": ["architecture", "debate", "adversarial", "adr", "codex"]
     },
     {
       "name": "beautiful-mermaid",
@@ -86,13 +86,6 @@
       "keywords": ["dead-code", "cleanup", "audit", "unused"]
     },
     {
-      "name": "dev-squad",
-      "description": "Set up or upgrade Claude Code repo automation. Scaffold hooks, review gates, custom agents, and team coding workflows.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "dev-squad" },
-      "category": "productivity",
-      "keywords": ["automation", "hooks", "agents", "team-workflows"]
-    },
-    {
       "name": "dokploy",
       "description": "Operate Dokploy via the official CLI. Manage projects, environments, apps, env vars, and databases from the terminal.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "dokploy" },
@@ -112,6 +105,13 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "project-memory" },
       "category": "productivity",
       "keywords": ["memory", "learnings", "patterns", "context"]
+    },
+    {
+      "name": "pi",
+      "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique at high-leverage checkpoints.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "pi" },
+      "category": "productivity",
+      "keywords": ["planning", "generator", "evaluator", "workflow", "codex"]
     },
     {
       "name": "review-and-commit",

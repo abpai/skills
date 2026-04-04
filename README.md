@@ -21,6 +21,7 @@ This repository now ships metadata for both runtimes:
 /plugin install distill@abpai-skills
 /plugin install lateral-thinking@abpai-skills
 /plugin install codex-exec@abpai-skills
+/plugin install pi@abpai-skills
 ```
 
 ### Codex
@@ -42,6 +43,10 @@ Codex public plugin-directory publishing is still documented as coming soon, so
 the Codex path in this repo is repo-local rather than the Claude-style remote
 marketplace flow above.
 
+`pi` is intentionally excluded from the Codex marketplace in this repo. It is a
+Claude-native plugin that shells out to the `codex` CLI for second-provider
+research and review, rather than being installed into Codex itself.
+
 ## Plugins
 
 ### Planning & Reasoning
@@ -51,6 +56,7 @@ marketplace flow above.
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
 | **codex-exec** | Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review. | Yes |
+| **pi** | Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique at high-leverage checkpoints. | Claude-only |
 
 ### Code Quality
 
@@ -102,14 +108,23 @@ abpai/skills/
 │   └── marketplace.json       ← Codex repo marketplace
 ├── .claude-plugin/
 │   └── marketplace.json       ← Claude marketplace catalog
-├── <plugin>/                  ← each plugin follows the same pattern
+├── <plugin>/                  ← most plugins ship both runtimes
 │   ├── .claude-plugin/plugin.json
-│   ├── .codex-plugin/plugin.json
+│   ├── .codex-plugin/plugin.json  ← optional when a plugin is installable in Codex
 │   └── skills/<plugin>/
 │       ├── SKILL.md
 │       └── references/        (if any)
+├── pi/                        ← intentional Claude-only exception
+│   ├── .claude-plugin/plugin.json
+│   ├── agents/
+│   ├── commands/
+│   └── skills/pi-protocol/
 └── README.md
 ```
+
+Within each plugin folder, only `plugin.json` belongs inside
+`.claude-plugin/`. `skills/`, `agents/`, `commands/`, and `hooks/` stay at the
+plugin root.
 
 ## Security Scanning
 
