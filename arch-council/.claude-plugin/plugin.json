@@ -1,7 +1,0 @@
-{
-  "name": "arch-council",
-  "version": "1.1.0",
-  "description": "Orchestrate a structured architecture debate between Claude and Codex. Claude proposes, Codex critiques, Claude synthesizes.",
-  "author": { "name": "Andy Pai" },
-  "license": "MIT"
-}
