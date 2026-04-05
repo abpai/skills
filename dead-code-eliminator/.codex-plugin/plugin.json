@@ -1,0 +1,11 @@
+{
+  "name": "dead-code-eliminator",
+  "version": "1.2.0",
+  "description": "Audit a codebase for dead code: unreachable functions, unused imports, orphaned classes, stale feature flags, and safe removal plans.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}

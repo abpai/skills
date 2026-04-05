@@ -1,0 +1,7 @@
+{
+  "name": "claude",
+  "version": "1.5.0",
+  "description": "Run Claude Code CLI for code analysis and automated edits. Delegate coding tasks, continue sessions, get machine-readable output.",
+  "author": { "name": "Andy Pai" },
+  "license": "MIT"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "distill",
+  "version": "1.0.0",
+  "description": "Iteratively decompose complex systems into their essential primitives. Use for codebases, papers, transcripts, or any complex system.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}

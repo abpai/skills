@@ -1,0 +1,18 @@
+{
+  "name": "pi",
+  "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique at high-leverage checkpoints.",
+  "version": "0.3.0",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "homepage": "https://github.com/abpai/skills/tree/main/pi",
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "keywords": [
+    "planning",
+    "generator",
+    "evaluator",
+    "workflow",
+    "codex"
+  ]
+}

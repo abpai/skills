@@ -1,0 +1,11 @@
+{
+  "name": "review-and-commit",
+  "version": "1.1.0",
+  "description": "Review uncommitted Git changes for correctness, quality, and convention alignment, then prepare safe, atomic commits.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}

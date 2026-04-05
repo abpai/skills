@@ -1,0 +1,11 @@
+{
+  "name": "visualize",
+  "version": "1.0.0",
+  "description": "Generate a self-contained HTML visualization to explain a system, plan, code flow, or concept.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}
