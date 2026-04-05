@@ -70,9 +70,8 @@ research and review, rather than being installed into Codex itself.
 
 | Plugin | What it does |
 |--------|-------------|
-| **arch-council** | Architecture debate between Claude and Codex — propose, critique, synthesize |
+| **debate** | Structured architecture debate: Claude proposes, Codex critiques, Claude synthesizes |
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **dev-squad** | Scaffold Claude Code hooks, review gates, agents, and team workflows |
 | **project-memory** | Always-on memory via `.agents/LEARNINGS.md` — mistakes, patterns, preferences |
 | **scratch** | Understand a project's internals through runnable .scratch/ exploration scripts |
 | **socratic-code-owner** | Quiz the developer on AI-built code to ensure understanding |
@@ -125,6 +124,137 @@ abpai/skills/
 Within each plugin folder, only `plugin.json` belongs inside
 `.claude-plugin/`. `skills/`, `agents/`, `commands/`, and `hooks/` stay at the
 plugin root.
+
+## Installing Plugins
+
+### Claude Code
+
+#### From the marketplace
+
+```bash
+# Add the marketplace (once)
+/plugin marketplace add abpai/skills
+
+# Browse available plugins
+/plugin
+
+# Install a plugin (user scope, default)
+claude plugin install distill@abpai-skills
+
+# Install to project scope (shared with team via .claude/settings.json)
+claude plugin install distill@abpai-skills --scope project
+
+# Install to local scope (gitignored, personal)
+claude plugin install distill@abpai-skills --scope local
+```
+
+#### From a local checkout
+
+```bash
+# Test a single plugin without installing
+claude --plugin-dir ./distill
+
+# Load multiple plugins at once
+claude --plugin-dir ./distill --plugin-dir ./lateral-thinking
+```
+
+Inside a running session, use `/reload-plugins` to pick up changes without restarting.
+
+#### Uninstall
+
+```bash
+claude plugin uninstall distill@abpai-skills
+```
+
+### Codex
+
+#### From this repo (repo-scoped marketplace)
+
+This repo ships a Codex marketplace at `.agents/plugins/marketplace.json` with
+local `source.path` entries. Clone the repo and start Codex inside it:
+
+```bash
+git clone https://github.com/abpai/skills.git
+cd skills
+codex
+```
+
+Open the plugin directory with `codex /plugins` — all 18 Codex-compatible
+plugins appear automatically from the repo marketplace.
+
+#### Personal installation
+
+Copy a plugin into your personal plugin directory and register it in your
+personal marketplace:
+
+```bash
+# Copy the plugin
+mkdir -p ~/.codex/plugins
+cp -R ./distill ~/.codex/plugins/distill
+
+# Add to personal marketplace (~/.agents/plugins/marketplace.json)
+# Each entry needs name, source.path, and policy:
+```
+
+```json
+{
+  "name": "my-plugins",
+  "plugins": [
+    {
+      "name": "distill",
+      "source": { "source": "local", "path": "./.codex/plugins/distill" },
+      "policy": { "installation": "AVAILABLE" },
+      "category": "Productivity"
+    }
+  ]
+}
+```
+
+Restart Codex to pick up new plugins.
+
+#### Disable / re-enable
+
+Toggle individual plugins in `~/.codex/config.toml`:
+
+```toml
+[plugins.distill]
+enabled = false
+```
+
+## Validating Plugins
+
+### Claude Code built-in validation
+
+```bash
+# Validate a single plugin manifest
+claude plugin validate ./distill
+
+# Validate all plugins
+for dir in */; do
+  [ -f "$dir.claude-plugin/plugin.json" ] && claude plugin validate "./$dir"
+done
+```
+
+### Codex
+
+Codex does not currently have a built-in `validate` command. Use the project
+validation script below, which checks both Claude and Codex manifests.
+
+### Project validation script
+
+This repo includes a comprehensive validator at `scripts/validate-skills.sh` that checks:
+
+- Claude and Codex plugin manifests (name, version, description, paths)
+- SKILL.md frontmatter (name, description, metadata.version)
+- Agent and command frontmatter
+- Both marketplace.json catalogs (completeness and consistency)
+- versions.json (all skills present with matching versions)
+
+```bash
+bash scripts/validate-skills.sh
+```
+
+The script is also run automatically as a pre-commit hook.
 
 ## Security Scanning
 
