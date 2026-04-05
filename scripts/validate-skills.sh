@@ -292,6 +292,107 @@ PY
     fi
   fi
 
+  # ── Validate .codex-plugin/plugin.json (if present) ──
+
+  codex_manifest="$plugin_dir/.codex-plugin/plugin.json"
+  if [[ -f "$codex_manifest" ]]; then
+    if ! python3 -c "
+import json, re, sys
+from pathlib import Path
+
+path, expected_name, name_regex = sys.argv[1], sys.argv[2], sys.argv[3]
+claude_path = sys.argv[4]
+manifest_path = Path(path).resolve()
+plugin_dir = manifest_path.parent.parent
+meta_dir = manifest_path.parent
+
+try:
+    data = json.loads(manifest_path.read_text(encoding='utf-8'))
+except Exception as exc:
+    print(f'[FAIL] {path}: cannot parse JSON: {exc}')
+    sys.exit(1)
+
+name = data.get('name')
+if not name:
+    print(f'[FAIL] {path}: missing name')
+    sys.exit(1)
+if name != expected_name:
+    print(f'[FAIL] {path}: name \"{name}\" does not match directory \"{expected_name}\"')
+    sys.exit(1)
+if not re.fullmatch(name_regex, name):
+    print(f'[FAIL] {path}: name \"{name}\" must be lowercase kebab-case')
+    sys.exit(1)
+
+version = data.get('version')
+if not version:
+    print(f'[FAIL] {path}: missing version')
+    sys.exit(1)
+if not re.fullmatch(r'\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?', version):
+    print(f'[FAIL] {path}: version \"{version}\" is not semantic-version shaped')
+    sys.exit(1)
+
+if not data.get('description'):
+    print(f'[FAIL] {path}: missing description')
+    sys.exit(1)
+
+extras = sorted(p.name for p in meta_dir.iterdir() if p.name != 'plugin.json')
+if extras:
+    joined = ', '.join(extras)
+    print(f'[FAIL] {meta_dir}: only plugin.json belongs in .codex-plugin (found: {joined})')
+    sys.exit(1)
+
+def validate_path_entry(key, entry):
+    if not isinstance(entry, str):
+        print(f'[FAIL] {path}: {key} entries must be strings')
+        sys.exit(1)
+    if not entry.startswith('./'):
+        print(f'[FAIL] {path}: {key} path \"{entry}\" must start with ./')
+        sys.exit(1)
+    resolved = (plugin_dir / entry[2:]).resolve()
+    try:
+        resolved.relative_to(plugin_dir)
+    except ValueError:
+        print(f'[FAIL] {path}: {key} path \"{entry}\" escapes the plugin root')
+        sys.exit(1)
+    if not resolved.exists():
+        print(f'[FAIL] {path}: {key} path \"{entry}\" does not exist')
+        sys.exit(1)
+
+for key in ('skills', 'apps'):
+    value = data.get(key)
+    if value is None:
+        continue
+    entries = [value] if isinstance(value, str) else value
+    if not isinstance(entries, list):
+        print(f'[FAIL] {path}: {key} must be a string or list of strings')
+        sys.exit(1)
+    for entry in entries:
+        validate_path_entry(key, entry)
+
+for key in ('mcpServers',):
+    value = data.get(key)
+    if value is None or isinstance(value, dict):
+        continue
+    entries = [value] if isinstance(value, str) else value
+    if not isinstance(entries, list):
+        print(f'[FAIL] {path}: {key} must be a relative path, list of relative paths, or inline object')
+        sys.exit(1)
+    for entry in entries:
+        validate_path_entry(key, entry)
+
+# Cross-check against Claude manifest
+claude = json.loads(Path(claude_path).read_text(encoding='utf-8'))
+if name != claude.get('name'):
+    print(f'[FAIL] {path}: name \"{name}\" does not match .claude-plugin name \"{claude.get(\"name\")}\"')
+    sys.exit(1)
+if version != claude.get('version'):
+    print(f'[FAIL] {path}: version \"{version}\" does not match .claude-plugin version \"{claude.get(\"version\")}\"')
+    sys.exit(1)
+" "$codex_manifest" "$plugin_name" "$name_regex" "$manifest"; then
+      failed=1
+    fi
+  fi
+
   echo "  [OK] $plugin_name"
 done
 
