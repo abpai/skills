@@ -96,6 +96,6 @@ Set `"changed": false` when the pass found no actionable issues.
 - Feedback only. Do not edit files directly.
 - Do not modify the Codex output beyond packaging it into the required JSON
   shape.
-- Use this agent sparingly. Pi gets value from Codex as a critic, not as a
-  mandatory step after every slice.
+- Pi runs Codex review at every phase checkpoint: plan critique, after each
+  build/repair pass, and final review.
 - If `codex review` or `codex exec` exits non-zero, report the error cleanly.

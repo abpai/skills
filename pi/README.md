@@ -18,16 +18,22 @@ charge of the workflow.
 
 Pi keeps the control loop simple:
 
-1. `planner` turns the request into a brief, rubric, and ordered task slices.
-2. `generator` drafts a contract for the current slice, then executes it as one
-   coherent generation pass.
-3. `evaluator` tightens that contract, runs verification, grades the build, and
-   drives narrow repairs.
+1. The **coordinator** (main thread) orchestrates everything — spawns agents,
+   routes artifacts, maintains state.
+2. `planner` turns the request into a brief, rubric, and ordered task slices.
+3. The coordinator drafts a contract for the current slice, then spawns
+   `generator` to execute it as one coherent pass.
+4. `evaluator` runs per-task verification, incorporates Codex review, grades
+   the build, and drives narrow repairs.
 
-Codex is optional second-provider input at two points only:
+Codex is a mandatory second-provider critic at every phase checkpoint:
 
-- plan-time research or architecture critique
-- independent review of the latest diff before signoff
+- parallel research fanout during planning (Claude + Codex per primitive)
+- iterative plan critique before approval (up to 3 passes)
+- diff review after each build/repair pass
+- final independent read before signoff
+
+Skip only when the Codex CLI is unavailable.
 
 Pi is intentionally a Claude plugin only. It uses the `codex` CLI as a
 supporting tool, but it is not meant to be installed as a Codex plugin.
@@ -36,67 +42,74 @@ supporting tool, but it is not meant to be installed as a Codex plugin.
 
 Think of Pi like this:
 
-- `planner` decides what we are building
+- the **coordinator** (main thread) orchestrates agents and routes artifacts
+- `planner` decides what we are building (interactive, foreground)
 - `generator` tries to build it
 - `evaluator` decides whether it actually clears the bar
-- Codex is an optional outside critic, not a co-pilot in the control loop
+- Codex is a mandatory outside critic at every phase checkpoint
 
 ## Flow Diagram
 
 ```text
 user
   |
-  +--> /pi:plan
+  +--> /pi:plan (coordinator pipeline, Phases A-E)
   |      |
-  |      +--> planner
-  |      |      writes brief + rubric + task slices
+  |      +--> Phase A: planner (foreground)
+  |      |      posture, clarify, lateral thinking, distill
   |      |
-  |      +--> optional codex-researcher / codex-reviewer
+  |      +--> Phase B: coordinator spawns parallel researchers
+  |      |      claude-researcher + codex-researcher per primitive
+  |      |      builds consensus matrix, user resolves tiebreaks
   |      |
-  |      \--> human approval
+  |      +--> Phase C: planner (foreground, fresh spawn)
+  |      |      proposes task slices from resolved tech decisions
+  |      |
+  |      +--> Phase D: codex-reviewer (up to 3 iterative passes)
+  |      |
+  |      \--> Phase E: human approval → write brief, rubric, tasks
   |
-  +--> /pi:execute
+  +--> /pi:execute (coordinator pipeline, Phases A-E)
   |      |
-  |      +--> generator drafts contract for current slice
+  |      +--> Phase A: load brief, resume from task_progress
   |      |
-  |      +--> evaluator tightens the contract
+  |      +--> Phase B: coordinator drafts contract
+  |      |      evaluator pressure-tests it, generator builds
   |      |
-  |      +--> generator builds
+  |      +--> Phase C: codex-reviewer → evaluator scores
+  |      |      per-task verification + rubric + consensus matrix
   |      |
-  |      +--> optional code-simplifier
-  |      +--> optional codex-reviewer
+  |      +--> Phase D: pass? ─ yes ─→ next task or Phase E
+  |      |                  └─ no ──→ task-scoped repair (loop)
   |      |
-  |      +--> evaluator verifies + scores
-  |      |
-  |      +--> pass? ---- yes ---> next slice / review
-  |                 |
-  |                 \---- no ---> narrow repair pass
+  |      \--> Phase E: finalize, transition to review
   |
-  \--> /pi:review
+  \--> /pi:review (coordinator pipeline, Phases A-D)
          |
-         +--> full verification
-         +--> evaluator final scorecard
-         +--> optional final Codex read
-         \--> human review
+         +--> Phase A: load prerequisites
+         +--> Phase B: full suite + per-task verification
+         +--> Phase C: codex-reviewer + evaluator final pass
+         \--> Phase D: scorecard + learnings → human review
 ```
 
 ## Commands
 
 | Command | Phase | What it does |
 | --- | --- | --- |
-| `/pi:plan` | Plan | Clarify -> distill -> write brief -> create rubric and task slices -> optional Codex critique |
-| `/pi:execute` | Execute | Run the generator loop -> optional cleanup -> evaluate -> focused repair passes |
-| `/pi:review` | Review | Run final verification -> holistic evaluation -> present scorecard and remaining gaps |
+| `/pi:plan` | Plan | Posture -> clarify -> lateral thinking -> distill -> parallel research fanout -> consensus matrix -> task slices -> iterative Codex critique |
+| `/pi:execute` | Execute | Per-task: draft contract -> build -> Codex review -> evaluate with per-task verification -> task-scoped repair |
+| `/pi:review` | Review | Full suite + per-task verification -> Codex final read -> scorecard with consensus matrix cross-reference |
 
 ## Agents
 
 | Agent | Role |
 | --- | --- |
-| `planner` | Claude primary planner for the brief, rubric, and task slices |
-| `generator` | Claude primary generator for the main implementation run and repair passes |
-| `evaluator` | Claude primary QA and rubric grader |
-| `codex-researcher` | Optional second-provider research and tie-break agent |
-| `codex-reviewer` | Optional second-provider plan or diff critic |
+| `planner` | Claude primary. Interactive planning (foreground subagent). Spawned twice: once for posture/clarify/lateral-thinking/distill, once for task proposal. |
+| `claude-researcher` | Claude primary. 3-layer research per primitive (boring/trending/first-principles). |
+| `generator` | Claude primary. Coherent implementation against the active contract. |
+| `evaluator` | Claude primary. Per-task verification, rubric scoring, incorporates Codex review from coordinator. |
+| `codex-researcher` | Codex secondary. Parallel 3-layer research per primitive via Codex CLI. |
+| `codex-reviewer` | Codex secondary. Mandatory plan critique (up to 3 passes), build review, and final review. |
 
 ## Claude Plugin Constraints
 
@@ -147,20 +160,23 @@ This is the artifact flow Pi tries to maintain:
   +--> .agents/pi/brief.md
   +--> .agents/pi/rubric.json
   +--> .agents/pi/tasks/T01.json ...
-  +--> .agents/pi/research/codex/*        (optional)
-  \--> .agents/pi/reviews/codex-plan.json (optional)
+  +--> .agents/pi/research/lateral-thinking.md
+  +--> .agents/pi/research/fanout/*-claude.json, *-codex.json
+  +--> .agents/pi/research/consensus-matrix.md
+  \--> .agents/pi/reviews/codex-plan-pass-{1,2,3}.json
 
 /pi:execute
   |
   +--> .agents/pi/contracts/T01.md ...
   +--> code changes in the target repo
-  +--> .agents/pi/evaluations/build-pass-1.json
-  +--> .agents/pi/evaluations/build-pass-2.json
-  \--> .agents/pi/state.json updates after each pass
+  +--> .agents/pi/reviews/codex-build-{N}.json
+  +--> .agents/pi/evaluations/build-pass-{N}.json
+  \--> .agents/pi/state.json (task_progress updated per task)
 
 /pi:review
   |
-  +--> .agents/pi/reviews/codex-final.json (optional)
+  +--> .agents/pi/evaluations/suite-results.json
+  +--> .agents/pi/reviews/codex-final.json
   +--> .agents/pi/evaluations/review.json
   +--> .agents/pi/LEARNINGS.md
   \--> .agents/pi/state.json => done
@@ -172,14 +188,15 @@ This plugin intentionally follows the simplified harness pattern Anthropic
 described for long-running application work: planner -> generator -> evaluator,
 with repair loops only when evaluation proves they are needed.
 
-Compared with the original Pi draft, this version removes several sources of
-drag:
+Compared with the original Pi draft, this version keeps the control loop tight:
 
-- no mandatory per-task sprint grading
-- no required Codex fanout for every primitive
+- no mandatory per-task rubric grading (rubric stays global, per-task
+  verification is a lightweight pre-step)
 - no automatic code-simplifier pass after every step
 - no hook-based orchestration
 - no per-attempt commit requirement inside the generator loop
+- Codex is mandatory at phase checkpoints but the coordinator owns all
+  invocations — agents never shell out to Codex themselves
 
 ## Install
 

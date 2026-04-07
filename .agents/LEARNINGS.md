@@ -50,6 +50,9 @@
 | 2026-04-04 | self   | Structured `claude -p` runs looked broken when the prompt was passed via a brittle argv shape during plugin auditing | For Claude CLI review helpers, prefer stdin-fed prompts over complex quoted argv prompts, especially when also passing JSON schema input |
 | 2026-04-04 | self   | `codex exec --output-schema` rejected a seemingly valid schema during Pi auditing | For Codex structured output, include `additionalProperties: false` on every object level in the schema before running the command |
 | 2026-04-04 | self   | Applied generic subagent and hook guidance to plugin-shipped agents without checking the plugin-specific restrictions | Validate plugin agents against the plugin docs specifically: keep `hooks`, `mcpServers`, and `permissionMode` out of plugin agents, and preload any required skills explicitly |
+| 2026-04-07 | self   | Pi plugin agents declared preloaded helper skills that are not bundled inside the plugin, making the advertised subagent setup non-portable | For plugin subagents, either vendor required skills under the plugin's own `skills/` directory and reference them correctly, or treat them as external prerequisites instead of claiming they are preloaded |
+| 2026-04-07 | self   | An internal plugin orchestration skill stayed auto-loadable and grew past Claude's recommended size, which makes packaging less predictable and the skill harder to maintain | For plugin-internal workflows, set invocation visibility intentionally (`disable-model-invocation` or `user-invocable: false` as appropriate) and split long protocol details into supporting files before `SKILL.md` exceeds ~500 lines |
+| 2026-04-07 | self   | A plugin subagent prompt said it could ask the user questions, but its explicit `tools` allowlist omitted that tool, and the README still reflected the pre-refactor control loop | When plugin agent prompts rely on specific internal tools, include them explicitly in the allowlist (or remove the allowlist), and sync high-level README flow docs in the same change as a protocol refactor |
 
 ## User Preferences
 
@@ -91,6 +94,7 @@
 - For Codex-related skills, prefer `gpt-5.4` as the default model; OpenAI now recommends the general-purpose GPT-5.4 over `gpt-5.3-codex` for most coding tasks.
 - For `agent-browser`, use `agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"` to reuse a logged-in Chrome, and use an empty config plus unset persistence env vars for truly clean sessions.
 - For skill renames, update the skill folder name, `SKILL.md` `name` field, and root `README.md` inventory atomically, then run a repository-wide text check for stale references.
+- For Claude plugins, keep plugin subagents self-contained: if an agent relies on helper skills, bundle them inside the plugin or document them as explicit external dependencies instead of implying they are always preloaded.
 
 ## Patterns That Don't Work
 
