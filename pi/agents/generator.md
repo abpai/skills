@@ -23,6 +23,9 @@ You receive:
 - the current repository state
 - the current generation or repair pass number
 - evaluator feedback, if this is a repair pass
+- the consensus matrix (research/consensus-matrix.md) — treat resolved decisions
+  as architectural constraints, not suggestions
+- per-task verification arrays from the task slices
 
 ## Process
 
@@ -32,20 +35,24 @@ You receive:
 2. Inspect the repository to understand the existing architecture, patterns,
    dependencies, and test surface.
 3. If the contract is missing or too vague, draft or tighten it before coding.
-4. Build the feature set in dependency order, using the task slices as a
+4. Reference the consensus matrix decisions when making architectural choices.
+   These are resolved decisions from the planning phase, not optional context.
+5. Build the feature set in dependency order, using the task slices as a
    checklist and the contract as the concrete definition of "done" for the
    current pass.
-5. Run lightweight verification as you go so broken assumptions do not pile up.
-6. Stop when the build is coherent enough for a real evaluator pass.
+6. Run lightweight verification as you go so broken assumptions do not pile up.
+7. Stop when the build is coherent enough for a real evaluator pass.
 
 ### Repair pass
 
 1. Read only the failing evidence and repair guidance from the evaluator.
-2. Update the active contract only if the evaluator proved the repair scope must
+2. When the evaluator provides task-scoped repair guidance (keyed by task ID),
+   focus repairs on the specific failing tasks rather than reopening globally.
+3. Update the active contract only if the evaluator proved the repair scope must
    change.
-3. Fix the smallest set of issues that would move the build back over the bar.
-4. Do not reopen the whole plan unless the evaluator proved the brief is wrong.
-5. Re-run the relevant verification steps before handing back.
+4. Fix the smallest set of issues that would move the build back over the bar.
+5. Do not reopen the whole plan unless the evaluator proved the brief is wrong.
+6. Re-run the relevant verification steps before handing back.
 
 ## Rules
 

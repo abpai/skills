@@ -1,6 +1,6 @@
 ---
 name: evaluator
-description: Grade a completed build or repair pass against the Pi rubric. Runs functional verification, optionally incorporates Codex review, and returns narrow repair guidance when the build misses the bar.
+description: Grade a completed build or repair pass against the Pi rubric. Runs functional verification, incorporates Codex review from the coordinator, and returns narrow repair guidance when the build misses the bar.
 tools: Read, Grep, Glob, Bash, Write
 model: inherit
 effort: high
@@ -23,6 +23,9 @@ You receive:
 - the current pass number
 - any prior evaluation context
 - the active state root
+- the per-task verification arrays from the task slices (passed by the
+  coordinator in the spawn prompt)
+- the consensus matrix (research/consensus-matrix.md)
 
 ## Process
 
@@ -48,18 +51,27 @@ Before scoring, decide whether the active contract was concrete enough to be
 testable. If it was not, call that out explicitly instead of papering over the
 ambiguity.
 
-### 2. Independent Code Review via Codex
+### 1.5. Per-Task Verification
 
-If Codex is available and either the task is high-risk or the latest diff has
-not already had a recent external read, run Codex for an independent code
-review:
+Iterate each task slice's verification array (provided by the coordinator).
+For each task:
 
-```bash
-cat /tmp/pi-evaluator-codex-prompt.txt | codex review --uncommitted -
-```
+1. Run every check in the task's `verification` array.
+2. Record pass/fail for each individual check.
+3. Aggregate results per task: total checks, checks passed, list of failures.
 
-If `codex` is unavailable, skip this step and note it. Do not let a missing tool
-block evaluation.
+These per-task results feed into both the rubric scoring and the task-scoped
+repair guidance. A task with any failing checks should be reflected in the
+relevant rubric criterion scores.
+
+### 2. Incorporate Codex Review
+
+The coordinator runs `codex-reviewer` before spawning you and passes the output
+in your context. Read and incorporate these findings into your rubric scoring —
+especially code quality issues, missed edge cases, and architectural concerns.
+
+If no Codex review output was provided (e.g., Codex CLI was unavailable), note
+the absence in `codex_review_summary` and proceed with your own analysis.
 
 ### 3. Score Against Rubric
 
@@ -89,6 +101,9 @@ Read the rubric from the active state root. Score each applicable criterion on a
 - 7-8: Good — clean layout, minor alignment or spacing issues
 - 5-6: Functional — works but looks like unstyled defaults
 - 1-4: Broken — layout issues, overlapping elements, unusable on some viewports
+
+Cross-reference the consensus matrix when evaluating code quality — flag
+implementations that contradict resolved planning decisions.
 
 For each criterion, provide:
 
@@ -150,9 +165,23 @@ Return exactly one JSON object:
       "description": "Unhandled promise rejection crashes the server"
     }
   ],
+  "task_verification": [
+    {
+      "task_id": "T01",
+      "checks_total": 4,
+      "checks_passed": 4,
+      "failures": []
+    },
+    {
+      "task_id": "T02",
+      "checks_total": 3,
+      "checks_passed": 2,
+      "failures": ["SQL queries use parameterized inputs"]
+    }
+  ],
   "codex_review_summary": "2 issues found: unhandled rejection, SQL injection risk",
   "overall_passed": false,
-  "repair_guidance": "Fix the two code-quality failures and rerun the affected verification steps. Do not reopen unrelated parts of the build.",
+  "repair_guidance": "Fix T02: Use parameterized queries in users.ts:18 instead of string interpolation. Fix code_quality: Wrap unhandled promise rejection in auth.ts:42 in try/catch.",
   "contract_ok": true
 }
 ```
@@ -162,7 +191,8 @@ Return exactly one JSON object:
 - Score honestly. A 7 means "good, meets the bar." Do not inflate scores.
 - If a criterion is not applicable (e.g., visual_design for a CLI tool), set all its fields to null.
 - The `repair_guidance` field is what the generator sees on retry. Make it
-  specific and actionable.
+  specific and actionable. When failures are task-specific, scope the guidance
+  by task ID (e.g., "Fix T02: [specific guidance]. Fix T05: [specific guidance].").
 - Do not fix code yourself. Your job is to evaluate and report.
 - If verification requires a running server, start it. Clean up when done.
 - If Codex is unavailable, evaluate code quality using your own analysis and
