@@ -2,7 +2,7 @@
 name: pi-protocol
 description: >
   Claude-native harness for long-running engineering work. Defines the planner
-  -> generator -> evaluator loop, checkpoint files, and optional Codex critique
+  -> generator -> evaluator loop, checkpoint files, and mandatory Codex critique
   points used by the /pi: commands.
 metadata:
   author: Andy Pai
@@ -18,7 +18,7 @@ Use it when a task is large enough to benefit from:
 - an explicit spec before coding
 - one coherent build pass instead of ad hoc edits
 - a real evaluator pass that can force targeted repairs
-- optional second-provider critique from Codex at high-leverage checkpoints
+- mandatory second-provider critique from Codex at every phase checkpoint
 
 Pi is intentionally Claude-native. Codex is a supporting CLI, not a parallel
 runtime or install target.
@@ -37,8 +37,9 @@ Three commands:
    coherent, but the generator owns the whole spec.
 3. Before each build or repair pass, write a contract for the active slice so
    "done" is explicit before code changes start.
-4. Use Codex only where it adds lift: ambiguous technical choices, architecture
-   critique, or independent code review.
+4. Use Codex at every phase checkpoint: research during planning, plan critique
+   before approval, diff review after each build pass, and final review before
+   signoff. Skip only when the Codex CLI is unavailable.
 5. Prefer one strong evaluator pass plus focused repair loops over mandatory
    grading after every slice.
 6. Resume from files instead of restarting from scratch.
@@ -47,73 +48,29 @@ Three commands:
 
 Default state root: `.agents/pi/`
 
-Backward compatibility:
-
-- If `.agents/pi/` exists, keep using it.
-- If only `.agents/plan/` exists from an older Pi run, continue there or migrate
-  it once before starting new work.
-
-Recommended layout:
-
-```text
-.agents/pi/
-├── state.json
-├── brief.md
-├── rubric.json
-├── tasks/
-│   ├── T01.json
-│   ├── T02.json
-│   └── ...
-├── contracts/
-│   ├── T01.md
-│   └── ...
-├── research/
-│   └── codex/
-├── reviews/
-│   ├── codex-plan.json
-│   └── codex-final.json
-├── evaluations/
-│   ├── build-pass-1.json
-│   └── review.json
-└── LEARNINGS.md
-```
-
-Minimal `state.json`:
-
-```json
-{
-  "phase": "plan|execute|review|done",
-  "posture": "expand|selective|reduce",
-  "current_step": "clarify|brief|build|repair|review",
-  "state_root": ".agents/pi",
-  "build_pass": 0,
-  "repair_pass": 0,
-  "started_at": "ISO-8601",
-  "updated_at": "ISO-8601"
-}
-```
-
-Update `state.json` whenever the phase changes or a build / repair pass
-completes.
+See [STATE.md](STATE.md) for the full state convention, recommended layout,
+`state.json` schema, and `task_progress` transition points.
 
 ## Agents
 
-- `planner`: Claude primary. Builds the spec, rubric, task slices, and risk list.
-- `generator`: Claude primary. Executes the brief as one coherent implementation
-  run.
-- `evaluator`: Claude primary. Runs verification, grades the build, and produces
-  repair guidance.
-- `codex-researcher`: Codex secondary. Used only when a technical choice is
-  ambiguous or recent enough that a second provider is useful.
-- `codex-reviewer`: Codex secondary. Used to challenge the plan or review the
-  latest diff before signoff.
+See [AGENTS.md](AGENTS.md) for agent descriptions and roles.
 
 ## Phase 1: Plan
 
 Goal: turn the user request into a working brief that the generator can execute
 without improvising scope mid-run.
 
-### 1. Posture Check
+The plan phase is a coordinator-driven pipeline. The main thread orchestrates
+multiple agents across five phases (A through E). Subagents cannot spawn other
+subagents, so the coordinator owns all agent spawning.
+
+### Phase A: Interactive Planning (planner, foreground)
+
+The coordinator spawns the `planner` as a foreground subagent for steps 1-4.
+The planner follows the lateral-thinking and distill workflows described in
+steps 3 and 4 below, and can interact with the user via AskUserQuestion.
+
+#### 1. Posture Check
 
 Before planning, ask the user which posture to optimize for:
 
@@ -123,7 +80,7 @@ Before planning, ask the user which posture to optimize for:
 
 Echo back your understanding in one paragraph and wait for confirmation.
 
-### 2. Clarify and Reframe
+#### 2. Clarify and Reframe
 
 Ask only the questions that materially change the build.
 
@@ -135,35 +92,92 @@ Rules:
 - Stop once the goal, constraints, and acceptance bar fit in one tight
   paragraph.
 
-### 3. Distill the Build
+#### 3. Lateral Thinking
 
-Compress the request into 3 to 5 essential primitives.
+Run a cross-domain pattern raid (lateral-thinking workflow):
 
-Rules:
+1. State the problem skeleton — strip away jargon, restate the raw mechanics
+   in 2-3 sentences.
+2. Decompose into primitives using lenses: information flow, timing, incentives,
+   structural constraints, feedback loops, resource flows.
+3. Run a cross-domain raid — search for the same mechanism in distant fields
+   (biology, control systems, economics, information theory, etc.).
+4. Present 3-5 transferable patterns with the mechanism that transfers, not
+   surface-level metaphors.
+5. Let the user pick which patterns resonate.
+
+Save the results to `research/lateral-thinking.md`.
+
+Surviving patterns inform the distillation step. Drop patterns the user does
+not find useful.
+
+#### 4. Distill the Build
+
+Compress the request into 3 to 5 essential primitives, incorporating surviving
+patterns from lateral thinking when they sharpen the primitive boundaries.
+
+Follow the distill approach:
 
 - Each primitive must be independently buildable and testable.
 - Use short noun phrases.
 - Separate product primitives from implementation details.
+- Propose, invite pushback, refine.
 
-Present the primitives to the user before finalizing the brief.
+Present the primitives to the user before proceeding.
 
-### 4. Write the Brief
+The planner writes its results to state files:
 
-Produce `.agents/pi/brief.md` (or the active state root) with:
+- `state.json` updated with `current_step: "research_fanout"` and the
+  primitives list
+- `research/lateral-thinking.md`
 
-- objective
-- target users / usage mode
-- posture
-- constraints
-- accepted reframes
-- 3 to 5 primitives
-- architecture sketch
-- risks and unknowns
-- ordered task slices
-- acceptance criteria
+The coordinator takes over for Phase B.
 
-Task slices are planning checkpoints, not mandatory sprint boundaries.
-The exact build contract for a slice is written later during execution.
+### Phase B: Research Fanout (coordinator-driven)
+
+The coordinator reads the primitives from state files, then spawns parallel
+researchers. The planner cannot spawn subagents — this is a coordinator
+responsibility.
+
+#### 5. Research Fanout
+
+For each primitive, spawn both a `claude-researcher` and a `codex-researcher`
+in parallel. All researchers run simultaneously.
+
+Each researcher evaluates three implementation layers:
+
+- **Boring/Proven** — most battle-tested option
+- **Trending** — current popular option in the ecosystem
+- **First Principles** — from-scratch design tailored to exact requirements
+
+Each returns a structured recommendation. Results are saved under
+`research/fanout/<primitive>-claude.json` and
+`research/fanout/<primitive>-codex.json`.
+
+If the Codex CLI is unavailable, note it and proceed with Claude-only research.
+
+#### 6. Verify Tech — Consensus Matrix
+
+The coordinator builds a comparison matrix: primitive x researcher
+(Claude vs Codex).
+
+- Where both agree: adopt the recommendation.
+- Where they disagree: surface the disagreement as a tiebreak for the user
+  to resolve.
+
+Present the matrix and wait for user decisions on all tiebreaks.
+
+Save the resolved matrix to `research/consensus-matrix.md`.
+
+### Phase C: Task Proposal (planner, foreground)
+
+The coordinator spawns a fresh `planner` with the primitives and resolved
+tech decisions as context.
+
+#### 7. Propose Tasks
+
+Propose ordered task slices with specific test criteria. This is a distinct
+user-facing checkpoint — the user reviews tasks before Codex review.
 
 Each task file should look like:
 
@@ -182,37 +196,42 @@ Each task file should look like:
 }
 ```
 
-### 5. Use Codex Selectively
+Wait for user confirmation before proceeding.
 
-Do not automatically fan out every primitive.
+### Phase D: Codex Review — Multi-Pass (coordinator-driven)
 
-Invoke `codex-researcher` only when one of these is true:
+The coordinator runs iterative `codex-reviewer` passes against the brief and
+task slices.
 
-- the choice is architecturally important
-- the technology is recent or uncertain
-- the user explicitly wants a second opinion
-- Claude sees two plausible approaches with materially different tradeoffs
+#### 8. Codex Review
 
-Save any Codex research under `research/codex/`.
+**Pass 1**: Review for gaps, risks, and test adequacy.
+- Incorporate `must_address` items directly into the plan.
+- Note `nice_to_have` items.
 
-### 6. Challenge the Plan
+**Pass 2**: Re-run on the updated plan.
+- If clean (`changed: false`), skip pass 3.
 
-Run `codex-reviewer` once against the brief and task slices.
+**Pass 3** (if needed): Final check.
+- Remaining issues become noted risks, not blockers.
 
-Focus:
+Maximum 3 passes with early exit on any clean pass.
 
-- missing scope
-- risky assumptions
-- shallow verification plans
-- obvious simplifications
+Save each pass result to `reviews/codex-plan-pass-<N>.json`.
 
-Incorporate `must_address` items, summarize `nice_to_have` items, and then stop.
-Avoid open-ended multi-pass thrashing unless the first review reveals a serious
-architectural flaw.
+If the Codex CLI is unavailable, warn the user that the plan has not been
+independently reviewed.
 
-### 7. Finalize With the User
+### Phase E: Finalize
 
-Always pause for review before execution.
+#### 9. Finalize With the User
+
+Always pause for review before execution. Present:
+
+- the final brief summary
+- the consensus matrix results
+- the codex review results and any noted risks
+- the ordered task slices
 
 On approval, write:
 
@@ -253,9 +272,10 @@ Set `visual_design.applicable` to `false` for non-UI work.
 ## Phase 2: Execute
 
 Goal: build the spec coherently, then repair only what evaluation proves is
-missing.
+missing. The execute phase is a coordinator-driven pipeline with five phases
+(A through E) and loop re-entry via state counters.
 
-### 1. Load the Brief
+### 1. Load and Resume
 
 Read:
 
@@ -263,10 +283,16 @@ Read:
 - `rubric.json`
 - `tasks/*.json`
 - `state.json`
+- `research/consensus-matrix.md`
 
-If execution is resuming, continue from the last incomplete build or repair pass.
+Read `task_progress` from `state.json`. Skip any task with status `complete`.
+Find the first non-complete task. If resuming a failed task, read the prior
+evaluation.
 
-### 2. Draft And Tighten The Active Contract
+Update `state.json`: `current_step` = `"build"`, active task ->
+`"in_progress"` in `task_progress`.
+
+### 2. Draft and Tighten the Active Contract
 
 Before the generator writes code, create or refresh `contracts/<task-id>.md` for
 the active slice.
@@ -288,17 +314,22 @@ Spawn the `generator` subagent with:
 - the brief
 - the ordered task slices
 - the active contract
+- the consensus matrix (as architectural constraints, not suggestions)
+- per-task verification arrays from the task slices
 - the current repository state
 - the current build / repair pass number
-- any prior evaluator feedback
+- any prior evaluator feedback (if repair pass)
 
 Generator rules:
 
 - Own the whole brief, not just one slice.
 - Use task slices as a checklist for coverage and ordering.
 - Treat the active contract as the source of truth for the current pass.
+- Reference the consensus matrix for architectural decisions.
 - Verify continuously while building.
 - Do not create a commit after each pass unless the human asked for that.
+
+Update `state.json`: `build_pass` incremented.
 
 ### 4. Simplify Only When It Helps
 
@@ -310,15 +341,13 @@ Run it only when:
 - the code got harder to follow than necessary
 - a repair pass created obvious cleanup debt
 
-### 5. Ask Codex at High-Leverage Checkpoints
+### 5. Review via Codex (mandatory)
 
-Use `codex-reviewer` during execution only when:
+Run `codex-reviewer` after each build or repair pass, before the evaluator
+scores. Save to `reviews/codex-build-<N>.json`. This gives the evaluator an
+independent second-provider read to incorporate into its assessment.
 
-- the generator appears blocked on an architecture choice
-- the task is high-risk and you want an independent diff review before QA
-- the evaluator found a bug pattern that benefits from an outside read
-
-Codex should not sit on the critical path for every slice.
+If the Codex CLI is unavailable, note it in the evaluation and continue.
 
 ### 6. Evaluate the Build
 
@@ -326,61 +355,104 @@ Spawn `evaluator` after a coherent build pass, or after a focused repair pass.
 
 The evaluator must:
 
+- run per-task verification: iterate each task slice's `verification` array,
+  run each check, and record per-task pass/fail results
 - run the verification steps from the contract, task slices, and brief
 - run project-appropriate tests
+- incorporate the `codex-reviewer` output from the prior step into its
+  assessment (the evaluator does not run Codex itself — the coordinator owns
+  all Codex invocations)
+- cross-reference the consensus matrix — flag implementations that contradict
+  resolved planning decisions
 - score the rubric honestly
-- write a structured evaluation file
-- return concise repair guidance when the build misses the threshold
+- write a structured evaluation file with `task_verification` results
+- return task-scoped repair guidance when the build misses the threshold
+  (e.g., "Fix T02: [guidance]. Fix T05: [guidance].")
 - say explicitly when a weak contract contributed to the failure
+
+Write evaluation to `evaluations/build-pass-<N>.json`.
+
+Update `state.json`: active task -> `"complete"` or `"failed"` in
+`task_progress` based on evaluation.
 
 ### 7. Repair Narrowly
 
-If every applicable rubric criterion passes, move to review.
+If every applicable rubric criterion passes, advance to the next task (back to
+step 2) or move to review if all tasks are complete.
 
 If any criterion fails:
 
 - write the evaluation file
 - increment `repair_pass`
-- send only the failing evidence, contract deltas, and repair guidance back to
-  `generator`
+- update `task_progress`: active task -> `"in_progress"` (repair)
+- send only the failing evidence, contract deltas, and task-scoped repair
+  guidance back to `generator`
 - keep the repair narrow; do not reopen the whole plan unless the evaluator
   proved the brief itself is wrong
 
-Stop after `max_repair_passes` unless the human explicitly asks for another round.
+Stop after `max_repair_passes` unless the human explicitly asks for another
+round. If the repair budget is exhausted, present status to the user.
 
-When execution clears the bar, update `state.json` to `"phase": "review"`.
+When all tasks are complete, update `state.json` to `"phase": "review"`,
+`"current_step": "review"`. Present build summary: tasks completed, repair
+passes used, known gaps.
 
 ## Phase 3: Review
 
 Goal: final QA, final scorecard, and durable learnings.
 
-### 1. Run the Full Suite
+### 1. Load and Verify Prerequisites
+
+Read `state.json`. If phase is not `execute` or later (`review`, `done`), tell
+the user to run `/pi:execute` first.
+
+Read `brief.md`, `rubric.json`, `tasks/*.json`, `research/consensus-matrix.md`,
+and all evaluations from `evaluations/`.
+
+### 2. Run the Full Suite
 
 Run the complete local verification suite the project supports and record the
 results.
 
-### 2. Final Evaluation
+Run per-task verification: iterate each task's `verification` array and record
+results. Write suite results to `evaluations/suite-results.json`.
 
-Run `evaluator` one final time against the whole build, not just the last repair.
+### 3. Final Evaluation
 
-If the latest diff has not yet had an independent second-provider read and Codex
-is available, run `codex-reviewer` once before signoff and save the output under
-`reviews/codex-final.json`.
+Run `codex-reviewer` for a final independent read of the full build. Save the
+output under `reviews/codex-final.json`. If the Codex CLI is unavailable, note
+the absence in the scorecard.
 
-### 3. Present the Scorecard
+Run `evaluator` one final time against the whole build (not just the last
+repair), with:
+
+- the brief, rubric, full build
+- per-task verification arrays and consensus matrix
+- suite results and codex review output
+- all prior evaluations for context
+
+The evaluator cross-references the consensus matrix and produces both global
+rubric scores and per-task verification results. Write final evaluation to
+`evaluations/review.json`.
+
+### 4. Present the Scorecard
 
 Report:
 
-- rubric scores
+- global rubric scores (functionality, code_quality, product_depth,
+  visual_design if applicable)
+- per-task verification results (task_id, checks passed/failed)
+- consensus matrix cross-reference: flag any implementation that contradicts
+  resolved planning decisions
 - full-suite test results
 - known gaps
-- repair passes used
+- repair passes used during execute
 - whether Codex was consulted, and where it changed the outcome
 
 If the build still misses the bar, return to execute with a focused repair plan
 instead of restarting planning by default.
 
-### 4. Capture Learnings
+### 5. Capture Learnings
 
 Append durable project-specific learnings to `LEARNINGS.md`, then update
 `state.json` to `"phase": "done"`.
@@ -390,7 +462,9 @@ Append durable project-specific learnings to `LEARNINGS.md`, then update
 Never restart automatically.
 
 - If phase is `plan`, resume from the last completed planning step.
-- If phase is `execute`, resume from the last incomplete build or repair pass.
+- If phase is `execute`, read `task_progress` to find the first task with status
+  other than `complete`, and resume from the last incomplete build or repair pass
+  for that task.
 - If phase is `review`, rerun final QA against the current tree.
 
 Only start over when the human explicitly asks for a reset.
