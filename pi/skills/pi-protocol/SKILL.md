@@ -139,6 +139,8 @@ The coordinator reads the primitives from state files, then spawns parallel
 researchers. The planner cannot spawn subagents — this is a coordinator
 responsibility.
 
+Update `state.json`: `current_step` = `"research_fanout"`.
+
 #### 5. Research Fanout
 
 For each primitive, spawn both a `claude-researcher` and a `codex-researcher`
@@ -156,6 +158,8 @@ Each returns a structured recommendation. Results are saved under
 
 If the Codex CLI is unavailable, note it and proceed with Claude-only research.
 
+Update `state.json`: `current_step` = `"verify_tech"`.
+
 #### 6. Verify Tech — Consensus Matrix
 
 The coordinator builds a comparison matrix: primitive x researcher
@@ -170,6 +174,8 @@ Present the matrix and wait for user decisions on all tiebreaks.
 Save the resolved matrix to `research/consensus-matrix.md`.
 
 ### Phase C: Task Proposal (planner, foreground)
+
+Update `state.json`: `current_step` = `"propose_tasks"`.
 
 The coordinator spawns a fresh `planner` with the primitives and resolved
 tech decisions as context.
@@ -200,6 +206,8 @@ Wait for user confirmation before proceeding.
 
 ### Phase D: Codex Review — Multi-Pass (coordinator-driven)
 
+Update `state.json`: `current_step` = `"codex_review"`.
+
 The coordinator runs iterative `codex-reviewer` passes against the brief and
 task slices.
 
@@ -223,6 +231,8 @@ If the Codex CLI is unavailable, warn the user that the plan has not been
 independently reviewed.
 
 ### Phase E: Finalize
+
+Update `state.json`: `current_step` = `"finalize"`.
 
 #### 9. Finalize With the User
 
@@ -289,6 +299,9 @@ Read `task_progress` from `state.json`. Skip any task with status `complete`.
 Find the first non-complete task. If resuming a failed task, read the prior
 evaluation.
 
+If there are no tasks, or all tasks are already `complete`, skip directly to
+the finalize step. Do not enter the build loop.
+
 Update `state.json`: `current_step` = `"build"`, active task ->
 `"in_progress"` in `task_progress`.
 
@@ -344,8 +357,10 @@ Run it only when:
 ### 5. Review via Codex (mandatory)
 
 Run `codex-reviewer` after each build or repair pass, before the evaluator
-scores. Save to `reviews/codex-build-<N>.json`. This gives the evaluator an
-independent second-provider read to incorporate into its assessment.
+scores. Pass the list of files modified in this pass so the review is scoped
+to the current increment, not the entire worktree. Save to
+`reviews/codex-build-<N>.json`. This gives the evaluator an independent
+second-provider read to incorporate into its assessment.
 
 If the Codex CLI is unavailable, note it in the evaluation and continue.
 
@@ -377,8 +392,9 @@ Update `state.json`: active task -> `"complete"` or `"failed"` in
 
 ### 7. Repair Narrowly
 
-If every applicable rubric criterion passes, advance to the next task (back to
-step 2) or move to review if all tasks are complete.
+If every applicable rubric criterion passes, reset `repair_pass` to 0, then
+advance to the next task (back to step 2) or move to review if all tasks are
+complete.
 
 If any criterion fails:
 
@@ -449,13 +465,17 @@ Report:
 - repair passes used during execute
 - whether Codex was consulted, and where it changed the outcome
 
-If the build still misses the bar, return to execute with a focused repair plan
-instead of restarting planning by default.
+If the build still misses the bar:
 
-### 5. Capture Learnings
+- Update `state.json`: `phase` -> `"execute"` (not `"done"`)
+- Present the focused repair plan to the user
+- Do NOT write LEARNINGS.md or mark done — the workflow returns to
+  `/pi:execute` for another repair cycle
 
-Append durable project-specific learnings to `LEARNINGS.md`, then update
-`state.json` to `"phase": "done"`.
+### 5. Capture Learnings (only on pass)
+
+If the build passes, append durable project-specific learnings to
+`LEARNINGS.md`, then update `state.json` to `"phase": "done"`.
 
 ## Resumption
 

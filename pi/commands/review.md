@@ -55,10 +55,14 @@ subagents, so you own all agent orchestration.
     - Known gaps
     - Repair passes used during execute
     - Whether Codex was consulted, and where it changed the outcome
-11. If the build still misses the bar: return to execute with a focused repair
-    plan (do not restart planning).
-12. Append durable project-specific learnings to `LEARNINGS.md`.
-13. Update `state.json`: `phase` -> `"done"`.
+11. If the build still misses the bar:
+    - Update `state.json`: `phase` -> `"execute"` (not `"done"`)
+    - Present the focused repair plan to the user
+    - Do NOT write LEARNINGS.md or mark done — the workflow returns to
+      `/pi:execute` for another repair cycle
+12. If the build passes:
+    - Append durable project-specific learnings to `LEARNINGS.md`
+    - Update `state.json`: `phase` -> `"done"`
 
 Follow the protocol exactly. Present the full scorecard, test results, and any
 remaining repair guidance to the human.

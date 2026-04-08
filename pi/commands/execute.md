@@ -24,6 +24,8 @@ subagents, so you own all agent orchestration.
 2. Read `task_progress` from `state.json`. Skip any task with status `complete`.
 3. Find the first non-complete task. If resuming a failed task, read the prior
    evaluation from `evaluations/`.
+   - If there are no tasks, or all tasks are already `complete`, skip directly
+     to Phase E (finalize). Do not enter the build loop.
 4. Update `state.json`: `current_step` = `"build"`, the active task ->
    `"in_progress"` in `task_progress`.
 
@@ -45,8 +47,9 @@ subagents, so you own all agent orchestration.
 
 ### Phase C — Review and Evaluate
 
-9. Spawn `codex-reviewer` to review the latest changes. Save to
-   `reviews/codex-build-<N>.json`.
+9. Spawn `codex-reviewer` to review the latest changes. Pass the list of files
+   modified in this pass so the review is scoped to the current increment, not
+   the entire worktree. Save to `reviews/codex-build-<N>.json`.
    If Codex CLI is unavailable, note it and continue.
 10. Spawn `evaluator` (foreground) with:
     - the brief, active contract, rubric
@@ -61,8 +64,8 @@ subagents, so you own all agent orchestration.
 
 ### Phase D — Repair or Advance
 
-13. If all rubric criteria pass: advance to the next task (back to Phase B) or
-    to Phase E if all tasks are complete.
+13. If all rubric criteria pass: reset `repair_pass` to 0, then advance to the
+    next task (back to Phase B) or to Phase E if all tasks are complete.
 14. If any criterion fails:
     - Increment `repair_pass`
     - Update `state.json`: active task -> `"in_progress"` (repair) in
