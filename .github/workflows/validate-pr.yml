@@ -1,0 +1,112 @@
+name: Validate PR
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Regenerate versions.json for validation
+        run: scripts/generate-versions.sh
+      - name: Run skill validation
+        run: scripts/validate-skills.sh
+
+  check-version-bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check version bumps for changed plugins
+        run: |
+          extract_version() {
+            awk '
+              /^---$/ { fence++; next }
+              fence == 1 && /^metadata:/ { in_meta=1; next }
+              fence == 1 && in_meta && /^[^ ]/ { in_meta=0 }
+              fence == 1 && in_meta && /^  version:/ {
+                v = $0
+                sub(/^  version:[ ]*/, "", v)
+                gsub(/"/, "", v)
+                print v
+                exit
+              }
+              fence >= 2 { exit }
+            ' "$1"
+          }
+
+          changed_dirs=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+            | cut -d/ -f1 | sort -u)
+
+          failed=0
+          checked=0
+
+          for dir in $changed_dirs; do
+            # Skip non-plugin directories
+            [ -d "$dir/.claude-plugin" ] || continue
+
+            # Check if meaningful files changed
+            meaningful_changes=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
+              -- "$dir/skills/" "$dir/agents/" "$dir/commands/" "$dir/hooks/" \
+                 "$dir/.claude-plugin/plugin.json" "$dir/.codex-plugin/plugin.json")
+            [ -n "$meaningful_changes" ] || continue
+
+            # Find SKILL.md
+            skill_md=$(find "$dir/skills" -name SKILL.md -type f 2>/dev/null | head -1)
+            [ -n "$skill_md" ] || continue
+
+            checked=$((checked + 1))
+
+            # Extract current version
+            current_version=$(extract_version "$skill_md")
+
+            # Extract base branch version (empty if new plugin)
+            base_content=$(git show "origin/${{ github.base_ref }}:$skill_md" 2>/dev/null || echo "")
+            if [ -n "$base_content" ]; then
+              base_version=$(echo "$base_content" | extract_version /dev/stdin)
+            else
+              base_version=""
+            fi
+
+            if [ -n "$base_version" ] && [ "$current_version" = "$base_version" ]; then
+              echo "::error::$dir: SKILL.md version ($current_version) was not bumped"
+              failed=1
+              continue
+            fi
+
+            # Cross-check .claude-plugin/plugin.json version
+            pj="$dir/.claude-plugin/plugin.json"
+            if [ -f "$pj" ]; then
+              pj_version=$(python3 -c "import json; print(json.load(open('$pj'))['version'])")
+              if [[ "$pj_version" != "$current_version" && "$pj_version" != "$current_version".* ]]; then
+                echo "::error::$dir: plugin.json version ($pj_version) does not match SKILL.md version ($current_version)"
+                failed=1
+              fi
+            fi
+
+            # Cross-check .codex-plugin/plugin.json if present
+            codex_pj="$dir/.codex-plugin/plugin.json"
+            if [ -f "$codex_pj" ]; then
+              codex_version=$(python3 -c "import json; print(json.load(open('$codex_pj'))['version'])")
+              if [ "$codex_version" != "$pj_version" ]; then
+                echo "::error::$dir: .codex-plugin version ($codex_version) != .claude-plugin version ($pj_version)"
+                failed=1
+              fi
+            fi
+
+            echo "  [OK] $dir: $base_version -> $current_version"
+          done
+
+          if [ $failed -ne 0 ]; then
+            echo ""
+            echo "Fix: bump metadata.version in SKILL.md and update version in plugin.json to match."
+            exit 1
+          fi
+
+          echo "Checked $checked plugin(s). All changed plugins have proper version bumps."

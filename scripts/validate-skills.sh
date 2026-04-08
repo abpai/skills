@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SKIP_VERSIONS=false
+for arg in "$@"; do
+  case "$arg" in
+    --skip-versions) SKIP_VERSIONS=true ;;
+  esac
+done
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
@@ -482,7 +489,9 @@ fi
 # ── Validate versions.json ──
 
 versions_file="versions.json"
-if [[ -f "$versions_file" ]]; then
+if [[ "$SKIP_VERSIONS" == "true" ]]; then
+  echo "  [SKIP] versions.json (--skip-versions)"
+elif [[ -f "$versions_file" ]]; then
   python3 -c "
 import json
 import sys

@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: validate-skills
         name: Validate skills
-        entry: scripts/validate-skills.sh
+        entry: scripts/validate-skills.sh --skip-versions
         language: system
         pass_filenames: false
       - id: skill-scanner
