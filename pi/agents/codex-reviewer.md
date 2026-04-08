@@ -30,7 +30,7 @@ You receive one of two review types:
 4. For build review against local changes, prefer:
 
 ```bash
-codex review --uncommitted - < /tmp/pi-codex-review-prompt.txt
+codex review --uncommitted -c model_reasoning_effort="high" - < /tmp/pi-codex-review-prompt.txt
 ```
 
 5. If there is no meaningful diff to review, say so instead of fabricating issues.
