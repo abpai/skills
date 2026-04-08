@@ -27,10 +27,15 @@ You receive one of two review types:
 1. If `codex --version` fails, report that Codex is unavailable and stop.
 2. Use stdin-first prompts rather than long inline argv prompts.
 3. For plan review, prefer `codex exec` with a strict output schema.
-4. For build review against local changes, prefer:
+4. For build review against local changes:
+   - If the coordinator provides a list of files changed in this pass, scope the
+     review to those files only using `codex exec` with the file list in the
+     prompt.
+   - Otherwise, fall back to `codex review --uncommitted` but note in the output
+     that the review covers the full worktree, not just the latest pass.
 
 ```bash
-codex review --uncommitted - < /tmp/pi-codex-review-prompt.txt
+codex review --uncommitted -c model_reasoning_effort="high" - < /tmp/pi-codex-review-prompt.txt
 ```
 
 5. If there is no meaningful diff to review, say so instead of fabricating issues.

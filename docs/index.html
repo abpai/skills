@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>abpai/skills — AI Workflow Plugins</title>
+  <meta name="description" content="Curated marketplace of 20 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
+  <meta property="og:title" content="abpai/skills — AI Workflow Plugins">
+  <meta property="og:description" content="20 production-grade AI workflow plugins for Claude Code and Codex.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================
+       NOTHING DESIGN SYSTEM — TOKENS
+       ============================================ */
+    :root {
+      /* Typography */
+      --font-display: 'Space Grotesk', sans-serif;
+      --font-body: 'Space Grotesk', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+
+      /* Scale */
+      --display-xl: clamp(3rem, 6vw, 5.5rem);
+      --display-lg: clamp(2rem, 4vw, 3rem);
+      --display-md: clamp(1.5rem, 3vw, 2.25rem);
+      --heading: 1.5rem;
+      --subheading: 1.125rem;
+      --body: 1rem;
+      --body-sm: 0.875rem;
+      --caption: 0.75rem;
+      --label: 0.6875rem;
+
+      /* Spacing (8px base) */
+      --space-xs: 4px;
+      --space-sm: 8px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+      --space-2xl: 48px;
+      --space-3xl: 64px;
+      --space-4xl: 96px;
+
+      /* Motion */
+      --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+      --duration-fast: 150ms;
+      --duration-normal: 250ms;
+    }
+
+    /* Dark theme (default) */
+    [data-theme="dark"] {
+      --bg-primary: #000000;
+      --bg-surface: #1A1A1A;
+      --bg-surface-raised: #242424;
+      --border: #333333;
+      --border-visible: #444444;
+      --text-disabled: #666666;
+      --text-secondary: #999999;
+      --text-primary: #E8E8E8;
+      --text-display: #FFFFFF;
+      --accent: #D71921;
+      --interactive: #5B9BF6;
+    }
+
+    /* Light theme */
+    [data-theme="light"] {
+      --bg-primary: #F5F5F5;
+      --bg-surface: #FFFFFF;
+      --bg-surface-raised: #EEEEEE;
+      --border: #E0E0E0;
+      --border-visible: #CCCCCC;
+      --text-disabled: #AAAAAA;
+      --text-secondary: #666666;
+      --text-primary: #222222;
+      --text-display: #000000;
+      --accent: #D71921;
+      --interactive: #007AFF;
+    }
+
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: var(--font-body);
+      font-size: var(--body);
+      line-height: 1.5;
+      color: var(--text-primary);
+      background: var(--bg-primary);
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+    input { font: inherit; border: none; outline: none; background: none; color: inherit; }
+
+    /* ============================================
+       LAYOUT
+       ============================================ */
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--space-lg);
+    }
+
+    /* ============================================
+       NAV
+       ============================================ */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-primary);
+      border-bottom: 1px solid var(--border);
+      height: 48px;
+      display: flex;
+      align-items: center;
+    }
+
+    .nav .container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: var(--space-lg);
+      list-style: none;
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      transition: color var(--duration-fast) var(--ease);
+      padding: var(--space-xs) 0;
+    }
+
+    .nav-links a:hover,
+    .nav-links a.active {
+      color: var(--text-display);
+    }
+
+    .nav-links a.active::before { content: '[ '; }
+    .nav-links a.active::after { content: ' ]'; }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .theme-toggle {
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      transition: color var(--duration-fast) var(--ease);
+      padding: var(--space-xs) var(--space-sm);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+    }
+
+    .theme-toggle:hover { color: var(--text-display); border-color: var(--border-visible); }
+
+    .github-link {
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      transition: color var(--duration-fast) var(--ease);
+    }
+
+    .github-link:hover { color: var(--text-display); }
+
+    /* ============================================
+       HERO
+       ============================================ */
+    .hero {
+      min-height: calc(100vh - 48px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+      background-size: 20px 20px;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 800px;
+    }
+
+    .hero-label {
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-lg);
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: var(--display-xl);
+      font-weight: 300;
+      color: var(--text-display);
+      line-height: 1;
+      letter-spacing: -0.03em;
+      margin-bottom: var(--space-xl);
+    }
+
+    .hero-title span {
+      color: var(--accent);
+    }
+
+    .hero-rule {
+      width: 80px;
+      height: 1px;
+      background: var(--accent);
+      margin: 0 auto var(--space-xl);
+    }
+
+    .hero-description {
+      font-family: var(--font-body);
+      font-size: var(--subheading);
+      font-weight: 300;
+      color: var(--text-secondary);
+      max-width: 560px;
+      margin: 0 auto var(--space-2xl);
+      line-height: 1.6;
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid var(--border-visible);
+      border-radius: 100px;
+    }
+
+    .stat-pill strong {
+      color: var(--text-display);
+      font-weight: 400;
+    }
+
+    /* ============================================
+       FILTER BAR
+       ============================================ */
+    .filter-section {
+      padding: var(--space-2xl) 0 var(--space-xl);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 48px;
+      z-index: 90;
+      background: var(--bg-primary);
+    }
+
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+    }
+
+    .search-wrapper {
+      flex: 1;
+      min-width: 200px;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      font-family: var(--font-mono);
+      font-size: var(--body-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-display);
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid var(--border-visible);
+      transition: border-color var(--duration-fast) var(--ease);
+    }
+
+    .search-input::placeholder {
+      color: var(--text-disabled);
+      text-transform: uppercase;
+    }
+
+    .search-input:focus { border-color: var(--accent); }
+
+    .result-count {
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-disabled);
+      white-space: nowrap;
+    }
+
+    .category-filters {
+      display: flex;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+      width: 100%;
+      margin-top: var(--space-md);
+    }
+
+    .filter-pill {
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      padding: var(--space-xs) var(--space-md);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      transition: all var(--duration-fast) var(--ease);
+      white-space: nowrap;
+    }
+
+    .filter-pill:hover {
+      border-color: var(--border-visible);
+      color: var(--text-primary);
+    }
+
+    .filter-pill.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ============================================
+       CATALOG GRID
+       ============================================ */
+    .catalog {
+      padding: var(--space-2xl) 0 var(--space-3xl);
+    }
+
+    .catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: var(--space-md);
+    }
+
+    .skill-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: var(--space-lg);
+      display: flex;
+      flex-direction: column;
+      transition: border-color var(--duration-fast) var(--ease), opacity var(--duration-normal) var(--ease);
+      position: relative;
+    }
+
+    .skill-card:hover { border-color: var(--border-visible); }
+
+    .card-category {
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-disabled);
+      margin-bottom: var(--space-md);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .card-category::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .card-name {
+      font-family: var(--font-display);
+      font-size: var(--heading);
+      font-weight: 500;
+      color: var(--text-display);
+      margin-bottom: var(--space-sm);
+      letter-spacing: -0.01em;
+    }
+
+    .card-description {
+      font-family: var(--font-body);
+      font-size: var(--body-sm);
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: var(--space-lg);
+      flex: 1;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      padding-top: var(--space-md);
+      border-top: 1px solid var(--border);
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .card-version,
+    .card-author {
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-disabled);
+    }
+
+    .card-version strong {
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    .card-badge {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 2px;
+      padding: 1px 6px;
+      position: absolute;
+      top: var(--space-lg);
+      right: var(--space-lg);
+    }
+
+    .card-link {
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      padding: var(--space-xs) var(--space-md);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      transition: all var(--duration-fast) var(--ease);
+      white-space: nowrap;
+    }
+
+    .card-link:hover {
+      border-color: var(--text-secondary);
+      color: var(--text-display);
+    }
+
+    /* ============================================
+       INSTALL SECTION
+       ============================================ */
+    .install-section {
+      padding: var(--space-3xl) 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-header {
+      margin-bottom: var(--space-2xl);
+    }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--text-disabled);
+      margin-bottom: var(--space-sm);
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: var(--display-md);
+      font-weight: 400;
+      color: var(--text-display);
+      letter-spacing: -0.02em;
+    }
+
+    .install-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-xl);
+    }
+
+    .install-column h3 {
+      font-family: var(--font-mono);
+      font-size: var(--body-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-display);
+      margin-bottom: var(--space-md);
+      padding-bottom: var(--space-sm);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .install-step {
+      margin-bottom: var(--space-lg);
+    }
+
+    .install-step p {
+      font-family: var(--font-body);
+      font-size: var(--body-sm);
+      color: var(--text-secondary);
+      margin-bottom: var(--space-sm);
+    }
+
+    .code-block {
+      position: relative;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: var(--space-md);
+      overflow-x: auto;
+    }
+
+    .code-block code {
+      font-family: var(--font-mono);
+      font-size: var(--body-sm);
+      color: var(--text-primary);
+      white-space: pre;
+      line-height: 1.7;
+    }
+
+    .code-block .comment {
+      color: var(--text-disabled);
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: var(--space-sm);
+      right: var(--space-sm);
+      font-family: var(--font-mono);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-disabled);
+      padding: var(--space-xs) var(--space-sm);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      transition: all var(--duration-fast) var(--ease);
+    }
+
+    .copy-btn:hover { color: var(--text-primary); border-color: var(--border-visible); }
+    .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+
+    /* ============================================
+       FOOTER
+       ============================================ */
+    .site-footer {
+      padding: var(--space-2xl) 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-disabled);
+    }
+
+    .footer-content a {
+      color: var(--text-secondary);
+      transition: color var(--duration-fast) var(--ease);
+    }
+
+    .footer-content a:hover { color: var(--text-display); }
+
+    /* ============================================
+       EMPTY STATE
+       ============================================ */
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: var(--space-3xl) 0;
+    }
+
+    .empty-state p {
+      font-family: var(--font-mono);
+      font-size: var(--body-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-disabled);
+    }
+
+    /* ============================================
+       SCROLL INDICATOR
+       ============================================ */
+    .scroll-hint {
+      position: absolute;
+      bottom: var(--space-xl);
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-disabled);
+      animation: pulse 2s var(--ease) infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+      .install-grid { grid-template-columns: 1fr; }
+      .catalog-grid { grid-template-columns: 1fr; }
+      .nav-links { gap: var(--space-md); }
+      .hero { min-height: 80vh; }
+      .hero-stats { gap: var(--space-sm); }
+      .stat-pill { font-size: 9px; padding: var(--space-xs) var(--space-sm); }
+      .footer-content { flex-direction: column; gap: var(--space-sm); text-align: center; }
+    }
+
+    @media (max-width: 480px) {
+      .container { padding: 0 var(--space-md); }
+      .nav-links { font-size: 9px; gap: var(--space-sm); }
+      .filter-bar { flex-direction: column; align-items: stretch; }
+      .result-count { text-align: right; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav" id="nav">
+    <div class="container">
+      <ul class="nav-links">
+        <li><a href="#hero" class="active" data-nav>Home</a></li>
+        <li><a href="#catalog" data-nav>Catalog</a></li>
+        <li><a href="#install" data-nav>Install</a></li>
+      </ul>
+      <div class="nav-right">
+        <a href="https://github.com/abpai/skills" target="_blank" rel="noopener" class="github-link">GitHub</a>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark theme">Dark</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="hero">
+    <div class="hero-content">
+      <p class="hero-label">AI Workflow Plugins</p>
+      <h1 class="hero-title">abpai<span>/</span>skills</h1>
+      <div class="hero-rule"></div>
+      <p class="hero-description">
+        Cross-domain thinking, multi-model tooling, and developer productivity plugins for Claude Code and Codex.
+      </p>
+      <div class="hero-stats">
+        <span class="stat-pill"><strong>20</strong>&ensp;Skills</span>
+        <span class="stat-pill"><strong>6</strong>&ensp;Categories</span>
+        <span class="stat-pill"><strong>2</strong>&ensp;Runtimes</span>
+        <span class="stat-pill">MIT</span>
+      </div>
+    </div>
+    <span class="scroll-hint">Scroll</span>
+  </section>
+
+  <!-- FILTER -->
+  <section class="filter-section" id="catalog">
+    <div class="container">
+      <div class="filter-bar">
+        <div class="search-wrapper">
+          <input type="text" class="search-input" id="searchInput" placeholder="Search skills..." autocomplete="off" spellcheck="false">
+        </div>
+        <span class="result-count" id="resultCount">20 / 20</span>
+      </div>
+      <div class="category-filters" id="categoryFilters">
+        <button class="filter-pill active" data-category="All">All</button>
+        <button class="filter-pill" data-category="Planning & Reasoning">Planning & Reasoning</button>
+        <button class="filter-pill" data-category="Code Quality">Code Quality</button>
+        <button class="filter-pill" data-category="Developer Productivity">Developer Productivity</button>
+        <button class="filter-pill" data-category="Tools">Tools</button>
+        <button class="filter-pill" data-category="Languages & Platforms">Languages & Platforms</button>
+        <button class="filter-pill" data-category="Writing">Writing</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATALOG -->
+  <section class="catalog">
+    <div class="container">
+      <div class="catalog-grid" id="catalogGrid">
+
+        <article class="skill-card" data-category="Planning & Reasoning" data-keywords="distillation analysis primitives compression">
+          <span class="card-category">Planning & Reasoning</span>
+          <h3 class="card-name">distill</h3>
+          <p class="card-description">Decompose complex systems into essential primitives. Codebases, papers, transcripts.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/distill" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Planning & Reasoning" data-keywords="brainstorming cross-domain ideation mechanisms">
+          <span class="card-category">Planning & Reasoning</span>
+          <h3 class="card-name">lateral-thinking</h3>
+          <p class="card-description">Cross-domain hypothesis generation. Find transferable mechanisms from distant fields.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/lateral-thinking" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Planning & Reasoning" data-keywords="codex openai multi-model review">
+          <span class="card-category">Planning & Reasoning</span>
+          <h3 class="card-name">codex-exec</h3>
+          <p class="card-description">Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.2</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/codex-exec" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Planning & Reasoning" data-keywords="planning generator evaluator workflow codex">
+          <span class="card-badge">Claude-only</span>
+          <span class="card-category">Planning & Reasoning</span>
+          <h3 class="card-name">pi</h3>
+          <p class="card-description">Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>0.3</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/pi" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Code Quality" data-keywords="simplification refactoring clarity maintainability">
+          <span class="card-category">Code Quality</span>
+          <h3 class="card-name">code-simplifier</h3>
+          <p class="card-description">Simplify and refine code for clarity, consistency, and maintainability while preserving all functionality.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>2.1</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/code-simplifier" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Code Quality" data-keywords="dead-code cleanup audit unused">
+          <span class="card-category">Code Quality</span>
+          <h3 class="card-name">dead-code-eliminator</h3>
+          <p class="card-description">Audit for unreachable functions, unused imports, orphaned classes, and stale feature flags.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.2</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/dead-code-eliminator" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Code Quality" data-keywords="review commit git conventions">
+          <span class="card-category">Code Quality</span>
+          <h3 class="card-name">review-and-commit</h3>
+          <p class="card-description">Review uncommitted Git changes for correctness, quality, and convention alignment, then prepare safe atomic commits.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/review-and-commit" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="architecture debate adversarial adr codex">
+          <span class="card-category">Developer Productivity</span>
+          <h3 class="card-name">debate</h3>
+          <p class="card-description">Structured architecture debate: Claude proposes, Codex critiques, Claude synthesizes into a final ADR.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/debate" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="cli design usability ergonomics">
+          <span class="card-category">Developer Productivity</span>
+          <h3 class="card-name">cli-design-expert</h3>
+          <p class="card-description">Design or review CLIs for usability: help text, flags, exit codes, TTY behavior, config precedence.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.1.1</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/cli-design-expert" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="memory learnings patterns context">
+          <span class="card-category">Developer Productivity</span>
+          <h3 class="card-name">project-memory</h3>
+          <p class="card-description">Always-on project memory workflow. Read and update .agents/LEARNINGS.md with mistakes, corrections, and patterns.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/project-memory" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="understand codebase mental-model primitives modules">
+          <span class="card-category">Developer Productivity</span>
+          <h3 class="card-name">scratch</h3>
+          <p class="card-description">Understand a project by playing with its real modules in a safe .scratch/ workspace.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/scratch" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="quiz understanding mental-model ownership">
+          <span class="card-category">Developer Productivity</span>
+          <h3 class="card-name">socratic-code-owner</h3>
+          <p class="card-description">Quiz the developer on code, architecture, or plans an AI agent built. Ensures human understanding.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/socratic-code-owner" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Tools" data-keywords="browser automation web scraping testing">
+          <span class="card-category">Tools</span>
+          <h3 class="card-name">agent-browser</h3>
+          <p class="card-description">Browser automation CLI for AI agents. Navigate pages, fill forms, click buttons, take screenshots, extract data.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.3</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/agent-browser" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Tools" data-keywords="mermaid diagrams svg visualization">
+          <span class="card-category">Tools</span>
+          <h3 class="card-name">beautiful-mermaid</h3>
+          <p class="card-description">Render Mermaid diagrams as SVG and PNG using the Beautiful Mermaid library.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/beautiful-mermaid" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Tools" data-keywords="claude cli delegation automation">
+          <span class="card-category">Tools</span>
+          <h3 class="card-name">claude</h3>
+          <p class="card-description">Run Claude Code CLI for delegation, session continuation, and machine-readable output.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.5</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/claude" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Tools" data-keywords="evaluate library try demo">
+          <span class="card-category">Tools</span>
+          <h3 class="card-name">try</h3>
+          <p class="card-description">Evaluate a new library, tool, or GitHub repo before adopting it. Prompt-driven demos and honest findings.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.2</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/try" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Tools" data-keywords="visualization html diagrams explanation">
+          <span class="card-category">Tools</span>
+          <h3 class="card-name">visualize</h3>
+          <p class="card-description">Generate self-contained HTML visualizations to explain a system, plan, code flow, or concept.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/visualize" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Languages & Platforms" data-keywords="bun javascript typescript runtime">
+          <span class="card-category">Languages & Platforms</span>
+          <h3 class="card-name">bun-expert</h3>
+          <p class="card-description">Expert Bun runtime guidance: project setup, servers, APIs, testing, bundling, and Node.js migration.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.3</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/bun-expert" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Languages & Platforms" data-keywords="dokploy deployment hosting cli">
+          <span class="card-category">Languages & Platforms</span>
+          <h3 class="card-name">dokploy</h3>
+          <p class="card-description">Operate Dokploy via the official CLI. Manage projects, environments, apps, env vars, and databases.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/dokploy" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Writing" data-keywords="prose editing deslop humanize">
+          <span class="card-category">Writing</span>
+          <h3 class="card-name">human-writer</h3>
+          <p class="card-description">Edit prose so it sounds natural, specific, and human-written. Deslop model-generated text.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.4</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/human-writer" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALL -->
+  <section class="install-section" id="install">
+    <div class="container">
+      <div class="section-header">
+        <p class="section-label">Getting Started</p>
+        <h2 class="section-title">Installation</h2>
+      </div>
+      <div class="install-grid">
+        <div class="install-column">
+          <h3>Claude Code</h3>
+          <div class="install-step">
+            <p>Add the marketplace, then install any plugin:</p>
+            <div class="code-block">
+              <button class="copy-btn" data-copy>Copy</button>
+              <code><span class="comment"># Add the marketplace (once)</span>
+/plugin marketplace add abpai/skills
+
+<span class="comment"># Install a plugin</span>
+/plugin install distill@abpai-skills
+
+<span class="comment"># Or from a local checkout</span>
+claude --plugin-dir ./distill</code>
+            </div>
+          </div>
+        </div>
+        <div class="install-column">
+          <h3>Codex</h3>
+          <div class="install-step">
+            <p>Clone the repo and start Codex inside it:</p>
+            <div class="code-block">
+              <button class="copy-btn" data-copy>Copy</button>
+              <code><span class="comment"># Clone and enter the repo</span>
+git clone https://github.com/abpai/skills.git
+cd skills
+
+<span class="comment"># Start Codex — plugins auto-load</span>
+codex</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-content">
+        <span>abpai/skills</span>
+        <span>MIT License</span>
+        <a href="https://github.com/abpai/skills" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    /* ============================================
+       FILTER — operates on static HTML cards
+       ============================================ */
+    const cards = document.querySelectorAll('.skill-card');
+    const totalCount = cards.length;
+    let activeCategory = 'All';
+    let searchTerm = '';
+
+    function filterCards() {
+      const term = searchTerm.toLowerCase();
+      let visible = 0;
+      cards.forEach(card => {
+        const category = card.dataset.category;
+        const name = card.querySelector('.card-name').textContent.toLowerCase();
+        const desc = card.querySelector('.card-description').textContent.toLowerCase();
+        const keywords = (card.dataset.keywords || '').toLowerCase();
+        const matchCategory = activeCategory === 'All' || category === activeCategory;
+        const matchSearch = !term || name.includes(term) || desc.includes(term) || keywords.includes(term);
+        const show = matchCategory && matchSearch;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      document.getElementById('resultCount').textContent = visible + ' / ' + totalCount;
+    }
+
+    // Category filters
+    document.getElementById('categoryFilters').addEventListener('click', e => {
+      const btn = e.target.closest('[data-category]');
+      if (!btn) return;
+      activeCategory = btn.dataset.category;
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      filterCards();
+    });
+
+    // Search
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', e => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        searchTerm = e.target.value.trim();
+        filterCards();
+      }, 150);
+    });
+
+    // Theme toggle
+    const toggle = document.getElementById('themeToggle');
+    function setTheme(theme) {
+      document.documentElement.dataset.theme = theme;
+      toggle.textContent = theme === 'dark' ? 'Dark' : 'Light';
+      try { localStorage.setItem('theme', theme); } catch(e) {}
+    }
+    toggle.addEventListener('click', () => {
+      setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    });
+    try { const saved = localStorage.getItem('theme'); if (saved) setTheme(saved); } catch(e) {}
+
+    // Nav scroll tracking
+    const sections = ['hero', 'catalog', 'install'];
+    const navLinks = document.querySelectorAll('[data-nav]');
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          navLinks.forEach(a => a.classList.remove('active'));
+          const target = document.querySelector('[data-nav][href="#' + entry.target.id + '"]');
+          if (target) target.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-40% 0px -60% 0px' });
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+
+    // Copy buttons
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('[data-copy]');
+      if (!btn) return;
+      const code = btn.closest('.code-block').querySelector('code');
+      const text = code.textContent.replace(/^#.*$/gm, '').replace(/\n{2,}/g, '\n').trim();
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+      });
+    });
+  </script>
+</body>
+</html>

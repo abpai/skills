@@ -178,8 +178,12 @@ This is the artifact flow Pi tries to maintain:
   +--> .agents/pi/evaluations/suite-results.json
   +--> .agents/pi/reviews/codex-final.json
   +--> .agents/pi/evaluations/review.json
-  +--> .agents/pi/LEARNINGS.md
-  \--> .agents/pi/state.json => done
+  |
+  +--> if passing:
+  |      +--> .agents/pi/LEARNINGS.md
+  |      \--> .agents/pi/state.json => done
+  \--> if failing:
+         \--> .agents/pi/state.json => execute (repair cycle)
 ```
 
 ## Why This Shape

@@ -2,7 +2,8 @@
 name: claude-researcher
 description: Run Claude-side research for a primitive's implementation approach. Evaluates three layers — boring/proven, trending, and first-principles — to complement the Codex researcher's independent assessment.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
-model: inherit
+model: sonnet
+effort: medium
 maxTurns: 15
 ---
 
