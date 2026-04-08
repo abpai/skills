@@ -1,4 +1,4 @@
-name: Update versions.json
+name: Sync versions
 
 on:
   push:
@@ -8,18 +8,20 @@ permissions:
   contents: write
 
 jobs:
-  regenerate-versions:
+  sync-versions:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Regenerate versions.json
-        run: scripts/generate-versions.sh
+      - name: Sync plugin versions and regenerate versions.json
+        run: |
+          scripts/sync-plugin-versions.sh
+          scripts/generate-versions.sh
       - name: Commit if changed
         run: |
-          git diff --quiet versions.json && exit 0
+          git diff --quiet && exit 0
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add versions.json
-          git commit -m "chore: regenerate versions.json"
+          git add versions.json '*/.claude-plugin/plugin.json' '*/.codex-plugin/plugin.json'
+          git commit -m "chore: sync plugin versions"
           git pull --rebase
           git push

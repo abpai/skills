@@ -62,10 +62,9 @@ Every skill must have a `metadata.version` field in its YAML frontmatter. This p
 When publishing changes to a skill:
 
 1. Bump `metadata.version` in the skill's `SKILL.md`.
-2. Update `version` in `.claude-plugin/plugin.json` (and `.codex-plugin/plugin.json` if present) to match.
-3. Commit and open a PR — CI regenerates `versions.json` automatically on merge.
+2. Commit and open a PR.
 
-CI enforces that changed plugins have bumped versions and that `versions.json` stays in sync.
+CI enforces that changed plugins have bumped versions. On merge, plugin manifests (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) and `versions.json` are auto-synced from the `SKILL.md` version.
 
 ## Validation
 

@@ -12,8 +12,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Regenerate versions.json for validation
-        run: scripts/generate-versions.sh
+      - name: Sync plugin versions and regenerate versions.json
+        run: |
+          scripts/sync-plugin-versions.sh
+          scripts/generate-versions.sh
       - name: Run skill validation
         run: scripts/validate-skills.sh
 
@@ -80,32 +82,12 @@ jobs:
               continue
             fi
 
-            # Cross-check .claude-plugin/plugin.json version
-            pj="$dir/.claude-plugin/plugin.json"
-            if [ -f "$pj" ]; then
-              pj_version=$(python3 -c "import json; print(json.load(open('$pj'))['version'])")
-              if [[ "$pj_version" != "$current_version" && "$pj_version" != "$current_version".* ]]; then
-                echo "::error::$dir: plugin.json version ($pj_version) does not match SKILL.md version ($current_version)"
-                failed=1
-              fi
-            fi
-
-            # Cross-check .codex-plugin/plugin.json if present
-            codex_pj="$dir/.codex-plugin/plugin.json"
-            if [ -f "$codex_pj" ]; then
-              codex_version=$(python3 -c "import json; print(json.load(open('$codex_pj'))['version'])")
-              if [ "$codex_version" != "$pj_version" ]; then
-                echo "::error::$dir: .codex-plugin version ($codex_version) != .claude-plugin version ($pj_version)"
-                failed=1
-              fi
-            fi
-
             echo "  [OK] $dir: $base_version -> $current_version"
           done
 
           if [ $failed -ne 0 ]; then
             echo ""
-            echo "Fix: bump metadata.version in SKILL.md and update version in plugin.json to match."
+            echo "Fix: bump metadata.version in the skill's SKILL.md."
             exit 1
           fi
 
