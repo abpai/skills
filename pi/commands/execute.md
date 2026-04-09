@@ -21,11 +21,15 @@ subagents, so you own all agent orchestration.
 1. Read `brief.md`, `rubric.json`, `tasks/*.json`, `state.json`,
    `research/consensus-matrix.md` from the active state root.
    If any prerequisite is missing, tell the user to run `/pi:plan` first.
-2. Read `task_progress` from `state.json`. Skip any task with status `complete`.
-3. Find the first non-complete task. If resuming a failed task, read the prior
-   evaluation from `evaluations/`.
-   - If there are no tasks, or all tasks are already `complete`, skip directly
-     to Phase E (finalize). Do not enter the build loop.
+2. Read `task_progress` from `state.json`. Skip any task with status `complete`
+   or `blocked`.
+3. Find the first non-complete, non-blocked task. If resuming a failed task, read its
+   `action_on_resume` field from `task_progress` — it pre-computes the next
+   step so the coordinator does not need to chase evaluation files. If
+   `action_on_resume` is absent (legacy state), read the prior evaluation from
+   `evaluations/`.
+   - If there are no tasks, or all remaining tasks are `complete` or `blocked`,
+     skip directly to Phase E (finalize). Do not enter the build loop.
 4. Update `state.json`: `current_step` = `"build"`, the active task ->
    `"in_progress"` in `task_progress`.
 
@@ -50,7 +54,11 @@ subagents, so you own all agent orchestration.
 9. Spawn `codex-reviewer` to review the latest changes. Pass the list of files
    modified in this pass so the review is scoped to the current increment, not
    the entire worktree. Save to `reviews/codex-build-<N>.json`.
-   If Codex CLI is unavailable, note it and continue.
+   If Codex CLI is not available, check `execution_policy.codex_policy` from
+   `rubric.json`. If `required`, halt and warn the user. If `skip`, proceed
+   without Codex review. If `optional`, apply `execution_policy.degraded_mode`:
+   `warn_and_continue` — note the absence and continue; `block` — halt until
+   Codex is available.
 10. Spawn `evaluator` (foreground) with:
     - the brief, active contract, rubric
     - the build/repair summary from the generator
@@ -60,7 +68,9 @@ subagents, so you own all agent orchestration.
     - the current pass number
 11. Write evaluation to `evaluations/build-pass-<N>.json`.
 12. Update `state.json`: active task -> `"complete"` or `"failed"` in
-    `task_progress` based on evaluation.
+    `task_progress` based on evaluation. When marking `"failed"`, also write
+    `failure_reason` (short summary from evaluator) and `action_on_resume`
+    (prescriptive next step for the coordinator on cold resume).
 
 ### Phase D — Repair or Advance
 
@@ -74,7 +84,17 @@ subagents, so you own all agent orchestration.
       guidance back to Phase B step 7
     - Do NOT reopen the whole plan unless the evaluator proved the brief is wrong
 15. Stop repair after `max_repair_passes` (from `rubric.json`). If budget is
-    exhausted, present status to the user.
+    exhausted:
+    - Write `failure_reason` and `action_on_resume` to the task's
+      `task_progress` entry.
+    - **Propagate dependency failures:** Read `execution_policy.dependency_failure`
+      from `rubric.json`. If `block_downstream`: for each task whose `depends_on`
+      includes the failed task, set status to `blocked`, write `blocked_by` (the
+      failed task ID), `blocked_kind: "failed"`, and `failure_reason`. Then
+      propagate transitively — for tasks that depend on newly blocked tasks, set
+      `blocked_kind: "blocked"`. If `skip_downstream`: leave dependent tasks as
+      `not_started` but skip them in the current run.
+    - Present status to the user.
 
 ### Phase E — Finalize
 

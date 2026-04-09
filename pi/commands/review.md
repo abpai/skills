@@ -35,7 +35,11 @@ subagents, so you own all agent orchestration.
 
 7. Spawn `codex-reviewer` for a final independent read of the full build.
    Save to `reviews/codex-final.json`.
-   If Codex CLI is unavailable, note it in the scorecard.
+   If Codex CLI is not available, check `execution_policy` from
+   `rubric.json`. If `codex_policy` is `skip`, proceed without Codex review.
+   If `codex_policy` is `required`, halt and warn the user. If `codex_policy`
+   is `optional`, apply `degraded_mode`: `warn_and_continue` — note the
+   absence in the scorecard and proceed; `block` — halt and warn the user.
 8. Spawn `evaluator` (foreground) with:
    - the brief, rubric, full build (not just last repair)
    - per-task verification arrays and consensus matrix

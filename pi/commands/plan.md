@@ -14,16 +14,25 @@ Backward compatibility:
 ## Coordinator Pipeline
 
 You (the main thread) are the coordinator. Subagents cannot spawn other
-subagents, so you own all agent orchestration. Execute these phases in order:
+subagents, so you own all agent orchestration. Execute these phases in order.
+
+**SendMessage rule:** When relaying information to a running subagent via
+`SendMessage`, always include the `summary` field (5-10 word preview). The
+tool requires it when `message` is a string. Example:
+`SendMessage({ to: "planner", summary: "User chose selective posture", message: "..." })`
 
 ### Phase A — Interactive Planning (foreground planner)
 
 1. Spawn `planner` as a **foreground** subagent with the user's request and
    repo context. The planner runs steps 1-4: posture check, clarify, lateral
    thinking, and distill.
-2. The planner interacts with the user directly (foreground mode) and writes
-   results to state files: `state.json`, `research/lateral-thinking.md`.
-3. When the planner returns, read the primitives from state files.
+2. The planner may return early with questions for the user. When this
+   happens, relay the question via `AskUserQuestion`, then send the answer
+   back to the planner via `SendMessage` (with `summary`). Repeat until the
+   planner completes all four steps. If the planner has fully terminated,
+   spawn a fresh planner with the accumulated context instead.
+3. When the planner is done, read the primitives from state files:
+   `state.json`, `research/lateral-thinking.md`.
 
 ### Phase B — Parallel Research (coordinator-driven)
 
@@ -61,7 +70,11 @@ subagents, so you own all agent orchestration. Execute these phases in order:
 17. If pass 2 found issues: spawn `codex-reviewer` pass 3. Remaining issues
     become noted risks. Save to `reviews/codex-plan-pass-3.json`.
 
-If the Codex CLI is unavailable, warn the user and skip to Phase E.
+If the Codex CLI is not available, check `execution_policy` from
+`rubric.json`. If `codex_policy` is `skip`, skip Phase D silently. If
+`codex_policy` is `required`, halt and inform the user. If `codex_policy` is
+`optional`, apply `degraded_mode`: `warn_and_continue` — warn the user and
+skip to Phase E; `block` — halt and inform the user.
 
 ### Phase E — Finalize
 
