@@ -2,11 +2,11 @@
 name: pi-protocol
 description: >
   Claude-native harness for long-running engineering work. Defines the planner
-  -> generator -> evaluator loop, checkpoint files, and mandatory Codex critique
+  -> generator -> evaluator loop, checkpoint files, and default Codex critique
   points used by the /pi: commands.
 metadata:
   author: Andy Pai
-  version: "0.4"
+  version: "0.5.0"
 ---
 
 # Pi Protocol
@@ -18,7 +18,7 @@ Use it when a task is large enough to benefit from:
 - an explicit spec before coding
 - one coherent build pass instead of ad hoc edits
 - a real evaluator pass that can force targeted repairs
-- mandatory second-provider critique from Codex at every phase checkpoint
+- default second-provider critique from Codex at phase checkpoints
 
 Pi is intentionally Claude-native. Codex is a supporting CLI, not a parallel
 runtime or install target.
@@ -39,7 +39,8 @@ Three commands:
    "done" is explicit before code changes start.
 4. Use Codex at every phase checkpoint: research during planning, plan critique
    before approval, diff review after each build pass, and final review before
-   signoff. Skip only when the Codex CLI is unavailable.
+   signoff. Behavior when Codex is not available is governed by
+   `execution_policy` in `rubric.json`.
 5. Prefer one strong evaluator pass plus focused repair loops over mandatory
    grading after every slice.
 6. Resume from files instead of restarting from scratch.
@@ -156,7 +157,12 @@ Each returns a structured recommendation. Results are saved under
 `research/fanout/<primitive>-claude.json` and
 `research/fanout/<primitive>-codex.json`.
 
-If the Codex CLI is unavailable, note it and proceed with Claude-only research.
+If the Codex CLI is not available, check `execution_policy` in `rubric.json`.
+If `codex_policy` is `skip`, do not spawn `codex-researcher` and proceed with
+Claude-only research. If `codex_policy` is `required`, warn the user and
+pause. If `codex_policy` is `optional`, apply `degraded_mode`:
+`warn_and_continue` — note the absence and proceed with Claude-only research;
+`block` — warn the user and pause.
 
 Update `state.json`: `current_step` = `"verify_tech"`.
 
@@ -227,8 +233,11 @@ Maximum 3 passes with early exit on any clean pass.
 
 Save each pass result to `reviews/codex-plan-pass-<N>.json`.
 
-If the Codex CLI is unavailable, warn the user that the plan has not been
-independently reviewed.
+If the Codex CLI is not available, check `execution_policy`. If `codex_policy`
+is `skip`, proceed silently. If `codex_policy` is `required`, halt until
+Codex is available. If `codex_policy` is `optional`, apply `degraded_mode`:
+`warn_and_continue` — warn the user that the plan has not been independently
+reviewed and continue; `block` — halt until Codex is available.
 
 ### Phase E: Finalize
 
@@ -250,34 +259,9 @@ On approval, write:
 - `tasks/*.json`
 - updated `state.json` with `"phase": "execute"`
 
-Default rubric shape:
-
-```json
-{
-  "criteria": {
-    "functionality": {
-      "threshold": 7,
-      "description": "Does the build work as specified?"
-    },
-    "code_quality": {
-      "threshold": 7,
-      "description": "Is the code correct, readable, and maintainable?"
-    },
-    "product_depth": {
-      "threshold": 6,
-      "description": "Does the build cover the important real-world cases?"
-    },
-    "visual_design": {
-      "threshold": 6,
-      "applicable": true,
-      "description": "Is the interface polished and intentional?"
-    }
-  },
-  "max_repair_passes": 2
-}
-```
-
-Set `visual_design.applicable` to `false` for non-UI work.
+See [STATE.md](STATE.md) for the default rubric shape, `execution_policy`
+field definitions, and enum values. Set `visual_design.applicable` to `false`
+for non-UI work.
 
 ## Phase 2: Execute
 
@@ -295,12 +279,16 @@ Read:
 - `state.json`
 - `research/consensus-matrix.md`
 
-Read `task_progress` from `state.json`. Skip any task with status `complete`.
-Find the first non-complete task. If resuming a failed task, read the prior
+Read `task_progress` from `state.json`. Skip any task with status `complete` or
+`blocked`. Find the first non-complete, non-blocked task. If resuming a failed
+task, read its
+`action_on_resume` field first — it pre-computes the next step so the
+coordinator does not need to re-read evaluation files to reconstruct context.
+If `action_on_resume` is absent (legacy state), fall back to reading the prior
 evaluation.
 
-If there are no tasks, or all tasks are already `complete`, skip directly to
-the finalize step. Do not enter the build loop.
+If there are no tasks, or all remaining tasks are `complete` or `blocked`, skip
+directly to the finalize step. Do not enter the build loop.
 
 Update `state.json`: `current_step` = `"build"`, active task ->
 `"in_progress"` in `task_progress`.
@@ -362,7 +350,11 @@ to the current increment, not the entire worktree. Save to
 `reviews/codex-build-<N>.json`. This gives the evaluator an independent
 second-provider read to incorporate into its assessment.
 
-If the Codex CLI is unavailable, note it in the evaluation and continue.
+If the Codex CLI is not available, check `execution_policy`. If `codex_policy`
+is `skip`, proceed without Codex review. If `codex_policy` is `required`,
+warn the user. If `codex_policy` is `optional`, apply `degraded_mode`:
+`warn_and_continue` — note the absence in the evaluation and continue;
+`block` — halt until Codex is available.
 
 ### 6. Evaluate the Build
 
@@ -407,9 +399,20 @@ If any criterion fails:
   proved the brief itself is wrong
 
 Stop after `max_repair_passes` unless the human explicitly asks for another
-round. If the repair budget is exhausted, present status to the user.
+round. If the repair budget is exhausted:
 
-When all tasks are complete, update `state.json` to `"phase": "review"`,
+- write `failure_reason` to the task's `task_progress` entry (short summary
+  from the evaluator's repair guidance)
+- write `action_on_resume` with the prescriptive next step (e.g.,
+  `"read evaluations/build-pass-2.json, resume repair or escalate to user"`)
+- propagate `blocked` status to all downstream dependents: for each task whose
+  `depends_on` includes the failed task, set status to `blocked`, write
+  `blocked_by` (the failed task ID), `blocked_kind: "failed"`, and
+  `failure_reason` (e.g., `"dependency T02 failed"`). For tasks that depend on
+  a newly blocked task, propagate transitively with `blocked_kind: "blocked"`.
+- present status to the user
+
+When all tasks are complete (or complete + blocked), update `state.json` to `"phase": "review"`,
 `"current_step": "review"`. Present build summary: tasks completed, repair
 passes used, known gaps.
 
@@ -436,8 +439,12 @@ results. Write suite results to `evaluations/suite-results.json`.
 ### 3. Final Evaluation
 
 Run `codex-reviewer` for a final independent read of the full build. Save the
-output under `reviews/codex-final.json`. If the Codex CLI is unavailable, note
-the absence in the scorecard.
+output under `reviews/codex-final.json`. If the Codex CLI is not available,
+check `execution_policy`. If `codex_policy` is `skip`, proceed without Codex
+review. If `codex_policy` is `required`, halt and inform the user. If
+`codex_policy` is `optional`, apply `degraded_mode`: `warn_and_continue` —
+note the absence in the scorecard and proceed; `block` — halt and inform the
+user.
 
 Run `evaluator` one final time against the whole build (not just the last
 repair), with:
@@ -483,8 +490,8 @@ Never restart automatically.
 
 - If phase is `plan`, resume from the last completed planning step.
 - If phase is `execute`, read `task_progress` to find the first task with status
-  other than `complete`, and resume from the last incomplete build or repair pass
-  for that task.
+  other than `complete` or `blocked`, and resume from the last incomplete build
+  or repair pass for that task.
 - If phase is `review`, rerun final QA against the current tree.
 
 Only start over when the human explicitly asks for a reset.

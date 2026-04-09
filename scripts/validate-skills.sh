@@ -186,6 +186,33 @@ for key in ('hooks', 'mcpServers', 'lspServers'):
       echo "[FAIL] $skill_file: missing 'description' in frontmatter"
       failed=1
     fi
+
+    # agentskills.io spec: SKILL.md recommended ≤ 500 lines
+    line_count="$(wc -l < "$skill_file")"
+    if (( line_count > 500 )); then
+      echo "[WARN] $skill_file: $line_count lines exceeds 500-line spec recommendation"
+    fi
+
+    # agentskills.io spec: description must be ≤ 1024 chars
+    desc_text="$(awk '
+      /^---$/ { fence++; next }
+      fence == 1 && /^description:/ {
+        sub(/^description:[ ]*>?[ ]*/, "")
+        if (length($0) > 0) { printf "%s", $0 }
+        capturing = 1; next
+      }
+      fence == 1 && capturing && /^  / {
+        sub(/^  /, "")
+        printf " %s", $0
+        next
+      }
+      fence == 1 && capturing { exit }
+      fence >= 2 { exit }
+    ' "$skill_file")"
+    if (( ${#desc_text} > 1024 )); then
+      echo "[FAIL] $skill_file: description is ${#desc_text} chars (max 1024)"
+      failed=1
+    fi
   done
 
   # Validate each command markdown file

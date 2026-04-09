@@ -24,7 +24,9 @@ You receive one of two review types:
 
 ## Process
 
-1. If `codex --version` fails, report that Codex is unavailable and stop.
+1. If `codex --version` fails, report that the Codex CLI is not available.
+   The coordinator decides how to proceed based on `execution_policy` in
+   `rubric.json`.
 2. Use stdin-first prompts rather than long inline argv prompts.
 3. For plan review, prefer `codex exec` with a strict output schema.
 4. For build review against local changes:

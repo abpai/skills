@@ -26,14 +26,15 @@ Pi keeps the control loop simple:
 4. `evaluator` runs per-task verification, incorporates Codex review, grades
    the build, and drives narrow repairs.
 
-Codex is a mandatory second-provider critic at every phase checkpoint:
+By default, Codex is the second-provider critic at every phase checkpoint:
 
 - parallel research fanout during planning (Claude + Codex per primitive)
 - iterative plan critique before approval (up to 3 passes)
 - diff review after each build/repair pass
 - final independent read before signoff
 
-Skip only when the Codex CLI is unavailable.
+Behavior when Codex is not available is governed by
+`execution_policy` in `rubric.json`.
 
 Pi is intentionally a Claude plugin only. It uses the `codex` CLI as a
 supporting tool, but it is not meant to be installed as a Codex plugin.
@@ -46,7 +47,7 @@ Think of Pi like this:
 - `planner` decides what we are building (interactive, foreground)
 - `generator` tries to build it
 - `evaluator` decides whether it actually clears the bar
-- Codex is a mandatory outside critic at every phase checkpoint
+- Codex is the default outside critic at each phase checkpoint
 
 ## Flow Diagram
 
@@ -199,7 +200,7 @@ Compared with the original Pi draft, this version keeps the control loop tight:
 - no automatic code-simplifier pass after every step
 - no hook-based orchestration
 - no per-attempt commit requirement inside the generator loop
-- Codex is mandatory at phase checkpoints but the coordinator owns all
+- Codex is used at phase checkpoints by default, but the coordinator owns all
   invocations — agents never shell out to Codex themselves
 
 ## Install

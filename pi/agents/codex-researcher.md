@@ -19,8 +19,9 @@ You receive:
 
 ## Process
 
-1. If `codex --version` fails, report that the Codex CLI is unavailable and
-   stop.
+1. If `codex --version` fails, report that the Codex CLI is not available.
+   The coordinator decides how to proceed based on `execution_policy` in
+   `rubric.json`.
 2. Write a strict JSON schema file for the 3-layer output format with
    `additionalProperties: false` at every object level.
 3. Write the research prompt to a temporary file. The prompt should instruct

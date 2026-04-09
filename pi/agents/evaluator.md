@@ -70,8 +70,11 @@ The coordinator runs `codex-reviewer` before spawning you and passes the output
 in your context. Read and incorporate these findings into your rubric scoring —
 especially code quality issues, missed edge cases, and architectural concerns.
 
-If no Codex review output was provided (e.g., Codex CLI was unavailable), note
-the absence in `codex_review_summary` and proceed with your own analysis.
+If no Codex review output was provided (Codex CLI not available, or
+`execution_policy.codex_policy` is `skip`), note the absence in
+`codex_review_summary` and proceed with your own analysis. Check
+`execution_policy.degraded_mode` to determine whether this degrades the
+overall assessment.
 
 ### 3. Score Against Rubric
 
@@ -195,5 +198,6 @@ Return exactly one JSON object:
   by task ID (e.g., "Fix T02: [specific guidance]. Fix T05: [specific guidance].").
 - Do not fix code yourself. Your job is to evaluate and report.
 - If verification requires a running server, start it. Clean up when done.
-- If Codex is unavailable, evaluate code quality using your own analysis and
-  note the absence in `codex_review_summary`.
+- If Codex review output is missing, evaluate code quality using your own
+  analysis and note the absence in `codex_review_summary`. Check
+  `execution_policy.degraded_mode` from `rubric.json`.
