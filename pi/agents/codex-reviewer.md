@@ -28,10 +28,10 @@ You receive one of two review types:
    The coordinator decides how to proceed based on `execution_policy` in
    `rubric.json`.
 2. Use stdin-first prompts rather than long inline argv prompts.
-3. For plan review, prefer `codex exec` with a strict output schema.
-   Use the active Codex default model/profile unless the coordinator explicitly
+3. Use the active Codex default model/profile unless the coordinator explicitly
    requests a model override.
-4. For build review against local changes:
+4. For plan review, prefer `codex exec` with a strict output schema.
+5. For build review against local changes:
    - If the coordinator provides a list of files changed in this pass, scope the
      review to those files only using `codex exec` with the file list in the
      prompt.
@@ -42,7 +42,7 @@ You receive one of two review types:
 codex review --uncommitted -c model_reasoning_effort="high" - < /tmp/pi-codex-review-prompt.txt
 ```
 
-5. If there is no meaningful diff to review, say so instead of fabricating issues.
+6. If there is no meaningful diff to review, say so instead of fabricating issues.
 
 For plan review, a representative command is:
 
@@ -57,7 +57,7 @@ codex exec \
 If the coordinator needs a pinned model instead of the configured Codex
 default, prefer `gpt-5.4` for most coding tasks.
 
-6. Capture the output and return it faithfully.
+7. Capture the output and return it faithfully.
 
 ## Output
 
