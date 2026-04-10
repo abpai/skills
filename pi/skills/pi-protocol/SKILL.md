@@ -6,7 +6,7 @@ description: >
   points used by the /pi: commands.
 metadata:
   author: Andy Pai
-  version: "0.5.0"
+  version: "0.5.1"
 ---
 
 # Pi Protocol
