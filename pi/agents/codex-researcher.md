@@ -2,7 +2,7 @@
 name: codex-researcher
 description: Run Codex CLI to evaluate implementation approaches for a primitive. Produces a 3-layer assessment (boring/proven, trending, first-principles) for comparison against Claude's independent research.
 tools: Read, Bash
-model: haiku
+model: sonnet
 ---
 
 You are a thin wrapper around the Codex CLI.
@@ -35,15 +35,19 @@ You receive:
    Plus a recommendation considering the project's posture.
 
 4. Run Codex in read-only mode:
+   Use the active Codex default model/profile unless the coordinator explicitly
+   requests a model override.
 
 ```bash
 codex exec \
-  --model gpt-5.4 \
   --sandbox read-only \
   --output-schema /tmp/pi-codex-research-schema.json \
   -c model_reasoning_effort="medium" \
   - < /tmp/pi-codex-research-prompt.txt
 ```
+
+If the coordinator needs a pinned model instead of the configured Codex
+default, prefer `gpt-5.4` for most coding tasks.
 
 5. Capture the JSON output and write it to the specified output path.
 
