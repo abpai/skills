@@ -53,6 +53,7 @@
 | 2026-04-07 | self   | Pi plugin agents declared preloaded helper skills that are not bundled inside the plugin, making the advertised subagent setup non-portable | For plugin subagents, either vendor required skills under the plugin's own `skills/` directory and reference them correctly, or treat them as external prerequisites instead of claiming they are preloaded |
 | 2026-04-07 | self   | An internal plugin orchestration skill stayed auto-loadable and grew past Claude's recommended size, which makes packaging less predictable and the skill harder to maintain | For plugin-internal workflows, set invocation visibility intentionally (`disable-model-invocation` or `user-invocable: false` as appropriate) and split long protocol details into supporting files before `SKILL.md` exceeds ~500 lines |
 | 2026-04-07 | self   | A plugin subagent prompt said it could ask the user questions, but its explicit `tools` allowlist omitted that tool, and the README still reflected the pre-refactor control loop | When plugin agent prompts rely on specific internal tools, include them explicitly in the allowlist (or remove the allowlist), and sync high-level README flow docs in the same change as a protocol refactor |
+| 2026-04-08 | self   | Pi's `execution_policy` refactor updated `STATE.md` and parts of the protocol, but `commands/review.md`, some Codex-unavailable branches, and `versions.json` lagged behind | When changing Pi policy semantics, update `README.md`, `SKILL.md`, command docs, agent wrappers, and `versions.json` together, then run `scripts/validate-skills.sh` to catch drift |
 
 ## User Preferences
 
@@ -92,9 +93,11 @@
 - Update root docs (`README.md` skill inventory) whenever skill folders are added, renamed, or removed.
 - For `visualize` execution-flow pages, pair one Mermaid-rendered flowchart with supporting editorial sections instead of replacing the flowchart with static HTML boxes.
 - For Codex-related skills, prefer `gpt-5.4` as the default model; OpenAI now recommends the general-purpose GPT-5.4 over `gpt-5.3-codex` for most coding tasks.
+- For wrapper agents that shell out to `codex exec`, treat the wrapper model and the nested Codex model as separate knobs: upgrade the wrapper for orchestration reliability, but prefer inheriting the Codex CLI default unless determinism requires an explicit pin.
 - For `agent-browser`, use `agent-browser connect "${AGENT_BROWSER_CDP_PORT:-9222}"` to reuse a logged-in Chrome, and use an empty config plus unset persistence env vars for truly clean sessions.
 - For skill renames, update the skill folder name, `SKILL.md` `name` field, and root `README.md` inventory atomically, then run a repository-wide text check for stale references.
 - For Claude plugins, keep plugin subagents self-contained: if an agent relies on helper skills, bundle them inside the plugin or document them as explicit external dependencies instead of implying they are always preloaded.
+- For Pi protocol docs, keep simulated conversations explicit about mandatory human checkpoints and the execute-phase contract review gate; compressing them away makes the example drift from the command spec.
 
 ## Patterns That Don't Work
 

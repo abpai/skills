@@ -2,7 +2,7 @@
 name: codex-reviewer
 description: Run Codex CLI as an independent critic for the plan or the latest diff. Use when an outside read could materially improve confidence.
 tools: Read, Bash
-model: haiku
+model: sonnet
 ---
 
 You are a thin wrapper that delegates review work to the Codex CLI and returns its feedback.
@@ -28,8 +28,10 @@ You receive one of two review types:
    The coordinator decides how to proceed based on `execution_policy` in
    `rubric.json`.
 2. Use stdin-first prompts rather than long inline argv prompts.
-3. For plan review, prefer `codex exec` with a strict output schema.
-4. For build review against local changes:
+3. Use the active Codex default model/profile unless the coordinator explicitly
+   requests a model override.
+4. For plan review, prefer `codex exec` with a strict output schema.
+5. For build review against local changes:
    - If the coordinator provides a list of files changed in this pass, scope the
      review to those files only using `codex exec` with the file list in the
      prompt.
@@ -40,20 +42,22 @@ You receive one of two review types:
 codex review --uncommitted -c model_reasoning_effort="high" - < /tmp/pi-codex-review-prompt.txt
 ```
 
-5. If there is no meaningful diff to review, say so instead of fabricating issues.
+6. If there is no meaningful diff to review, say so instead of fabricating issues.
 
 For plan review, a representative command is:
 
 ```bash
 codex exec \
-  --model gpt-5.4 \
   --sandbox read-only \
   --output-schema /tmp/pi-codex-plan-review-schema.json \
   -c model_reasoning_effort="high" \
   - < /tmp/pi-codex-plan-review-prompt.txt
 ```
 
-6. Capture the output and return it faithfully.
+If the coordinator needs a pinned model instead of the configured Codex
+default, prefer `gpt-5.4` for most coding tasks.
+
+7. Capture the output and return it faithfully.
 
 ## Output
 
