@@ -10,7 +10,7 @@ allowed-tools: >
   Bash(codex *) Read Write Edit Grep Glob
 metadata:
   author: Andy Pai
-  version: "0.6.0"
+  version: "0.6.1"
 ---
 
 # Pi Protocol
@@ -304,8 +304,7 @@ Read `task_progress` from `state.json`. Skip any task with status `complete` or
 task, read its
 `action_on_resume` field first — it pre-computes the next step so the
 coordinator does not need to re-read evaluation files to reconstruct context.
-If `action_on_resume` is absent (legacy state), fall back to reading the prior
-evaluation.
+If `action_on_resume` is absent, fall back to reading the prior evaluation.
 
 If there are no tasks, or all remaining tasks are `complete` or `blocked`, skip
 directly to the finalize step. Do not enter the build loop.

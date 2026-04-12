@@ -21,17 +21,15 @@ timeout 3 codex --version 2>&1 || echo "codex: not installed"
 ```
 
 The block above runs at skill-load time. Use its output to resume from the
-current `phase`/`current_step` without re-reading `state.json`, to know which
-tasks exist, and to decide the `codex_policy` branch up front.
+current `phase`/`current_step` in `.agents/pi/` without re-reading
+`state.json`, to know which tasks exist, and to decide the `codex_policy`
+branch up front.
 
 Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 2: Execute**.
 
 User input: $ARGUMENTS
 
 Default state directory: `.agents/pi/`
-
-Backward compatibility:
-- If `.agents/pi/` does not exist but `.agents/plan/` does, continue in `.agents/plan/`.
 
 ## Coordinator Pipeline
 
@@ -48,8 +46,7 @@ subagents, so you own all agent orchestration.
 3. Find the first non-complete, non-blocked task. If resuming a failed task, read its
    `action_on_resume` field from `task_progress` — it pre-computes the next
    step so the coordinator does not need to chase evaluation files. If
-   `action_on_resume` is absent (legacy state), read the prior evaluation from
-   `evaluations/`.
+   `action_on_resume` is absent, read the prior evaluation from `evaluations/`.
    - If there are no tasks, or all remaining tasks are `complete` or `blocked`,
      skip directly to Phase E (finalize). Do not enter the build loop.
 4. Update `state.json`: `current_step` = `"build"`, the active task ->

@@ -1,7 +1,7 @@
 {
   "name": "pi",
   "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique at high-leverage checkpoints.",
-  "version": "0.5.1",
+  "version": "0.6.1",
   "author": {
     "name": "Andy Pai"
   },

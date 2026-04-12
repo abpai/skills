@@ -21,17 +21,14 @@ timeout 3 codex --version 2>&1 || echo "codex: not installed"
 ```
 
 The block above runs at skill-load time. Use its output to confirm the brief
-and tasks already exist before starting the full verification suite, and to
-gate the final Codex review on CLI availability.
+and tasks already exist under `.agents/pi/` before starting the full
+verification suite, and to gate the final Codex review on CLI availability.
 
 Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 3: Review**.
 
 User input: $ARGUMENTS
 
 Default state directory: `.agents/pi/`
-
-Backward compatibility:
-- If `.agents/pi/` does not exist but `.agents/plan/` does, continue in `.agents/plan/`.
 
 ## Coordinator Pipeline
 

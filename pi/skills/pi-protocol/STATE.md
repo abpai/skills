@@ -2,12 +2,6 @@
 
 Default state root: `.agents/pi/`
 
-Backward compatibility:
-
-- If `.agents/pi/` exists, keep using it.
-- If only `.agents/plan/` exists from an older Pi run, continue there or migrate
-  it once before starting new work.
-
 Recommended layout:
 
 ```text

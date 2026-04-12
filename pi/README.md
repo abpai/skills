@@ -144,12 +144,6 @@ Pi writes state under `.agents/pi/` by default:
 └── LEARNINGS.md
 ```
 
-Backward compatibility:
-
-- If `.agents/pi/` already exists, keep using it.
-- If an older run only has `.agents/plan/`, Pi can continue there or migrate it
-  once before new work starts.
-
 ## File Diagram
 
 This is the artifact flow Pi tries to maintain:

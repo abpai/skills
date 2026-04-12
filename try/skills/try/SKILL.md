@@ -14,7 +14,7 @@ argument-hint: "[library or package]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Try: Structured Library Evaluation

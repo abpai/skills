@@ -21,17 +21,15 @@ timeout 3 codex --version 2>&1 || echo "codex: not installed"
 ```
 
 The block above runs at skill-load time. Treat its output as ground truth for
-working-tree state, existing pi state, and Codex CLI availability. The Codex
-availability line feeds directly into the `codex_policy` branch in Phase D.
+working-tree state, existing Pi state under `.agents/pi/`, and Codex CLI
+availability. The Codex availability line feeds directly into the
+`codex_policy` branch in Phase D.
 
 Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 1: Plan**.
 
 User input: $ARGUMENTS
 
 Default state directory: `.agents/pi/`
-
-Backward compatibility:
-- If `.agents/pi/` does not exist but `.agents/plan/` does, continue in `.agents/plan/` or migrate it once before writing new files.
 
 ## Coordinator Pipeline
 

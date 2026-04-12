@@ -54,6 +54,7 @@
 | 2026-04-07 | self   | An internal plugin orchestration skill stayed auto-loadable and grew past Claude's recommended size, which makes packaging less predictable and the skill harder to maintain | For plugin-internal workflows, set invocation visibility intentionally (`disable-model-invocation` or `user-invocable: false` as appropriate) and split long protocol details into supporting files before `SKILL.md` exceeds ~500 lines |
 | 2026-04-07 | self   | A plugin subagent prompt said it could ask the user questions, but its explicit `tools` allowlist omitted that tool, and the README still reflected the pre-refactor control loop | When plugin agent prompts rely on specific internal tools, include them explicitly in the allowlist (or remove the allowlist), and sync high-level README flow docs in the same change as a protocol refactor |
 | 2026-04-08 | self   | Pi's `execution_policy` refactor updated `STATE.md` and parts of the protocol, but `commands/review.md`, some Codex-unavailable branches, and `versions.json` lagged behind | When changing Pi policy semantics, update `README.md`, `SKILL.md`, command docs, agent wrappers, and `versions.json` together, then run `scripts/validate-skills.sh` to catch drift |
+| 2026-04-12 | self   | Pi command preflight snapshots drifted from the documented state-root behavior | When changing Pi state-root policy, update the preflight snapshot blocks, command docs, protocol docs, README, and release metadata in the same pass so the injected "ground truth" matches the supported workflow |
 
 ## User Preferences
 
