@@ -1,6 +1,28 @@
 ---
 description: Run final Pi review. Executes the full verification suite, performs holistic evaluation, and presents the scorecard with any remaining repair guidance.
+argument-hint: "[optional task id or filter]"
+allowed-tools: >
+  Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
+  Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
+  Bash(codex *) Bash(cat .agents/pi/*) Bash(ls .agents/pi/*)
+  Read Write Edit Grep Glob
 ---
+
+## Pi state snapshot
+
+```!
+echo "PI_REVIEW_PREFLIGHT_$(date +%s%N)"
+git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
+git branch --show-current 2>/dev/null
+git status --short 2>/dev/null | head -30
+test -f .agents/pi/state.json && cat .agents/pi/state.json || echo "no pi state"
+test -d .agents/pi/tasks && ls -1 .agents/pi/tasks 2>/dev/null
+timeout 3 codex --version 2>&1 || echo "codex: not installed"
+```
+
+The block above runs at skill-load time. Use its output to confirm the brief
+and tasks already exist before starting the full verification suite, and to
+gate the final Codex review on CLI availability.
 
 Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 3: Review**.
 

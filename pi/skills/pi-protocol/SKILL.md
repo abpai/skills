@@ -4,9 +4,13 @@ description: >
   Claude-native harness for long-running engineering work. Defines the planner
   -> generator -> evaluator loop, checkpoint files, and default Codex critique
   points used by the /pi: commands.
+allowed-tools: >
+  Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
+  Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
+  Bash(codex *) Read Write Edit Grep Glob
 metadata:
   author: Andy Pai
-  version: "0.5.1"
+  version: "0.6.0"
 ---
 
 # Pi Protocol
@@ -51,6 +55,22 @@ Default state root: `.agents/pi/`
 
 See [STATE.md](STATE.md) for the full state convention, recommended layout,
 `state.json` schema, and `task_progress` transition points.
+
+## Artifact Templates
+
+When producing the core artifacts, start from the templates in this skill's
+`templates/` directory rather than hallucinating structure:
+
+- `${CLAUDE_SKILL_DIR}/templates/brief.md` — shape for `.agents/pi/brief.md`
+- `${CLAUDE_SKILL_DIR}/templates/rubric.json` — shape for `.agents/pi/rubric.json`
+- `${CLAUDE_SKILL_DIR}/templates/task.json` — shape for each file in `.agents/pi/tasks/`
+- `${CLAUDE_SKILL_DIR}/templates/contract.md` — shape for each file in `.agents/pi/contracts/`
+
+When a subagent (planner, generator, evaluator) produces one of these artifacts,
+the coordinator is responsible for passing the template path in, since the
+`${CLAUDE_SKILL_DIR}` substitution is scoped to the invoking skill, not to the
+subagent body. Use a plugin-relative reference like
+`skills/pi-protocol/templates/task.json` when calling subagents directly.
 
 ## Agents
 

@@ -1,6 +1,28 @@
 ---
 description: Turn a project request into a brief, rubric, and ordered task slices. Interactive planner phase for long-running engineering work.
+argument-hint: "[project goal]"
+allowed-tools: >
+  Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
+  Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
+  Bash(codex *) Bash(cat .agents/pi/*) Bash(ls .agents/pi/*)
+  Read Write Edit Grep Glob
 ---
+
+## Pi state snapshot
+
+```!
+echo "PI_PLAN_PREFLIGHT_$(date +%s%N)"
+git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
+git branch --show-current 2>/dev/null
+git status --short 2>/dev/null | head -30
+test -f .agents/pi/state.json && cat .agents/pi/state.json || echo "no pi state"
+test -d .agents/pi/tasks && ls -1 .agents/pi/tasks 2>/dev/null
+timeout 3 codex --version 2>&1 || echo "codex: not installed"
+```
+
+The block above runs at skill-load time. Treat its output as ground truth for
+working-tree state, existing pi state, and Codex CLI availability. The Codex
+availability line feeds directly into the `codex_policy` branch in Phase D.
 
 Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 1: Plan**.
 

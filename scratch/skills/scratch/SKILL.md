@@ -6,10 +6,12 @@ description: >
   key primitives and subsystems. Use when the user wants to build a mental
   model of a codebase through hands-on code — not for evaluating external
   libraries for adoption (use the `try` skill for that).
+argument-hint: "[question or script topic]"
+allowed-tools: Bash(mkdir *) Write Edit
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Scratch: Codebase Exploration Through Code

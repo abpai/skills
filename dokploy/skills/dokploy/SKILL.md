@@ -1,6 +1,7 @@
 ---
 name: dokploy
 description: Comprehensive skill for operating Dokploy via the official Dokploy CLI (oclif-based). Use when users ask to authenticate, verify access, or manage Dokploy projects, environments, apps, env vars, and databases from the terminal. Includes robust oclif parsing rules and a safe help-first workflow to avoid subcommand/positional-arg confusion.
+argument-hint: "[dokploy subcommand]"
 license: MIT
 compatibility: Requires Node.js + npm, network access to the Dokploy server, and the @dokploy/cli package installed. Assumes the user can provide a Dokploy server URL and access token.
 metadata:

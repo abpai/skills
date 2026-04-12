@@ -1,6 +1,28 @@
 ---
 description: Execute the approved Pi brief. Runs the generator loop, optional simplification, evaluation, and focused repair passes until the build clears the bar or repair budget is exhausted.
+argument-hint: "[optional task id or filter]"
+allowed-tools: >
+  Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
+  Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
+  Bash(codex *) Bash(cat .agents/pi/*) Bash(ls .agents/pi/*)
+  Read Write Edit Grep Glob
 ---
+
+## Pi state snapshot
+
+```!
+echo "PI_EXECUTE_PREFLIGHT_$(date +%s%N)"
+git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
+git branch --show-current 2>/dev/null
+git status --short 2>/dev/null | head -30
+test -f .agents/pi/state.json && cat .agents/pi/state.json || echo "no pi state"
+test -d .agents/pi/tasks && ls -1 .agents/pi/tasks 2>/dev/null
+timeout 3 codex --version 2>&1 || echo "codex: not installed"
+```
+
+The block above runs at skill-load time. Use its output to resume from the
+current `phase`/`current_step` without re-reading `state.json`, to know which
+tasks exist, and to decide the `codex_policy` branch up front.
 
 Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 2: Execute**.
 

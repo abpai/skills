@@ -5,10 +5,11 @@ description: >-
   flow, or concept. Use when the user asks to visualize, diagram, explain
   visually, or walk through a system, architecture, plan, or code flow. Outputs
   a single HTML file opened in the browser.
+argument-hint: "[what to visualize]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0"
+  version: "1.1"
   upstream_skill: https://github.com/nicobailon/visual-explainer
 ---
 
