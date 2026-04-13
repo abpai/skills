@@ -129,21 +129,30 @@ persistent state.
 
 ## State
 
-Pi writes state under `.agents/pi/` by default:
+Pi uses `.agents/pi/` as a namespace root and stores each run under its own
+state root:
 
 ```text
 .agents/pi/
-├── state.json
-├── brief.md
-├── rubric.json
-├── tasks/
-├── contracts/
-├── research/
-├── reviews/
-├── evaluations/
-├── checkpoints/
-└── LEARNINGS.md
+├── current.json
+└── runs/
+    └── <slug>/
+        ├── state.json
+        ├── brief.md
+        ├── rubric.json
+        ├── tasks/
+        ├── contracts/
+        ├── research/
+        ├── reviews/
+        ├── evaluations/
+        ├── checkpoints/
+        └── LEARNINGS.md
 ```
+
+`current.json` is a checkout-local pointer to the active run. `/pi:plan` can
+resume, switch, or create runs. `/pi:execute` and `/pi:review` resolve the
+active run from `current.json`, and if the pointer is missing but there is
+exactly one run, they auto-select it.
 
 `checkpoints/` holds short-lived handoff files written when a generator
 finishes a pass and deleted once the evaluator scores it. They let
@@ -158,36 +167,41 @@ This is the artifact flow Pi tries to maintain:
 ```text
 /pi:plan
   |
-  +--> .agents/pi/state.json
-  +--> .agents/pi/brief.md
-  +--> .agents/pi/rubric.json
-  +--> .agents/pi/tasks/T01.json ...
-  +--> .agents/pi/research/lateral-thinking.md
-  +--> .agents/pi/research/fanout/*-claude.json, *-codex.json
-  +--> .agents/pi/research/consensus-matrix.md
-  \--> .agents/pi/reviews/codex-plan-pass-{1,2,3}.json
+  +--> .agents/pi/current.json
+  +--> .agents/pi/runs/<slug>/state.json
+  +--> .agents/pi/runs/<slug>/brief.md
+  +--> .agents/pi/runs/<slug>/rubric.json
+  +--> .agents/pi/runs/<slug>/tasks/T01.json ...
+  +--> .agents/pi/runs/<slug>/research/lateral-thinking.md
+  +--> .agents/pi/runs/<slug>/research/fanout/*-claude.json, *-codex.json
+  +--> .agents/pi/runs/<slug>/research/consensus-matrix.md
+  \--> .agents/pi/runs/<slug>/reviews/codex-plan-pass-{1,2,3}.json
 
 /pi:execute
   |
-  +--> .agents/pi/contracts/T01.md ...
+  +--> .agents/pi/runs/<slug>/contracts/T01.md ...
   +--> code changes in the target repo
-  +--> .agents/pi/checkpoints/build-pass-{N}-{task}.json  (transient: written after generator, deleted after evaluator)
-  +--> .agents/pi/reviews/codex-build-{N}.json
-  +--> .agents/pi/evaluations/build-pass-{N}.json
-  \--> .agents/pi/state.json (task_progress updated per task)
+  +--> .agents/pi/runs/<slug>/checkpoints/build-pass-{N}-{task}.json  (transient: written after generator, deleted after evaluator)
+  +--> .agents/pi/runs/<slug>/reviews/codex-build-{N}.json
+  +--> .agents/pi/runs/<slug>/evaluations/build-pass-{N}.json
+  \--> .agents/pi/runs/<slug>/state.json (task_progress updated per task)
 
 /pi:review
   |
-  +--> .agents/pi/evaluations/suite-results.json
-  +--> .agents/pi/reviews/codex-final.json
-  +--> .agents/pi/evaluations/review.json
+  +--> .agents/pi/runs/<slug>/evaluations/suite-results.json
+  +--> .agents/pi/runs/<slug>/reviews/codex-final.json
+  +--> .agents/pi/runs/<slug>/evaluations/review.json
   |
   +--> if passing:
-  |      +--> .agents/pi/LEARNINGS.md
-  |      \--> .agents/pi/state.json => done
+  |      +--> .agents/pi/runs/<slug>/LEARNINGS.md
+  |      \--> .agents/pi/runs/<slug>/state.json => done
   \--> if failing:
-         \--> .agents/pi/state.json => execute (repair cycle)
+         \--> .agents/pi/runs/<slug>/state.json => execute (repair cycle)
 ```
+
+Legacy note: if a repo still has the old top-level `.agents/pi/state.json`
+layout, `/pi:plan` should offer a one-time migration into
+`.agents/pi/runs/<slug>/` before continuing.
 
 ## Why This Shape
 
@@ -230,7 +244,7 @@ claude --plugin-dir /path/to/pi
 ## Usage
 
 ```bash
-# Create the brief interactively
+# Create or select a run, then build the brief interactively
 /pi:plan Build a real-time collaboration engine for our editor
 
 # Run the main generation and repair loop
@@ -242,3 +256,31 @@ claude --plugin-dir /path/to/pi
 
 Each phase reads `state.json` on entry and resumes instead of restarting by
 default.
+
+## Committing Plan Output
+
+This repo now ignores transient Pi runtime files but leaves durable planning
+artifacts trackable by default.
+
+Usually worth committing:
+
+- `.agents/pi/runs/<slug>/brief.md`
+- `.agents/pi/runs/<slug>/rubric.json`
+- `.agents/pi/runs/<slug>/tasks/`
+- `.agents/pi/runs/<slug>/contracts/`
+- `.agents/pi/runs/<slug>/research/consensus-matrix.md`
+- `.agents/pi/runs/<slug>/research/lateral-thinking.md`
+- `.agents/pi/runs/<slug>/LEARNINGS.md`
+
+Usually keep local:
+
+- `.agents/pi/current.json`
+- `.agents/pi/runs/<slug>/state.json`
+- `.agents/pi/runs/<slug>/research/fanout/`
+- `.agents/pi/runs/<slug>/reviews/`
+- `.agents/pi/runs/<slug>/evaluations/`
+- `.agents/pi/runs/<slug>/checkpoints/`
+
+If `current.json` is missing but only one run exists, `/pi:execute` and
+`/pi:review` will auto-select it. If several runs exist, use `/pi:plan` to
+choose the active run first.

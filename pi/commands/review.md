@@ -4,7 +4,10 @@ argument-hint: "[optional task id or filter]"
 allowed-tools: >
   Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
   Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
-  Bash(codex *) Bash(cat .agents/pi/*) Bash(ls .agents/pi/*)
+  Bash(codex *) Bash(cat .agents/pi/*) Bash(cat .agents/pi/runs/*/*)
+  Bash(cat .agents/pi/runs/*/*/*) Bash(cat .agents/pi/runs/*/*/*/*)
+  Bash(ls .agents/pi/*) Bash(ls .agents/pi/runs/*)
+  Bash(ls .agents/pi/runs/*/*) Bash(ls .agents/pi/runs/*/*/*)
   Read Write Edit Grep Glob
 ---
 
@@ -15,20 +18,23 @@ echo "PI_REVIEW_PREFLIGHT_$(date +%s%N)"
 git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
 git branch --show-current 2>/dev/null
 git status --short 2>/dev/null | head -30
-test -f .agents/pi/state.json && cat .agents/pi/state.json || echo "no pi state"
-test -d .agents/pi/tasks && ls -1 .agents/pi/tasks 2>/dev/null
+test -f .agents/pi/current.json && cat .agents/pi/current.json || echo "no active run"
+ls -1 .agents/pi/runs 2>/dev/null || echo "no runs"
+test -f .agents/pi/state.json && echo "legacy top-level pi state present" || true
 timeout 3 codex --version 2>&1 || echo "codex: not installed"
 ```
 
 The block above runs at skill-load time. Use its output to confirm the brief
-and tasks already exist under `.agents/pi/` before starting the full
-verification suite, and to gate the final Codex review on CLI availability.
+and tasks exist for the selected run before starting the full verification
+suite, and to gate the final Codex review on CLI availability. The
+coordinator must still resolve the run and re-read its `state.json` before
+acting.
 
 Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 3: Review**.
 
 User input: $ARGUMENTS
 
-Default state directory: `.agents/pi/`
+Active state root: `.agents/pi/runs/<slug>/` via `.agents/pi/current.json`
 
 ## Coordinator Pipeline
 
@@ -37,7 +43,14 @@ subagents, so you own all agent orchestration.
 
 ### Phase A — Load and Verify Prerequisites
 
-1. Read `state.json`. If phase is not `execute` or later (`review`, `done`),
+0. Resolve the active run:
+   - Read `.agents/pi/current.json` if present and use its slug.
+   - If `current.json` is missing and exactly one run exists under
+     `.agents/pi/runs/`, auto-select it and continue.
+   - Otherwise stop and tell the user to run `/pi:plan` to select or create
+     a run.
+1. Read `state.json` from the resolved `state_root`. If phase is not `execute`
+   or later (`review`, `done`),
    tell the user to run `/pi:execute` first.
 2. Read `brief.md`, `rubric.json`, `tasks/*.json`,
    `research/consensus-matrix.md` from the active state root.

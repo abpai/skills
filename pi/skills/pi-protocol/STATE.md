@@ -1,38 +1,44 @@
 # State Convention
 
-Default state root: `.agents/pi/`
+Pi uses `.agents/pi/` as a namespace root.
+
+- Active run pointer: `.agents/pi/current.json`
+- Default run state root: `.agents/pi/runs/<slug>/`
 
 Recommended layout:
 
 ```text
 .agents/pi/
-├── state.json
-├── brief.md
-├── rubric.json
-├── tasks/
-│   ├── T01.json
-│   ├── T02.json
-│   └── ...
-├── contracts/
-│   ├── T01.md
-│   └── ...
-├── research/
-│   ├── lateral-thinking.md
-│   ├── fanout/
-│   │   ├── <primitive>-claude.json
-│   │   ├── <primitive>-codex.json
-│   │   └── ...
-│   └── consensus-matrix.md
-├── reviews/
-│   ├── codex-plan-pass-1.json
-│   ├── codex-plan-pass-2.json
-│   └── codex-final.json
-├── evaluations/
-│   ├── build-pass-1.json
-│   └── review.json
-├── checkpoints/
-│   └── build-pass-<N>-<task-id>.json
-└── LEARNINGS.md
+├── current.json
+└── runs/
+    └── <slug>/
+        ├── state.json
+        ├── brief.md
+        ├── rubric.json
+        ├── tasks/
+        │   ├── T01.json
+        │   ├── T02.json
+        │   └── ...
+        ├── contracts/
+        │   ├── T01.md
+        │   └── ...
+        ├── research/
+        │   ├── lateral-thinking.md
+        │   ├── fanout/
+        │   │   ├── <primitive>-claude.json
+        │   │   ├── <primitive>-codex.json
+        │   │   └── ...
+        │   └── consensus-matrix.md
+        ├── reviews/
+        │   ├── codex-plan-pass-1.json
+        │   ├── codex-plan-pass-2.json
+        │   └── codex-final.json
+        ├── evaluations/
+        │   ├── build-pass-1.json
+        │   └── review.json
+        ├── checkpoints/
+        │   └── build-pass-<N>-<task-id>.json
+        └── LEARNINGS.md
 ```
 
 `checkpoints/` holds a short-lived handoff record written when a generator
@@ -41,6 +47,19 @@ lands. It exists so a coordinator that stops mid-handoff can resume into
 review/evaluation instead of re-running the generator. See the handoff
 lifecycle notes below.
 
+`current.json` is a checkout-local pointer to the active run, for example:
+
+```json
+{
+  "slug": "durable-handoffs",
+  "updated_at": "ISO-8601"
+}
+```
+
+Legacy layout note: if `.agents/pi/state.json` exists at the top level with no
+`runs/` directory, `/pi:plan` should offer a one-time migration into
+`.agents/pi/runs/<slug>/` before continuing.
+
 Minimal `state.json`:
 
 ```json
@@ -48,7 +67,9 @@ Minimal `state.json`:
   "phase": "plan|execute|review|done",
   "posture": "expand|selective|reduce",
   "current_step": "posture|clarify|lateral_thinking|distill|research_fanout|verify_tech|propose_tasks|codex_review|finalize|build|awaiting_review|awaiting_evaluator|repair|review",
-  "state_root": ".agents/pi",
+  "state_root": ".agents/pi/runs/durable-handoffs",
+  "project_slug": "durable-handoffs",
+  "title": "Durable handoffs",
   "build_pass": 0,
   "repair_pass": 0,
   "codex_review_pass": 0,
@@ -119,6 +140,14 @@ entry uses one of five statuses: `not_started`, `in_progress`, `complete`,
 
 Update `state.json` whenever the phase or step changes, or a build / repair /
 review pass completes.
+
+Selection rules:
+
+- `/pi:plan` may create a new run or switch the active run before planning.
+- `/pi:execute` and `/pi:review` resolve the run from `.agents/pi/current.json`.
+- If `current.json` is missing but exactly one run exists, auto-select it.
+- If multiple runs exist and no active run is set, fail fast and tell the user
+  to run `/pi:plan`.
 
 ## Handoff Lifecycle (execute phase)
 

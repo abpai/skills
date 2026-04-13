@@ -1,5 +1,8 @@
 # Brief: <short project title>
 
+<The coordinator may derive `title` and a default run slug from this H1. Keep
+it short, specific, and easy to kebab-case.>
+
 ## Goal
 
 <One paragraph describing the outcome. Written from the user's point of view.

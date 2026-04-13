@@ -4,7 +4,10 @@ argument-hint: "[optional task id or filter]"
 allowed-tools: >
   Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
   Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
-  Bash(codex *) Bash(cat .agents/pi/*) Bash(ls .agents/pi/*)
+  Bash(codex *) Bash(cat .agents/pi/*) Bash(cat .agents/pi/runs/*/*)
+  Bash(cat .agents/pi/runs/*/*/*) Bash(cat .agents/pi/runs/*/*/*/*)
+  Bash(ls .agents/pi/*) Bash(ls .agents/pi/runs/*)
+  Bash(ls .agents/pi/runs/*/*) Bash(ls .agents/pi/runs/*/*/*)
   Read Write Edit Grep Glob
 ---
 
@@ -15,22 +18,23 @@ echo "PI_EXECUTE_PREFLIGHT_$(date +%s%N)"
 git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
 git branch --show-current 2>/dev/null
 git status --short 2>/dev/null | head -30
-test -f .agents/pi/state.json && cat .agents/pi/state.json || echo "no pi state"
-test -d .agents/pi/tasks && ls -1 .agents/pi/tasks 2>/dev/null
+test -f .agents/pi/current.json && cat .agents/pi/current.json || echo "no active run"
+ls -1 .agents/pi/runs 2>/dev/null || echo "no runs"
+test -f .agents/pi/state.json && echo "legacy top-level pi state present" || true
 timeout 3 codex --version 2>&1 || echo "codex: not installed"
 ```
 
 The block above runs at skill-load time. Use its output as a fast sanity
-check on which tasks exist and which `codex_policy` branch to take. Do **not**
-skip re-reading `state.json`: preflight is a snapshot and may be stale
-(e.g., if a prior run stopped mid-handoff). Always read `state.json` and
-`checkpoints/` in Phase A before deciding the next step.
+check on run discovery and which `codex_policy` branch to take. Do **not**
+skip re-reading the resolved run's `state.json`: preflight is a snapshot and
+may be stale (for example, if a prior run stopped mid-handoff). Always read
+`state.json` and `checkpoints/` in Phase 0/A before deciding the next step.
 
 Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 2: Execute**.
 
 User input: $ARGUMENTS
 
-Default state directory: `.agents/pi/`
+Active state root: `.agents/pi/runs/<slug>/` via `.agents/pi/current.json`
 
 ## Coordinator Pipeline
 
@@ -39,8 +43,14 @@ subagents, so you own all agent orchestration.
 
 ### Phase A — Load and Resume
 
+0. Resolve the active run:
+   - Read `.agents/pi/current.json` if present and use its slug.
+   - If `current.json` is missing and exactly one run exists under
+     `.agents/pi/runs/`, auto-select it and continue.
+   - Otherwise stop and tell the user to run `/pi:plan` to select or create
+     a run.
 1. Read `brief.md`, `rubric.json`, `tasks/*.json`, `state.json`,
-   `research/consensus-matrix.md` from the active state root.
+   `research/consensus-matrix.md` from the resolved `state_root`.
    If any prerequisite is missing, tell the user to run `/pi:plan` first.
 2. Read `task_progress` from `state.json`. Skip any task with status `complete`
    or `blocked`.
