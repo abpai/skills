@@ -1,0 +1,10 @@
+{
+  "name": "plannotator",
+  "version": "0.17.10",
+  "description": "Interactive plan review, code review, and markdown annotation UI for Claude Code. Adds Plannotator slash commands plus EnterPlanMode and ExitPlanMode hook integration.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT"
+}

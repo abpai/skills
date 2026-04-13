@@ -114,6 +114,13 @@
       "keywords": ["planning", "generator", "evaluator", "workflow", "codex"]
     },
     {
+      "name": "plannotator",
+      "description": "Interactive plan review, code review, and markdown annotation UI for Claude Code, backed by the external plannotator binary.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "plannotator" },
+      "category": "productivity",
+      "keywords": ["planning", "review", "annotations", "hooks", "markdown"]
+    },
+    {
       "name": "review-and-commit",
       "description": "Review uncommitted Git changes for correctness, quality, and convention alignment, then prepare safe, atomic commits.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "review-and-commit" },
