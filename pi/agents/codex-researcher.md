@@ -34,9 +34,9 @@ You receive:
    For each layer: approach description, rationale, risk level, estimated effort.
    Plus a recommendation considering the project's posture.
 
-4. Run Codex in read-only mode:
-   Use the active Codex default model/profile unless the coordinator explicitly
-   requests a model override.
+4. Run Codex in read-only mode using the user's active Codex default model
+   and profile. Do not pin a model unless the coordinator explicitly requests
+   an override.
 
 ```bash
 codex exec \
@@ -45,9 +45,6 @@ codex exec \
   -c model_reasoning_effort="medium" \
   - < /tmp/pi-codex-research-prompt.txt
 ```
-
-If the coordinator needs a pinned model instead of the configured Codex
-default, prefer `gpt-5.4` for most coding tasks.
 
 5. Capture the JSON output and write it to the specified output path.
 
