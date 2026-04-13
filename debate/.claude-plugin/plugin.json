@@ -1,6 +1,6 @@
 {
   "name": "debate",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Structured architecture debate: Claude proposes, Codex critiques, Claude synthesizes into a final ADR with concrete next steps.",
   "author": { "name": "Andy Pai" },
   "repository": "https://github.com/abpai/skills",

@@ -1,25 +1,25 @@
 {
   "schema_version": 1,
   "skills": {
-    "agent-browser": "1.3",
+    "agent-browser": "1.4",
     "beautiful-mermaid": "1.1",
     "bun-expert": "1.3",
     "claude": "1.5",
     "cli-design-expert": "1.1.1",
     "code-simplifier": "2.1",
-    "codex-exec": "1.2",
+    "codex-exec": "1.3",
     "dead-code-eliminator": "1.2",
-    "debate": "1.0",
+    "debate": "1.1",
     "distill": "1.0",
-    "dokploy": "1.1",
+    "dokploy": "1.2",
     "human-writer": "1.4",
     "lateral-thinking": "1.0",
-    "pi-protocol": "0.5.0",
+    "pi-protocol": "0.7.0",
     "project-memory": "1.1",
-    "review-and-commit": "1.1",
-    "scratch": "1.0",
+    "review-and-commit": "1.2",
+    "scratch": "1.1",
     "socratic-code-owner": "1.1",
-    "try": "1.2",
-    "visualize": "1.0"
+    "try": "1.3",
+    "visualize": "1.1"
   }
 }

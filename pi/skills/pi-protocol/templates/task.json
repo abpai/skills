@@ -1,0 +1,12 @@
+{
+  "id": "t-000",
+  "title": "<short imperative task title>",
+  "primitive": "<primitive name from brief.md>",
+  "description": "<2-4 sentences describing scope, inputs, outputs, and anything the generator must not do in this slice>",
+  "verification": [
+    "<concrete check 1 — a command to run, a file to inspect, a behavior to observe>",
+    "<concrete check 2>"
+  ],
+  "depends_on": [],
+  "risk_level": "low"
+}

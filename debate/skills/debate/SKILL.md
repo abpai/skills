@@ -5,9 +5,11 @@ description: >
   synthesizes into a final ADR with concrete next steps. Use for architecture
   decisions, technical tradeoffs, or any question that benefits from adversarial
   review.
+argument-hint: "[question or decision]"
+allowed-tools: Bash(codex *) Bash(git status *) Bash(git log *) Bash(git diff *) Bash(git branch *) Bash(git rev-parse *)
 metadata:
   author: Andy Pai
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Debate
@@ -15,6 +17,20 @@ metadata:
 Run a structured propose → critique → synthesize debate on an architecture or
 technical question. Claude owns the proposal and synthesis. Codex provides an
 independent critique via the CLI.
+
+## Repo snapshot (preflight)
+
+```!
+echo "DEBATE_PREFLIGHT_$(date +%s%N)"
+git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
+git branch --show-current 2>/dev/null
+git status --short 2>/dev/null | head -40
+git log --oneline -n 15 2>/dev/null
+git diff --stat 2>/dev/null | head -40
+```
+
+The block above runs at skill-load time. Use it as the ground truth for the
+current working tree — do not re-run these git commands in Step 2.
 
 ## Process
 
@@ -27,15 +43,16 @@ Clarify:
 
 ### 2. Build Context
 
-Read the relevant codebase using your tools (Read, Grep, Glob). Gather:
+Use the preflight snapshot above plus targeted Read/Grep/Glob on files the
+user named. Do not re-run git commands you already see above.
+
+Focus on:
 - Directory structure and key files
 - Dependencies (package.json, go.mod, Cargo.toml, etc.)
 - API surface (routes, handlers, endpoints)
 - Auth patterns if relevant
-- Recent git history for the affected area
 
-Compile this into a context summary. Do not shell out to scripts — use your
-native tools directly.
+Compile this into a context summary to feed into the propose step.
 
 ### 3. Propose
 
@@ -80,7 +97,8 @@ recommendation:
 3. What was rejected from the critique
 4. Unresolved tensions
 5. Concrete next steps
-6. ADR (Architecture Decision Record)
+6. ADR (Architecture Decision Record) — use the template at
+   `${CLAUDE_SKILL_DIR}/templates/adr.md` for the shape.
 
 ### 6. Present
 

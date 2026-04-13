@@ -1,6 +1,6 @@
 {
   "name": "dokploy",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Operate Dokploy via the official CLI. Manage projects, environments, apps, env vars, and databases from the terminal.",
   "author": {
     "name": "Andy Pai"

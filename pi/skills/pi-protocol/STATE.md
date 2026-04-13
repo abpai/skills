@@ -1,43 +1,64 @@
 # State Convention
 
-Default state root: `.agents/pi/`
+Pi uses `.agents/pi/` as a namespace root.
 
-Backward compatibility:
-
-- If `.agents/pi/` exists, keep using it.
-- If only `.agents/plan/` exists from an older Pi run, continue there or migrate
-  it once before starting new work.
+- Active run pointer: `.agents/pi/current.json`
+- Default run state root: `.agents/pi/runs/<slug>/`
 
 Recommended layout:
 
 ```text
 .agents/pi/
-├── state.json
-├── brief.md
-├── rubric.json
-├── tasks/
-│   ├── T01.json
-│   ├── T02.json
-│   └── ...
-├── contracts/
-│   ├── T01.md
-│   └── ...
-├── research/
-│   ├── lateral-thinking.md
-│   ├── fanout/
-│   │   ├── <primitive>-claude.json
-│   │   ├── <primitive>-codex.json
-│   │   └── ...
-│   └── consensus-matrix.md
-├── reviews/
-│   ├── codex-plan-pass-1.json
-│   ├── codex-plan-pass-2.json
-│   └── codex-final.json
-├── evaluations/
-│   ├── build-pass-1.json
-│   └── review.json
-└── LEARNINGS.md
+├── current.json
+└── runs/
+    └── <slug>/
+        ├── state.json
+        ├── brief.md
+        ├── rubric.json
+        ├── tasks/
+        │   ├── T01.json
+        │   ├── T02.json
+        │   └── ...
+        ├── contracts/
+        │   ├── T01.md
+        │   └── ...
+        ├── research/
+        │   ├── lateral-thinking.md
+        │   ├── fanout/
+        │   │   ├── <primitive>-claude.json
+        │   │   ├── <primitive>-codex.json
+        │   │   └── ...
+        │   └── consensus-matrix.md
+        ├── reviews/
+        │   ├── codex-plan-pass-1.json
+        │   ├── codex-plan-pass-2.json
+        │   └── codex-final.json
+        ├── evaluations/
+        │   ├── build-pass-1.json
+        │   └── review.json
+        ├── checkpoints/
+        │   └── build-pass-<N>-<task-id>.json
+        └── LEARNINGS.md
 ```
+
+`checkpoints/` holds a short-lived handoff record written when a generator
+finishes and deleted when the matching `evaluations/build-pass-<N>.json`
+lands. It exists so a coordinator that stops mid-handoff can resume into
+review/evaluation instead of re-running the generator. See the handoff
+lifecycle notes below.
+
+`current.json` is a checkout-local pointer to the active run, for example:
+
+```json
+{
+  "slug": "durable-handoffs",
+  "updated_at": "ISO-8601"
+}
+```
+
+Legacy layout note: if `.agents/pi/state.json` exists at the top level with no
+`runs/` directory, `/pi:plan` should offer a one-time migration into
+`.agents/pi/runs/<slug>/` before continuing.
 
 Minimal `state.json`:
 
@@ -45,8 +66,10 @@ Minimal `state.json`:
 {
   "phase": "plan|execute|review|done",
   "posture": "expand|selective|reduce",
-  "current_step": "posture|clarify|lateral_thinking|distill|research_fanout|verify_tech|propose_tasks|codex_review|finalize|build|repair|review",
-  "state_root": ".agents/pi",
+  "current_step": "posture|clarify|lateral_thinking|distill|research_fanout|verify_tech|propose_tasks|codex_review|finalize|build|awaiting_review|awaiting_evaluator|repair|review",
+  "state_root": ".agents/pi/runs/durable-handoffs",
+  "project_slug": "durable-handoffs",
+  "title": "Durable handoffs",
   "build_pass": 0,
   "repair_pass": 0,
   "codex_review_pass": 0,
@@ -118,6 +141,64 @@ entry uses one of five statuses: `not_started`, `in_progress`, `complete`,
 Update `state.json` whenever the phase or step changes, or a build / repair /
 review pass completes.
 
+Selection rules:
+
+- `/pi:plan` may create a new run or switch the active run before planning.
+- `/pi:execute` and `/pi:review` resolve the run from `.agents/pi/current.json`.
+- If `current.json` is missing but exactly one run exists, auto-select it.
+- If multiple runs exist and no active run is set, fail fast and tell the user
+  to run `/pi:plan`.
+
+## Handoff Lifecycle (execute phase)
+
+The execute pipeline has a durability gap between "generator finished" and
+"evaluation persisted" that resume must close. `current_step` walks through
+finer values around that gap, paired with a `checkpoints/` artifact.
+
+Transitions within a single build pass:
+
+1. `build` — set before spawning generator.
+2. `awaiting_review` — set **immediately after** the generator returns, before
+   spawning `codex-reviewer`. `build_pass` is incremented at this transition
+   (not after review/evaluation). The coordinator writes
+   `checkpoints/build-pass-<N>-<task-id>.json` at the same time.
+3. `awaiting_evaluator` — set after `codex-reviewer` writes its output, before
+   spawning the evaluator.
+4. Evaluator writes `evaluations/build-pass-<N>.json`. The coordinator deletes
+   the matching checkpoint. `current_step` advances based on the pass/repair
+   decision.
+
+Checkpoint file shape:
+
+```json
+{
+  "task_id": "T02",
+  "build_pass": 4,
+  "stage": "awaiting_review",
+  "generator_summary": {
+    "files_touched": ["path/to/file.ts"],
+    "notes": "short description of what the generator did"
+  },
+  "timestamp": "ISO-8601"
+}
+```
+
+Resume decision (Phase A of `/pi:execute`):
+
+| `current_step`        | checkpoint present? | action                                          |
+| --------------------- | ------------------- | ----------------------------------------------- |
+| `build`               | n/a                 | enter Phase B from contract step                |
+| `awaiting_review`     | yes                 | skip Phase B; enter Phase C at codex-reviewer   |
+| `awaiting_review`     | no                  | treat pass as lost; re-enter Phase B            |
+| `awaiting_evaluator`  | yes                 | skip Phase B; enter Phase C at evaluator spawn  |
+| `awaiting_evaluator`  | no                  | treat pass as lost; re-enter Phase B            |
+| `repair`              | n/a                 | enter Phase B with repair guidance              |
+| `review`              | n/a                 | Phase E / transition to review phase            |
+
+`action_on_resume` remains failure-oriented — it is written only when a task
+is marked `failed`. Success-path resume is driven by `current_step` and the
+checkpoint, not by `action_on_resume`.
+
 ## Rubric Convention
 
 `rubric.json` contains three top-level sections:
@@ -126,37 +207,9 @@ review pass completes.
 - `execution_policy` — runtime behavior policy
 - `max_repair_passes` — hard cap on repair iterations
 
-Default rubric shape:
-
-```json
-{
-  "criteria": {
-    "functionality": {
-      "threshold": 7,
-      "description": "Does the build work as specified?"
-    },
-    "code_quality": {
-      "threshold": 7,
-      "description": "Is the code correct, readable, and maintainable?"
-    },
-    "product_depth": {
-      "threshold": 6,
-      "description": "Does the build cover the important real-world cases?"
-    },
-    "visual_design": {
-      "threshold": 6,
-      "applicable": true,
-      "description": "Is the interface polished and intentional?"
-    }
-  },
-  "execution_policy": {
-    "codex_policy": "optional",
-    "degraded_mode": "warn_and_continue",
-    "dependency_failure": "block_downstream"
-  },
-  "max_repair_passes": 2
-}
-```
+Default rubric shape: see [`templates/rubric.json`](templates/rubric.json)
+for the canonical default. The file in this skill's `templates/` directory
+is the single source of truth; do not redefine it here.
 
 ### `execution_policy` fields
 

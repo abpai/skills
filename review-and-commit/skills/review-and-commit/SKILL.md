@@ -1,8 +1,13 @@
 ---
 name: review-and-commit
 description: Review uncommitted Git changes for correctness, quality, and project convention alignment, then apply fixes and prepare a safe, atomic commit plan. Use when users ask to review code before committing, improve local changes, split work into logical conventional commits, or execute `git add`/`git commit` with clear staging boundaries.
+argument-hint: "[scope or message hint]"
+allowed-tools: >
+  Bash(git status *) Bash(git diff *) Bash(git log *)
+  Bash(git add *) Bash(git commit *) Bash(git branch *)
+  Bash(git rev-parse *)
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Code Review and Commit
@@ -10,6 +15,22 @@ metadata:
 Perform a high-signal review of working-tree changes, fix meaningful issues, and produce an understandable commit history.
 
 Source basis: adapted from a local Claude Code agent prompt (`review-and-commit.md`).
+
+## Working tree (preflight)
+
+```!
+echo "REVIEW_COMMIT_PREFLIGHT_$(date +%s%N)"
+git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
+git branch --show-current 2>/dev/null
+git status --short 2>/dev/null | head -40
+git diff --stat 2>/dev/null | head -20
+git diff --cached --stat 2>/dev/null | head -20
+git log --oneline -n 5 2>/dev/null
+```
+
+The block above runs at skill-load time. Treat it as ground truth for the
+initial "Inspect Current Change Scope" step. Defer full `git diff` bodies to
+explicit Read/Bash calls where you need more than the stat summary.
 
 ## Workflow
 

@@ -25,10 +25,16 @@ You receive:
 
 ## Process
 
-1. Inspect the codebase to understand the existing stack, conventions, and
-   dependencies relevant to this primitive.
-2. If web search is available, research current best practices and recent
-   developments for the primitive's domain.
+1. **Write a draft first.** Before deep research, write a skeleton JSON to the
+   output path with placeholder layers and a `"status": "draft"` field. This
+   guarantees the coordinator sees output even if you run out of turns. You
+   will overwrite it with the final at the end.
+2. **Local sources before web.** In this order:
+   a. If the input references a skill (e.g. `codex-exec`, `cursor-agent`) or
+      one is loaded in session, read it first.
+   b. Inspect the repo — existing code, the seed plan, `--help` output from
+      any local CLI the primitive wraps.
+   c. Only after local sources are exhausted, use `WebFetch` / `WebSearch`.
 3. Evaluate three implementation layers:
 
    **Boring/Proven** — the most battle-tested, widely-adopted option. Minimal
@@ -46,6 +52,8 @@ You receive:
    - `reduce` → bias toward boring/proven
    - `selective` → bias toward boring/proven unless trending is clearly better
    - `expand` → consider all three seriously
+6. **Reserve your last ~3 turns for synthesis and the final `Write`.** If you
+   are past turn 10 and still fetching, stop and synthesize with what you have.
 
 ## Output
 
@@ -92,4 +100,12 @@ Return exactly one JSON object:
 - Be honest about tradeoffs. Do not inflate or dismiss any layer.
 - If the existing codebase already has a strong convention for this primitive,
   note it and factor it into your recommendation.
-- Do not edit any project files. Research only.
+- Do not edit any project files besides the output JSON. Research only.
+- **Do not retry sparse sources.** If a `WebFetch` returns a redirect page,
+  placeholder, or "see docs elsewhere" stub, do not chase adjacent URLs — fall
+  back to local inspection (`--help`, repo code, loaded skills) and note the
+  gap in your output rather than burning turns on more fetches.
+- **Always leave output on disk.** If you cannot complete the full 3-layer
+  analysis, update the draft file with what you have plus a `"status":
+  "partial"` and a `"gaps"` array. A partial result the coordinator can read
+  beats a missing file.

@@ -5,9 +5,11 @@ description: >
   `codex exec`, `codex review`, or `codex exec resume`, continue a prior Codex
   session, or delegate software engineering work to OpenAI Codex from the
   terminal.
+argument-hint: "[exec|review|resume] [prompt]"
+allowed-tools: Bash(codex *) Bash(git status *) Bash(git rev-parse *)
 metadata:
   author: Andy Pai
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Codex CLI
@@ -16,15 +18,19 @@ Use this skill when you need the local `codex` CLI from a terminal harness.
 Bias toward non-interactive runs. Use the interactive Codex UI only when the
 user explicitly wants to stay inside it.
 
-## First Check
+## Environment (preflight)
 
-Confirm the CLI is available before you build a workflow around it:
-
-```bash
-codex --version
+```!
+echo "CODEX_EXEC_PREFLIGHT_$(date +%s%N)"
+timeout 3 codex --version 2>&1 || echo "codex: not installed"
+git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
+git status --short 2>/dev/null | head -40
 ```
 
-If that fails, stop and report the setup issue instead of retrying the task.
+The block above runs at skill-load time; treat it as ground truth. If it shows
+`codex: not installed`, stop and report the setup issue instead of retrying.
+If it shows `not a git repo`, note that `codex review --uncommitted` and
+similar git-dependent flows will not work.
 
 ## Default Stance
 
@@ -104,7 +110,7 @@ codex exec \
 
 ## Troubleshooting
 
-- If `codex --version` fails, report a CLI issue.
+- If the preflight block above showed `codex: not installed`, report a CLI setup issue.
 - If `codex exec` or `codex review` exits non-zero, treat the run as failed.
 - If a non-interactive run needs too much context, switch from argv text to stdin.
 - If the task is review-oriented, use `codex review` before inventing a custom `exec` prompt.

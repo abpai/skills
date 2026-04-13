@@ -10,10 +10,11 @@ description: >
   a prompt-driven composition demo, and a Tutorial.md with honest findings. This is for
   deciding whether to adopt something new — not for understanding a project you already
   have (use the `scratch` skill for that).
+argument-hint: "[library or package]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Try: Structured Library Evaluation

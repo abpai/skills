@@ -22,9 +22,6 @@ Issues that cannot be resolved without human judgment, organizational context, o
 Numbered action items with specific file paths, commands, or decisions required. Each step should have a clear owner (human or automated).
 
 ### 6. ADR (Architecture Decision Record)
-Produce a concise decision record:
-- **Title**: short decision name
-- **Status**: proposed
-- **Context**: why this decision is needed (1-2 sentences)
-- **Decision**: what was decided (1-2 sentences)
-- **Consequences**: what follows from this decision (bullet points)
+Produce a concise decision record using the template at
+`${CLAUDE_SKILL_DIR}/templates/adr.md`. Fill in title, context, decision,
+consequences, and a single concrete next step.

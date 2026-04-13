@@ -4,9 +4,13 @@ description: >
   Claude-native harness for long-running engineering work. Defines the planner
   -> generator -> evaluator loop, checkpoint files, and default Codex critique
   points used by the /pi: commands.
+allowed-tools: >
+  Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
+  Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
+  Bash(codex *) Read Write Edit Grep Glob
 metadata:
   author: Andy Pai
-  version: "0.5.1"
+  version: "0.7.0"
 ---
 
 # Pi Protocol
@@ -47,10 +51,31 @@ Three commands:
 
 ## State Convention
 
-Default state root: `.agents/pi/`
+Pi uses `.agents/pi/` as a namespace root and stores each run under its own
+state root:
+
+- namespace root: `.agents/pi/`
+- active run pointer: `.agents/pi/current.json`
+- default run root: `.agents/pi/runs/<slug>/`
 
 See [STATE.md](STATE.md) for the full state convention, recommended layout,
 `state.json` schema, and `task_progress` transition points.
+
+## Artifact Templates
+
+When producing the core artifacts, start from the templates in this skill's
+`templates/` directory rather than hallucinating structure:
+
+- `${CLAUDE_SKILL_DIR}/templates/brief.md` — shape for `${state_root}/brief.md`
+- `${CLAUDE_SKILL_DIR}/templates/rubric.json` — shape for `${state_root}/rubric.json`
+- `${CLAUDE_SKILL_DIR}/templates/task.json` — shape for each file in `${state_root}/tasks/`
+- `${CLAUDE_SKILL_DIR}/templates/contract.md` — shape for each file in `${state_root}/contracts/`
+
+When a subagent (planner, generator, evaluator) produces one of these artifacts,
+the coordinator is responsible for passing the template path in, since the
+`${CLAUDE_SKILL_DIR}` substitution is scoped to the invoking skill, not to the
+subagent body. Use a plugin-relative reference like
+`skills/pi-protocol/templates/task.json` when calling subagents directly.
 
 ## Agents
 
@@ -62,8 +87,31 @@ Goal: turn the user request into a working brief that the generator can execute
 without improvising scope mid-run.
 
 The plan phase is a coordinator-driven pipeline. The main thread orchestrates
-multiple agents across five phases (A through E). Subagents cannot spawn other
-subagents, so the coordinator owns all agent spawning.
+Phase 0 plus phases A through E. Subagents cannot spawn other subagents, so
+the coordinator owns all agent spawning.
+
+### Phase 0: Select or Create a Run (coordinator-driven)
+
+Before spawning the planner, resolve the active run.
+
+1. Read `.agents/pi/current.json` if present.
+2. List `.agents/pi/runs/*/` to discover known runs.
+3. If legacy layout is detected (`.agents/pi/state.json` exists at the top
+   level and `runs/` does not), prompt the user to migrate it into
+   `runs/<slug>/`. Default the slug from `brief.md`'s H1, fall back to a
+   timestamp, then write `current.json` and continue.
+4. If runs already exist, offer:
+   - resume the current run
+   - switch to another existing run
+   - create a new run
+   - abort
+5. When creating a new run, derive the default slug from the user's request
+   and show it to the user. Check for collisions by comparing against the
+   existing directories under `.agents/pi/runs/`. Ask only if the derived
+   slug already exists or the user wants to rename it.
+6. Once a slug is selected, treat `state_root` as
+   `.agents/pi/runs/<slug>/` for the rest of the plan phase. All writes go
+   there.
 
 ### Phase A: Interactive Planning (planner, foreground)
 
@@ -130,9 +178,16 @@ The planner writes its results to state files:
 
 - `state.json` updated with `current_step: "research_fanout"` and the
   primitives list
+- `state.json` also carries `project_slug`, `title`, and
+  `state_root: ".agents/pi/runs/<slug>"`
 - `research/lateral-thinking.md`
 
 The coordinator takes over for Phase B.
+
+When the user approves the plan, write `brief.md`, `rubric.json`, and
+`tasks/*.json` in the active `state_root`, update `state.json` in that
+`state_root` with `phase: "execute"`, and refresh `.agents/pi/current.json`
+so `/pi:execute` and `/pi:review` resolve the same run.
 
 ### Phase B: Research Fanout (coordinator-driven)
 
@@ -140,7 +195,7 @@ The coordinator reads the primitives from state files, then spawns parallel
 researchers. The planner cannot spawn subagents — this is a coordinator
 responsibility.
 
-Update `state.json`: `current_step` = `"research_fanout"`.
+Update `state.json` in `state_root`: `current_step` = `"research_fanout"`.
 
 #### 5. Research Fanout
 
@@ -155,7 +210,7 @@ Each researcher evaluates three implementation layers:
 
 Each returns a structured recommendation. Results are saved under
 `research/fanout/<primitive>-claude.json` and
-`research/fanout/<primitive>-codex.json`.
+`research/fanout/<primitive>-codex.json` in `state_root`.
 
 If the Codex CLI is not available, check `execution_policy` in `rubric.json`.
 If `codex_policy` is `skip`, do not spawn `codex-researcher` and proceed with
@@ -164,7 +219,7 @@ pause. If `codex_policy` is `optional`, apply `degraded_mode`:
 `warn_and_continue` — note the absence and proceed with Claude-only research;
 `block` — warn the user and pause.
 
-Update `state.json`: `current_step` = `"verify_tech"`.
+Update `state.json` in `state_root`: `current_step` = `"verify_tech"`.
 
 #### 6. Verify Tech — Consensus Matrix
 
@@ -177,11 +232,11 @@ The coordinator builds a comparison matrix: primitive x researcher
 
 Present the matrix and wait for user decisions on all tiebreaks.
 
-Save the resolved matrix to `research/consensus-matrix.md`.
+Save the resolved matrix to `research/consensus-matrix.md` in `state_root`.
 
 ### Phase C: Task Proposal (planner, foreground)
 
-Update `state.json`: `current_step` = `"propose_tasks"`.
+Update `state.json` in `state_root`: `current_step` = `"propose_tasks"`.
 
 The coordinator spawns a fresh `planner` with the primitives and resolved
 tech decisions as context.
@@ -212,7 +267,7 @@ Wait for user confirmation before proceeding.
 
 ### Phase D: Codex Review — Multi-Pass (coordinator-driven)
 
-Update `state.json`: `current_step` = `"codex_review"`.
+Update `state.json` in `state_root`: `current_step` = `"codex_review"`.
 
 The coordinator runs iterative `codex-reviewer` passes against the brief and
 task slices.
@@ -231,7 +286,7 @@ task slices.
 
 Maximum 3 passes with early exit on any clean pass.
 
-Save each pass result to `reviews/codex-plan-pass-<N>.json`.
+Save each pass result to `reviews/codex-plan-pass-<N>.json` in `state_root`.
 
 If the Codex CLI is not available, check `execution_policy`. If `codex_policy`
 is `skip`, proceed silently. If `codex_policy` is `required`, halt until
@@ -241,7 +296,7 @@ reviewed and continue; `block` — halt until Codex is available.
 
 ### Phase E: Finalize
 
-Update `state.json`: `current_step` = `"finalize"`.
+Update `state.json` in `state_root`: `current_step` = `"finalize"`.
 
 #### 9. Finalize With the User
 
@@ -254,10 +309,12 @@ Always pause for review before execution. Present:
 
 On approval, write:
 
-- `brief.md`
-- `rubric.json`
-- `tasks/*.json`
-- updated `state.json` with `"phase": "execute"`
+- `brief.md` in `state_root`
+- `rubric.json` in `state_root`
+- `tasks/*.json` in `state_root`
+- updated `state.json` in `state_root` with `phase: "execute"`,
+  `project_slug`, `title`, and `state_root`
+- refreshed `.agents/pi/current.json`
 
 See [STATE.md](STATE.md) for the default rubric shape, `execution_policy`
 field definitions, and enum values. Set `visual_design.applicable` to `false`
@@ -269,34 +326,50 @@ Goal: build the spec coherently, then repair only what evaluation proves is
 missing. The execute phase is a coordinator-driven pipeline with five phases
 (A through E) and loop re-entry via state counters.
 
+Before Phase A, resolve the active run from `.agents/pi/current.json`.
+
+- If `current.json` exists, use its slug.
+- If `current.json` is missing and exactly one run exists under
+  `.agents/pi/runs/`, auto-select it and continue.
+- Otherwise fail fast and tell the user to run `/pi:plan` to select or create
+  a run.
+
+All execute-phase reads and writes use the resolved `state_root`.
+
 ### 1. Load and Resume
 
 Read:
 
-- `brief.md`
-- `rubric.json`
-- `tasks/*.json`
-- `state.json`
-- `research/consensus-matrix.md`
+- `brief.md` in `state_root`
+- `rubric.json` in `state_root`
+- `tasks/*.json` in `state_root`
+- `state.json` in `state_root`
+- `research/consensus-matrix.md` in `state_root`
 
-Read `task_progress` from `state.json`. Skip any task with status `complete` or
-`blocked`. Find the first non-complete, non-blocked task. If resuming a failed
-task, read its
+Read `task_progress` from `state.json` in `state_root`. Skip any task with
+status `complete` or `blocked`. Find the first non-complete, non-blocked task.
+If resuming a failed task, read its
 `action_on_resume` field first — it pre-computes the next step so the
 coordinator does not need to re-read evaluation files to reconstruct context.
-If `action_on_resume` is absent (legacy state), fall back to reading the prior
-evaluation.
+If `action_on_resume` is absent, fall back to reading the prior evaluation.
 
 If there are no tasks, or all remaining tasks are `complete` or `blocked`, skip
 directly to the finalize step. Do not enter the build loop.
 
-Update `state.json`: `current_step` = `"build"`, active task ->
-`"in_progress"` in `task_progress`.
+**Handoff resume.** If `current_step` is `awaiting_review` or
+`awaiting_evaluator` and a matching
+`checkpoints/build-pass-<N>-<task-id>.json` exists, skip the build step and
+enter review/evaluation directly — the generator already finished this pass.
+See STATE.md for the full resume decision table. If the checkpoint is
+missing, treat the pass as lost and re-enter the build.
+
+Update `state.json` in `state_root`: `current_step` = `"build"`, active task
+-> `"in_progress"` in `task_progress`.
 
 ### 2. Draft and Tighten the Active Contract
 
-Before the generator writes code, create or refresh `contracts/<task-id>.md` for
-the active slice.
+Before the generator writes code, create or refresh
+`contracts/<task-id>.md` in `state_root` for the active slice.
 
 Each contract should include:
 
@@ -330,7 +403,17 @@ Generator rules:
 - Verify continuously while building.
 - Do not create a commit after each pass unless the human asked for that.
 
-Update `state.json`: `build_pass` incremented.
+As soon as the generator returns, persist the handoff before spawning any
+reviewer or evaluator:
+
+- Increment `build_pass` in `state.json` in `state_root` and set
+  `current_step` = `"awaiting_review"`.
+- Write `checkpoints/build-pass-<N>-<task-id>.json` in `state_root` with the
+  generator summary (files touched, notes) so resume can skip straight to
+  review.
+
+The checkpoint is deleted once the evaluator writes
+`evaluations/build-pass-<N>.json` in `state_root`.
 
 ### 4. Simplify Only When It Helps
 
@@ -347,8 +430,11 @@ Run it only when:
 Run `codex-reviewer` after each build or repair pass, before the evaluator
 scores. Pass the list of files modified in this pass so the review is scoped
 to the current increment, not the entire worktree. Save to
-`reviews/codex-build-<N>.json`. This gives the evaluator an independent
-second-provider read to incorporate into its assessment.
+`reviews/codex-build-<N>.json` in `state_root`. This gives the evaluator an
+independent second-provider read to incorporate into its assessment.
+
+After Codex review completes, update `state.json` in `state_root`:
+`current_step` = `"awaiting_evaluator"` before spawning the evaluator.
 
 If the Codex CLI is not available, check `execution_policy`. If `codex_policy`
 is `skip`, proceed without Codex review. If `codex_policy` is `required`,
@@ -377,10 +463,12 @@ The evaluator must:
   (e.g., "Fix T02: [guidance]. Fix T05: [guidance].")
 - say explicitly when a weak contract contributed to the failure
 
-Write evaluation to `evaluations/build-pass-<N>.json`.
+Write evaluation to `evaluations/build-pass-<N>.json` in `state_root`, then
+delete the matching `checkpoints/build-pass-<N>-<task-id>.json` in
+`state_root`.
 
-Update `state.json`: active task -> `"complete"` or `"failed"` in
-`task_progress` based on evaluation.
+Update `state.json` in `state_root`: active task -> `"complete"` or
+`"failed"` in `task_progress` based on evaluation.
 
 ### 7. Repair Narrowly
 
@@ -412,21 +500,32 @@ round. If the repair budget is exhausted:
   a newly blocked task, propagate transitively with `blocked_kind: "blocked"`.
 - present status to the user
 
-When all tasks are complete (or complete + blocked), update `state.json` to `"phase": "review"`,
-`"current_step": "review"`. Present build summary: tasks completed, repair
-passes used, known gaps.
+When all tasks are complete (or complete + blocked), update `state.json` in
+`state_root` to `phase: "review"`, `current_step: "review"`. Present build
+summary: tasks completed, repair passes used, known gaps.
 
 ## Phase 3: Review
 
 Goal: final QA, final scorecard, and durable learnings.
 
+Before Phase A, resolve the active run from `.agents/pi/current.json`.
+
+- If `current.json` exists, use its slug.
+- If `current.json` is missing and exactly one run exists under
+  `.agents/pi/runs/`, auto-select it and continue.
+- Otherwise fail fast and tell the user to run `/pi:plan` to select or create
+  a run.
+
+All review-phase reads and writes use the resolved `state_root`.
+
 ### 1. Load and Verify Prerequisites
 
-Read `state.json`. If phase is not `execute` or later (`review`, `done`), tell
-the user to run `/pi:execute` first.
+Read `state.json` in `state_root`. If phase is not `execute` or later
+(`review`, `done`), tell the user to run `/pi:execute` first.
 
-Read `brief.md`, `rubric.json`, `tasks/*.json`, `research/consensus-matrix.md`,
-and all evaluations from `evaluations/`.
+Read `brief.md`, `rubric.json`, `tasks/*.json`, and
+`research/consensus-matrix.md` in `state_root`, plus all evaluations from
+`evaluations/` in `state_root`.
 
 ### 2. Run the Full Suite
 
@@ -434,17 +533,18 @@ Run the complete local verification suite the project supports and record the
 results.
 
 Run per-task verification: iterate each task's `verification` array and record
-results. Write suite results to `evaluations/suite-results.json`.
+results. Write suite results to `evaluations/suite-results.json` in
+`state_root`.
 
 ### 3. Final Evaluation
 
 Run `codex-reviewer` for a final independent read of the full build. Save the
-output under `reviews/codex-final.json`. If the Codex CLI is not available,
-check `execution_policy`. If `codex_policy` is `skip`, proceed without Codex
-review. If `codex_policy` is `required`, halt and inform the user. If
-`codex_policy` is `optional`, apply `degraded_mode`: `warn_and_continue` —
-note the absence in the scorecard and proceed; `block` — halt and inform the
-user.
+output under `reviews/codex-final.json` in `state_root`. If the Codex CLI is
+not available, check `execution_policy`. If `codex_policy` is `skip`, proceed
+without Codex review. If `codex_policy` is `required`, halt and inform the
+user. If `codex_policy` is `optional`, apply `degraded_mode`:
+`warn_and_continue` — note the absence in the scorecard and proceed; `block`
+— halt and inform the user.
 
 Run `evaluator` one final time against the whole build (not just the last
 repair), with:
@@ -456,7 +556,7 @@ repair), with:
 
 The evaluator cross-references the consensus matrix and produces both global
 rubric scores and per-task verification results. Write final evaluation to
-`evaluations/review.json`.
+`evaluations/review.json` in `state_root`.
 
 ### 4. Present the Scorecard
 
