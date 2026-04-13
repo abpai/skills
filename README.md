@@ -17,11 +17,15 @@ This repository now ships metadata for both runtimes:
 # Add the marketplace (once)
 /plugin marketplace add abpai/skills
 
+# Optional prerequisite for Plannotator's UI-backed review workflow
+curl -fsSL https://plannotator.ai/install.sh | bash
+
 # Install planning-oriented skills
 /plugin install distill@abpai-skills
 /plugin install lateral-thinking@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install pi@abpai-skills
+/plugin install plannotator@abpai-skills
 ```
 
 ### Codex
@@ -43,9 +47,10 @@ Codex public plugin-directory publishing is still documented as coming soon, so
 the Codex path in this repo is repo-local rather than the Claude-style remote
 marketplace flow above.
 
-`pi` is intentionally excluded from the Codex marketplace in this repo. It is a
-Claude-native plugin that shells out to the `codex` CLI for second-provider
-research and review, rather than being installed into Codex itself.
+`pi` and `plannotator` are intentionally excluded from the Codex marketplace in
+this repo. `pi` is a Claude-native workflow that shells out to the `codex` CLI
+for second-provider research and review, while `plannotator` depends on Claude
+plugin hooks such as `ExitPlanMode`.
 
 ## Plugins
 
@@ -72,6 +77,7 @@ research and review, rather than being installed into Codex itself.
 |--------|-------------|
 | **debate** | Structured architecture debate: Claude proposes, Codex critiques, Claude synthesizes |
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
+| **plannotator** | Visual plan review, code review, and markdown annotation for Claude Code via the Plannotator UI. Claude-only |
 | **project-memory** | Always-on memory via `.agents/LEARNINGS.md` — mistakes, patterns, preferences |
 | **scratch** | Understand a project's internals through runnable .scratch/ exploration scripts |
 | **socratic-code-owner** | Quiz the developer on AI-built code to ensure understanding |
@@ -118,6 +124,11 @@ abpai/skills/
 │   ├── agents/
 │   ├── commands/
 │   └── skills/pi-protocol/
+├── plannotator/               ← intentional Claude-only exception
+│   ├── .claude-plugin/plugin.json
+│   ├── commands/
+│   ├── hooks/
+│   └── skills/plannotator/
 └── README.md
 ```
 
@@ -135,11 +146,15 @@ plugin root.
 # Add the marketplace (once)
 /plugin marketplace add abpai/skills
 
+# Plannotator also needs the external binary
+curl -fsSL https://plannotator.ai/install.sh | bash
+
 # Browse available plugins
 /plugin
 
 # Install a plugin (user scope, default)
 claude plugin install distill@abpai-skills
+claude plugin install plannotator@abpai-skills
 
 # Install to project scope (shared with team via .claude/settings.json)
 claude plugin install distill@abpai-skills --scope project
@@ -181,6 +196,9 @@ codex
 
 Open the plugin directory with `codex /plugins` — all 18 Codex-compatible
 plugins appear automatically from the repo marketplace.
+
+`pi` and `plannotator` stay Claude-only in this repo and therefore do not
+appear in the Codex marketplace list.
 
 #### Personal installation
 

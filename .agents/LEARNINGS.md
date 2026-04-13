@@ -86,6 +86,8 @@
 - Add `.pre-commit-config.yaml` local hooks for repeatable pre-commit checks.
 - For forked/adapted skills, keep explicit upstream attribution in `SKILL.md` and run `scripts/validate-skills.sh` immediately after creation.
 - For forked/adapted skills, include upstream attribution in frontmatter metadata (for example, `metadata.upstream_skill`) when available.
+- For vendored Claude-only plugins, sync the local `SKILL.md`, plugin manifest, docs card, and `versions.json` to the upstream plugin version in one pass so the marketplace entry does not drift from the packaged plugin.
+- For Claude-only vendored plugins that primarily ship commands and hooks, still add a small `skills/<name>/SKILL.md` so `versions.json`, validation, and README inventory stay in sync with the rest of the repo.
 - When imported `SKILL.md` links many `references/*.md` files, copy the full `references/` folder to avoid broken in-skill links.
 - For scanner integration, keep existing hooks and append `skill-scanner` as another local hook invoked through `uv run --with ...` to avoid global Python dependency drift.
 - When adding env-driven scanner features (for example, LLM mode), include commented required API variables in `.env.example` so setup is self-documenting.
