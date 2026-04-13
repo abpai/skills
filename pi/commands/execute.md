@@ -20,10 +20,11 @@ test -d .agents/pi/tasks && ls -1 .agents/pi/tasks 2>/dev/null
 timeout 3 codex --version 2>&1 || echo "codex: not installed"
 ```
 
-The block above runs at skill-load time. Use its output to resume from the
-current `phase`/`current_step` in `.agents/pi/` without re-reading
-`state.json`, to know which tasks exist, and to decide the `codex_policy`
-branch up front.
+The block above runs at skill-load time. Use its output as a fast sanity
+check on which tasks exist and which `codex_policy` branch to take. Do **not**
+skip re-reading `state.json`: preflight is a snapshot and may be stale
+(e.g., if a prior run stopped mid-handoff). Always read `state.json` and
+`checkpoints/` in Phase A before deciding the next step.
 
 Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 2: Execute**.
 
@@ -49,16 +50,24 @@ subagents, so you own all agent orchestration.
    `action_on_resume` is absent, read the prior evaluation from `evaluations/`.
    - If there are no tasks, or all remaining tasks are `complete` or `blocked`,
      skip directly to Phase E (finalize). Do not enter the build loop.
-4. Update `state.json`: `current_step` = `"build"`, the active task ->
+4. **Resume handoff check.** If `current_step ∈ {"awaiting_review",
+   "awaiting_evaluator"}` for the active task, look for
+   `checkpoints/build-pass-<build_pass>-<task-id>.json`. If present, the
+   generator already finished this pass — skip Phase B and enter Phase C at
+   the step implied by `current_step` (step 10 for `awaiting_review`,
+   step 11 for `awaiting_evaluator`). If `current_step` indicates a handoff
+   but no checkpoint exists, treat the prior pass as lost and fall through
+   to the normal Phase B flow below.
+5. Update `state.json`: `current_step` = `"build"`, the active task ->
    `"in_progress"` in `task_progress`.
 
 ### Phase B — Contract and Build
 
-5. Draft or refresh `contracts/<task-id>.md` for the active task slice.
+6. Draft or refresh `contracts/<task-id>.md` for the active task slice.
    Include: scope, files likely to change, concrete verification steps, risks.
-6. Spawn `evaluator` (foreground) to pressure-test the contract.
+7. Spawn `evaluator` (foreground) to pressure-test the contract.
    If "done" is still fuzzy, fix the contract before building.
-7. Spawn `generator` (foreground) with:
+8. Spawn `generator` (foreground) with:
    - the brief
    - the ordered task slices
    - the active contract
@@ -66,43 +75,54 @@ subagents, so you own all agent orchestration.
    - per-task verification arrays (the `verification` array from each task JSON)
    - the current build/repair pass number
    - any prior evaluator feedback (if repair pass)
-8. Update `state.json`: `build_pass` incremented.
+9. **Persist the handoff.** As soon as the generator returns, before spawning
+   any reviewer or evaluator:
+   - Increment `build_pass` in `state.json` and set `current_step` =
+     `"awaiting_review"`.
+   - Write `checkpoints/build-pass-<N>-<task-id>.json` with:
+     `{ "task_id", "build_pass": N, "stage": "awaiting_review",
+        "generator_summary": { "files_touched": [...], "notes": "..." },
+        "timestamp": "ISO-8601" }`.
+   The checkpoint is what makes resume safe between here and step 12.
 
 ### Phase C — Review and Evaluate
 
-9. Spawn `codex-reviewer` to review the latest changes. Pass the list of files
-   modified in this pass so the review is scoped to the current increment, not
-   the entire worktree. Save to `reviews/codex-build-<N>.json`.
-   If Codex CLI is not available, check `execution_policy.codex_policy` from
-   `rubric.json`. If `required`, halt and warn the user. If `skip`, proceed
-   without Codex review. If `optional`, apply `execution_policy.degraded_mode`:
-   `warn_and_continue` — note the absence and continue; `block` — halt until
-   Codex is available.
-10. Spawn `evaluator` (foreground) with:
+10. Spawn `codex-reviewer` to review the latest changes. Pass the list of files
+    modified in this pass so the review is scoped to the current increment, not
+    the entire worktree. Save to `reviews/codex-build-<N>.json`.
+    If Codex CLI is not available, check `execution_policy.codex_policy` from
+    `rubric.json`. If `required`, halt and warn the user. If `skip`, proceed
+    without Codex review. If `optional`, apply `execution_policy.degraded_mode`:
+    `warn_and_continue` — note the absence and continue; `block` — halt until
+    Codex is available.
+11. Update `state.json`: `current_step` = `"awaiting_evaluator"`. Then spawn
+    `evaluator` (foreground) with:
     - the brief, active contract, rubric
-    - the build/repair summary from the generator
+    - the build/repair summary from the generator (from the checkpoint)
     - per-task verification arrays
     - the consensus matrix
     - the codex review output (if available)
     - the current pass number
-11. Write evaluation to `evaluations/build-pass-<N>.json`.
-12. Update `state.json`: active task -> `"complete"` or `"failed"` in
+12. Write evaluation to `evaluations/build-pass-<N>.json`, then delete the
+    matching `checkpoints/build-pass-<N>-<task-id>.json` — the evaluation
+    supersedes it as the durable record of this pass.
+13. Update `state.json`: active task -> `"complete"` or `"failed"` in
     `task_progress` based on evaluation. When marking `"failed"`, also write
     `failure_reason` (short summary from evaluator) and `action_on_resume`
     (prescriptive next step for the coordinator on cold resume).
 
 ### Phase D — Repair or Advance
 
-13. If all rubric criteria pass: reset `repair_pass` to 0, then advance to the
+14. If all rubric criteria pass: reset `repair_pass` to 0, then advance to the
     next task (back to Phase B) or to Phase E if all tasks are complete.
-14. If any criterion fails:
+15. If any criterion fails:
     - Increment `repair_pass`
-    - Update `state.json`: active task -> `"in_progress"` (repair) in
-      `task_progress`
+    - Update `state.json`: `current_step` = `"build"`, active task ->
+      `"in_progress"` (repair) in `task_progress`
     - Send only failing evidence, contract deltas, and task-scoped repair
-      guidance back to Phase B step 7
+      guidance back to Phase B step 8
     - Do NOT reopen the whole plan unless the evaluator proved the brief is wrong
-15. Stop repair after `max_repair_passes` (from `rubric.json`). If budget is
+16. Stop repair after `max_repair_passes` (from `rubric.json`). If budget is
     exhausted:
     - Write `failure_reason` and `action_on_resume` to the task's
       `task_progress` entry.
@@ -117,8 +137,8 @@ subagents, so you own all agent orchestration.
 
 ### Phase E — Finalize
 
-16. Update `state.json`: `phase` -> `"review"`, `current_step` -> `"review"`.
-17. Present build summary to user: tasks completed, repair passes used, known
+17. Update `state.json`: `phase` -> `"review"`, `current_step` -> `"review"`.
+18. Present build summary to user: tasks completed, repair passes used, known
     gaps.
 
 Simplify only when it helps — run `code-simplifier` only if the generator

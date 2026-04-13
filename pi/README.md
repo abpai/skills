@@ -141,8 +141,15 @@ Pi writes state under `.agents/pi/` by default:
 ├── research/
 ├── reviews/
 ├── evaluations/
+├── checkpoints/
 └── LEARNINGS.md
 ```
+
+`checkpoints/` holds short-lived handoff files written when a generator
+finishes a pass and deleted once the evaluator scores it. They let
+`/pi:execute` resume into review/evaluation after a mid-handoff stop
+instead of re-running the generator. See `pi-protocol/STATE.md` for the
+full resume decision table.
 
 ## File Diagram
 
@@ -164,6 +171,7 @@ This is the artifact flow Pi tries to maintain:
   |
   +--> .agents/pi/contracts/T01.md ...
   +--> code changes in the target repo
+  +--> .agents/pi/checkpoints/build-pass-{N}-{task}.json  (transient: written after generator, deleted after evaluator)
   +--> .agents/pi/reviews/codex-build-{N}.json
   +--> .agents/pi/evaluations/build-pass-{N}.json
   \--> .agents/pi/state.json (task_progress updated per task)

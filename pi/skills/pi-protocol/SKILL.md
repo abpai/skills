@@ -309,6 +309,13 @@ If `action_on_resume` is absent, fall back to reading the prior evaluation.
 If there are no tasks, or all remaining tasks are `complete` or `blocked`, skip
 directly to the finalize step. Do not enter the build loop.
 
+**Handoff resume.** If `current_step` is `awaiting_review` or
+`awaiting_evaluator` and a matching
+`checkpoints/build-pass-<N>-<task-id>.json` exists, skip the build step and
+enter review/evaluation directly — the generator already finished this pass.
+See STATE.md for the full resume decision table. If the checkpoint is
+missing, treat the pass as lost and re-enter the build.
+
 Update `state.json`: `current_step` = `"build"`, active task ->
 `"in_progress"` in `task_progress`.
 
@@ -349,7 +356,16 @@ Generator rules:
 - Verify continuously while building.
 - Do not create a commit after each pass unless the human asked for that.
 
-Update `state.json`: `build_pass` incremented.
+As soon as the generator returns, persist the handoff before spawning any
+reviewer or evaluator:
+
+- Increment `build_pass` in `state.json` and set `current_step` =
+  `"awaiting_review"`.
+- Write `checkpoints/build-pass-<N>-<task-id>.json` with the generator
+  summary (files touched, notes) so resume can skip straight to review.
+
+The checkpoint is deleted once the evaluator writes
+`evaluations/build-pass-<N>.json`.
 
 ### 4. Simplify Only When It Helps
 
@@ -368,6 +384,9 @@ scores. Pass the list of files modified in this pass so the review is scoped
 to the current increment, not the entire worktree. Save to
 `reviews/codex-build-<N>.json`. This gives the evaluator an independent
 second-provider read to incorporate into its assessment.
+
+After Codex review completes, update `state.json`: `current_step` =
+`"awaiting_evaluator"` before spawning the evaluator.
 
 If the Codex CLI is not available, check `execution_policy`. If `codex_policy`
 is `skip`, proceed without Codex review. If `codex_policy` is `required`,
@@ -396,7 +415,8 @@ The evaluator must:
   (e.g., "Fix T02: [guidance]. Fix T05: [guidance].")
 - say explicitly when a weak contract contributed to the failure
 
-Write evaluation to `evaluations/build-pass-<N>.json`.
+Write evaluation to `evaluations/build-pass-<N>.json`, then delete the
+matching `checkpoints/build-pass-<N>-<task-id>.json`.
 
 Update `state.json`: active task -> `"complete"` or `"failed"` in
 `task_progress` based on evaluation.
