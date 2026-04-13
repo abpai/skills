@@ -178,37 +178,9 @@ checkpoint, not by `action_on_resume`.
 - `execution_policy` — runtime behavior policy
 - `max_repair_passes` — hard cap on repair iterations
 
-Default rubric shape:
-
-```json
-{
-  "criteria": {
-    "functionality": {
-      "threshold": 7,
-      "description": "Does the build work as specified?"
-    },
-    "code_quality": {
-      "threshold": 7,
-      "description": "Is the code correct, readable, and maintainable?"
-    },
-    "product_depth": {
-      "threshold": 6,
-      "description": "Does the build cover the important real-world cases?"
-    },
-    "visual_design": {
-      "threshold": 6,
-      "applicable": true,
-      "description": "Is the interface polished and intentional?"
-    }
-  },
-  "execution_policy": {
-    "codex_policy": "optional",
-    "degraded_mode": "warn_and_continue",
-    "dependency_failure": "block_downstream"
-  },
-  "max_repair_passes": 2
-}
-```
+Default rubric shape: see [`templates/rubric.json`](templates/rubric.json)
+for the canonical default. The file in this skill's `templates/` directory
+is the single source of truth; do not redefine it here.
 
 ### `execution_policy` fields
 

@@ -54,10 +54,11 @@ subagents, so you own all agent orchestration.
    "awaiting_evaluator"}` for the active task, look for
    `checkpoints/build-pass-<build_pass>-<task-id>.json`. If present, the
    generator already finished this pass — skip Phase B and enter Phase C at
-   the step implied by `current_step` (step 10 for `awaiting_review`,
-   step 11 for `awaiting_evaluator`). If `current_step` indicates a handoff
-   but no checkpoint exists, treat the prior pass as lost and fall through
-   to the normal Phase B flow below.
+   the stage implied by `current_step` (`awaiting_review` → spawn
+   `codex-reviewer`; `awaiting_evaluator` → spawn `evaluator` directly).
+   If `current_step` indicates a handoff but no checkpoint exists, treat
+   the prior pass as lost and fall through to the normal Phase B flow
+   below.
 5. Update `state.json`: `current_step` = `"build"`, the active task ->
    `"in_progress"` in `task_progress`.
 
@@ -83,7 +84,8 @@ subagents, so you own all agent orchestration.
      `{ "task_id", "build_pass": N, "stage": "awaiting_review",
         "generator_summary": { "files_touched": [...], "notes": "..." },
         "timestamp": "ISO-8601" }`.
-   The checkpoint is what makes resume safe between here and step 12.
+   The checkpoint is what makes resume safe until the evaluator writes its
+   file in Phase C.
 
 ### Phase C — Review and Evaluate
 
