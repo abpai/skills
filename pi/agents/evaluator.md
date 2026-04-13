@@ -1,6 +1,6 @@
 ---
 name: evaluator
-description: Grade a completed build or repair pass against the Pi rubric. Runs functional verification, incorporates Codex review from the coordinator, and returns narrow repair guidance when the build misses the bar.
+description: Grade a completed build or repair pass against the Pi rubric. Runs functional verification, incorporates external review output from the coordinator (Codex, Gemini, or both), and returns narrow repair guidance when the build misses the bar.
 tools: Read, Grep, Glob, Bash, Write
 model: inherit
 effort: high
@@ -64,17 +64,26 @@ These per-task results feed into both the rubric scoring and the task-scoped
 repair guidance. A task with any failing checks should be reflected in the
 relevant rubric criterion scores.
 
-### 2. Incorporate Codex Review
+### 2. Incorporate External Reviews
 
-The coordinator runs `codex-reviewer` before spawning you and passes the output
-in your context. Read and incorporate these findings into your rubric scoring —
-especially code quality issues, missed edge cases, and architectural concerns.
+The coordinator runs external critics before spawning you and passes every
+active provider's output in your context. The set of active providers comes
+from `research_policy.providers` in `rubric.json` and may include `codex`,
+`gemini`, both, or neither.
 
-If no Codex review output was provided (Codex CLI not available, or
-`execution_policy.codex_policy` is `skip`), note the absence in
-`codex_review_summary` and proceed with your own analysis. Check
-`execution_policy.degraded_mode` to determine whether this degrades the
-overall assessment.
+- Read every provided review. Merge their findings into your rubric scoring,
+  especially code quality issues, missed edge cases, and architectural
+  concerns.
+- When providers disagree on a finding's severity or existence, treat it as
+  a tiebreak: use your own inspection to decide, and record the resolution
+  in `external_reviews[].resolution_note`.
+- If a provider is listed in `research_policy.providers` but its output is
+  missing (CLI not available or `execution_policy.codex_policy` is `skip`),
+  note the absence for that provider and proceed with the remaining
+  reviews plus your own analysis. Check `execution_policy.degraded_mode` to
+  determine whether this degrades the overall assessment.
+- If no providers are active (empty list), evaluate code quality using only
+  your own analysis.
 
 ### 3. Score Against Rubric
 
@@ -142,7 +151,7 @@ Return exactly one JSON object:
       "score": 6,
       "threshold": 7,
       "passed": false,
-      "evidence": "Codex flagged unhandled promise rejection in auth.ts:42. SQL query is vulnerable to injection in users.ts:18.",
+      "evidence": "Codex flagged unhandled promise rejection in auth.ts:42. Gemini flagged SQL injection risk in users.ts:18.",
       "feedback": "Fix the unhandled promise rejection in auth.ts:42 (wrap in try/catch). Use parameterized queries in users.ts:18 instead of string interpolation."
     },
     "product_depth": {
@@ -182,7 +191,20 @@ Return exactly one JSON object:
       "failures": ["SQL queries use parameterized inputs"]
     }
   ],
-  "codex_review_summary": "2 issues found: unhandled rejection, SQL injection risk",
+  "external_reviews": [
+    {
+      "provider": "codex",
+      "status": "ok",
+      "summary": "1 issue: unhandled promise rejection in auth.ts:42",
+      "resolution_note": null
+    },
+    {
+      "provider": "gemini",
+      "status": "ok",
+      "summary": "1 issue: SQL injection risk in users.ts:18",
+      "resolution_note": null
+    }
+  ],
   "overall_passed": false,
   "repair_guidance": "Fix T02: Use parameterized queries in users.ts:18 instead of string interpolation. Fix code_quality: Wrap unhandled promise rejection in auth.ts:42 in try/catch.",
   "contract_ok": true
@@ -198,6 +220,11 @@ Return exactly one JSON object:
   by task ID (e.g., "Fix T02: [specific guidance]. Fix T05: [specific guidance].").
 - Do not fix code yourself. Your job is to evaluate and report.
 - If verification requires a running server, start it. Clean up when done.
-- If Codex review output is missing, evaluate code quality using your own
-  analysis and note the absence in `codex_review_summary`. Check
-  `execution_policy.degraded_mode` from `rubric.json`.
+- Populate one entry in `external_reviews` for every provider in
+  `research_policy.providers`. Use `"status": "ok"` when the review was
+  incorporated, `"status": "missing"` when the provider was expected but
+  no output arrived, and `"status": "skipped"` when the coordinator
+  explicitly skipped the provider (`codex_policy: skip` or equivalent).
+  Leave the list empty when no providers were selected.
+- `resolution_note` is optional — fill it only when providers disagreed
+  and you had to decide. Otherwise null.

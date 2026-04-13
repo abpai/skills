@@ -21,7 +21,11 @@
   "execution_policy": {
     "codex_policy": "optional",
     "degraded_mode": "warn_and_continue",
-    "dependency_failure": "block_downstream"
+    "dependency_failure": "block_downstream",
+    "primary_executor": "claude"
+  },
+  "research_policy": {
+    "providers": ["codex"]
   },
   "max_repair_passes": 2
 }

@@ -1,14 +1,16 @@
 # State Convention
 
-Pi uses `.agents/pi/` as a namespace root.
+Pi uses `.agents/work/` as a namespace root. The namespace is intentionally
+frontend-agnostic: other CLIs (a forked omx, a Codex-native wrapper, etc.)
+can target the same schema.
 
-- Active run pointer: `.agents/pi/current.json`
-- Default run state root: `.agents/pi/runs/<slug>/`
+- Active run pointer: `.agents/work/current.json`
+- Default run state root: `.agents/work/runs/<slug>/`
 
 Recommended layout:
 
 ```text
-.agents/pi/
+.agents/work/
 ├── current.json
 └── runs/
     └── <slug>/
@@ -56,10 +58,6 @@ lifecycle notes below.
 }
 ```
 
-Legacy layout note: if `.agents/pi/state.json` exists at the top level with no
-`runs/` directory, `/pi:plan` should offer a one-time migration into
-`.agents/pi/runs/<slug>/` before continuing.
-
 Minimal `state.json`:
 
 ```json
@@ -67,7 +65,7 @@ Minimal `state.json`:
   "phase": "plan|execute|review|done",
   "posture": "expand|selective|reduce",
   "current_step": "posture|clarify|lateral_thinking|distill|research_fanout|verify_tech|propose_tasks|codex_review|finalize|build|awaiting_review|awaiting_evaluator|repair|review",
-  "state_root": ".agents/pi/runs/durable-handoffs",
+  "state_root": ".agents/work/runs/durable-handoffs",
   "project_slug": "durable-handoffs",
   "title": "Durable handoffs",
   "build_pass": 0,
@@ -96,9 +94,19 @@ Minimal `state.json`:
     }
   },
   "started_at": "ISO-8601",
-  "updated_at": "ISO-8601"
+  "updated_at": "ISO-8601",
+  "orchestrator": {
+    "last_command_cli": "claude",
+    "updated_at": "ISO-8601"
+  }
 }
 ```
+
+The optional `orchestrator` block records which frontend most recently wrote
+state. `last_command_cli` is `"claude"`, `"codex"`, or `"other"`. The
+coordinator refreshes it on every state write. Other frontends (e.g. a forked
+omx) should do the same when they adopt the schema. The field is advisory
+(telemetry / debugging); nothing in the pi protocol branches on it.
 
 The `task_progress` map tracks per-task status during the execute phase. Each
 entry uses one of five statuses: `not_started`, `in_progress`, `complete`,
@@ -144,7 +152,7 @@ review pass completes.
 Selection rules:
 
 - `/pi:plan` may create a new run or switch the active run before planning.
-- `/pi:execute` and `/pi:review` resolve the run from `.agents/pi/current.json`.
+- `/pi:execute` and `/pi:review` resolve the run from `.agents/work/current.json`.
 - If `current.json` is missing but exactly one run exists, auto-select it.
 - If multiple runs exist and no active run is set, fail fast and tell the user
   to run `/pi:plan`.
@@ -226,7 +234,26 @@ is the single source of truth; do not redefine it here.
   what happens to tasks that depend on a failed task. `block_downstream` sets
   their status to `blocked`. `skip_downstream` leaves them as `not_started`
   but skips them in the current run.
+- `primary_executor`: `claude` (default) | `codex` — who writes the code
+  during `/pi:execute` Phase B. `claude` spawns the `generator` agent.
+  `codex` spawns the `codex-executor` agent, which shells to `codex exec`
+  with the active contract. All downstream checkpoints (diff review,
+  evaluator scoring, repair loop, checkpoint persistence) are identical in
+  both modes — only the builder changes. **Executor availability is a hard
+  block:** if the selected executor's CLI is not installed, the coordinator
+  halts. `codex_policy` governs critics only; it does not permit silent
+  fallback to a different builder.
 
-The coordinator reads `execution_policy` at load time and uses its values for
-branching decisions (Codex availability, degraded mode, dependency failure
-handling) instead of interpreting prose rules.
+### `research_policy` fields
+
+- `providers`: array of external critics that pi consults during research,
+  plan review, build review, and final review. Valid entries are `codex` and
+  `gemini`. Default `["codex"]` (today's behavior). Empty array means
+  Claude-only: no external critics are spawned. `["gemini"]` runs Gemini in
+  place of Codex. `["codex", "gemini"]` runs both in parallel; tiebreaks
+  surface when they disagree.
+
+The coordinator reads `execution_policy` and `research_policy` at load time
+and branches on their values (Codex availability, degraded mode, dependency
+failure handling, which builder to spawn, which critics to consult) instead
+of interpreting prose rules.

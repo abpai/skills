@@ -189,7 +189,14 @@ USER INPUT #6
 
 ### Under the hood
 
-**Phase D — Codex Review**. `state.json`: step -> `"codex_review"`.
+**Phase D — External Review**. `state.json`: step -> `"codex_review"` (the
+state name is preserved for compatibility; the step iterates whichever
+critics are in `research_policy.providers`).
+
+This run selected `providers: ["codex"]` during Phase A, so the coordinator
+spawns Codex only. With `providers: ["gemini"]` it would spawn Gemini
+instead; with `["codex", "gemini"]` it would spawn both in parallel and
+merge their `must_address` items before the next pass.
 
 Spawns **codex-reviewer** pass 1: reviews brief + tasks. Must-address:
 "add test for missing API key edge case". Incorporates into T01. Saves
