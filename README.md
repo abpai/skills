@@ -103,6 +103,7 @@ plugin hooks such as `ExitPlanMode`.
 
 | Plugin | What it does |
 |--------|-------------|
+| **improve-prompt** | Upgrade vague prompts into sharp, reusable prompts for planning, coding, review, and decision work |
 | **human-writer** | Edit prose to sound natural and human-written — deslop model-generated text |
 
 ## Repo Structure
@@ -194,7 +195,7 @@ cd skills
 codex
 ```
 
-Open the plugin directory with `codex /plugins` — all 18 Codex-compatible
+Open the plugin directory with `codex /plugins` — all 19 Codex-compatible
 plugins appear automatically from the repo marketplace.
 
 `pi` and `plannotator` stay Claude-only in this repo and therefore do not
