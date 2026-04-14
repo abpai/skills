@@ -100,6 +100,13 @@
       "keywords": ["prose", "editing", "deslop", "humanize"]
     },
     {
+      "name": "explain",
+      "description": "Write dense, progressive-disclosure explanations, tutorials, walkthroughs, and onboarding docs that teach one layer at a time.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "explain" },
+      "category": "writing",
+      "keywords": ["explainers", "tutorials", "walkthroughs", "onboarding"]
+    },
+    {
       "name": "improve-prompt",
       "description": "Improve vague or underspecified prompts into sharp, reusable prompts for planning, coding, review, and decision work.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "improve-prompt" },

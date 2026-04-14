@@ -87,6 +87,7 @@
 - For forked/adapted skills, keep explicit upstream attribution in `SKILL.md` and run `scripts/validate-skills.sh` immediately after creation.
 - For forked/adapted skills, include upstream attribution in frontmatter metadata (for example, `metadata.upstream_skill`) when available.
 - When incorporating a loose imported `SKILL.md` into this plugin-oriented repo, convert it to `skills/<name>/SKILL.md` with plugin manifests, marketplace entries, README updates, and `versions.json` regeneration in the same pass; move long pattern catalogs into `references/` to stay closer to the spec's size guidance.
+- If an imported skill arrives as both a plain `SKILL.md` and a packaged `.skill` zip wrapper, keep the plain markdown, delete the archive wrapper, and publish only the repo-native plugin layout.
 - For directly invocable utility skills, add `when_to_use` plus `argument-hint`, and explicitly document how `$ARGUMENTS` should be interpreted so slash-command use stays predictable.
 - For vendored Claude-only plugins, sync the local `SKILL.md`, plugin manifest, docs card, and `versions.json` to the upstream plugin version in one pass so the marketplace entry does not drift from the packaged plugin.
 - For Claude-only vendored plugins that primarily ship commands and hooks, still add a small `skills/<name>/SKILL.md` so `versions.json`, validation, and README inventory stay in sync with the rest of the repo.
