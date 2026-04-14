@@ -149,6 +149,18 @@
       "category": "Writing"
     },
     {
+      "name": "improve-prompt",
+      "source": {
+        "source": "local",
+        "path": "./improve-prompt"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Writing"
+    },
+    {
       "name": "project-memory",
       "source": {
         "source": "local",

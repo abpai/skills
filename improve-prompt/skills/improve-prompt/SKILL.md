@@ -1,0 +1,112 @@
+---
+name: improve-prompt
+description: Improve a vague or under-specified prompt into a sharp, reusable one. Interviews the user briefly, then rewrites.
+when_to_use: User asks to improve, rewrite, or sharpen a prompt; turn a rough request into a reusable template; or reduce vagueness, sycophancy, or success-theater in a planning, coding, review, eval, or decision prompt.
+argument-hint: "[draft prompt or rough goal]"
+metadata:
+  author: Andy Pai
+  version: "1.1.0"
+  tags: "prompting prompt-engineering rewriting agent-workflows"
+---
+
+# Improve Prompt
+
+## How to run this skill
+
+The goal is a **sharp prompt produced fast** via a short back-and-forth with the user. Do not lecture about prompt engineering.
+
+### 1. Read what you have
+
+`$ARGUMENTS` (or the conversation) contains a draft prompt or rough goal. Classify it:
+
+- **Clear draft** — has goal + context + deliverable. Skip to step 3.
+- **Rough goal** — missing deliverable, context, or constraints. Go to step 2.
+- **Already specialized** (decision memo, coding task, review, spec) — check `references/patterns.md` for a matching template, then go to step 2 or 3.
+
+### 2. Interview (only if needed)
+
+Use `AskUserQuestion` to ask **at most 2–3 questions**. Only ask about what you actually cannot infer. Typical gaps:
+
+- **Deliverable** — recommendation, decision memo, plan, code, review, spec, research, eval?
+- **Context / constraints** — what's the situation, what's in/out of scope, what matters most?
+- **Failure mode to avoid** — sycophancy, hallucinated success, scope creep, nitpicking, over-engineering?
+
+Skip any question you can answer from context. If the draft is already clear, do not interview — just rewrite.
+
+### 3. Rewrite
+
+Produce the improved prompt using the skeleton below, tailored to the deliverable. Then return:
+
+1. **Improved prompt** (ready to paste, complete)
+2. **What changed** — 3–5 bullets on the main upgrades
+3. **Optional tighter version** — only if a shorter variant adds value
+
+Keep commentary minimal. Lead with the rewritten prompt.
+
+---
+
+## Universal skeleton
+
+```md
+Approach this calmly and methodically.
+
+Goal: [outcome]
+
+Context: [background]
+
+Constraints: [time, scope, tradeoffs]
+
+Your task:
+1. [step]
+2. [step]
+
+Rules:
+- Prioritize correctness over agreeableness.
+- Do not optimize for appearance of success.
+- Do not invent missing facts.
+- If ambiguous, state the assumption.
+- If constraints conflict, say so.
+- If uncertain, quantify and name what would resolve it.
+- Prefer a correct partial result over a polished wrong one.
+
+Return:
+1. [main deliverable]
+2. [reasoning]
+3. [risks / unknowns that could change the answer]
+4. [next step]
+```
+
+## Load-bearing clauses
+
+Drop into any prompt as needed.
+
+**Anti-sycophancy:**
+> Your job is not to agree with me; it is to tell me what is true, including where my premise is wrong. Prioritize accuracy over smoothness.
+
+**Failure-mode contract:**
+> Priority order: (1) be correct, (2) be honest about uncertainty, (3) do not invent facts or successful completion, (4) if requirements conflict, stop and point to the inconsistency, (5) offer the best next step.
+
+**Per-step reset (multi-step / adversarial flows):**
+> For this step only: be skeptical, prefer explicit uncertainty to guesswork, do not optimize for agreement.
+
+## Phrase rewrites (quick fixes)
+
+- "well researched answer" → "recommendation with reasoning, assumptions, counterarguments, unknowns, next steps"
+- "make it better" → "improve for clarity and force; preserve intent"
+- "most of the benefits" → "~80% of the value, fastest path"
+- "make the tests pass" → "satisfy the real requirement without exploiting weaknesses in the tests"
+- "be comprehensive" → "cover what's needed to make the decision"
+- "you must / at all costs / don't fail" → "solve this if possible; if blocked, surface the blocker and propose a fallback"
+- "be nice / pleasant" → "accurate first, then polish tone — do not weaken caveats during polish"
+
+## Why this works (brief)
+
+Cornering language ("must", "at all costs", "don't fail") and pleasantness-seeking framing push the model into states correlated with reward hacking and agreement over accuracy. Calm framing, real off-ramps, and a two-channel accurate-first / polished-second structure are the knobs that move the needle. (Anthropic interpretability work on emotion-like internal variables.)
+
+## Specialized patterns
+
+For decision memos, coding executors, reviews, or specs, use templates in [references/patterns.md](references/patterns.md). Load it only when the deliverable matches one of those shapes.
+
+## Do not use this skill for
+
+Light copyediting, grammar cleanup, or making prose sound human — use `human-writer` instead.

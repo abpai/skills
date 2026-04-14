@@ -100,6 +100,13 @@
       "keywords": ["prose", "editing", "deslop", "humanize"]
     },
     {
+      "name": "improve-prompt",
+      "description": "Improve vague or underspecified prompts into sharp, reusable prompts for planning, coding, review, and decision work.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "improve-prompt" },
+      "category": "writing",
+      "keywords": ["prompting", "prompt-engineering", "rewriting", "agents"]
+    },
+    {
       "name": "project-memory",
       "description": "Always-on project memory workflow. Read and update .agents/LEARNINGS.md with mistakes, corrections, patterns, and preferences.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "project-memory" },
