@@ -2,15 +2,15 @@
 name: pi-protocol
 description: >
   Claude-native harness for long-running engineering work. Defines the planner
-  -> generator -> evaluator loop, checkpoint files, and default Codex critique
-  points used by the /pi: commands.
+  -> generator -> evaluator loop, checkpoint files, and optional external
+  critique points used by the /pi: commands.
 allowed-tools: >
   Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
   Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
-  Bash(codex *) Read Write Edit Grep Glob
+  Bash(codex *) Bash(gemini *) Read Write Edit Grep Glob
 metadata:
   author: Andy Pai
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Pi Protocol
@@ -22,10 +22,11 @@ Use it when a task is large enough to benefit from:
 - an explicit spec before coding
 - one coherent build pass instead of ad hoc edits
 - a real evaluator pass that can force targeted repairs
-- default second-provider critique from Codex at phase checkpoints
+- optional second-provider critique from Codex, Gemini, or both at phase
+  checkpoints
 
-Pi is intentionally Claude-native. Codex is a supporting CLI, not a parallel
-runtime or install target.
+Pi is intentionally Claude-native. Codex and Gemini are supporting CLIs, not
+parallel runtimes or install targets.
 
 Three commands:
 
@@ -51,12 +52,13 @@ Three commands:
 
 ## State Convention
 
-Pi uses `.agents/pi/` as a namespace root and stores each run under its own
-state root:
+Pi uses `.agents/work/` as a namespace root and stores each run under its own
+state root. This namespace is intentionally frontend-agnostic — other CLIs (a
+forked omx, a Codex-native wrapper, etc.) can target the same schema.
 
-- namespace root: `.agents/pi/`
-- active run pointer: `.agents/pi/current.json`
-- default run root: `.agents/pi/runs/<slug>/`
+- namespace root: `.agents/work/`
+- active run pointer: `.agents/work/current.json`
+- default run root: `.agents/work/runs/<slug>/`
 
 See [STATE.md](STATE.md) for the full state convention, recommended layout,
 `state.json` schema, and `task_progress` transition points.
@@ -94,23 +96,19 @@ the coordinator owns all agent spawning.
 
 Before spawning the planner, resolve the active run.
 
-1. Read `.agents/pi/current.json` if present.
-2. List `.agents/pi/runs/*/` to discover known runs.
-3. If legacy layout is detected (`.agents/pi/state.json` exists at the top
-   level and `runs/` does not), prompt the user to migrate it into
-   `runs/<slug>/`. Default the slug from `brief.md`'s H1, fall back to a
-   timestamp, then write `current.json` and continue.
-4. If runs already exist, offer:
+1. Read `.agents/work/current.json` if present.
+2. List `.agents/work/runs/*/` to discover known runs.
+3. If runs already exist, offer:
    - resume the current run
    - switch to another existing run
    - create a new run
    - abort
-5. When creating a new run, derive the default slug from the user's request
+4. When creating a new run, derive the default slug from the user's request
    and show it to the user. Check for collisions by comparing against the
-   existing directories under `.agents/pi/runs/`. Ask only if the derived
+   existing directories under `.agents/work/runs/`. Ask only if the derived
    slug already exists or the user wants to rename it.
-6. Once a slug is selected, treat `state_root` as
-   `.agents/pi/runs/<slug>/` for the rest of the plan phase. All writes go
+5. Once a slug is selected, treat `state_root` as
+   `.agents/work/runs/<slug>/` for the rest of the plan phase. All writes go
    there.
 
 ### Phase A: Interactive Planning (planner, foreground)
@@ -179,14 +177,14 @@ The planner writes its results to state files:
 - `state.json` updated with `current_step: "research_fanout"` and the
   primitives list
 - `state.json` also carries `project_slug`, `title`, and
-  `state_root: ".agents/pi/runs/<slug>"`
+  `state_root: ".agents/work/runs/<slug>"`
 - `research/lateral-thinking.md`
 
 The coordinator takes over for Phase B.
 
 When the user approves the plan, write `brief.md`, `rubric.json`, and
 `tasks/*.json` in the active `state_root`, update `state.json` in that
-`state_root` with `phase: "execute"`, and refresh `.agents/pi/current.json`
+`state_root` with `phase: "execute"`, and refresh `.agents/work/current.json`
 so `/pi:execute` and `/pi:review` resolve the same run.
 
 ### Phase B: Research Fanout (coordinator-driven)
@@ -199,36 +197,38 @@ Update `state.json` in `state_root`: `current_step` = `"research_fanout"`.
 
 #### 5. Research Fanout
 
-For each primitive, spawn both a `claude-researcher` and a `codex-researcher`
-in parallel. All researchers run simultaneously.
+Always spawn `claude-researcher` per primitive. Additionally, for each
+provider in `research_policy.providers` (selected in Phase A step 1), spawn
+its researcher:
 
-Each researcher evaluates three implementation layers:
+- `codex` in providers → spawn `codex-researcher`
+- `gemini` in providers → spawn `gemini-researcher`
+
+All researchers run in parallel. Each evaluates three implementation layers:
 
 - **Boring/Proven** — most battle-tested option
 - **Trending** — current popular option in the ecosystem
 - **First Principles** — from-scratch design tailored to exact requirements
 
 Each returns a structured recommendation. Results are saved under
-`research/fanout/<primitive>-claude.json` and
-`research/fanout/<primitive>-codex.json` in `state_root`.
+`research/fanout/<primitive>-<provider>.json` in `state_root`.
 
-If the Codex CLI is not available, check `execution_policy` in `rubric.json`.
-If `codex_policy` is `skip`, do not spawn `codex-researcher` and proceed with
-Claude-only research. If `codex_policy` is `required`, warn the user and
-pause. If `codex_policy` is `optional`, apply `degraded_mode`:
-`warn_and_continue` — note the absence and proceed with Claude-only research;
-`block` — warn the user and pause.
+If a selected CLI is not available, check `execution_policy` in `rubric.json`.
+For Codex, `codex_policy` governs the fallback. Reuse the same semantics for
+Gemini. If empty providers (Claude-only), skip external researchers.
 
 Update `state.json` in `state_root`: `current_step` = `"verify_tech"`.
 
 #### 6. Verify Tech — Consensus Matrix
 
-The coordinator builds a comparison matrix: primitive x researcher
-(Claude vs Codex).
+The coordinator builds a comparison matrix: primitive × researcher.
 
-- Where both agree: adopt the recommendation.
-- Where they disagree: surface the disagreement as a tiebreak for the user
+- Where all researchers agree: adopt the recommendation.
+- Where any disagree: surface the disagreement as a tiebreak for the user
   to resolve.
+- If only `claude-researcher` ran (providers empty or all selected CLIs
+  unavailable), there is nothing to cross-check against — record Claude's
+  recommendations directly without a tiebreak pass.
 
 Present the matrix and wait for user decisions on all tiebreaks.
 
@@ -244,7 +244,7 @@ tech decisions as context.
 #### 7. Propose Tasks
 
 Propose ordered task slices with specific test criteria. This is a distinct
-user-facing checkpoint — the user reviews tasks before Codex review.
+user-facing checkpoint — the user reviews tasks before external review.
 
 Each task file should look like:
 
@@ -265,34 +265,41 @@ Each task file should look like:
 
 Wait for user confirmation before proceeding.
 
-### Phase D: Codex Review — Multi-Pass (coordinator-driven)
+### Phase D: External Review — Multi-Pass (coordinator-driven)
 
-Update `state.json` in `state_root`: `current_step` = `"codex_review"`.
+Update `state.json` in `state_root`: `current_step` = `"codex_review"`
+(name preserved for state compatibility; the step runs whichever critics are
+in `research_policy.providers`).
 
-The coordinator runs iterative `codex-reviewer` passes against the brief and
-task slices.
+For each provider in `research_policy.providers`, the coordinator runs up to
+3 iterative review passes against the brief and task slices. When both
+providers are active, pass 1 runs them in parallel and merges
+`must_address` items before pass 2.
 
-#### 8. Codex Review
+#### 8. External Review
 
 **Pass 1**: Review for gaps, risks, and test adequacy.
-- Incorporate `must_address` items directly into the plan.
+- Incorporate `must_address` items from any provider directly into the plan.
 - Note `nice_to_have` items.
 
-**Pass 2**: Re-run on the updated plan.
-- If clean (`changed: false`), skip pass 3.
+**Pass 2**: Re-run on the updated plan for every provider that flagged issues.
+- If a provider returns `changed: false`, skip pass 3 for that provider.
 
 **Pass 3** (if needed): Final check.
 - Remaining issues become noted risks, not blockers.
 
-Maximum 3 passes with early exit on any clean pass.
+Maximum 3 passes per provider with early exit on any clean pass.
 
-Save each pass result to `reviews/codex-plan-pass-<N>.json` in `state_root`.
+Save each pass result to `reviews/<provider>-plan-pass-<N>.json` in
+`state_root` (e.g. `codex-plan-pass-1.json`, `gemini-plan-pass-1.json`).
 
-If the Codex CLI is not available, check `execution_policy`. If `codex_policy`
-is `skip`, proceed silently. If `codex_policy` is `required`, halt until
-Codex is available. If `codex_policy` is `optional`, apply `degraded_mode`:
-`warn_and_continue` — warn the user that the plan has not been independently
-reviewed and continue; `block` — halt until Codex is available.
+If `research_policy.providers` is empty, skip Phase D entirely.
+
+If a selected CLI is not available, check `execution_policy`. `codex_policy`
+governs Codex availability; reuse the same semantics for Gemini. If `skip`,
+proceed silently. If `required`, halt until the CLI is available. If
+`optional`, apply `degraded_mode`: `warn_and_continue` — warn the user that
+the plan has not been independently reviewed and continue; `block` — halt.
 
 ### Phase E: Finalize
 
@@ -304,8 +311,11 @@ Always pause for review before execution. Present:
 
 - the final brief summary
 - the consensus matrix results
-- the codex review results and any noted risks
+- the external review results from each active provider (Codex, Gemini, or
+  both) and any noted risks
 - the ordered task slices
+- the selected `research_policy.providers` and `primary_executor` (so the
+  user sees which critics and which builder will run during execute)
 
 On approval, write:
 
@@ -314,7 +324,7 @@ On approval, write:
 - `tasks/*.json` in `state_root`
 - updated `state.json` in `state_root` with `phase: "execute"`,
   `project_slug`, `title`, and `state_root`
-- refreshed `.agents/pi/current.json`
+- refreshed `.agents/work/current.json`
 
 See [STATE.md](STATE.md) for the default rubric shape, `execution_policy`
 field definitions, and enum values. Set `visual_design.applicable` to `false`
@@ -326,11 +336,11 @@ Goal: build the spec coherently, then repair only what evaluation proves is
 missing. The execute phase is a coordinator-driven pipeline with five phases
 (A through E) and loop re-entry via state counters.
 
-Before Phase A, resolve the active run from `.agents/pi/current.json`.
+Before Phase A, resolve the active run from `.agents/work/current.json`.
 
 - If `current.json` exists, use its slug.
 - If `current.json` is missing and exactly one run exists under
-  `.agents/pi/runs/`, auto-select it and continue.
+  `.agents/work/runs/`, auto-select it and continue.
 - Otherwise fail fast and tell the user to run `/pi:plan` to select or create
   a run.
 
@@ -383,7 +393,19 @@ the contract before coding.
 
 ### 3. Build Coherently
 
-Spawn the `generator` subagent with:
+Read `execution_policy.primary_executor` from `rubric.json` (default
+`claude`). Spawn the corresponding builder subagent:
+
+- `claude` → spawn `generator` (Claude-native).
+- `codex` → spawn `codex-executor` (thin wrapper that shells to `codex exec`).
+
+**Executor availability is a hard block.** When the selected executor's CLI
+is not available, halt and surface the missing dependency to the user. Do
+not fall back to a different builder and do not apply `codex_policy` here —
+that policy governs *critics* only. The user chose the builder explicitly,
+so the missing dependency must be resolved before the build can proceed.
+
+Either way, pass:
 
 - the brief
 - the ordered task slices
@@ -394,7 +416,7 @@ Spawn the `generator` subagent with:
 - the current build / repair pass number
 - any prior evaluator feedback (if repair pass)
 
-Generator rules:
+Builder rules (apply to both `generator` and `codex-executor`):
 
 - Own the whole brief, not just one slice.
 - Use task slices as a checklist for coverage and ordering.
@@ -402,6 +424,10 @@ Generator rules:
 - Reference the consensus matrix for architectural decisions.
 - Verify continuously while building.
 - Do not create a commit after each pass unless the human asked for that.
+
+The downstream pipeline is builder-agnostic: the checkpoint shape, diff
+review, evaluator scoring, and repair loop are identical whether Claude or
+Codex wrote the code.
 
 As soon as the generator returns, persist the handoff before spawning any
 reviewer or evaluator:
@@ -425,22 +451,29 @@ Run it only when:
 - the code got harder to follow than necessary
 - a repair pass created obvious cleanup debt
 
-### 5. Review via Codex (mandatory)
+### 5. External Review
 
-Run `codex-reviewer` after each build or repair pass, before the evaluator
-scores. Pass the list of files modified in this pass so the review is scoped
-to the current increment, not the entire worktree. Save to
-`reviews/codex-build-<N>.json` in `state_root`. This gives the evaluator an
-independent second-provider read to incorporate into its assessment.
+For each provider in `research_policy.providers`, run the matching reviewer
+after each build or repair pass, before the evaluator scores:
 
-After Codex review completes, update `state.json` in `state_root`:
-`current_step` = `"awaiting_evaluator"` before spawning the evaluator.
+- `codex` → spawn `codex-reviewer`, save to `reviews/codex-build-<N>.json`
+- `gemini` → spawn `gemini-reviewer`, save to `reviews/gemini-build-<N>.json`
 
-If the Codex CLI is not available, check `execution_policy`. If `codex_policy`
-is `skip`, proceed without Codex review. If `codex_policy` is `required`,
-warn the user. If `codex_policy` is `optional`, apply `degraded_mode`:
-`warn_and_continue` — note the absence in the evaluation and continue;
-`block` — halt until Codex is available.
+Pass each reviewer the list of files modified in this pass so the review is
+scoped to the current increment, not the entire worktree. When both
+providers are active, run them in parallel. The evaluator incorporates
+every provider's output into its assessment.
+
+If `research_policy.providers` is empty, skip this step.
+
+After review(s) complete, update `state.json` in `state_root`: `current_step`
+= `"awaiting_evaluator"` before spawning the evaluator.
+
+If a selected CLI is not available, check `execution_policy`. `codex_policy`
+governs Codex availability; reuse the same semantics for Gemini. If `skip`,
+proceed without that provider's review. If `required`, warn the user. If
+`optional`, apply `degraded_mode`: `warn_and_continue` — note the absence
+in the evaluation and continue; `block` — halt until the CLI is available.
 
 ### 6. Evaluate the Build
 
@@ -452,9 +485,10 @@ The evaluator must:
   run each check, and record per-task pass/fail results
 - run the verification steps from the contract, task slices, and brief
 - run project-appropriate tests
-- incorporate the `codex-reviewer` output from the prior step into its
-  assessment (the evaluator does not run Codex itself — the coordinator owns
-  all Codex invocations)
+- incorporate reviewer output from every active provider (`codex-reviewer`,
+  `gemini-reviewer`, or both) into its assessment. The evaluator does not
+  spawn external CLIs itself — the coordinator owns all external
+  invocations.
 - cross-reference the consensus matrix — flag implementations that contradict
   resolved planning decisions
 - score the rubric honestly
@@ -482,7 +516,8 @@ If any criterion fails:
 - increment `repair_pass`
 - update `task_progress`: active task -> `"in_progress"` (repair)
 - send only the failing evidence, contract deltas, and task-scoped repair
-  guidance back to `generator`
+  guidance back to the active builder (`generator` or `codex-executor`
+  depending on `execution_policy.primary_executor`)
 - keep the repair narrow; do not reopen the whole plan unless the evaluator
   proved the brief itself is wrong
 
@@ -508,11 +543,11 @@ summary: tasks completed, repair passes used, known gaps.
 
 Goal: final QA, final scorecard, and durable learnings.
 
-Before Phase A, resolve the active run from `.agents/pi/current.json`.
+Before Phase A, resolve the active run from `.agents/work/current.json`.
 
 - If `current.json` exists, use its slug.
 - If `current.json` is missing and exactly one run exists under
-  `.agents/pi/runs/`, auto-select it and continue.
+  `.agents/work/runs/`, auto-select it and continue.
 - Otherwise fail fast and tell the user to run `/pi:plan` to select or create
   a run.
 
@@ -538,20 +573,25 @@ results. Write suite results to `evaluations/suite-results.json` in
 
 ### 3. Final Evaluation
 
-Run `codex-reviewer` for a final independent read of the full build. Save the
-output under `reviews/codex-final.json` in `state_root`. If the Codex CLI is
-not available, check `execution_policy`. If `codex_policy` is `skip`, proceed
-without Codex review. If `codex_policy` is `required`, halt and inform the
-user. If `codex_policy` is `optional`, apply `degraded_mode`:
-`warn_and_continue` — note the absence in the scorecard and proceed; `block`
-— halt and inform the user.
+For each provider in `research_policy.providers`, run the matching reviewer
+for a final independent read of the full build:
+
+- `codex` → spawn `codex-reviewer`, save to `reviews/codex-final.json`
+- `gemini` → spawn `gemini-reviewer`, save to `reviews/gemini-final.json`
+
+Run providers in parallel when both are active. If the list is empty, skip
+this step. If a selected CLI is not available, check `execution_policy`.
+`codex_policy` governs Codex; reuse the same semantics for Gemini. `skip`
+proceeds without the review; `required` halts; `optional` applies
+`degraded_mode` (`warn_and_continue` notes the absence in the scorecard;
+`block` halts).
 
 Run `evaluator` one final time against the whole build (not just the last
 repair), with:
 
 - the brief, rubric, full build
 - per-task verification arrays and consensus matrix
-- suite results and codex review output
+- suite results and the review output from every active provider
 - all prior evaluations for context
 
 The evaluator cross-references the consensus matrix and produces both global
@@ -570,7 +610,9 @@ Report:
 - full-suite test results
 - known gaps
 - repair passes used during execute
-- whether Codex was consulted, and where it changed the outcome
+- which external providers were consulted (Codex, Gemini, both, or neither),
+  and where any of them changed the outcome
+- which builder ran (`claude` or `codex`)
 
 If the build still misses the bar:
 

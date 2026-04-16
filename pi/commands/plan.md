@@ -4,10 +4,10 @@ argument-hint: "[project goal]"
 allowed-tools: >
   Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
   Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
-  Bash(codex *) Bash(cat .agents/pi/*) Bash(cat .agents/pi/runs/*/*)
-  Bash(cat .agents/pi/runs/*/*/*) Bash(cat .agents/pi/runs/*/*/*/*)
-  Bash(ls .agents/pi/*) Bash(ls .agents/pi/runs/*)
-  Bash(ls .agents/pi/runs/*/*) Bash(ls .agents/pi/runs/*/*/*)
+  Bash(codex *) Bash(gemini *) Bash(cat .agents/work/*) Bash(cat .agents/work/runs/*/*)
+  Bash(cat .agents/work/runs/*/*/*) Bash(cat .agents/work/runs/*/*/*/*)
+  Bash(ls .agents/work/*) Bash(ls .agents/work/runs/*)
+  Bash(ls .agents/work/runs/*/*) Bash(ls .agents/work/runs/*/*/*)
   Read Write Edit Grep Glob
 ---
 
@@ -18,14 +18,14 @@ echo "PI_PLAN_PREFLIGHT_$(date +%s%N)"
 git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
 git branch --show-current 2>/dev/null
 git status --short 2>/dev/null | head -30
-test -f .agents/pi/current.json && cat .agents/pi/current.json || echo "no active run"
-ls -1 .agents/pi/runs 2>/dev/null || echo "no runs"
-test -f .agents/pi/state.json && echo "legacy top-level pi state present" || true
+test -f .agents/work/current.json && cat .agents/work/current.json || echo "no active run"
+ls -1 .agents/work/runs 2>/dev/null || echo "no runs"
 timeout 3 codex --version 2>&1 || echo "codex: not installed"
+timeout 3 gemini --version 2>&1 || echo "gemini: not installed"
 ```
 
 The block above runs at skill-load time. Treat its output as ground truth for
-working-tree state, active-run discovery under `.agents/pi/`, and Codex CLI
+working-tree state, active-run discovery under `.agents/work/`, and Codex CLI
 availability. The coordinator must still re-read the chosen run's
 `state.json` before acting; the preflight is advisory. The Codex availability
 line feeds directly into the `codex_policy` branch in Phase D.
@@ -34,7 +34,7 @@ Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and ex
 
 User input: $ARGUMENTS
 
-Active state root: `.agents/pi/runs/<slug>/` via `.agents/pi/current.json`
+Active state root: `.agents/work/runs/<slug>/` via `.agents/work/current.json`
 
 ## Coordinator Pipeline
 
@@ -48,90 +48,112 @@ tool requires it when `message` is a string. Example:
 
 ### Phase 0 — Select or Create a Run
 
-1. Read `.agents/pi/current.json` if present.
-2. List `.agents/pi/runs/*/` to discover known runs.
-3. If legacy layout is detected (`.agents/pi/state.json` exists at the top
-   level and `runs/` does not), ask the user whether to migrate it into
-   `.agents/pi/runs/<slug>/`. Default the slug from `brief.md`'s H1; fall
-   back to a timestamp if needed. On approval, move the legacy tree, write
-   `current.json`, and continue as a normal run.
-4. If runs already exist, ask whether to resume the active run, switch to an
+1. Read `.agents/work/current.json` if present.
+2. List `.agents/work/runs/*/` to discover known runs.
+3. If runs already exist, ask whether to resume the active run, switch to an
    existing run, create a new run, or abort.
-5. When creating a new run, derive the default slug from the user's request
+4. When creating a new run, derive the default slug from the user's request
    and show it to the user. Check for collisions by comparing against the
-   existing directories under `.agents/pi/runs/`. Do not force a slug
-   question if `.agents/pi/runs/<derived-slug>/` does not already exist and
+   existing directories under `.agents/work/runs/`. Do not force a slug
+   question if `.agents/work/runs/<derived-slug>/` does not already exist and
    the user does not want to rename it.
-6. Once a slug is selected, set `state_root = .agents/pi/runs/<slug>/` and
-   use that root for every read/write below. Refresh `.agents/pi/current.json`
+5. Once a slug is selected, set `state_root = .agents/work/runs/<slug>/` and
+   use that root for every read/write below. Refresh `.agents/work/current.json`
    whenever the active run changes.
 
 ### Phase A — Interactive Planning (foreground planner)
 
-1. Spawn `planner` as a **foreground** subagent with the user's request and
+1. **Select critics for this run.** Use `AskUserQuestion` with four options:
+   - `None` — Claude-only. No Codex, no Gemini.
+   - `Codex only` — default. Codex researches and reviews; Gemini skipped.
+   - `Gemini only` — Gemini researches and reviews; Codex skipped.
+   - `Codex + Gemini` — both run in parallel during research and review.
+     Tiebreaks surface when they disagree.
+
+   Default to `Codex only` if the preflight showed Gemini is not installed.
+   Persist the choice in memory for this phase; it is written into
+   `rubric.json.research_policy.providers` during Phase E finalize. The
+   coordinator gates Phase B researchers, Phase D plan reviewers, the
+   Phase 2 build reviewer, and the Phase 3 final reviewer on this field.
+2. Spawn `planner` as a **foreground** subagent with the user's request and
    repo context. The planner runs steps 1-4: posture check, clarify, lateral
    thinking, and distill.
-2. The planner may return early with questions for the user. When this
+3. The planner may return early with questions for the user. When this
    happens, relay the question via `AskUserQuestion`, then send the answer
    back to the planner via `SendMessage` (with `summary`). Repeat until the
    planner completes all four steps. If the planner has fully terminated,
    spawn a fresh planner with the accumulated context instead.
-3. When the planner is done, read the primitives from files in `state_root`:
+4. When the planner is done, read the primitives from files in `state_root`:
    `state.json`, `research/lateral-thinking.md`.
 
 ### Phase B — Parallel Research (coordinator-driven)
 
-4. Update `state.json` in `state_root`: `current_step` = `"research_fanout"`.
-5. For each primitive, spawn **both** `claude-researcher` and
-   `codex-researcher` in parallel. All researchers run simultaneously.
-   - Pass each researcher: the primitive name/description, brief context,
-     posture, repo state, and the output file path under
-     `research/fanout/` in `state_root`.
-6. When all researchers complete, read all result files from
+5. Update `state.json` in `state_root`: `current_step` = `"research_fanout"`.
+6. For each primitive, spawn researchers in parallel. Always spawn
+   `claude-researcher`. Additionally, for each provider in
+   `research_policy.providers`:
+   - `codex` → spawn `codex-researcher`, output path
+     `research/fanout/<primitive>-codex.json`
+   - `gemini` → spawn `gemini-researcher`, output path
+     `research/fanout/<primitive>-gemini.json`
+
+   Pass each researcher: the primitive name/description, brief context,
+   posture, repo state, and the output file path under `research/fanout/`
+   in `state_root`. If the providers list is empty (Claude-only), spawn
+   only `claude-researcher`.
+7. When all researchers complete, read all result files from
    `research/fanout/` in `state_root`.
-7. Update `state.json` in `state_root`: `current_step` = `"verify_tech"`.
-8. Build a **consensus matrix**: compare Claude vs Codex recommendations per
-   primitive. Where they agree, adopt the recommendation. Where they disagree,
-   present the disagreement as a tiebreak for the user to resolve.
-9. Present the matrix to the user and collect tiebreak decisions.
-10. Write `research/consensus-matrix.md` in `state_root`.
+8. Update `state.json` in `state_root`: `current_step` = `"verify_tech"`.
+9. Build a **consensus matrix**: compare recommendations per primitive across
+   every researcher that ran. Where they agree, adopt the recommendation.
+   Where they disagree, present the disagreement as a tiebreak for the user
+   to resolve. If only `claude-researcher` ran, there is nothing to compare
+   against — skip the tiebreak UI and record the Claude recommendations
+   directly.
+10. Present the matrix to the user and collect tiebreak decisions.
+11. Write `research/consensus-matrix.md` in `state_root`.
 
 ### Phase C — Task Proposal (foreground planner)
 
-11. Update `state.json` in `state_root`: `current_step` = `"propose_tasks"`.
-12. Spawn a **fresh** `planner` (foreground) with the primitives and resolved
+12. Update `state.json` in `state_root`: `current_step` = `"propose_tasks"`.
+13. Spawn a **fresh** `planner` (foreground) with the primitives and resolved
     tech decisions as context. The planner proposes ordered task slices with
     specific test criteria.
-13. The planner presents tasks to the user for confirmation.
+14. The planner presents tasks to the user for confirmation.
 
-### Phase D — Iterative Codex Review (coordinator-driven)
+### Phase D — Iterative External Review (coordinator-driven)
 
-14. Update `state.json` in `state_root`: `current_step` = `"codex_review"`.
-15. Spawn `codex-reviewer` pass 1: review brief + tasks for gaps, risks, and
-    test adequacy. Save to `reviews/codex-plan-pass-1.json` in `state_root`.
-    - Incorporate `must_address` items into the plan.
-    - Note `nice_to_have` items.
-16. If pass 1 found issues: spawn `codex-reviewer` pass 2 on the updated plan.
-    Save to `reviews/codex-plan-pass-2.json` in `state_root`.
-    - If clean (`changed: false`), skip pass 3.
-17. If pass 2 found issues: spawn `codex-reviewer` pass 3. Remaining issues
-    become noted risks. Save to `reviews/codex-plan-pass-3.json` in
-    `state_root`.
+15. Update `state.json` in `state_root`: `current_step` = `"codex_review"`
+    (name preserved for state compatibility; the step runs whichever critics
+    are in `research_policy.providers`).
+16. For each provider in the selection, run up to 3 iterative review passes
+    against the brief + tasks. Save each pass as
+    `reviews/<provider>-plan-pass-<N>.json` in `state_root` (e.g.
+    `codex-plan-pass-1.json`, `gemini-plan-pass-1.json`).
+    - Pass 1: review for gaps, risks, and test adequacy. Incorporate
+      `must_address` items directly into the plan; note `nice_to_have`.
+    - Pass 2: re-run on the updated plan. If clean (`changed: false`), skip
+      pass 3.
+    - Pass 3 (if needed): remaining issues become noted risks, not blockers.
+    When the providers list contains both `codex` and `gemini`, run them in
+    parallel per pass and merge their `must_address` items before re-running.
+17. If no providers are selected (`providers: []`), skip Phase D entirely.
 
-If the Codex CLI is not available, check `execution_policy` from
-`rubric.json`. If `codex_policy` is `skip`, skip Phase D silently. If
-`codex_policy` is `required`, halt and inform the user. If `codex_policy` is
-`optional`, apply `degraded_mode`: `warn_and_continue` — warn the user and
-skip to Phase E; `block` — halt and inform the user.
+If a selected CLI is not available, check `execution_policy` from
+`rubric.json`. For Codex, `codex_policy` governs the fallback as before. For
+Gemini, reuse the same policy semantics (warn and continue on optional;
+block on required). Record the absence in the noted risks for Phase E.
 
 ### Phase E — Finalize
 
 18. Update `state.json` in `state_root`: `current_step` = `"finalize"`.
 19. Present the final plan to the user: brief summary, consensus matrix,
-    codex review results, ordered tasks, noted risks.
+    review results from each selected provider, ordered tasks, noted risks.
 20. On approval, write `brief.md`, `rubric.json`, and `tasks/*.json` in
-    `state_root`; update `state.json` in `state_root` with `phase: "execute"`,
-    `project_slug`, `title`, and the resolved `state_root`; then refresh
-    `.agents/pi/current.json`.
+    `state_root`. Set `rubric.json.research_policy.providers` from Phase A
+    step 1. Update `state.json` in `state_root` with `phase: "execute"`,
+    `project_slug`, `title`, the resolved `state_root`, and refresh the
+    `orchestrator.last_command_cli` field. Then refresh
+    `.agents/work/current.json`.
 
 Follow the protocol exactly. Do not skip the human checkpoints.

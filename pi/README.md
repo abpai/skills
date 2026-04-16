@@ -23,7 +23,7 @@ Pi keeps the control loop simple:
 2. `planner` turns the request into a brief, rubric, and ordered task slices.
 3. The coordinator drafts a contract for the current slice, then spawns
    `generator` to execute it as one coherent pass.
-4. `evaluator` runs per-task verification, incorporates Codex review, grades
+4. `evaluator` runs per-task verification, incorporates external reviews (Codex, Gemini, or both), grades
    the build, and drives narrow repairs.
 
 By default, Codex is the second-provider critic at every phase checkpoint:
@@ -97,9 +97,9 @@ user
 
 | Command | Phase | What it does |
 | --- | --- | --- |
-| `/pi:plan` | Plan | Posture -> clarify -> lateral thinking -> distill -> parallel research fanout -> consensus matrix -> task slices -> iterative Codex critique |
-| `/pi:execute` | Execute | Per-task: draft contract -> build -> Codex review -> evaluate with per-task verification -> task-scoped repair |
-| `/pi:review` | Review | Full suite + per-task verification -> Codex final read -> scorecard with consensus matrix cross-reference |
+| `/pi:plan` | Plan | Posture -> clarify -> lateral thinking -> distill -> provider selection (None / Codex / Gemini / both) -> parallel research fanout -> consensus matrix -> task slices -> iterative external critique |
+| `/pi:execute` | Execute | Per-task: draft contract -> build (Claude `generator` or Codex `codex-executor` per `primary_executor`) -> external review (gated by `research_policy.providers`) -> evaluate with per-task verification -> task-scoped repair |
+| `/pi:review` | Review | Full suite + per-task verification -> external final reads (per provider) -> scorecard with consensus matrix cross-reference |
 
 ## Agents
 
@@ -107,10 +107,13 @@ user
 | --- | --- |
 | `planner` | Claude primary. Interactive planning (foreground subagent). Spawned twice: once for posture/clarify/lateral-thinking/distill, once for task proposal. |
 | `claude-researcher` | Claude primary. 3-layer research per primitive (boring/trending/first-principles). |
-| `generator` | Claude primary. Coherent implementation against the active contract. |
-| `evaluator` | Claude primary. Per-task verification, rubric scoring, incorporates Codex review from coordinator. |
-| `codex-researcher` | Codex secondary. Parallel 3-layer research per primitive via Codex CLI. |
-| `codex-reviewer` | Codex secondary. Mandatory plan critique (up to 3 passes), build review, and final review. |
+| `generator` | Claude primary builder. Coherent implementation against the active contract. Spawned when `execution_policy.primary_executor` is `claude` (default). |
+| `codex-executor` | Codex primary builder. Thin wrapper that shells `codex exec` against the active contract. Spawned when `execution_policy.primary_executor` is `codex`. |
+| `evaluator` | Claude primary. Per-task verification, rubric scoring, incorporates external reviews (Codex, Gemini, or both) from coordinator. |
+| `codex-researcher` | Codex secondary. 3-layer research per primitive via Codex CLI. Enabled when `research_policy.providers` includes `codex`. |
+| `codex-reviewer` | Codex secondary. Plan critique (up to 3 passes), build review, final review. Enabled when `research_policy.providers` includes `codex`. |
+| `gemini-researcher` | Gemini secondary. 3-layer research per primitive via Gemini CLI. Enabled when `research_policy.providers` includes `gemini`. |
+| `gemini-reviewer` | Gemini secondary. Same review schema as `codex-reviewer`, wraps `gemini -p`. Enabled when `research_policy.providers` includes `gemini`. |
 
 ## Claude Plugin Constraints
 
@@ -129,11 +132,11 @@ persistent state.
 
 ## State
 
-Pi uses `.agents/pi/` as a namespace root and stores each run under its own
+Pi uses `.agents/work/` as a namespace root and stores each run under its own
 state root:
 
 ```text
-.agents/pi/
+.agents/work/
 ├── current.json
 └── runs/
     └── <slug>/
@@ -167,41 +170,42 @@ This is the artifact flow Pi tries to maintain:
 ```text
 /pi:plan
   |
-  +--> .agents/pi/current.json
-  +--> .agents/pi/runs/<slug>/state.json
-  +--> .agents/pi/runs/<slug>/brief.md
-  +--> .agents/pi/runs/<slug>/rubric.json
-  +--> .agents/pi/runs/<slug>/tasks/T01.json ...
-  +--> .agents/pi/runs/<slug>/research/lateral-thinking.md
-  +--> .agents/pi/runs/<slug>/research/fanout/*-claude.json, *-codex.json
-  +--> .agents/pi/runs/<slug>/research/consensus-matrix.md
-  \--> .agents/pi/runs/<slug>/reviews/codex-plan-pass-{1,2,3}.json
+  +--> .agents/work/current.json
+  +--> .agents/work/runs/<slug>/state.json
+  +--> .agents/work/runs/<slug>/brief.md
+  +--> .agents/work/runs/<slug>/rubric.json
+  +--> .agents/work/runs/<slug>/tasks/T01.json ...
+  +--> .agents/work/runs/<slug>/research/lateral-thinking.md
+  +--> .agents/work/runs/<slug>/research/fanout/*-claude.json, *-codex.json
+  +--> .agents/work/runs/<slug>/research/consensus-matrix.md
+  \--> .agents/work/runs/<slug>/reviews/codex-plan-pass-{1,2,3}.json
 
 /pi:execute
   |
-  +--> .agents/pi/runs/<slug>/contracts/T01.md ...
+  +--> .agents/work/runs/<slug>/contracts/T01.md ...
   +--> code changes in the target repo
-  +--> .agents/pi/runs/<slug>/checkpoints/build-pass-{N}-{task}.json  (transient: written after generator, deleted after evaluator)
-  +--> .agents/pi/runs/<slug>/reviews/codex-build-{N}.json
-  +--> .agents/pi/runs/<slug>/evaluations/build-pass-{N}.json
-  \--> .agents/pi/runs/<slug>/state.json (task_progress updated per task)
+  +--> .agents/work/runs/<slug>/checkpoints/build-pass-{N}-{task}.json  (transient: written after generator, deleted after evaluator)
+  +--> .agents/work/runs/<slug>/reviews/codex-build-{N}.json
+  +--> .agents/work/runs/<slug>/evaluations/build-pass-{N}.json
+  \--> .agents/work/runs/<slug>/state.json (task_progress updated per task)
 
 /pi:review
   |
-  +--> .agents/pi/runs/<slug>/evaluations/suite-results.json
-  +--> .agents/pi/runs/<slug>/reviews/codex-final.json
-  +--> .agents/pi/runs/<slug>/evaluations/review.json
+  +--> .agents/work/runs/<slug>/evaluations/suite-results.json
+  +--> .agents/work/runs/<slug>/reviews/codex-final.json
+  +--> .agents/work/runs/<slug>/evaluations/review.json
   |
   +--> if passing:
-  |      +--> .agents/pi/runs/<slug>/LEARNINGS.md
-  |      \--> .agents/pi/runs/<slug>/state.json => done
+  |      +--> .agents/work/runs/<slug>/LEARNINGS.md
+  |      \--> .agents/work/runs/<slug>/state.json => done
   \--> if failing:
-         \--> .agents/pi/runs/<slug>/state.json => execute (repair cycle)
+         \--> .agents/work/runs/<slug>/state.json => execute (repair cycle)
 ```
 
-Legacy note: if a repo still has the old top-level `.agents/pi/state.json`
-layout, `/pi:plan` should offer a one-time migration into
-`.agents/pi/runs/<slug>/` before continuing.
+The `.agents/work/` namespace is intentionally frontend-agnostic. Pi is the
+Claude-native frontend, but the schema is stable so other CLIs (a forked
+oh-my-codex, a Codex-native wrapper, a script, etc.) can target the same
+run artifacts.
 
 ## Why This Shape
 
@@ -264,22 +268,22 @@ artifacts trackable by default.
 
 Usually worth committing:
 
-- `.agents/pi/runs/<slug>/brief.md`
-- `.agents/pi/runs/<slug>/rubric.json`
-- `.agents/pi/runs/<slug>/tasks/`
-- `.agents/pi/runs/<slug>/contracts/`
-- `.agents/pi/runs/<slug>/research/consensus-matrix.md`
-- `.agents/pi/runs/<slug>/research/lateral-thinking.md`
-- `.agents/pi/runs/<slug>/LEARNINGS.md`
+- `.agents/work/runs/<slug>/brief.md`
+- `.agents/work/runs/<slug>/rubric.json`
+- `.agents/work/runs/<slug>/tasks/`
+- `.agents/work/runs/<slug>/contracts/`
+- `.agents/work/runs/<slug>/research/consensus-matrix.md`
+- `.agents/work/runs/<slug>/research/lateral-thinking.md`
+- `.agents/work/runs/<slug>/LEARNINGS.md`
 
 Usually keep local:
 
-- `.agents/pi/current.json`
-- `.agents/pi/runs/<slug>/state.json`
-- `.agents/pi/runs/<slug>/research/fanout/`
-- `.agents/pi/runs/<slug>/reviews/`
-- `.agents/pi/runs/<slug>/evaluations/`
-- `.agents/pi/runs/<slug>/checkpoints/`
+- `.agents/work/current.json`
+- `.agents/work/runs/<slug>/state.json`
+- `.agents/work/runs/<slug>/research/fanout/`
+- `.agents/work/runs/<slug>/reviews/`
+- `.agents/work/runs/<slug>/evaluations/`
+- `.agents/work/runs/<slug>/checkpoints/`
 
 If `current.json` is missing but only one run exists, `/pi:execute` and
 `/pi:review` will auto-select it. If several runs exist, use `/pi:plan` to

@@ -4,10 +4,10 @@ argument-hint: "[optional task id or filter]"
 allowed-tools: >
   Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
   Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
-  Bash(codex *) Bash(cat .agents/pi/*) Bash(cat .agents/pi/runs/*/*)
-  Bash(cat .agents/pi/runs/*/*/*) Bash(cat .agents/pi/runs/*/*/*/*)
-  Bash(ls .agents/pi/*) Bash(ls .agents/pi/runs/*)
-  Bash(ls .agents/pi/runs/*/*) Bash(ls .agents/pi/runs/*/*/*)
+  Bash(codex *) Bash(gemini *) Bash(cat .agents/work/*) Bash(cat .agents/work/runs/*/*)
+  Bash(cat .agents/work/runs/*/*/*) Bash(cat .agents/work/runs/*/*/*/*)
+  Bash(ls .agents/work/*) Bash(ls .agents/work/runs/*)
+  Bash(ls .agents/work/runs/*/*) Bash(ls .agents/work/runs/*/*/*)
   Read Write Edit Grep Glob
 ---
 
@@ -18,10 +18,10 @@ echo "PI_EXECUTE_PREFLIGHT_$(date +%s%N)"
 git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
 git branch --show-current 2>/dev/null
 git status --short 2>/dev/null | head -30
-test -f .agents/pi/current.json && cat .agents/pi/current.json || echo "no active run"
-ls -1 .agents/pi/runs 2>/dev/null || echo "no runs"
-test -f .agents/pi/state.json && echo "legacy top-level pi state present" || true
+test -f .agents/work/current.json && cat .agents/work/current.json || echo "no active run"
+ls -1 .agents/work/runs 2>/dev/null || echo "no runs"
 timeout 3 codex --version 2>&1 || echo "codex: not installed"
+timeout 3 gemini --version 2>&1 || echo "gemini: not installed"
 ```
 
 The block above runs at skill-load time. Use its output as a fast sanity
@@ -34,7 +34,7 @@ Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and ex
 
 User input: $ARGUMENTS
 
-Active state root: `.agents/pi/runs/<slug>/` via `.agents/pi/current.json`
+Active state root: `.agents/work/runs/<slug>/` via `.agents/work/current.json`
 
 ## Coordinator Pipeline
 
@@ -44,14 +44,17 @@ subagents, so you own all agent orchestration.
 ### Phase A — Load and Resume
 
 0. Resolve the active run:
-   - Read `.agents/pi/current.json` if present and use its slug.
+   - Read `.agents/work/current.json` if present and use its slug.
    - If `current.json` is missing and exactly one run exists under
-     `.agents/pi/runs/`, auto-select it and continue.
+     `.agents/work/runs/`, auto-select it and continue.
    - Otherwise stop and tell the user to run `/pi:plan` to select or create
      a run.
 1. Read `brief.md`, `rubric.json`, `tasks/*.json`, `state.json`,
    `research/consensus-matrix.md` from the resolved `state_root`.
    If any prerequisite is missing, tell the user to run `/pi:plan` first.
+   On the first state write of this phase, set
+   `state.json.orchestrator.last_command_cli = "claude"` with
+   `orchestrator.updated_at` = current ISO-8601 time.
 2. Read `task_progress` from `state.json`. Skip any task with status `complete`
    or `blocked`.
 3. Find the first non-complete, non-blocked task. If resuming a failed task, read its
@@ -78,7 +81,8 @@ subagents, so you own all agent orchestration.
    Include: scope, files likely to change, concrete verification steps, risks.
 7. Spawn `evaluator` (foreground) to pressure-test the contract.
    If "done" is still fuzzy, fix the contract before building.
-8. Spawn `generator` (foreground) with:
+8. Read `execution_policy.primary_executor` from `rubric.json` (default
+   `claude`). Spawn the chosen builder (foreground) with:
    - the brief
    - the ordered task slices
    - the active contract
@@ -86,6 +90,20 @@ subagents, so you own all agent orchestration.
    - per-task verification arrays (the `verification` array from each task JSON)
    - the current build/repair pass number
    - any prior evaluator feedback (if repair pass)
+
+   When `primary_executor` is `claude`, spawn `generator`. When `codex`,
+   spawn `codex-executor` instead. All downstream steps (9 onward) are
+   identical regardless of which builder ran — the checkpoint shape is the
+   same, the reviewer and evaluator consume it the same way.
+
+   **Executor availability is a hard block.** When `primary_executor` is
+   `codex` and the Codex CLI is not available (the preflight `codex --version`
+   failed), halt and tell the user. Do NOT fall back to `generator` and do
+   NOT honor `execution_policy.codex_policy` here — that field governs
+   *critic* availability, not executor availability. The user explicitly
+   chose Codex as the builder, so missing-Codex must be fixed before the
+   build proceeds. Same rule applies in reverse: if a future executor is
+   added and selected, its CLI must be present.
 9. **Persist the handoff.** As soon as the generator returns, before spawning
    any reviewer or evaluator:
    - Increment `build_pass` in `state.json` and set `current_step` =
@@ -99,21 +117,31 @@ subagents, so you own all agent orchestration.
 
 ### Phase C — Review and Evaluate
 
-10. Spawn `codex-reviewer` to review the latest changes. Pass the list of files
-    modified in this pass so the review is scoped to the current increment, not
-    the entire worktree. Save to `reviews/codex-build-<N>.json`.
-    If Codex CLI is not available, check `execution_policy.codex_policy` from
-    `rubric.json`. If `required`, halt and warn the user. If `skip`, proceed
-    without Codex review. If `optional`, apply `execution_policy.degraded_mode`:
-    `warn_and_continue` — note the absence and continue; `block` — halt until
-    Codex is available.
+10. Read `research_policy.providers` from `rubric.json`. For each provider
+    in the list, spawn the matching reviewer against the latest changes:
+    - `codex` → spawn `codex-reviewer`, save to `reviews/codex-build-<N>.json`
+    - `gemini` → spawn `gemini-reviewer`, save to `reviews/gemini-build-<N>.json`
+
+    Pass each reviewer the list of files modified in this pass so the review
+    is scoped to the current increment, not the entire worktree. When both
+    providers are active, spawn them in parallel.
+
+    If a selected CLI is not available, check `execution_policy.codex_policy`
+    (same policy applies to Gemini in this phase). If `required`, halt and
+    warn the user. If `skip`, proceed without that provider's review. If
+    `optional`, apply `execution_policy.degraded_mode`: `warn_and_continue`
+    — note the absence and continue; `block` — halt until the CLI is
+    available.
+
+    If `research_policy.providers` is empty, skip this step entirely.
 11. Update `state.json`: `current_step` = `"awaiting_evaluator"`. Then spawn
     `evaluator` (foreground) with:
     - the brief, active contract, rubric
-    - the build/repair summary from the generator (from the checkpoint)
+    - the build/repair summary from the checkpoint (regardless of whether
+      `generator` or `codex-executor` produced it)
     - per-task verification arrays
     - the consensus matrix
-    - the codex review output (if available)
+    - the review output from every active provider (Codex, Gemini, or both)
     - the current pass number
 12. Write evaluation to `evaluations/build-pass-<N>.json`, then delete the
     matching `checkpoints/build-pass-<N>-<task-id>.json` — the evaluation

@@ -9,9 +9,9 @@ node_modules/
 .env
 __pycache__
 .claude/
-.agents/pi/current.json
-.agents/pi/runs/*/state.json
-.agents/pi/runs/*/research/fanout/
-.agents/pi/runs/*/reviews/
-.agents/pi/runs/*/evaluations/
-.agents/pi/runs/*/checkpoints/
+.agents/work/current.json
+.agents/work/runs/*/state.json
+.agents/work/runs/*/research/fanout/
+.agents/work/runs/*/reviews/
+.agents/work/runs/*/evaluations/
+.agents/work/runs/*/checkpoints/
