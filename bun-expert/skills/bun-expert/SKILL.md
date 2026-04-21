@@ -9,7 +9,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.3"
+  version: "1.4"
   upstream_skill: "https://bun.com/docs"
   tags: "bun javascript typescript runtime server bundler test"
 ---
@@ -72,6 +72,15 @@ bun audit
 bun list
 bun pm migrate
 ```
+
+### Install strategy notes
+
+- `bun install` now streams tarballs to disk by default, which lowers memory
+  usage on large installs.
+- If you need to debug an install regression, temporarily disable streaming with
+  `BUN_FEATURE_FLAG_DISABLE_STREAMING_INSTALL=1`.
+- In peer-heavy monorepos, try `bun install --linker=isolated` before falling
+  back to another package manager.
 
 ### Monorepo catalogs
 
@@ -155,6 +164,11 @@ Bun.serve({
 });
 ```
 
+For large downloads or media, prefer file-backed responses such as
+`new Response(Bun.file("./video.mp4"))`. Bun now streams these efficiently
+across HTTP and TLS, and single-range requests (`Range: bytes=...`) are handled
+automatically for whole-file responses.
+
 ---
 
 ## Built-in API Map
@@ -181,6 +195,10 @@ Bun.serve({
 bun test
 bun test --watch
 bun test --test-name-pattern "auth"
+bun test --changed
+bun test --isolate
+bun test --parallel=8
+bun test --shard=1/3
 bun test --bail
 bun test --coverage
 bun test --coverage-reporter text
@@ -193,8 +211,11 @@ bun test --path-ignore-patterns "*/fixtures/*"
 bun build ./src/index.ts --outdir ./dist
 bun build --target=bun ./src/server.ts --outfile ./dist/server.js
 bun build --compile ./src/cli.ts --outfile ./dist/my-cli
-bun build --compile --target=browser ./src/app.ts  # self-contained HTML output
+bun build --compile --target=browser ./src/index.html --outdir ./dist
 ```
+
+When the entrypoint is HTML, Bun inlines file-loader assets imported from
+JavaScript into the standalone HTML output, so the result stays single-file.
 
 ---
 
@@ -212,8 +233,8 @@ bun build --compile --target=browser ./src/app.ts  # self-contained HTML output
 
 | Reference | Contents |
 |-----------|----------|
-| [references/builtin-apis.md](references/builtin-apis.md) | `Bun.serve`, SQL, S3, Redis, cron, shell, filesystem, crypto/password utilities |
-| [references/testing-and-bundling.md](references/testing-and-bundling.md) | `bun test` usage, mocking patterns, `bun build` CLI and API |
+| [references/builtin-apis.md](references/builtin-apis.md) | `Bun.serve`, WebSockets, SQL, S3, Redis, cron, shell, filesystem, and crypto APIs |
+| [references/testing-and-bundling.md](references/testing-and-bundling.md) | `bun test` usage, suite-splitting flags, mocking patterns, `bun build` CLI and API |
 | [references/node-migration.md](references/node-migration.md) | Practical Node-to-Bun migration steps and compatibility guidance |
 
 ---
@@ -224,11 +245,13 @@ bun build --compile --target=browser ./src/app.ts  # self-contained HTML output
 - https://bun.com/docs/cli/test
 - https://bun.com/docs/cli/pm
 - https://bun.com/docs/runtime/http/routing
+- https://bun.com/docs/runtime/http/websockets
 - https://bun.com/docs/runtime/env
 - https://bun.com/docs/runtime/sql
 - https://bun.com/docs/runtime/s3
 - https://bun.com/docs/runtime/redis
 - https://bun.com/docs/runtime/cron
+- https://bun.com/docs/api/hashing
 - https://bun.com/docs/guides/ecosystem/migrate-from-nodejs
 
 ## Update Check
