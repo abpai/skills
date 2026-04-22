@@ -30,6 +30,12 @@ bun test
 bun test src/
 bun test --watch
 bun test --test-name-pattern "auth"
+bun test --changed
+bun test --changed=main
+bun test --isolate
+bun test --parallel
+bun test --parallel=8
+bun test --shard=1/3
 bun test --timeout 30000
 bun test --bail
 bun test --bail 3
@@ -44,6 +50,18 @@ bun test --path-ignore-patterns "*/fixtures/*"
 Notes:
 - `--test-name-pattern` is the canonical flag for filtering test names.
 - Default timeout is 5000ms unless overridden.
+
+### Scaling suites and CI
+
+- `--isolate` runs each test file with a fresh global object, which helps when
+  files leak timers, sockets, or other process-wide state.
+- `--parallel[=N]` distributes files across worker processes and implies
+  `--isolate`.
+- `--shard=M/N` splits files deterministically across CI jobs using a 1-based
+  shard index.
+- `--changed[=<ref>]` filters to tests affected by local git changes or by a
+  specific commit/branch diff.
+- In parallel runs, Bun sets both `JEST_WORKER_ID` and `BUN_TEST_WORKER_ID`.
 
 ### Matchers (selected)
 
@@ -138,8 +156,12 @@ bun build ./src/index.ts --target=browser --outfile ./dist/app.js
 bun build ./src/index.ts --minify
 bun build ./src/index.ts --sourcemap=external
 bun build ./src/cli.ts --compile --outfile ./dist/my-cli
-bun build ./src/app.ts --compile --target=browser  # self-contained HTML output
+bun build ./src/index.html --compile --target=browser --outdir ./dist
 ```
+
+When the entrypoint is HTML, file-loader assets imported from JavaScript are
+inlined as `data:` URIs in the standalone output, so the final `index.html`
+does not need sidecar asset files.
 
 ### JavaScript API
 

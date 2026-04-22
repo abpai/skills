@@ -51,6 +51,25 @@ Bun.serve({
 });
 ```
 
+### File-backed responses
+
+```typescript
+Bun.serve({
+  routes: {
+    "/video.mp4": new Response(Bun.file("./video.mp4")),
+  },
+  fetch() {
+    return new Response(Bun.file("./large-file.bin"));
+  },
+});
+```
+
+Notes:
+- Bun streams file-backed responses efficiently, including TLS and Windows
+  paths.
+- Single-range requests such as `Range: bytes=0-1023` are handled
+  automatically for whole-file responses.
+
 ---
 
 ## WebSockets
@@ -85,6 +104,9 @@ Bun.serve<WsData>({
   },
 });
 ```
+
+For client connections over Unix domain sockets, Bun also supports
+`ws+unix://` and `wss+unix://` URLs via the standard `WebSocket` client.
 
 ---
 
@@ -228,6 +250,28 @@ await Bun.write("./out.txt", text);
 const hash = new Bun.CryptoHasher("sha256").update("data").digest("hex");
 const passwordHash = await Bun.password.hash("secret");
 const ok = await Bun.password.verify("secret", passwordHash);
+```
+
+### Web Crypto and `node:crypto`
+
+```typescript
+import crypto from "node:crypto";
+
+const sha3 = crypto.createHash("sha3-256").update("data").digest("hex");
+
+const digest = await crypto.subtle.digest(
+  "SHA3-256",
+  new TextEncoder().encode("data"),
+);
+
+const local = await crypto.subtle.generateKey("X25519", false, ["deriveBits"]);
+const remote = await crypto.subtle.generateKey("X25519", false, ["deriveBits"]);
+
+const sharedSecret = await crypto.subtle.deriveBits(
+  { name: "X25519", public: remote.publicKey },
+  local.privateKey,
+  256,
+);
 ```
 
 ---
