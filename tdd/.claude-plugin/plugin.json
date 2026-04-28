@@ -1,0 +1,7 @@
+{
+  "name": "tdd",
+  "version": "1.0.0",
+  "description": "Use test-driven development with a vertical red-green-refactor loop and behavior-focused tests.",
+  "author": { "name": "Andy Pai" },
+  "license": "MIT"
+}

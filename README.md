@@ -23,6 +23,7 @@ curl -fsSL https://plannotator.ai/install.sh | bash
 # Install planning-oriented skills
 /plugin install distill@abpai-skills
 /plugin install lateral-thinking@abpai-skills
+/plugin install grill-me@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install pi@abpai-skills
 /plugin install plannotator@abpai-skills
@@ -60,6 +61,7 @@ plugin hooks such as `ExitPlanMode`.
 |--------|-------------|-------------|
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
+| **grill-me** | Relentlessly interview a plan or design until its decision tree is understood. | Yes |
 | **codex-exec** | Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review. | Yes |
 | **pi** | Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique at high-leverage checkpoints. | Claude-only |
 
@@ -69,7 +71,9 @@ plugin hooks such as `ExitPlanMode`.
 |--------|-------------|
 | **code-simplifier** | Simplify and refine code for clarity, consistency, and maintainability |
 | **dead-code-eliminator** | Audit for unreachable functions, unused imports, orphaned classes, stale flags |
+| **improve-codebase-architecture** | Find deepening opportunities that improve locality, leverage, testability, and navigability |
 | **review-and-commit** | Review uncommitted changes, then prepare safe atomic commits |
+| **tdd** | Use a vertical red-green-refactor loop with behavior-focused tests |
 
 ### Developer Productivity
 
@@ -81,6 +85,7 @@ plugin hooks such as `ExitPlanMode`.
 | **project-memory** | Always-on memory via `.agents/LEARNINGS.md` — mistakes, patterns, preferences |
 | **scratch** | Understand a project's internals through runnable .scratch/ exploration scripts |
 | **socratic-code-owner** | Quiz the developer on AI-built code to ensure understanding |
+| **zoom-out** | Map unfamiliar code at a higher level with modules, callers, and domain vocabulary |
 
 ### Tools
 
@@ -196,7 +201,7 @@ cd skills
 codex
 ```
 
-Open the plugin directory with `codex /plugins` — all 20 Codex-compatible
+Open the plugin directory with `codex /plugins` — all 24 Codex-compatible
 plugins appear automatically from the repo marketplace.
 
 `pi` and `plannotator` stay Claude-only in this repo and therefore do not

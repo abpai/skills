@@ -1,0 +1,7 @@
+{
+  "name": "zoom-out",
+  "version": "1.0.0",
+  "description": "Explain an unfamiliar code area at a higher level with relevant modules, callers, and domain vocabulary.",
+  "author": { "name": "Andy Pai" },
+  "license": "MIT"
+}
