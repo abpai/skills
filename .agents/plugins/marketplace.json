@@ -41,6 +41,18 @@
       "category": "Productivity"
     },
     {
+      "name": "grill-me",
+      "source": {
+        "source": "local",
+        "path": "./grill-me"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "agent-browser",
       "source": {
         "source": "local",
@@ -117,6 +129,30 @@
       "source": {
         "source": "local",
         "path": "./dead-code-eliminator"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Code Quality"
+    },
+    {
+      "name": "improve-codebase-architecture",
+      "source": {
+        "source": "local",
+        "path": "./improve-codebase-architecture"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Code Quality"
+    },
+    {
+      "name": "tdd",
+      "source": {
+        "source": "local",
+        "path": "./tdd"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -213,6 +249,18 @@
       "source": {
         "source": "local",
         "path": "./socratic-code-owner"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Learning"
+    },
+    {
+      "name": "zoom-out",
+      "source": {
+        "source": "local",
+        "path": "./zoom-out"
       },
       "policy": {
         "installation": "AVAILABLE",

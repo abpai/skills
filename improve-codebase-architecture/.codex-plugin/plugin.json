@@ -1,0 +1,11 @@
+{
+  "name": "improve-codebase-architecture",
+  "version": "1.0.0",
+  "description": "Find codebase architecture deepening opportunities that improve locality, leverage, testability, and navigability.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}

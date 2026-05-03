@@ -30,6 +30,13 @@
       "keywords": ["codex", "openai", "multi-model", "review"]
     },
     {
+      "name": "grill-me",
+      "description": "Interview the user relentlessly about a plan or design until every important decision branch is understood.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "grill-me" },
+      "category": "productivity",
+      "keywords": ["interview", "planning", "design-review", "questions"]
+    },
+    {
       "name": "agent-browser",
       "description": "Browser automation CLI for AI agents. Navigate pages, fill forms, click buttons, take screenshots, extract data.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "agent-browser" },
@@ -84,6 +91,20 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "dead-code-eliminator" },
       "category": "code-quality",
       "keywords": ["dead-code", "cleanup", "audit", "unused"]
+    },
+    {
+      "name": "improve-codebase-architecture",
+      "description": "Find codebase architecture deepening opportunities that improve locality, leverage, testability, and navigability.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "improve-codebase-architecture" },
+      "category": "code-quality",
+      "keywords": ["architecture", "refactoring", "deep-modules", "testability"]
+    },
+    {
+      "name": "tdd",
+      "description": "Use test-driven development with a vertical red-green-refactor loop and behavior-focused tests.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "tdd" },
+      "category": "code-quality",
+      "keywords": ["tdd", "testing", "red-green-refactor", "integration-tests"]
     },
     {
       "name": "dokploy",
@@ -154,6 +175,13 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "socratic-code-owner" },
       "category": "learning",
       "keywords": ["quiz", "understanding", "mental-model", "ownership"]
+    },
+    {
+      "name": "zoom-out",
+      "description": "Explain an unfamiliar code area at a higher level with relevant modules, callers, and domain vocabulary.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "zoom-out" },
+      "category": "learning",
+      "keywords": ["codebase", "orientation", "architecture-map", "context"]
     },
     {
       "name": "try",
