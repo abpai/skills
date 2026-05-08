@@ -20,7 +20,7 @@ This repository now ships metadata for both runtimes:
 # Install planning-oriented skills
 /plugin install distill@abpai-skills
 /plugin install lateral-thinking@abpai-skills
-/plugin install grill-me@abpai-skills
+/plugin install mp@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install pi@abpai-skills
 ```
@@ -46,7 +46,8 @@ marketplace flow above.
 
 `pi` is intentionally excluded from the Codex marketplace in this repo. It is a
 Claude-native workflow that shells out to the `codex` CLI for second-provider
-research and review.
+research and review. The debate workflow now lives inside `pi` as
+`/pi:debate`, so it is Claude-only too.
 
 ## Plugins
 
@@ -56,9 +57,8 @@ research and review.
 |--------|-------------|-------------|
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
-| **grill-me** | Relentlessly interview a plan or design until its decision tree is understood. | Yes |
 | **codex-exec** | Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review. | Yes |
-| **pi** | Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique at high-leverage checkpoints. | Claude-only |
+| **pi** | Claude-native planner/generator/evaluator harness for long-running engineering work, plus `/pi:debate` for structured architecture debate. | Claude-only |
 
 ### Code Quality
 
@@ -66,9 +66,7 @@ research and review.
 |--------|-------------|
 | **code-simplifier** | Simplify and refine code for clarity, consistency, and maintainability |
 | **dead-code-eliminator** | Audit for unreachable functions, unused imports, orphaned classes, stale flags |
-| **improve-codebase-architecture** | Find deepening opportunities that improve locality, leverage, testability, and navigability |
 | **review-and-commit** | Review uncommitted changes, then prepare safe atomic commits |
-| **tdd** | Use a vertical red-green-refactor loop with behavior-focused tests |
 
 ### Security
 
@@ -76,17 +74,21 @@ research and review.
 |--------|-------------|
 | **secure** | Additive security hardening workflows, starting with `/secure:dependencies` for dependency resolution and supply-chain policy |
 
+### Matt Pocock Inspired
+
+| Plugin | What it does |
+|--------|-------------|
+| **mp** | Groups the imported Matt Pocock-inspired workflows under `/mp:grill-me`, `/mp:tdd`, `/mp:zoom-out`, and `/mp:improve-codebase-architecture` |
+
 ### Developer Productivity
 
 | Plugin | What it does |
 |--------|-------------|
-| **debate** | Structured architecture debate: Claude proposes, Codex critiques, Claude synthesizes |
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
 | **project-memory** | Always-on memory via `.agents/LEARNINGS.md` — mistakes, patterns, preferences |
 | **scratch** | Understand a project's internals through runnable .scratch/ exploration scripts |
 | **socratic-code-owner** | Quiz the developer on AI-built code to ensure understanding |
 | **task** | Convert a rough ask into a hands-off task brief an agent can execute end-to-end |
-| **zoom-out** | Map unfamiliar code at a higher level with modules, callers, and domain vocabulary |
 
 ### Tools
 
@@ -130,7 +132,9 @@ abpai/skills/
 │   ├── .claude-plugin/plugin.json
 │   ├── agents/
 │   ├── commands/
-│   └── skills/pi-protocol/
+│   └── skills/
+│       ├── pi-protocol/
+│       └── debate/
 └── README.md
 ```
 
@@ -196,7 +200,8 @@ Open the plugin directory with `codex /plugins` — all Codex-compatible
 plugins appear automatically from the repo marketplace.
 
 `pi` stays Claude-only in this repo and therefore does not appear in the Codex
-marketplace list.
+marketplace list. The Matt Pocock-inspired workflows are Codex-compatible as
+the grouped `mp` plugin.
 
 #### Personal installation
 

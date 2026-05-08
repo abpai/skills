@@ -1,0 +1,10 @@
+{
+  "name": "mp",
+  "version": "1.0.0",
+  "description": "Matt Pocock-inspired workflow skills grouped under /mp:* commands.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT"
+}

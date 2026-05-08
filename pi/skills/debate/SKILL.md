@@ -5,7 +5,6 @@ description: >
   synthesizes into a final ADR with concrete next steps. Use for architecture
   decisions, technical tradeoffs, or any question that benefits from adversarial
   review.
-argument-hint: "[question or decision]"
 allowed-tools: Bash(codex *) Bash(git status *) Bash(git log *) Bash(git diff *) Bash(git branch *) Bash(git rev-parse *)
 metadata:
   author: Andy Pai

@@ -37,7 +37,9 @@ Behavior when Codex is not available is governed by
 `execution_policy` in `rubric.json`.
 
 Pi is intentionally a Claude plugin only. It uses the `codex` CLI as a
-supporting tool, but it is not meant to be installed as a Codex plugin.
+supporting tool, but it is not meant to be installed as a Codex plugin. The
+structured debate workflow also lives here as `/pi:debate`, because it uses the
+same Claude-primary plus Codex-critic shape.
 
 ## Mental Model
 
@@ -85,12 +87,18 @@ user
   |      |
   |      \--> Phase E: finalize, transition to review
   |
-  \--> /pi:review (coordinator pipeline, Phases A-D)
+  +--> /pi:review (coordinator pipeline, Phases A-D)
+  |      |
+  |      +--> Phase A: load prerequisites
+  |      +--> Phase B: full suite + per-task verification
+  |      +--> Phase C: codex-reviewer + evaluator final pass
+  |      \--> Phase D: scorecard + learnings → human review
+  |
+  \--> /pi:debate (standalone debate module)
          |
-         +--> Phase A: load prerequisites
-         +--> Phase B: full suite + per-task verification
-         +--> Phase C: codex-reviewer + evaluator final pass
-         \--> Phase D: scorecard + learnings → human review
+         +--> Claude proposes
+         +--> Codex critiques
+         \--> Claude synthesizes a final ADR
 ```
 
 ## Commands
@@ -100,6 +108,7 @@ user
 | `/pi:plan` | Plan | Posture -> clarify -> lateral thinking -> distill -> provider selection (None / Codex / Gemini / both) -> parallel research fanout -> consensus matrix -> task slices -> iterative external critique |
 | `/pi:execute` | Execute | Per-task: draft contract -> build (Claude `generator` or Codex `codex-executor` per `primary_executor`) -> external review (gated by `research_policy.providers`) -> evaluate with per-task verification -> task-scoped repair |
 | `/pi:review` | Review | Full suite + per-task verification -> external final reads (per provider) -> scorecard with consensus matrix cross-reference |
+| `/pi:debate` | Debate | Standalone propose -> Codex critique -> synthesize loop for architecture decisions and tradeoffs, ending in an ADR |
 
 ## Agents
 

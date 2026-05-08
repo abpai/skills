@@ -41,10 +41,10 @@
       "category": "Productivity"
     },
     {
-      "name": "grill-me",
+      "name": "mp",
       "source": {
         "source": "local",
-        "path": "./grill-me"
+        "path": "./mp"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -137,30 +137,6 @@
       "category": "Security"
     },
     {
-      "name": "improve-codebase-architecture",
-      "source": {
-        "source": "local",
-        "path": "./improve-codebase-architecture"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Code Quality"
-    },
-    {
-      "name": "tdd",
-      "source": {
-        "source": "local",
-        "path": "./tdd"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Code Quality"
-    },
-    {
       "name": "human-writer",
       "source": {
         "source": "local",
@@ -249,18 +225,6 @@
       "source": {
         "source": "local",
         "path": "./socratic-code-owner"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Learning"
-    },
-    {
-      "name": "zoom-out",
-      "source": {
-        "source": "local",
-        "path": "./zoom-out"
       },
       "policy": {
         "installation": "AVAILABLE",
