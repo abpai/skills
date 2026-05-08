@@ -10,7 +10,7 @@ allowed-tools: >
   Bash(codex *) Bash(gemini *) Read Write Edit Grep Glob
 metadata:
   author: Andy Pai
-  version: "0.8.0"
+  version: "0.9.0"
 ---
 
 # Pi Protocol
