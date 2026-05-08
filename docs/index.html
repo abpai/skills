@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>abpai/skills — AI Workflow Plugins</title>
-  <meta name="description" content="Curated marketplace of 21 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
+  <meta name="description" content="Curated marketplace of 20 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
   <meta property="og:title" content="abpai/skills — AI Workflow Plugins">
-  <meta property="og:description" content="21 production-grade AI workflow plugins for Claude Code and Codex.">
+  <meta property="og:description" content="20 production-grade AI workflow plugins for Claude Code and Codex.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -702,8 +702,8 @@
         Cross-domain thinking, multi-model tooling, and developer productivity plugins for Claude Code and Codex.
       </p>
       <div class="hero-stats">
-        <span class="stat-pill"><strong>21</strong>&ensp;Skills</span>
-        <span class="stat-pill"><strong>6</strong>&ensp;Categories</span>
+        <span class="stat-pill"><strong>20</strong>&ensp;Skills</span>
+        <span class="stat-pill"><strong>7</strong>&ensp;Categories</span>
         <span class="stat-pill"><strong>2</strong>&ensp;Runtimes</span>
         <span class="stat-pill">MIT</span>
       </div>
@@ -718,12 +718,13 @@
         <div class="search-wrapper">
           <input type="text" class="search-input" id="searchInput" placeholder="Search skills..." autocomplete="off" spellcheck="false">
         </div>
-        <span class="result-count" id="resultCount">21 / 21</span>
+        <span class="result-count" id="resultCount">20 / 20</span>
       </div>
       <div class="category-filters" id="categoryFilters">
         <button class="filter-pill active" data-category="All">All</button>
         <button class="filter-pill" data-category="Planning & Reasoning">Planning & Reasoning</button>
         <button class="filter-pill" data-category="Code Quality">Code Quality</button>
+        <button class="filter-pill" data-category="Security">Security</button>
         <button class="filter-pill" data-category="Developer Productivity">Developer Productivity</button>
         <button class="filter-pill" data-category="Tools">Tools</button>
         <button class="filter-pill" data-category="Languages & Platforms">Languages & Platforms</button>
@@ -778,17 +779,6 @@
           </div>
         </article>
 
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="planning review annotations hooks markdown">
-          <span class="card-badge">Claude-only</span>
-          <span class="card-category">Developer Productivity</span>
-          <h3 class="card-name">plannotator</h3>
-          <p class="card-description">Visual plan review, code review, and markdown annotation for Claude Code via the Plannotator UI.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>0.17.10</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/plannotator" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
         <article class="skill-card" data-category="Code Quality" data-keywords="simplification refactoring clarity maintainability">
           <span class="card-category">Code Quality</span>
           <h3 class="card-name">code-simplifier</h3>
@@ -816,6 +806,16 @@
           <div class="card-footer">
             <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/review-and-commit" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Security" data-keywords="dependency-security supply-chain lockfiles cooldown hardening">
+          <span class="card-category">Security</span>
+          <h3 class="card-name">secure</h3>
+          <p class="card-description">Additive security hardening workflows, starting with dependency resolution and supply-chain policy.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.0.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/secure" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -849,6 +849,16 @@
           </div>
         </article>
 
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="autonomy delegation briefs verification">
+          <span class="card-category">Developer Productivity</span>
+          <h3 class="card-name">task</h3>
+          <p class="card-description">Convert a rough ask into a hands-off task brief an agent can execute end-to-end.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>0.1.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/task" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
         <article class="skill-card" data-category="Developer Productivity" data-keywords="understand codebase mental-model primitives modules">
           <span class="card-category">Developer Productivity</span>
           <h3 class="card-name">scratch</h3>
@@ -876,16 +886,6 @@
           <div class="card-footer">
             <div class="card-meta"><span class="card-version">v <strong>1.3</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/agent-browser" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Tools" data-keywords="mermaid diagrams svg visualization">
-          <span class="card-category">Tools</span>
-          <h3 class="card-name">beautiful-mermaid</h3>
-          <p class="card-description">Render Mermaid diagrams as SVG and PNG using the Beautiful Mermaid library.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/beautiful-mermaid" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -929,16 +929,6 @@
           </div>
         </article>
 
-        <article class="skill-card" data-category="Languages & Platforms" data-keywords="dokploy deployment hosting cli">
-          <span class="card-category">Languages & Platforms</span>
-          <h3 class="card-name">dokploy</h3>
-          <p class="card-description">Operate Dokploy via the official CLI. Manage projects, environments, apps, env vars, and databases.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/dokploy" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
         <article class="skill-card" data-category="Writing" data-keywords="prose editing deslop humanize">
           <span class="card-category">Writing</span>
           <h3 class="card-name">human-writer</h3>
@@ -970,18 +960,13 @@
               <code><span class="comment"># Add the marketplace (once)</span>
 /plugin marketplace add abpai/skills
 
-<span class="comment"># Plannotator also needs its binary</span>
-curl -fsSL https://plannotator.ai/install.sh | bash
-
 <span class="comment"># Install a plugin</span>
 /plugin install distill@abpai-skills
-/plugin install plannotator@abpai-skills
 
 <span class="comment"># Or from a local checkout</span>
 claude --plugin-dir ./distill</code>
             </div>
           </div>
-          <p style="margin-top: 12px; color: var(--text-secondary); font-size: var(--body-sm);">`plannotator` is packaged here for Claude Code only and still relies on the upstream `plannotator` binary.</p>
         </div>
         <div class="install-column">
           <h3>Codex</h3>

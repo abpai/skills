@@ -1,0 +1,7 @@
+{
+  "name": "secure",
+  "version": "1.0.0",
+  "description": "Additive security hardening workflows, starting with /secure:dependencies for dependency resolution and supply-chain policy.",
+  "author": { "name": "Andy Pai" },
+  "license": "MIT"
+}

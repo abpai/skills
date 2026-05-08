@@ -9,8 +9,8 @@ This repo is plugin-oriented:
 - Claude plugins live in top-level folders with `.claude-plugin/plugin.json`
 - Codex plugins also add `.codex-plugin/plugin.json`
 - Some plugins are intentionally Claude-only when their workflow depends on
-  Claude plugin semantics and merely shells out to external CLIs. `pi` and
-  `plannotator` are the canonical examples in this repo.
+  Claude plugin semantics and merely shells out to external CLIs. `pi` is the
+  canonical example in this repo.
 
 ## Add a New Skill
 

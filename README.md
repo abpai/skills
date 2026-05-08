@@ -17,16 +17,12 @@ This repository now ships metadata for both runtimes:
 # Add the marketplace (once)
 /plugin marketplace add abpai/skills
 
-# Optional prerequisite for Plannotator's UI-backed review workflow
-curl -fsSL https://plannotator.ai/install.sh | bash
-
 # Install planning-oriented skills
 /plugin install distill@abpai-skills
 /plugin install lateral-thinking@abpai-skills
 /plugin install grill-me@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install pi@abpai-skills
-/plugin install plannotator@abpai-skills
 ```
 
 ### Codex
@@ -48,10 +44,9 @@ Codex public plugin-directory publishing is still documented as coming soon, so
 the Codex path in this repo is repo-local rather than the Claude-style remote
 marketplace flow above.
 
-`pi` and `plannotator` are intentionally excluded from the Codex marketplace in
-this repo. `pi` is a Claude-native workflow that shells out to the `codex` CLI
-for second-provider research and review, while `plannotator` depends on Claude
-plugin hooks such as `ExitPlanMode`.
+`pi` is intentionally excluded from the Codex marketplace in this repo. It is a
+Claude-native workflow that shells out to the `codex` CLI for second-provider
+research and review.
 
 ## Plugins
 
@@ -75,16 +70,22 @@ plugin hooks such as `ExitPlanMode`.
 | **review-and-commit** | Review uncommitted changes, then prepare safe atomic commits |
 | **tdd** | Use a vertical red-green-refactor loop with behavior-focused tests |
 
+### Security
+
+| Plugin | What it does |
+|--------|-------------|
+| **secure** | Additive security hardening workflows, starting with `/secure:dependencies` for dependency resolution and supply-chain policy |
+
 ### Developer Productivity
 
 | Plugin | What it does |
 |--------|-------------|
 | **debate** | Structured architecture debate: Claude proposes, Codex critiques, Claude synthesizes |
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **plannotator** | Visual plan review, code review, and markdown annotation for Claude Code via the Plannotator UI. Claude-only |
 | **project-memory** | Always-on memory via `.agents/LEARNINGS.md` — mistakes, patterns, preferences |
 | **scratch** | Understand a project's internals through runnable .scratch/ exploration scripts |
 | **socratic-code-owner** | Quiz the developer on AI-built code to ensure understanding |
+| **task** | Convert a rough ask into a hands-off task brief an agent can execute end-to-end |
 | **zoom-out** | Map unfamiliar code at a higher level with modules, callers, and domain vocabulary |
 
 ### Tools
@@ -92,7 +93,6 @@ plugin hooks such as `ExitPlanMode`.
 | Plugin | What it does |
 |--------|-------------|
 | **agent-browser** | Browser automation: navigate, fill forms, click, screenshot, extract data |
-| **beautiful-mermaid** | Render Mermaid diagrams as SVG and PNG |
 | **claude** | Run Claude Code CLI for delegation, session continuation, machine-readable output |
 | **try** | Evaluate a new library, tool, or repo before adopting it — prompt-driven demos |
 | **visualize** | Generate self-contained HTML visualizations for systems, plans, or code flows |
@@ -102,7 +102,6 @@ plugin hooks such as `ExitPlanMode`.
 | Plugin | What it does |
 |--------|-------------|
 | **bun-expert** | Expert Bun runtime guidance: setup, servers, APIs, testing, Node.js migration |
-| **dokploy** | Operate Dokploy via CLI: projects, environments, apps, databases |
 
 ### Writing
 
@@ -123,7 +122,8 @@ abpai/skills/
 ├── <plugin>/                  ← most plugins ship both runtimes
 │   ├── .claude-plugin/plugin.json
 │   ├── .codex-plugin/plugin.json  ← optional when a plugin is installable in Codex
-│   └── skills/<plugin>/
+│   ├── commands/              (if any)
+│   └── skills/<skill>/
 │       ├── SKILL.md
 │       └── references/        (if any)
 ├── pi/                        ← intentional Claude-only exception
@@ -131,11 +131,6 @@ abpai/skills/
 │   ├── agents/
 │   ├── commands/
 │   └── skills/pi-protocol/
-├── plannotator/               ← intentional Claude-only exception
-│   ├── .claude-plugin/plugin.json
-│   ├── commands/
-│   ├── hooks/
-│   └── skills/plannotator/
 └── README.md
 ```
 
@@ -153,15 +148,11 @@ plugin root.
 # Add the marketplace (once)
 /plugin marketplace add abpai/skills
 
-# Plannotator also needs the external binary
-curl -fsSL https://plannotator.ai/install.sh | bash
-
 # Browse available plugins
 /plugin
 
 # Install a plugin (user scope, default)
 claude plugin install distill@abpai-skills
-claude plugin install plannotator@abpai-skills
 
 # Install to project scope (shared with team via .claude/settings.json)
 claude plugin install distill@abpai-skills --scope project
@@ -201,11 +192,11 @@ cd skills
 codex
 ```
 
-Open the plugin directory with `codex /plugins` — all 24 Codex-compatible
+Open the plugin directory with `codex /plugins` — all Codex-compatible
 plugins appear automatically from the repo marketplace.
 
-`pi` and `plannotator` stay Claude-only in this repo and therefore do not
-appear in the Codex marketplace list.
+`pi` stays Claude-only in this repo and therefore does not appear in the Codex
+marketplace list.
 
 #### Personal installation
 

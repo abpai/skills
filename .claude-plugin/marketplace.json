@@ -51,13 +51,6 @@
       "keywords": ["architecture", "debate", "adversarial", "adr", "codex"]
     },
     {
-      "name": "beautiful-mermaid",
-      "description": "Render Mermaid diagrams as SVG and PNG using the Beautiful Mermaid library.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "beautiful-mermaid" },
-      "category": "tools",
-      "keywords": ["mermaid", "diagrams", "svg", "visualization"]
-    },
-    {
       "name": "bun-expert",
       "description": "Expert guidance for JavaScript/TypeScript development with the Bun runtime. Covers setup, servers, APIs, testing, bundling, and Node.js migration.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "bun-expert" },
@@ -93,6 +86,13 @@
       "keywords": ["dead-code", "cleanup", "audit", "unused"]
     },
     {
+      "name": "secure",
+      "description": "Additive security hardening workflows, starting with /secure:dependencies for dependency resolution and supply-chain policy.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "secure" },
+      "category": "security",
+      "keywords": ["dependency-security", "supply-chain", "lockfiles", "dependabot", "renovate"]
+    },
+    {
       "name": "improve-codebase-architecture",
       "description": "Find codebase architecture deepening opportunities that improve locality, leverage, testability, and navigability.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "improve-codebase-architecture" },
@@ -105,13 +105,6 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "tdd" },
       "category": "code-quality",
       "keywords": ["tdd", "testing", "red-green-refactor", "integration-tests"]
-    },
-    {
-      "name": "dokploy",
-      "description": "Operate Dokploy via the official CLI. Manage projects, environments, apps, env vars, and databases from the terminal.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "dokploy" },
-      "category": "devops",
-      "keywords": ["dokploy", "deployment", "hosting", "cli"]
     },
     {
       "name": "human-writer",
@@ -142,18 +135,18 @@
       "keywords": ["memory", "learnings", "patterns", "context"]
     },
     {
+      "name": "task",
+      "description": "Convert a rough ask into a hands-off task brief an agent can execute end-to-end.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "task" },
+      "category": "productivity",
+      "keywords": ["autonomy", "delegation", "briefs", "verification"]
+    },
+    {
       "name": "pi",
       "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique at high-leverage checkpoints.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "pi" },
       "category": "productivity",
       "keywords": ["planning", "generator", "evaluator", "workflow", "codex"]
-    },
-    {
-      "name": "plannotator",
-      "description": "Interactive plan review, code review, and markdown annotation UI for Claude Code, backed by the external plannotator binary.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "plannotator" },
-      "category": "productivity",
-      "keywords": ["planning", "review", "annotations", "hooks", "markdown"]
     },
     {
       "name": "review-and-commit",
