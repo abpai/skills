@@ -66,10 +66,10 @@
     },
     {
       "name": "code",
-      "description": "Grouped coding workflows under /code:* commands: review-and-commit, explain, try, simplify, and walkthrough.",
+      "description": "Grouped coding workflows under /code:* commands: review-and-commit, explain, try, simplify, walkthrough, and understand.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "review", "commit", "explain", "try", "simplify", "walkthrough"]
+      "keywords": ["code", "review", "commit", "explain", "try", "simplify", "walkthrough", "understand"]
     },
     {
       "name": "dead-code-eliminator",

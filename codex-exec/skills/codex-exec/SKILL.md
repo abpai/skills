@@ -5,11 +5,10 @@ description: >
   `codex exec`, `codex review`, or `codex exec resume`, continue a prior Codex
   session, or delegate software engineering work to OpenAI Codex from the
   terminal.
-argument-hint: "[exec|review|resume] [prompt]"
 allowed-tools: Bash(codex *) Bash(git status *) Bash(git rev-parse *)
 metadata:
   author: Andy Pai
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Codex CLI
@@ -39,7 +38,8 @@ Unless the user asks for something else:
 - Use `codex exec` for one-shot work.
 - Use `codex review` for code-review requests.
 - Use `codex exec resume --last` to continue the most recent saved session.
-- Use `gpt-5.4` as the default model.
+- Do not pass `--model` by default; let the user's Codex configuration choose the model.
+- Pass `--model <MODEL>` only when the user explicitly requests a specific model.
 - Use `medium` reasoning for ordinary work, `high` for harder tasks, and `low` for tiny checks.
 - Use `--sandbox read-only` for `codex exec` analysis runs, and use `codex review` for review tasks.
 - Expand to `workspace-write` or `--full-auto` only when Codex should edit files.
@@ -59,7 +59,6 @@ Default choice for most delegated work:
 
 ```bash
 codex exec \
-  --model gpt-5.4 \
   --sandbox read-only \
   -c model_reasoning_effort="medium" \
   "Summarize the uncommitted changes"
@@ -102,7 +101,6 @@ Use structured output only when another tool needs to consume the result:
 
 ```bash
 codex exec \
-  --model gpt-5.4 \
   --sandbox read-only \
   --output-schema schema.json \
   "Review the current diff"

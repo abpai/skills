@@ -6,7 +6,7 @@
     "claude": "1.5",
     "cli-design-expert": "1.1.1",
     "code": "1.0.0",
-    "codex-exec": "1.3",
+    "codex-exec": "1.4",
     "dead-code-eliminator": "1.2",
     "distill": "1.0",
     "hardening-dependency-resolution": "1.0",

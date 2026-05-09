@@ -65,7 +65,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:review-and-commit`, `/code:explain`, `/code:try`, `/code:simplify`, and `/code:walkthrough` |
+| **code** | Groups common code workflows under `/code:review-and-commit`, `/code:explain`, `/code:try`, `/code:simplify`, `/code:walkthrough`, and `/code:understand` |
 | **dead-code-eliminator** | Audit for unreachable functions, unused imports, orphaned classes, stale flags |
 
 ### Security
