@@ -1,7 +1,0 @@
-{
-  "name": "project-memory",
-  "version": "1.1.0",
-  "description": "Always-on project memory workflow. Read and update .agents/LEARNINGS.md with mistakes, corrections, patterns, and preferences.",
-  "author": { "name": "Andy Pai" },
-  "license": "MIT"
-}

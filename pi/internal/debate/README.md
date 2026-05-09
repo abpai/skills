@@ -1,35 +1,11 @@
----
-name: debate
-description: >
-  Structured architecture debate: Claude proposes, Codex critiques, Claude
-  synthesizes into a final ADR with concrete next steps. Use for architecture
-  decisions, technical tradeoffs, or any question that benefits from adversarial
-  review.
-allowed-tools: Bash(codex *) Bash(git status *) Bash(git log *) Bash(git diff *) Bash(git branch *) Bash(git rev-parse *)
-metadata:
-  author: Andy Pai
-  version: "1.1"
----
-
 # Debate
 
 Run a structured propose → critique → synthesize debate on an architecture or
 technical question. Claude owns the proposal and synthesis. Codex provides an
 independent critique via the CLI.
 
-## Repo snapshot (preflight)
-
-```!
-echo "DEBATE_PREFLIGHT_$(date +%s%N)"
-git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
-git branch --show-current 2>/dev/null
-git status --short 2>/dev/null | head -40
-git log --oneline -n 15 2>/dev/null
-git diff --stat 2>/dev/null | head -40
-```
-
-The block above runs at skill-load time. Use it as the ground truth for the
-current working tree — do not re-run these git commands in Step 2.
+This is an internal Pi module. Invoke it through `/pi:debate`; do not expose it
+as a standalone skill.
 
 ## Process
 
@@ -42,8 +18,9 @@ Clarify:
 
 ### 2. Build Context
 
-Use the preflight snapshot above plus targeted Read/Grep/Glob on files the
-user named. Do not re-run git commands you already see above.
+Use the `/pi:debate` preflight snapshot plus targeted Read/Grep/Glob on files
+the user named. Do not re-run git commands already present in the command
+snapshot.
 
 Focus on:
 - Directory structure and key files
@@ -55,7 +32,7 @@ Compile this into a context summary to feed into the propose step.
 
 ### 3. Propose
 
-Adopt the role defined in `prompts/propose.md` (in this skill's directory).
+Adopt the role defined in `prompts/propose.md` in this module directory.
 Using the codebase context, produce an opinionated architecture proposal with:
 
 1. Problem reframing
@@ -97,7 +74,7 @@ recommendation:
 4. Unresolved tensions
 5. Concrete next steps
 6. ADR (Architecture Decision Record) — use the template at
-   `${CLAUDE_SKILL_DIR}/templates/adr.md` for the shape.
+   `templates/adr.md` in this module directory for the shape.
 
 ### 6. Present
 

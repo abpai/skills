@@ -8,9 +8,22 @@ allowed-tools: >
 
 # /pi:debate
 
-Use Pi's debate module for a structured propose -> critique -> synthesize pass.
+## Pi debate snapshot
 
-1. Read `skills/debate/SKILL.md`.
+```!
+echo "PI_DEBATE_PREFLIGHT_$(date +%s%N)"
+git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
+git branch --show-current 2>/dev/null
+git status --short 2>/dev/null | head -40
+git log --oneline -n 15 2>/dev/null
+git diff --stat 2>/dev/null | head -40
+timeout 3 codex --version 2>&1 || echo "codex: not installed"
+```
+
+Use Pi's internal debate module for a structured propose -> critique ->
+synthesize pass.
+
+1. Read `internal/debate/README.md`.
 2. Follow its process exactly, including the repo snapshot and Codex critique
    fallback behavior.
 3. Treat `$ARGUMENTS` as the architecture question, tradeoff, or technical

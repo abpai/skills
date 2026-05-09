@@ -107,13 +107,6 @@
       "keywords": ["prompting", "prompt-engineering", "rewriting", "agents"]
     },
     {
-      "name": "project-memory",
-      "description": "Always-on project memory workflow. Read and update .agents/LEARNINGS.md with mistakes, corrections, patterns, and preferences.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "project-memory" },
-      "category": "productivity",
-      "keywords": ["memory", "learnings", "patterns", "context"]
-    },
-    {
       "name": "task",
       "description": "Convert a rough ask into a hands-off task brief an agent can execute end-to-end.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "task" },

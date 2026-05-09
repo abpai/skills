@@ -85,7 +85,6 @@ research and review. The debate workflow now lives inside `pi` as
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **project-memory** | Always-on memory via `.agents/LEARNINGS.md` — mistakes, patterns, preferences |
 | **scratch** | Understand a project's internals through runnable .scratch/ exploration scripts |
 | **socratic-code-owner** | Quiz the developer on AI-built code to ensure understanding |
 | **task** | Convert a rough ask into a hands-off task brief an agent can execute end-to-end |
@@ -132,9 +131,9 @@ abpai/skills/
 │   ├── .claude-plugin/plugin.json
 │   ├── agents/
 │   ├── commands/
-│   └── skills/
-│       ├── pi-protocol/
-│       └── debate/
+│   ├── internal/
+│   │   └── debate/
+│   └── skills/pi-protocol/
 └── README.md
 ```
 

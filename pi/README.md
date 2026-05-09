@@ -94,7 +94,7 @@ user
   |      +--> Phase C: codex-reviewer + evaluator final pass
   |      \--> Phase D: scorecard + learnings → human review
   |
-  \--> /pi:debate (standalone debate module)
+  \--> /pi:debate (internal debate module)
          |
          +--> Claude proposes
          +--> Codex critiques
