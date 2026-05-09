@@ -7,7 +7,7 @@ argument-hint: "[feature or bug]"
 
 Use the Matt Pocock-inspired `tdd` module.
 
-1. Read `internal/tdd/README.md`.
+1. Read `internal/tdd.md`.
 2. Follow the vertical red-green-refactor workflow.
 3. Keep tests behavior-focused and avoid implementation-coupled mocks.
 

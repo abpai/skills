@@ -7,7 +7,7 @@ argument-hint: "[codebase area or goal]"
 
 Use the Matt Pocock-inspired `improve-codebase-architecture` module.
 
-1. Read `internal/improve-codebase-architecture/README.md`.
+1. Read `internal/improve-codebase-architecture.md`.
 2. Load its references only as needed.
 3. Surface concrete deepening opportunities with the module's domain language.
 

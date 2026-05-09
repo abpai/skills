@@ -12,7 +12,7 @@ Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/engi
 
 **Bad tests** are coupled to implementation. They mock internal collaborators, test private methods, or verify through external means (like querying a database directly instead of using the interface). The warning sign: your test breaks when you refactor, but behavior hasn't changed. If you rename an internal function and tests fail, those tests were testing implementation, not behavior.
 
-See [tests](references/tests.md) for examples and [mocking](references/mocking.md) for mocking guidelines.
+See [tests](references/tdd-tests.md) for examples and [mocking](references/tdd-mocking.md) for mocking guidelines.
 
 ## Anti-Pattern: Horizontal Slices
 
@@ -49,8 +49,8 @@ Before writing any code:
 
 - [ ] Confirm with user what interface changes are needed
 - [ ] Confirm with user which behaviors to test (prioritize)
-- [ ] Identify opportunities for [deep modules](references/deep-modules.md) (small interface, deep implementation)
-- [ ] Design interfaces for [testability](references/interface-design.md)
+- [ ] Identify opportunities for [deep modules](references/tdd-deep-modules.md) (small interface, deep implementation)
+- [ ] Design interfaces for [testability](references/tdd-interface-design.md)
 - [ ] List the behaviors to test (not implementation steps)
 - [ ] Get user approval on the plan
 
@@ -87,7 +87,7 @@ Rules:
 
 ### 4. Refactor
 
-After all tests pass, look for [refactor candidates](references/refactoring.md):
+After all tests pass, look for [refactor candidates](references/tdd-refactoring.md):
 
 - [ ] Extract duplication
 - [ ] Deepen modules (move complexity behind simple interfaces)

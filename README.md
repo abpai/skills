@@ -130,7 +130,8 @@ abpai/skills/
 │       └── references/        (if any)
 ├── mp/                        ← grouped Matt Pocock-inspired workflows
 │   ├── commands/              ← Claude `/mp:*` wrappers
-│   ├── internal/              ← workflow modules, not standalone skills
+│   ├── internal/              ← flat workflow modules, not standalone skills
+│   │   └── references/
 │   └── skills/mp/
 ├── pi/                        ← intentional Claude-only exception
 │   ├── .claude-plugin/plugin.json
@@ -145,7 +146,7 @@ abpai/skills/
 Within each plugin folder, only `plugin.json` belongs inside
 `.claude-plugin/`. `skills/`, `agents/`, `commands/`, `hooks/`, and optional
 `internal/` support docs stay at the plugin root. `internal/` is deliberately
-not a runtime discovery directory; use it for command-private playbooks or
+not a runtime discovery directory; use it for flat command-private playbooks or
 supporting material that should be bundled without becoming separate skills.
 
 ## Packaging Notes
@@ -162,8 +163,9 @@ and [Claude Code plugin docs](https://code.claude.com/docs/en/plugins):
 - Shared support files stay inside the owning plugin folder. Paths must not
   rely on files outside the plugin, because installed plugins are copied into a
   runtime cache.
-- Use `internal/` for bundled implementation notes, prompts, or command modules
-  that should not become separate installable skills.
+- Use flat files in `internal/` for bundled implementation notes, prompts, or
+  command modules that should not become separate installable skills; use
+  `internal/references/` for shared supporting docs.
 
 ## Installing Plugins
 
