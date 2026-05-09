@@ -31,6 +31,9 @@ flags belong to which non-interactive path.
 ## Notes
 
 - Prefer `codex review` over a hand-written review prompt when the task is code review.
-- Prefer stdin when the prompt is large or multi-line.
+- Prefer stdin with `-` when the prompt is large, multi-line, generated, or quoting-sensitive.
+- Use argv prompts only for short simple text, and add `< /dev/null` so inherited stdin cannot be appended accidentally.
+- If both an argv prompt and piped stdin are provided to `codex exec`, Codex appends stdin as a
+  `<stdin>` block after the prompt.
 - Keep `--skip-git-repo-check` rare; it is for intentional out-of-repo runs.
 - Do not suppress stderr by default unless a specific automation path requires it.
