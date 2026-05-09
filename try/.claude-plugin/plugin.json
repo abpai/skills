@@ -1,7 +1,0 @@
-{
-  "name": "try",
-  "version": "1.3.0",
-  "description": "Evaluate a new library, tool, or GitHub repo before adopting it. Prompt-driven demos and honest findings.",
-  "author": { "name": "Andy Pai" },
-  "license": "MIT"
-}

@@ -65,11 +65,11 @@
       "keywords": ["cli", "design", "usability", "ergonomics"]
     },
     {
-      "name": "code-simplifier",
-      "description": "Simplify and refine code for clarity, consistency, and maintainability while preserving all functionality.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code-simplifier" },
+      "name": "code",
+      "description": "Grouped coding workflows under /code:* commands: review-and-commit, explain, try, simplify, and walkthrough.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["simplification", "refactoring", "clarity", "maintainability"]
+      "keywords": ["code", "review", "commit", "explain", "try", "simplify", "walkthrough"]
     },
     {
       "name": "dead-code-eliminator",
@@ -93,13 +93,6 @@
       "keywords": ["prose", "editing", "deslop", "humanize"]
     },
     {
-      "name": "explain",
-      "description": "Write dense, progressive-disclosure explanations, tutorials, walkthroughs, and onboarding docs that teach one layer at a time.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "explain" },
-      "category": "writing",
-      "keywords": ["explainers", "tutorials", "walkthroughs", "onboarding"]
-    },
-    {
       "name": "improve-prompt",
       "description": "Improve vague or underspecified prompts into sharp, reusable prompts for planning, coding, review, and decision work.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "improve-prompt" },
@@ -121,13 +114,6 @@
       "keywords": ["planning", "debate", "generator", "evaluator", "workflow", "codex"]
     },
     {
-      "name": "review-and-commit",
-      "description": "Review uncommitted Git changes for correctness, quality, and convention alignment, then prepare safe, atomic commits.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "review-and-commit" },
-      "category": "code-quality",
-      "keywords": ["review", "commit", "git", "conventions"]
-    },
-    {
       "name": "scratch",
       "description": "Understand an existing project by playing with its real modules in a .scratch/ workspace.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "scratch" },
@@ -140,13 +126,6 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "socratic-code-owner" },
       "category": "learning",
       "keywords": ["quiz", "understanding", "mental-model", "ownership"]
-    },
-    {
-      "name": "try",
-      "description": "Evaluate a new library, tool, or GitHub repo before adopting it. Prompt-driven demos and honest findings.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "try" },
-      "category": "tools",
-      "keywords": ["evaluate", "library", "try", "demo"]
     },
     {
       "name": "visualize",

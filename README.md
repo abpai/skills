@@ -17,10 +17,11 @@ This repository now ships metadata for both runtimes:
 # Add the marketplace (once)
 /plugin marketplace add abpai/skills
 
-# Install planning-oriented skills
+# Install common plugins
 /plugin install distill@abpai-skills
 /plugin install lateral-thinking@abpai-skills
 /plugin install mp@abpai-skills
+/plugin install code@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install pi@abpai-skills
 ```
@@ -60,13 +61,12 @@ research and review. The debate workflow now lives inside `pi` as
 | **codex-exec** | Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review. | Yes |
 | **pi** | Claude-native planner/generator/evaluator harness for long-running engineering work, plus `/pi:debate` for structured architecture debate. | Claude-only |
 
-### Code Quality
+### Code Workflows
 
 | Plugin | What it does |
 |--------|-------------|
-| **code-simplifier** | Simplify and refine code for clarity, consistency, and maintainability |
+| **code** | Groups common code workflows under `/code:review-and-commit`, `/code:explain`, `/code:try`, `/code:simplify`, and `/code:walkthrough` |
 | **dead-code-eliminator** | Audit for unreachable functions, unused imports, orphaned classes, stale flags |
-| **review-and-commit** | Review uncommitted changes, then prepare safe atomic commits |
 
 ### Security
 
@@ -95,7 +95,6 @@ research and review. The debate workflow now lives inside `pi` as
 |--------|-------------|
 | **agent-browser** | Browser automation: navigate, fill forms, click, screenshot, extract data |
 | **claude** | Run Claude Code CLI for delegation, session continuation, machine-readable output |
-| **try** | Evaluate a new library, tool, or repo before adopting it — prompt-driven demos |
 | **visualize** | Generate self-contained HTML visualizations for systems, plans, or code flows |
 
 ### Languages & Platforms
@@ -108,7 +107,6 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **explain** | Write dense, progressive-disclosure explainers, tutorials, walkthroughs, and onboarding docs |
 | **improve-prompt** | Upgrade vague prompts into sharp, reusable prompts for planning, coding, review, and decision work |
 | **human-writer** | Edit prose to sound natural and human-written — deslop model-generated text |
 
@@ -128,6 +126,11 @@ abpai/skills/
 │   └── skills/<skill>/
 │       ├── SKILL.md
 │       └── references/        (if any)
+├── code/                      ← grouped coding workflows
+│   ├── commands/              ← Claude `/code:*` wrappers
+│   ├── internal/              ← flat workflow modules, not standalone skills
+│   │   └── references/
+│   └── skills/code/
 ├── mp/                        ← grouped Matt Pocock-inspired workflows
 │   ├── commands/              ← Claude `/mp:*` wrappers
 │   ├── internal/              ← flat workflow modules, not standalone skills
