@@ -5,9 +5,9 @@ argument-hint: "[feature or bug]"
 
 # /mp:tdd
 
-Use the Matt Pocock-inspired `tdd` skill.
+Use the Matt Pocock-inspired `tdd` module.
 
-1. Read `skills/tdd/SKILL.md`.
+1. Read `internal/tdd/README.md`.
 2. Follow the vertical red-green-refactor workflow.
 3. Keep tests behavior-focused and avoid implementation-coupled mocks.
 

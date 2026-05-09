@@ -5,9 +5,9 @@ argument-hint: "[plan or design]"
 
 # /mp:grill-me
 
-Use the Matt Pocock-inspired `grill-me` skill.
+Use the Matt Pocock-inspired `grill-me` module.
 
-1. Read `skills/grill-me/SKILL.md`.
+1. Read `internal/grill-me/README.md`.
 2. Ask one question at a time.
 3. If a question can be answered by inspecting the codebase, inspect it instead
    of asking the user.

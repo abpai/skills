@@ -31,7 +31,7 @@
     },
     {
       "name": "mp",
-      "description": "Matt Pocock-inspired workflows grouped under /mp:* commands: grill-me, tdd, zoom-out, and improve-codebase-architecture.",
+      "description": "Matt Pocock-inspired workflows grouped under /mp:* commands, backed by internal plugin modules instead of standalone skill packages.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "mp" },
       "category": "productivity",
       "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "questions"]

@@ -5,10 +5,10 @@ argument-hint: "[codebase area or goal]"
 
 # /mp:improve-codebase-architecture
 
-Use the Matt Pocock-inspired `improve-codebase-architecture` skill.
+Use the Matt Pocock-inspired `improve-codebase-architecture` module.
 
-1. Read `skills/improve-codebase-architecture/SKILL.md`.
+1. Read `internal/improve-codebase-architecture/README.md`.
 2. Load its references only as needed.
-3. Surface concrete deepening opportunities with the skill's domain language.
+3. Surface concrete deepening opportunities with the module's domain language.
 
 User input: $ARGUMENTS

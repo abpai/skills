@@ -1,7 +1,7 @@
 {
   "name": "mp",
-  "version": "1.0.0",
-  "description": "Matt Pocock-inspired workflow skills grouped under /mp:* commands.",
+  "version": "1.1.0",
+  "description": "Matt Pocock-inspired workflow pack with one public mp skill backed by internal modules.",
   "author": {
     "name": "Andy Pai"
   },

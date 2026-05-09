@@ -1,12 +1,8 @@
----
-name: tdd
-description: Test-driven development with red-green-refactor loop. Use when user wants to build features or fix bugs using TDD, mentions "red-green-refactor", wants integration tests, or asks for test-first development.
-metadata:
-  version: "1.0"
-  upstream_skill: https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd
----
-
 # Test-Driven Development
+
+Internal module for `/mp:tdd`.
+
+Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd
 
 ## Philosophy
 

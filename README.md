@@ -78,7 +78,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **mp** | Groups the imported Matt Pocock-inspired workflows under `/mp:grill-me`, `/mp:tdd`, `/mp:zoom-out`, and `/mp:improve-codebase-architecture` |
+| **mp** | Groups the Matt Pocock-inspired workflows as one plugin-owned skill surface, with Claude commands at `/mp:grill-me`, `/mp:tdd`, `/mp:zoom-out`, and `/mp:improve-codebase-architecture` backed by `mp/internal/` modules |
 
 ### Developer Productivity
 
@@ -124,9 +124,14 @@ abpai/skills/
 │   ├── .claude-plugin/plugin.json
 │   ├── .codex-plugin/plugin.json  ← optional when a plugin is installable in Codex
 │   ├── commands/              (if any)
+│   ├── internal/              (optional plugin-private docs/modules)
 │   └── skills/<skill>/
 │       ├── SKILL.md
 │       └── references/        (if any)
+├── mp/                        ← grouped Matt Pocock-inspired workflows
+│   ├── commands/              ← Claude `/mp:*` wrappers
+│   ├── internal/              ← workflow modules, not standalone skills
+│   └── skills/mp/
 ├── pi/                        ← intentional Claude-only exception
 │   ├── .claude-plugin/plugin.json
 │   ├── agents/
@@ -138,8 +143,27 @@ abpai/skills/
 ```
 
 Within each plugin folder, only `plugin.json` belongs inside
-`.claude-plugin/`. `skills/`, `agents/`, `commands/`, and `hooks/` stay at the
-plugin root.
+`.claude-plugin/`. `skills/`, `agents/`, `commands/`, `hooks/`, and optional
+`internal/` support docs stay at the plugin root. `internal/` is deliberately
+not a runtime discovery directory; use it for command-private playbooks or
+supporting material that should be bundled without becoming separate skills.
+
+## Packaging Notes
+
+This repo follows the current [Codex plugin docs](https://developers.openai.com/codex/plugins/build)
+and [Claude Code plugin docs](https://code.claude.com/docs/en/plugins):
+
+- Codex plugins use `.codex-plugin/plugin.json` as the required entry point,
+  point `skills` at `./skills/`, and are exposed through the repo marketplace
+  at `.agents/plugins/marketplace.json`.
+- Claude Code plugins use `.claude-plugin/plugin.json` for identity and expose
+  namespaced skills or command wrappers from plugin-root `skills/` and
+  `commands/` directories.
+- Shared support files stay inside the owning plugin folder. Paths must not
+  rely on files outside the plugin, because installed plugins are copied into a
+  runtime cache.
+- Use `internal/` for bundled implementation notes, prompts, or command modules
+  that should not become separate installable skills.
 
 ## Installing Plugins
 
@@ -200,7 +224,8 @@ plugins appear automatically from the repo marketplace.
 
 `pi` stays Claude-only in this repo and therefore does not appear in the Codex
 marketplace list. The Matt Pocock-inspired workflows are Codex-compatible as
-the grouped `mp` plugin.
+the grouped `mp` plugin. Codex sees a single `mp` skill; Claude also gets the
+namespaced `/mp:*` command wrappers.
 
 #### Personal installation
 
