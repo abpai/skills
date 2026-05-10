@@ -1,0 +1,9 @@
+{
+  "name": "task",
+  "version": "0.1.0",
+  "description": "Convert a rough ask into a hands-off task brief an agent can execute end-to-end. Defines done, scope, and stop conditions so you can fire it and walk away.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "license": "MIT"
+}

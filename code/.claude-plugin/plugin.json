@@ -1,0 +1,10 @@
+{
+  "name": "code",
+  "version": "1.0.0",
+  "description": "Grouped coding workflows exposed as /code:* commands.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT"
+}

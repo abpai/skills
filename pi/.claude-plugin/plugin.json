@@ -1,7 +1,7 @@
 {
   "name": "pi",
-  "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with optional external critique and a selectable Codex executor at high-leverage checkpoints.",
-  "version": "0.8.0",
+  "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with /pi:debate for structured architecture debate.",
+  "version": "0.9.0",
   "author": {
     "name": "Andy Pai"
   },
@@ -10,6 +10,7 @@
   "license": "MIT",
   "keywords": [
     "planning",
+    "debate",
     "generator",
     "evaluator",
     "workflow",

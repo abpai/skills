@@ -30,11 +30,11 @@
       "keywords": ["codex", "openai", "multi-model", "review"]
     },
     {
-      "name": "grill-me",
-      "description": "Interview the user relentlessly about a plan or design until every important decision branch is understood.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "grill-me" },
+      "name": "mp",
+      "description": "Matt Pocock-inspired workflows grouped under /mp:* commands, backed by internal plugin modules instead of standalone skill packages.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "mp" },
       "category": "productivity",
-      "keywords": ["interview", "planning", "design-review", "questions"]
+      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "questions"]
     },
     {
       "name": "agent-browser",
@@ -42,20 +42,6 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "agent-browser" },
       "category": "tools",
       "keywords": ["browser", "automation", "web", "scraping", "testing"]
-    },
-    {
-      "name": "debate",
-      "description": "Structured architecture debate: Claude proposes, Codex critiques, Claude synthesizes into a final ADR with concrete next steps.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "debate" },
-      "category": "productivity",
-      "keywords": ["architecture", "debate", "adversarial", "adr", "codex"]
-    },
-    {
-      "name": "beautiful-mermaid",
-      "description": "Render Mermaid diagrams as SVG and PNG using the Beautiful Mermaid library.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "beautiful-mermaid" },
-      "category": "tools",
-      "keywords": ["mermaid", "diagrams", "svg", "visualization"]
     },
     {
       "name": "bun-expert",
@@ -79,11 +65,11 @@
       "keywords": ["cli", "design", "usability", "ergonomics"]
     },
     {
-      "name": "code-simplifier",
-      "description": "Simplify and refine code for clarity, consistency, and maintainability while preserving all functionality.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code-simplifier" },
+      "name": "code",
+      "description": "Grouped coding workflows under /code:* commands: review-and-commit, explain, try, simplify, walkthrough, and understand.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["simplification", "refactoring", "clarity", "maintainability"]
+      "keywords": ["code", "review", "commit", "explain", "try", "simplify", "walkthrough", "understand"]
     },
     {
       "name": "dead-code-eliminator",
@@ -93,25 +79,11 @@
       "keywords": ["dead-code", "cleanup", "audit", "unused"]
     },
     {
-      "name": "improve-codebase-architecture",
-      "description": "Find codebase architecture deepening opportunities that improve locality, leverage, testability, and navigability.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "improve-codebase-architecture" },
-      "category": "code-quality",
-      "keywords": ["architecture", "refactoring", "deep-modules", "testability"]
-    },
-    {
-      "name": "tdd",
-      "description": "Use test-driven development with a vertical red-green-refactor loop and behavior-focused tests.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "tdd" },
-      "category": "code-quality",
-      "keywords": ["tdd", "testing", "red-green-refactor", "integration-tests"]
-    },
-    {
-      "name": "dokploy",
-      "description": "Operate Dokploy via the official CLI. Manage projects, environments, apps, env vars, and databases from the terminal.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "dokploy" },
-      "category": "devops",
-      "keywords": ["dokploy", "deployment", "hosting", "cli"]
+      "name": "secure",
+      "description": "Additive security hardening workflows, starting with /secure:dependencies for dependency resolution and supply-chain policy.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "secure" },
+      "category": "security",
+      "keywords": ["dependency-security", "supply-chain", "lockfiles", "dependabot", "renovate"]
     },
     {
       "name": "human-writer",
@@ -121,13 +93,6 @@
       "keywords": ["prose", "editing", "deslop", "humanize"]
     },
     {
-      "name": "explain",
-      "description": "Write dense, progressive-disclosure explanations, tutorials, walkthroughs, and onboarding docs that teach one layer at a time.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "explain" },
-      "category": "writing",
-      "keywords": ["explainers", "tutorials", "walkthroughs", "onboarding"]
-    },
-    {
       "name": "improve-prompt",
       "description": "Improve vague or underspecified prompts into sharp, reusable prompts for planning, coding, review, and decision work.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "improve-prompt" },
@@ -135,32 +100,18 @@
       "keywords": ["prompting", "prompt-engineering", "rewriting", "agents"]
     },
     {
-      "name": "project-memory",
-      "description": "Always-on project memory workflow. Read and update .agents/LEARNINGS.md with mistakes, corrections, patterns, and preferences.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "project-memory" },
+      "name": "task",
+      "description": "Convert a rough ask into a hands-off task brief an agent can execute end-to-end.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "task" },
       "category": "productivity",
-      "keywords": ["memory", "learnings", "patterns", "context"]
+      "keywords": ["autonomy", "delegation", "briefs", "verification"]
     },
     {
       "name": "pi",
-      "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique at high-leverage checkpoints.",
+      "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with /pi:debate for structured architecture debate.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "pi" },
       "category": "productivity",
-      "keywords": ["planning", "generator", "evaluator", "workflow", "codex"]
-    },
-    {
-      "name": "plannotator",
-      "description": "Interactive plan review, code review, and markdown annotation UI for Claude Code, backed by the external plannotator binary.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "plannotator" },
-      "category": "productivity",
-      "keywords": ["planning", "review", "annotations", "hooks", "markdown"]
-    },
-    {
-      "name": "review-and-commit",
-      "description": "Review uncommitted Git changes for correctness, quality, and convention alignment, then prepare safe, atomic commits.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "review-and-commit" },
-      "category": "code-quality",
-      "keywords": ["review", "commit", "git", "conventions"]
+      "keywords": ["planning", "debate", "generator", "evaluator", "workflow", "codex"]
     },
     {
       "name": "scratch",
@@ -175,20 +126,6 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "socratic-code-owner" },
       "category": "learning",
       "keywords": ["quiz", "understanding", "mental-model", "ownership"]
-    },
-    {
-      "name": "zoom-out",
-      "description": "Explain an unfamiliar code area at a higher level with relevant modules, callers, and domain vocabulary.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "zoom-out" },
-      "category": "learning",
-      "keywords": ["codebase", "orientation", "architecture-map", "context"]
-    },
-    {
-      "name": "try",
-      "description": "Evaluate a new library, tool, or GitHub repo before adopting it. Prompt-driven demos and honest findings.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "try" },
-      "category": "tools",
-      "keywords": ["evaluate", "library", "try", "demo"]
     },
     {
       "name": "visualize",

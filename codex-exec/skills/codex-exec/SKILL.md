@@ -5,11 +5,10 @@ description: >
   `codex exec`, `codex review`, or `codex exec resume`, continue a prior Codex
   session, or delegate software engineering work to OpenAI Codex from the
   terminal.
-argument-hint: "[exec|review|resume] [prompt]"
 allowed-tools: Bash(codex *) Bash(git status *) Bash(git rev-parse *)
 metadata:
   author: Andy Pai
-  version: "1.3"
+  version: "1.4.1"
 ---
 
 # Codex CLI
@@ -23,12 +22,15 @@ user explicitly wants to stay inside it.
 ```!
 echo "CODEX_EXEC_PREFLIGHT_$(date +%s%N)"
 timeout 3 codex --version 2>&1 || echo "codex: not installed"
+timeout 3 codex exec --version 2>&1 || echo "codex exec: unavailable"
 git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
 git status --short 2>/dev/null | head -40
 ```
 
 The block above runs at skill-load time; treat it as ground truth. If it shows
 `codex: not installed`, stop and report the setup issue instead of retrying.
+If it shows `codex exec: unavailable`, the installed Codex CLI is broken or its
+subcommand surface changed; stop and report that before launching a real task.
 If it shows `not a git repo`, note that `codex review --uncommitted` and
 similar git-dependent flows will not work.
 
@@ -39,7 +41,8 @@ Unless the user asks for something else:
 - Use `codex exec` for one-shot work.
 - Use `codex review` for code-review requests.
 - Use `codex exec resume --last` to continue the most recent saved session.
-- Use `gpt-5.4` as the default model.
+- Do not pass `--model` by default; let the user's Codex configuration choose the model.
+- Pass `--model <MODEL>` only when the user explicitly requests a specific model.
 - Use `medium` reasoning for ordinary work, `high` for harder tasks, and `low` for tiny checks.
 - Use `--sandbox read-only` for `codex exec` analysis runs, and use `codex review` for review tasks.
 - Expand to `workspace-write` or `--full-auto` only when Codex should edit files.
@@ -59,11 +62,40 @@ Default choice for most delegated work:
 
 ```bash
 codex exec \
-  --model gpt-5.4 \
   --sandbox read-only \
   -c model_reasoning_effort="medium" \
-  "Summarize the uncommitted changes"
+  "Summarize the uncommitted changes" \
+  < /dev/null
 ```
+
+### Prompt transport rule
+
+Only pass the prompt on argv when it is short, single-line, and simple:
+approximately under 500 characters with no quotes, shell substitutions, heredocs,
+or generated text. Close stdin on argv runs so inherited pipes or terminals
+cannot become extra input:
+
+```bash
+codex exec \
+  --sandbox read-only \
+  -c model_reasoning_effort="low" \
+  "Say whether the repo has uncommitted changes" \
+  < /dev/null
+```
+
+For anything larger, multi-line, generated, or quoting-sensitive, pass the
+prompt through stdin and use `-` as the prompt sentinel:
+
+```bash
+codex exec \
+  --sandbox read-only \
+  -c model_reasoning_effort="medium" \
+  - < prompt.txt
+```
+
+Do not assemble `codex exec` with shell `eval`. If you are writing a wrapper,
+build an argv array and either close stdin for argv prompts or pipe the prompt
+with `-`.
 
 ### Code review
 
@@ -72,7 +104,14 @@ through `exec`:
 
 ```bash
 codex review --uncommitted \
-  "Focus on bugs, regressions, and missing tests. Findings first."
+  "Focus on bugs, regressions, and missing tests. Findings first." \
+  < /dev/null
+```
+
+For longer custom review instructions, use stdin:
+
+```bash
+codex review --uncommitted - < review-instructions.txt
 ```
 
 ### Resume the latest session
@@ -91,10 +130,25 @@ model, sandbox, or autonomy level.
 
 - `codex review` is the default review path when the task is code review.
 - `codex exec` reads instructions from stdin when the prompt argument is omitted or set to `-`.
+- If `codex exec` receives both an argv prompt and piped stdin, stdin is appended as a `<stdin>` block after
+  the argv prompt. Do this only when you want that extra context.
 - `codex exec resume --last` is the non-interactive continuation path; do not replace it with the top-level interactive `codex resume` command.
 - `--full-auto` is only a convenience alias for editable autonomous runs. It is not appropriate for read-only analysis.
 - `--skip-git-repo-check` is a situational escape hatch, not a default.
 - `--ephemeral` is useful for disposable runs when session persistence would add noise.
+
+## First-Run Sanity Check
+
+Before delegating a long prompt on a machine or shell you have not used in this
+session, verify that stdin transport works:
+
+```bash
+printf '%s\n' "Say hello in one short sentence." | \
+  timeout 30 codex exec --sandbox read-only -c model_reasoning_effort="low" -
+```
+
+If this exits non-zero or hangs before any meaningful progress, debug the Codex
+installation, authentication, or wrapper before sending the real prompt.
 
 ## Structured Output
 
@@ -102,17 +156,22 @@ Use structured output only when another tool needs to consume the result:
 
 ```bash
 codex exec \
-  --model gpt-5.4 \
   --sandbox read-only \
   --output-schema schema.json \
-  "Review the current diff"
+  "Review the current diff" \
+  < /dev/null
 ```
 
 ## Troubleshooting
 
 - If the preflight block above showed `codex: not installed`, report a CLI setup issue.
+- If the preflight block above showed `codex exec: unavailable`, report a CLI install or version issue.
 - If `codex exec` or `codex review` exits non-zero, treat the run as failed.
-- If a non-interactive run needs too much context, switch from argv text to stdin.
+- If a non-interactive run needs too much context, switch from argv text to stdin with `-`.
+- If a run prints `Reading additional input from stdin...`, that message alone is normal when Codex is
+  consuming stdin. If it then produces no meaningful progress for more than about 30 seconds, kill it and
+  rerun with either `- < prompt.txt` for stdin prompts or `< /dev/null` for short argv prompts.
+- If a prompt has newlines or is longer than about 500 characters, do not retry argv quoting. Use stdin.
 - If the task is review-oriented, use `codex review` before inventing a custom `exec` prompt.
 - If a run needs edits, change the sandbox and autonomy deliberately instead of piling on flags by habit.
 - If output includes warnings or partial results, summarize what Codex completed and what remains uncertain.

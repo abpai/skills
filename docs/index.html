@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>abpai/skills — AI Workflow Plugins</title>
-  <meta name="description" content="Curated marketplace of 21 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
+  <meta name="description" content="Curated marketplace of 17 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
   <meta property="og:title" content="abpai/skills — AI Workflow Plugins">
-  <meta property="og:description" content="21 production-grade AI workflow plugins for Claude Code and Codex.">
+  <meta property="og:description" content="17 production-grade AI workflow plugins for Claude Code and Codex.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -702,8 +702,8 @@
         Cross-domain thinking, multi-model tooling, and developer productivity plugins for Claude Code and Codex.
       </p>
       <div class="hero-stats">
-        <span class="stat-pill"><strong>21</strong>&ensp;Skills</span>
-        <span class="stat-pill"><strong>6</strong>&ensp;Categories</span>
+        <span class="stat-pill"><strong>17</strong>&ensp;Skills</span>
+        <span class="stat-pill"><strong>7</strong>&ensp;Categories</span>
         <span class="stat-pill"><strong>2</strong>&ensp;Runtimes</span>
         <span class="stat-pill">MIT</span>
       </div>
@@ -718,12 +718,13 @@
         <div class="search-wrapper">
           <input type="text" class="search-input" id="searchInput" placeholder="Search skills..." autocomplete="off" spellcheck="false">
         </div>
-        <span class="result-count" id="resultCount">21 / 21</span>
+        <span class="result-count" id="resultCount">17 / 17</span>
       </div>
       <div class="category-filters" id="categoryFilters">
         <button class="filter-pill active" data-category="All">All</button>
         <button class="filter-pill" data-category="Planning & Reasoning">Planning & Reasoning</button>
         <button class="filter-pill" data-category="Code Quality">Code Quality</button>
+        <button class="filter-pill" data-category="Security">Security</button>
         <button class="filter-pill" data-category="Developer Productivity">Developer Productivity</button>
         <button class="filter-pill" data-category="Tools">Tools</button>
         <button class="filter-pill" data-category="Languages & Platforms">Languages & Platforms</button>
@@ -762,7 +763,7 @@
           <h3 class="card-name">codex-exec</h3>
           <p class="card-description">Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.2</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>1.4.1</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/codex-exec" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
@@ -771,31 +772,20 @@
           <span class="card-badge">Claude-only</span>
           <span class="card-category">Planning & Reasoning</span>
           <h3 class="card-name">pi</h3>
-          <p class="card-description">Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique.</p>
+          <p class="card-description">Claude-native planner/generator/evaluator harness, now including /pi:debate for structured architecture debate.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>0.3</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>0.9.0</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/pi" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="planning review annotations hooks markdown">
-          <span class="card-badge">Claude-only</span>
-          <span class="card-category">Developer Productivity</span>
-          <h3 class="card-name">plannotator</h3>
-          <p class="card-description">Visual plan review, code review, and markdown annotation for Claude Code via the Plannotator UI.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>0.17.10</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/plannotator" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Code Quality" data-keywords="simplification refactoring clarity maintainability">
+        <article class="skill-card" data-category="Code Quality" data-keywords="code review commit explain try simplify walkthrough understand refactoring architecture call-stack">
           <span class="card-category">Code Quality</span>
-          <h3 class="card-name">code-simplifier</h3>
-          <p class="card-description">Simplify and refine code for clarity, consistency, and maintainability while preserving all functionality.</p>
+          <h3 class="card-name">code</h3>
+          <p class="card-description">Grouped coding workflows for review-and-commit, explain, try, simplify, walkthrough, and understand under /code:* commands.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>2.1</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/code-simplifier" target="_blank" rel="noopener" class="card-link">Source</a>
+            <div class="card-meta"><span class="card-version">v <strong>1.0.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/code" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -809,23 +799,23 @@
           </div>
         </article>
 
-        <article class="skill-card" data-category="Code Quality" data-keywords="review commit git conventions">
-          <span class="card-category">Code Quality</span>
-          <h3 class="card-name">review-and-commit</h3>
-          <p class="card-description">Review uncommitted Git changes for correctness, quality, and convention alignment, then prepare safe atomic commits.</p>
+        <article class="skill-card" data-category="Security" data-keywords="dependency-security supply-chain lockfiles cooldown hardening">
+          <span class="card-category">Security</span>
+          <h3 class="card-name">secure</h3>
+          <p class="card-description">Additive security hardening workflows, starting with dependency resolution and supply-chain policy.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/review-and-commit" target="_blank" rel="noopener" class="card-link">Source</a>
+            <div class="card-meta"><span class="card-version">v <strong>1.0.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/secure" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="architecture debate adversarial adr codex">
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="matt-pocock tdd grill-me zoom-out architecture">
           <span class="card-category">Developer Productivity</span>
-          <h3 class="card-name">debate</h3>
-          <p class="card-description">Structured architecture debate: Claude proposes, Codex critiques, Claude synthesizes into a final ADR.</p>
+          <h3 class="card-name">mp</h3>
+          <p class="card-description">Matt Pocock-inspired workflow pack with one public mp skill and /mp:* Claude commands backed by internal modules.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/debate" target="_blank" rel="noopener" class="card-link">Source</a>
+            <div class="card-meta"><span class="card-version">v <strong>1.1.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/mp" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -839,13 +829,13 @@
           </div>
         </article>
 
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="memory learnings patterns context">
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="autonomy delegation briefs verification">
           <span class="card-category">Developer Productivity</span>
-          <h3 class="card-name">project-memory</h3>
-          <p class="card-description">Always-on project memory workflow. Read and update .agents/LEARNINGS.md with mistakes, corrections, and patterns.</p>
+          <h3 class="card-name">task</h3>
+          <p class="card-description">Convert a rough ask into a hands-off task brief an agent can execute end-to-end.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/project-memory" target="_blank" rel="noopener" class="card-link">Source</a>
+            <div class="card-meta"><span class="card-version">v <strong>0.1.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/task" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -879,16 +869,6 @@
           </div>
         </article>
 
-        <article class="skill-card" data-category="Tools" data-keywords="mermaid diagrams svg visualization">
-          <span class="card-category">Tools</span>
-          <h3 class="card-name">beautiful-mermaid</h3>
-          <p class="card-description">Render Mermaid diagrams as SVG and PNG using the Beautiful Mermaid library.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/beautiful-mermaid" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
         <article class="skill-card" data-category="Tools" data-keywords="claude cli delegation automation">
           <span class="card-category">Tools</span>
           <h3 class="card-name">claude</h3>
@@ -896,16 +876,6 @@
           <div class="card-footer">
             <div class="card-meta"><span class="card-version">v <strong>1.5</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/claude" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Tools" data-keywords="evaluate library try demo">
-          <span class="card-category">Tools</span>
-          <h3 class="card-name">try</h3>
-          <p class="card-description">Evaluate a new library, tool, or GitHub repo before adopting it. Prompt-driven demos and honest findings.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.2</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/try" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -926,16 +896,6 @@
           <div class="card-footer">
             <div class="card-meta"><span class="card-version">v <strong>1.3</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/bun-expert" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Languages & Platforms" data-keywords="dokploy deployment hosting cli">
-          <span class="card-category">Languages & Platforms</span>
-          <h3 class="card-name">dokploy</h3>
-          <p class="card-description">Operate Dokploy via the official CLI. Manage projects, environments, apps, env vars, and databases.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/dokploy" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -970,18 +930,13 @@
               <code><span class="comment"># Add the marketplace (once)</span>
 /plugin marketplace add abpai/skills
 
-<span class="comment"># Plannotator also needs its binary</span>
-curl -fsSL https://plannotator.ai/install.sh | bash
-
 <span class="comment"># Install a plugin</span>
 /plugin install distill@abpai-skills
-/plugin install plannotator@abpai-skills
 
 <span class="comment"># Or from a local checkout</span>
 claude --plugin-dir ./distill</code>
             </div>
           </div>
-          <p style="margin-top: 12px; color: var(--text-secondary); font-size: var(--body-sm);">`plannotator` is packaged here for Claude Code only and still relies on the upstream `plannotator` binary.</p>
         </div>
         <div class="install-column">
           <h3>Codex</h3>

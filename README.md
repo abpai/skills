@@ -17,16 +17,13 @@ This repository now ships metadata for both runtimes:
 # Add the marketplace (once)
 /plugin marketplace add abpai/skills
 
-# Optional prerequisite for Plannotator's UI-backed review workflow
-curl -fsSL https://plannotator.ai/install.sh | bash
-
-# Install planning-oriented skills
+# Install common plugins
 /plugin install distill@abpai-skills
 /plugin install lateral-thinking@abpai-skills
-/plugin install grill-me@abpai-skills
+/plugin install mp@abpai-skills
+/plugin install code@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install pi@abpai-skills
-/plugin install plannotator@abpai-skills
 ```
 
 ### Codex
@@ -48,10 +45,10 @@ Codex public plugin-directory publishing is still documented as coming soon, so
 the Codex path in this repo is repo-local rather than the Claude-style remote
 marketplace flow above.
 
-`pi` and `plannotator` are intentionally excluded from the Codex marketplace in
-this repo. `pi` is a Claude-native workflow that shells out to the `codex` CLI
-for second-provider research and review, while `plannotator` depends on Claude
-plugin hooks such as `ExitPlanMode`.
+`pi` is intentionally excluded from the Codex marketplace in this repo. It is a
+Claude-native workflow that shells out to the `codex` CLI for second-provider
+research and review. The debate workflow now lives inside `pi` as
+`/pi:debate`, so it is Claude-only too.
 
 ## Plugins
 
@@ -61,40 +58,43 @@ plugin hooks such as `ExitPlanMode`.
 |--------|-------------|-------------|
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
-| **grill-me** | Relentlessly interview a plan or design until its decision tree is understood. | Yes |
 | **codex-exec** | Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review. | Yes |
-| **pi** | Claude-native planner/generator/evaluator harness for long-running engineering work, with optional Codex critique at high-leverage checkpoints. | Claude-only |
+| **pi** | Claude-native planner/generator/evaluator harness for long-running engineering work, plus `/pi:debate` for structured architecture debate. | Claude-only |
 
-### Code Quality
+### Code Workflows
 
 | Plugin | What it does |
 |--------|-------------|
-| **code-simplifier** | Simplify and refine code for clarity, consistency, and maintainability |
+| **code** | Groups common code workflows under `/code:review-and-commit`, `/code:explain`, `/code:try`, `/code:simplify`, `/code:walkthrough`, and `/code:understand` |
 | **dead-code-eliminator** | Audit for unreachable functions, unused imports, orphaned classes, stale flags |
-| **improve-codebase-architecture** | Find deepening opportunities that improve locality, leverage, testability, and navigability |
-| **review-and-commit** | Review uncommitted changes, then prepare safe atomic commits |
-| **tdd** | Use a vertical red-green-refactor loop with behavior-focused tests |
+
+### Security
+
+| Plugin | What it does |
+|--------|-------------|
+| **secure** | Additive security hardening workflows, starting with `/secure:dependencies` for dependency resolution and supply-chain policy |
+
+### Matt Pocock Inspired
+
+| Plugin | What it does |
+|--------|-------------|
+| **mp** | Groups the Matt Pocock-inspired workflows as one plugin-owned skill surface, with Claude commands at `/mp:grill-me`, `/mp:tdd`, `/mp:zoom-out`, and `/mp:improve-codebase-architecture` backed by `mp/internal/` modules |
 
 ### Developer Productivity
 
 | Plugin | What it does |
 |--------|-------------|
-| **debate** | Structured architecture debate: Claude proposes, Codex critiques, Claude synthesizes |
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **plannotator** | Visual plan review, code review, and markdown annotation for Claude Code via the Plannotator UI. Claude-only |
-| **project-memory** | Always-on memory via `.agents/LEARNINGS.md` — mistakes, patterns, preferences |
 | **scratch** | Understand a project's internals through runnable .scratch/ exploration scripts |
 | **socratic-code-owner** | Quiz the developer on AI-built code to ensure understanding |
-| **zoom-out** | Map unfamiliar code at a higher level with modules, callers, and domain vocabulary |
+| **task** | Convert a rough ask into a hands-off task brief an agent can execute end-to-end |
 
 ### Tools
 
 | Plugin | What it does |
 |--------|-------------|
 | **agent-browser** | Browser automation: navigate, fill forms, click, screenshot, extract data |
-| **beautiful-mermaid** | Render Mermaid diagrams as SVG and PNG |
 | **claude** | Run Claude Code CLI for delegation, session continuation, machine-readable output |
-| **try** | Evaluate a new library, tool, or repo before adopting it — prompt-driven demos |
 | **visualize** | Generate self-contained HTML visualizations for systems, plans, or code flows |
 
 ### Languages & Platforms
@@ -102,13 +102,11 @@ plugin hooks such as `ExitPlanMode`.
 | Plugin | What it does |
 |--------|-------------|
 | **bun-expert** | Expert Bun runtime guidance: setup, servers, APIs, testing, Node.js migration |
-| **dokploy** | Operate Dokploy via CLI: projects, environments, apps, databases |
 
 ### Writing
 
 | Plugin | What it does |
 |--------|-------------|
-| **explain** | Write dense, progressive-disclosure explainers, tutorials, walkthroughs, and onboarding docs |
 | **improve-prompt** | Upgrade vague prompts into sharp, reusable prompts for planning, coding, review, and decision work |
 | **human-writer** | Edit prose to sound natural and human-written — deslop model-generated text |
 
@@ -123,25 +121,54 @@ abpai/skills/
 ├── <plugin>/                  ← most plugins ship both runtimes
 │   ├── .claude-plugin/plugin.json
 │   ├── .codex-plugin/plugin.json  ← optional when a plugin is installable in Codex
-│   └── skills/<plugin>/
+│   ├── commands/              (if any)
+│   ├── internal/              (optional plugin-private docs/modules)
+│   └── skills/<skill>/
 │       ├── SKILL.md
 │       └── references/        (if any)
+├── code/                      ← grouped coding workflows
+│   ├── commands/              ← Claude `/code:*` wrappers
+│   ├── internal/              ← flat workflow modules, not standalone skills
+│   │   └── references/
+│   └── skills/code/
+├── mp/                        ← grouped Matt Pocock-inspired workflows
+│   ├── commands/              ← Claude `/mp:*` wrappers
+│   ├── internal/              ← flat workflow modules, not standalone skills
+│   │   └── references/
+│   └── skills/mp/
 ├── pi/                        ← intentional Claude-only exception
 │   ├── .claude-plugin/plugin.json
 │   ├── agents/
 │   ├── commands/
+│   ├── internal/
+│   │   └── debate/
 │   └── skills/pi-protocol/
-├── plannotator/               ← intentional Claude-only exception
-│   ├── .claude-plugin/plugin.json
-│   ├── commands/
-│   ├── hooks/
-│   └── skills/plannotator/
 └── README.md
 ```
 
 Within each plugin folder, only `plugin.json` belongs inside
-`.claude-plugin/`. `skills/`, `agents/`, `commands/`, and `hooks/` stay at the
-plugin root.
+`.claude-plugin/`. `skills/`, `agents/`, `commands/`, `hooks/`, and optional
+`internal/` support docs stay at the plugin root. `internal/` is deliberately
+not a runtime discovery directory; use it for flat command-private playbooks or
+supporting material that should be bundled without becoming separate skills.
+
+## Packaging Notes
+
+This repo follows the current [Codex plugin docs](https://developers.openai.com/codex/plugins/build)
+and [Claude Code plugin docs](https://code.claude.com/docs/en/plugins):
+
+- Codex plugins use `.codex-plugin/plugin.json` as the required entry point,
+  point `skills` at `./skills/`, and are exposed through the repo marketplace
+  at `.agents/plugins/marketplace.json`.
+- Claude Code plugins use `.claude-plugin/plugin.json` for identity and expose
+  namespaced skills or command wrappers from plugin-root `skills/` and
+  `commands/` directories.
+- Shared support files stay inside the owning plugin folder. Paths must not
+  rely on files outside the plugin, because installed plugins are copied into a
+  runtime cache.
+- Use flat files in `internal/` for bundled implementation notes, prompts, or
+  command modules that should not become separate installable skills; use
+  `internal/references/` for shared supporting docs.
 
 ## Installing Plugins
 
@@ -153,15 +180,11 @@ plugin root.
 # Add the marketplace (once)
 /plugin marketplace add abpai/skills
 
-# Plannotator also needs the external binary
-curl -fsSL https://plannotator.ai/install.sh | bash
-
 # Browse available plugins
 /plugin
 
 # Install a plugin (user scope, default)
 claude plugin install distill@abpai-skills
-claude plugin install plannotator@abpai-skills
 
 # Install to project scope (shared with team via .claude/settings.json)
 claude plugin install distill@abpai-skills --scope project
@@ -201,11 +224,13 @@ cd skills
 codex
 ```
 
-Open the plugin directory with `codex /plugins` — all 24 Codex-compatible
+Open the plugin directory with `codex /plugins` — all Codex-compatible
 plugins appear automatically from the repo marketplace.
 
-`pi` and `plannotator` stay Claude-only in this repo and therefore do not
-appear in the Codex marketplace list.
+`pi` stays Claude-only in this repo and therefore does not appear in the Codex
+marketplace list. The Matt Pocock-inspired workflows are Codex-compatible as
+the grouped `mp` plugin. Codex sees a single `mp` skill; Claude also gets the
+namespaced `/mp:*` command wrappers.
 
 #### Personal installation
 

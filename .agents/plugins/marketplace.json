@@ -41,10 +41,10 @@
       "category": "Productivity"
     },
     {
-      "name": "grill-me",
+      "name": "mp",
       "source": {
         "source": "local",
-        "path": "./grill-me"
+        "path": "./mp"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -57,18 +57,6 @@
       "source": {
         "source": "local",
         "path": "./agent-browser"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Tools"
-    },
-    {
-      "name": "beautiful-mermaid",
-      "source": {
-        "source": "local",
-        "path": "./beautiful-mermaid"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -113,10 +101,10 @@
       "category": "Productivity"
     },
     {
-      "name": "code-simplifier",
+      "name": "code",
       "source": {
         "source": "local",
-        "path": "./code-simplifier"
+        "path": "./code"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -137,58 +125,22 @@
       "category": "Code Quality"
     },
     {
-      "name": "improve-codebase-architecture",
+      "name": "secure",
       "source": {
         "source": "local",
-        "path": "./improve-codebase-architecture"
+        "path": "./secure"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
-      "category": "Code Quality"
-    },
-    {
-      "name": "tdd",
-      "source": {
-        "source": "local",
-        "path": "./tdd"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Code Quality"
-    },
-    {
-      "name": "dokploy",
-      "source": {
-        "source": "local",
-        "path": "./dokploy"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "DevOps"
+      "category": "Security"
     },
     {
       "name": "human-writer",
       "source": {
         "source": "local",
         "path": "./human-writer"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Writing"
-    },
-    {
-      "name": "explain",
-      "source": {
-        "source": "local",
-        "path": "./explain"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -209,28 +161,16 @@
       "category": "Writing"
     },
     {
-      "name": "project-memory",
+      "name": "task",
       "source": {
         "source": "local",
-        "path": "./project-memory"
+        "path": "./task"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity"
-    },
-    {
-      "name": "review-and-commit",
-      "source": {
-        "source": "local",
-        "path": "./review-and-commit"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Code Quality"
     },
     {
       "name": "scratch",
@@ -255,30 +195,6 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Learning"
-    },
-    {
-      "name": "zoom-out",
-      "source": {
-        "source": "local",
-        "path": "./zoom-out"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Learning"
-    },
-    {
-      "name": "try",
-      "source": {
-        "source": "local",
-        "path": "./try"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Tools"
     },
     {
       "name": "visualize",
