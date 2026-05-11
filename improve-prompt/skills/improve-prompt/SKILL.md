@@ -3,8 +3,8 @@ name: improve-prompt
 description: Improve a vague or under-specified prompt into a sharp, reusable one. Interviews the user briefly, then rewrites.
 metadata:
   author: Andy Pai
-  version: "1.2.0"
-  tags: "prompting prompt-engineering rewriting agent-workflows"
+  version: "1.3.0"
+  tags: "prompting prompt-engineering rewriting agent-workflows handoff"
 ---
 
 # Improve Prompt
@@ -19,7 +19,7 @@ The goal is a **sharp prompt produced fast** via a short back-and-forth with the
 
 - **Clear draft** — has goal + context + deliverable. Skip to step 3.
 - **Rough goal** — missing deliverable, context, or constraints. Go to step 2.
-- **Already specialized** (decision memo, coding task, review, spec) — check `references/patterns.md` for a matching template, then go to step 2 or 3.
+- **Already specialized** (decision memo, coding task, review, spec, final summary) — check `references/patterns.md` for a matching template, then go to step 2 or 3.
 
 ### 2. Interview (only if needed)
 
@@ -103,7 +103,7 @@ Cornering language ("must", "at all costs", "don't fail") and pleasantness-seeki
 
 ## Specialized patterns
 
-For decision memos, coding executors, reviews, or specs, use templates in [references/patterns.md](references/patterns.md). Load it only when the deliverable matches one of those shapes.
+For decision memos, coding executors, reviews, specs, or final summaries, use templates in [references/patterns.md](references/patterns.md). Load it only when the deliverable matches one of those shapes.
 
 ## Optional prompt tuner
 
