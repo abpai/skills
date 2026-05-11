@@ -7,7 +7,7 @@ argument-hint: "[topic, draft, or concept]"
 
 Use the `explain` module.
 
-1. Read `internal/explain.md`.
+1. Read `skills/code/explain.md`.
 2. Build the explanation one concept at a time.
 3. Keep the output scannable, concrete, and free of filler.
 

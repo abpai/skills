@@ -30,7 +30,7 @@ skip re-reading the resolved run's `state.json`: preflight is a snapshot and
 may be stale (for example, if a prior run stopped mid-handoff). Always read
 `state.json` and `checkpoints/` in Phase 0/A before deciding the next step.
 
-Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 2: Execute**.
+Read the Pi protocol module (`internal/protocol/README.md` in this plugin) and execute **Phase 2: Execute**.
 
 User input: $ARGUMENTS
 

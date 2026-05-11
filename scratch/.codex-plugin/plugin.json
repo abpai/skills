@@ -1,9 +1,0 @@
-{
-  "name": "scratch",
-  "version": "1.1.0",
-  "description": "Understand an existing project by playing with its real modules in a .scratch/ workspace.",
-  "author": { "name": "Andy Pai" },
-  "repository": "https://github.com/abpai/skills",
-  "license": "MIT",
-  "skills": "./skills/"
-}

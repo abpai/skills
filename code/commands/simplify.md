@@ -7,7 +7,7 @@ argument-hint: "[scope]"
 
 Use the `simplify` module.
 
-1. Read `internal/simplify.md`.
+1. Read `skills/code/simplify.md`.
 2. Inspect the relevant diff or recently modified files.
 3. Apply behavior-preserving simplifications and validate when practical.
 

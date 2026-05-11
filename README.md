@@ -65,14 +65,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:review-and-commit`, `/code:explain`, `/code:try`, `/code:simplify`, `/code:walkthrough`, and `/code:understand` |
-| **dead-code-eliminator** | Audit for unreachable functions, unused imports, orphaned classes, stale flags |
-
-### Security
-
-| Plugin | What it does |
-|--------|-------------|
-| **secure** | Additive security hardening workflows, starting with `/secure:dependencies` for dependency resolution and supply-chain policy |
+| **code** | Groups common code workflows under `/code:*`: goal, review-and-commit, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, and secure-dependencies |
 
 ### Matt Pocock Inspired
 
@@ -85,9 +78,6 @@ research and review. The debate workflow now lives inside `pi` as
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **scratch** | Understand a project's internals through runnable .scratch/ exploration scripts |
-| **socratic-code-owner** | Quiz the developer on AI-built code to ensure understanding |
-| **task** | Convert a rough ask into a hands-off task brief an agent can execute end-to-end |
 
 ### Tools
 
@@ -128,9 +118,9 @@ abpai/skills/
 │       └── references/        (if any)
 ├── code/                      ← grouped coding workflows
 │   ├── commands/              ← Claude `/code:*` wrappers
-│   ├── internal/              ← flat workflow modules, not standalone skills
-│   │   └── references/
-│   └── skills/code/
+│   └── skills/code/           ← one public skill plus flat workflow modules
+│       ├── *.md
+│       └── references/
 ├── mp/                        ← grouped Matt Pocock-inspired workflows
 │   ├── commands/              ← Claude `/mp:*` wrappers
 │   ├── internal/              ← flat workflow modules, not standalone skills
@@ -141,8 +131,8 @@ abpai/skills/
 │   ├── agents/
 │   ├── commands/
 │   ├── internal/
-│   │   └── debate/
-│   └── skills/pi-protocol/
+│   │   ├── debate/
+│   │   └── protocol/
 └── README.md
 ```
 
@@ -166,9 +156,11 @@ and [Claude Code plugin docs](https://code.claude.com/docs/en/plugins):
 - Shared support files stay inside the owning plugin folder. Paths must not
   rely on files outside the plugin, because installed plugins are copied into a
   runtime cache.
-- Use flat files in `internal/` for bundled implementation notes, prompts, or
-  command modules that should not become separate installable skills; use
-  `internal/references/` for shared supporting docs.
+- For grouped workflow packs with one public skill, keep workflow modules
+  directly inside `skills/<skill>/` and shared supporting docs under
+  `skills/<skill>/references/`.
+- Use flat files in `internal/` only for plugin-private implementation notes,
+  prompts, or command modules that are not part of a public skill.
 
 ## Installing Plugins
 

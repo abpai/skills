@@ -30,7 +30,7 @@ suite, and to gate the final Codex review on CLI availability. The
 coordinator must still resolve the run and re-read its `state.json` before
 acting.
 
-Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 3: Review**.
+Read the Pi protocol module (`internal/protocol/README.md` in this plugin) and execute **Phase 3: Review**.
 
 User input: $ARGUMENTS
 

@@ -30,7 +30,7 @@ availability. The coordinator must still re-read the chosen run's
 `state.json` before acting; the preflight is advisory. The Codex availability
 line feeds directly into the `codex_policy` branch in Phase D.
 
-Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 1: Plan**.
+Read the Pi protocol module (`internal/protocol/README.md` in this plugin) and execute **Phase 1: Plan**.
 
 User input: $ARGUMENTS
 

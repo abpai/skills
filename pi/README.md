@@ -169,7 +169,7 @@ exactly one run, they auto-select it.
 `checkpoints/` holds short-lived handoff files written when a generator
 finishes a pass and deleted once the evaluator scores it. They let
 `/pi:execute` resume into review/evaluation after a mid-handoff stop
-instead of re-running the generator. See `pi-protocol/STATE.md` for the
+instead of re-running the generator. See `internal/protocol/STATE.md` for the
 full resume decision table.
 
 ## File Diagram

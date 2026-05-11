@@ -5,19 +5,13 @@
     "bun-expert": "1.4",
     "claude": "1.5",
     "cli-design-expert": "1.1.1",
-    "code": "1.0.0",
+    "code": "1.2.0",
     "codex-exec": "1.4.1",
-    "dead-code-eliminator": "1.2",
     "distill": "1.0",
-    "hardening-dependency-resolution": "1.0",
     "human-writer": "1.4",
     "improve-prompt": "1.1.0",
     "lateral-thinking": "1.0",
     "mp": "1.1.0",
-    "pi-protocol": "0.9.0",
-    "scratch": "1.1",
-    "socratic-code-owner": "1.1",
-    "task": "0.1.0",
     "visualize": "1.1"
   }
 }

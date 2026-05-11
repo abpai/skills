@@ -66,24 +66,10 @@
     },
     {
       "name": "code",
-      "description": "Grouped coding workflows under /code:* commands: review-and-commit, explain, try, simplify, walkthrough, and understand.",
+      "description": "Grouped coding workflows under /code:* commands: goal, review-and-commit, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, and secure-dependencies.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "review", "commit", "explain", "try", "simplify", "walkthrough", "understand"]
-    },
-    {
-      "name": "dead-code-eliminator",
-      "description": "Audit a codebase for dead code: unreachable functions, unused imports, orphaned classes, stale feature flags.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "dead-code-eliminator" },
-      "category": "code-quality",
-      "keywords": ["dead-code", "cleanup", "audit", "unused"]
-    },
-    {
-      "name": "secure",
-      "description": "Additive security hardening workflows, starting with /secure:dependencies for dependency resolution and supply-chain policy.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "secure" },
-      "category": "security",
-      "keywords": ["dependency-security", "supply-chain", "lockfiles", "dependabot", "renovate"]
+      "keywords": ["code", "goal", "review", "commit", "explain", "try", "simplify", "walkthrough", "understand", "dead-code", "scratch", "socratic", "dependency-security"]
     },
     {
       "name": "human-writer",
@@ -100,32 +86,11 @@
       "keywords": ["prompting", "prompt-engineering", "rewriting", "agents"]
     },
     {
-      "name": "task",
-      "description": "Convert a rough ask into a hands-off task brief an agent can execute end-to-end.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "task" },
-      "category": "productivity",
-      "keywords": ["autonomy", "delegation", "briefs", "verification"]
-    },
-    {
       "name": "pi",
       "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with /pi:debate for structured architecture debate.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "pi" },
       "category": "productivity",
       "keywords": ["planning", "debate", "generator", "evaluator", "workflow", "codex"]
-    },
-    {
-      "name": "scratch",
-      "description": "Understand an existing project by playing with its real modules in a .scratch/ workspace.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "scratch" },
-      "category": "learning",
-      "keywords": ["understand", "codebase", "mental-model", "primitives", "modules"]
-    },
-    {
-      "name": "socratic-code-owner",
-      "description": "Quiz the developer on code, architecture, or plans an AI agent built. Ensures the human has a bulletproof mental model.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "socratic-code-owner" },
-      "category": "learning",
-      "keywords": ["quiz", "understanding", "mental-model", "ownership"]
     },
     {
       "name": "visualize",
