@@ -43,24 +43,22 @@ Auth --> API
 </script>
 ```
 
-## Theming for Threaded
+## Theming for HTML Effectiveness
 
 Use `theme: 'base'` — it is the only theme where `themeVariables` are fully customizable.
 
 ```js
-const isDark = document.documentElement.classList.contains('dark');
-
 mermaid.initialize({
   startOnLoad: true,
   theme: 'base',
   look: 'classic',
   themeVariables: {
-    primaryColor:       isDark ? '#1e293b' : '#f1f5f9',
-    primaryBorderColor: isDark ? '#f59e0b' : '#b45309',
-    primaryTextColor:   isDark ? '#f1f5f9' : '#0f172a',
-    lineColor:          isDark ? '#475569' : '#94a3b8',
+    primaryColor: '#f0eee6',
+    primaryBorderColor: '#d97757',
+    primaryTextColor: '#141413',
+    lineColor: '#87867f',
     fontSize: '16px',
-    fontFamily: "'Merriweather', Georgia, serif",
+    fontFamily: 'ui-serif, Georgia, serif',
   },
 });
 ```
@@ -68,7 +66,7 @@ mermaid.initialize({
 **CSS overrides** for node and edge labels — required so text follows the page color scheme:
 
 ```css
-.mermaid .nodeLabel { color: var(--text) !important; }
-.mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--bg) !important; }
-.mermaid .edgeLabel rect { fill: var(--bg) !important; }
+.mermaid .nodeLabel { color: var(--ink) !important; }
+.mermaid .edgeLabel { color: var(--muted) !important; background-color: var(--ivory) !important; }
+.mermaid .edgeLabel rect { fill: var(--ivory) !important; }
 ```

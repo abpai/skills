@@ -65,7 +65,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:*`: goal, review-and-commit, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, and secure-dependencies |
+| **code** | Groups common code workflows under `/code:*`: goal, review-and-commit, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, and secure-dependencies, with optional HTML artifacts where visual review helps |
 
 ### Matt Pocock Inspired
 
@@ -85,7 +85,7 @@ research and review. The debate workflow now lives inside `pi` as
 |--------|-------------|
 | **agent-browser** | Browser automation: navigate, fill forms, click, screenshot, extract data |
 | **claude** | Run Claude Code CLI for delegation, session continuation, machine-readable output |
-| **visualize** | Generate self-contained HTML visualizations for systems, plans, or code flows |
+| **visualize** | Generate self-contained HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
 
 ### Languages & Platforms
 

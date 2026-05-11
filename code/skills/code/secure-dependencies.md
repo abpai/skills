@@ -42,6 +42,8 @@ Return:
 - Packages allowed to run install/build scripts and why.
 - Remaining supply-chain gaps.
 
+For multi-ecosystem repositories, optionally add a self-contained HTML dependency hardening dashboard with ecosystem cards, bot policy table, lifecycle-script allowlist, and remaining gaps. Keep `DEPENDENCY_SECURITY.md` as the committed policy surface.
+
 ## References
 
 - `references/ecosystem-policies.md`: exact ecosystem policies, bot cooldown rules, CI commands, and `DEPENDENCY_SECURITY.md` content requirements.

@@ -22,7 +22,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Distill
@@ -170,6 +170,11 @@ Useful when the distillation will be used to guide an agent or a rewrite.
 ### Hybrid
 For complex systems, combine formats: a conceptual map plus a minimal implementation,
 or a behavioral spec with a reference implementation.
+
+### HTML Map
+Use a self-contained HTML artifact when the primitive set, relationships, and discarded complexity are easier to inspect spatially than as a linear document. Good fits include codebase maps, architecture primitives, research-paper concept graphs, and multi-document synthesis.
+
+The HTML map should include primitive cards, relationship arrows, confidence flags, and a "discarded as accidental" section. Keep the primitive names and reconstruction concise enough that the page can be read once.
 
 ## Input-Specific Strategies
 

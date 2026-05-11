@@ -166,6 +166,20 @@ Default to **sharp-edges** unless the user explicitly asks for a memo or the fin
 
 Long walkthroughs blow context. Write `docs/walkthrough-state.md` after each advance. Minimal schema in **references/walkthrough-template-walkthrough-state.md**. On a fresh session, if that file exists, read it before pre-seeding — it replaces pre-seed.
 
+## Optional HTML Map
+
+When a walkthrough spans multiple stops, creates several todos, or leaves the user holding a large architecture picture, write a companion HTML map. This is a review surface, not the source of truth.
+
+Use it for:
+
+- stop-by-stop navigation with the current stop highlighted
+- subsystem cards with file:line refs
+- reframe candidates with trigger conditions
+- captured todos grouped by area
+- flow diagrams that would be unreadable as ASCII
+
+Keep durable todos in `docs/todos/*.md` and state in `docs/walkthrough-state.md`. The HTML map helps the human read and share the walkthrough.
+
 ## Failure modes and branches
 
 - **No spec.md or authoritative doc exists** → see **references/walkthrough-workflow-no-spec.md**. First stop becomes "reconstruct the implicit spec."

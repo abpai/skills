@@ -74,6 +74,17 @@ If `human-writer` is available, recommend it as a follow-up anti-slop pass.
 | Internal | Assume shared context. Cut definitions of known terms. |
 | Essay | Sections become paragraphs. Tables become prose. Keep rhythm. |
 
+## HTML artifact mode
+
+Use a self-contained HTML file instead of Markdown when the explanation is long, visual, comparative, code-heavy, or meant to be shared. Good fits:
+
+- feature explainers with request paths, config snippets, and gotchas
+- concept explainers with diagrams, tabs, glossary terms, or live controls
+- code explanations with annotated snippets and file:line jump lists
+- comparison pages where the reader needs options side by side
+
+Write to a descriptive local HTML path and open it when practical. Use the `visualize` editorial card style: ivory background, serif headings, clay accent, restrained borders, and visual structure before prose. Keep a copy/export affordance when the page helps the user produce a follow-up prompt.
+
 ## Output
 
-Return markdown. No meta-commentary. If the draft runs over ~30 lines, prefer a file. Otherwise inline.
+Return Markdown by default. No meta-commentary. If the draft runs over ~30 lines, prefer a file. If the artifact needs visual structure, comparison, interaction, or shareability, produce HTML instead.

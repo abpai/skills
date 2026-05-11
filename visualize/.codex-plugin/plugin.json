@@ -1,7 +1,7 @@
 {
   "name": "visualize",
-  "version": "1.1.0",
-  "description": "Generate a self-contained HTML visualization to explain a system, plan, code flow, or concept.",
+  "version": "1.2.0",
+  "description": "Generate a self-contained HTML visualization in an ivory/clay editorial gallery style for systems, plans, code flows, and concepts.",
   "author": {
     "name": "Andy Pai"
   },

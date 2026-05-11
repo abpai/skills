@@ -131,6 +131,8 @@ Concepts skipped: Event sourcing tradeoffs (flagged for follow-up)
 Overall: 4/6 solid. You're close — the two gaps are focused and fixable.
 ```
 
+For long briefings, optionally write a self-contained HTML study guide after the loop is complete. Do not use HTML during the Socratic loop itself. The final artifact may show the agenda, concept status, file refs, diagrams from corrections, and the focused review list.
+
 ---
 
 ## Behavioral Rules

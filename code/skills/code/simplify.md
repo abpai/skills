@@ -100,3 +100,5 @@ When finished, briefly summarize:
 - what you fixed
 - what you intentionally skipped
 - whether the reviewed code was already clean
+
+For broad simplification passes, optionally create a small HTML before/after explainer with the old shape, new shape, removed duplication, and validation evidence. Do not do this for tiny edits.

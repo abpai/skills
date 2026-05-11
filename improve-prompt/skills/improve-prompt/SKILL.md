@@ -1,11 +1,9 @@
 ---
 name: improve-prompt
 description: Improve a vague or under-specified prompt into a sharp, reusable one. Interviews the user briefly, then rewrites.
-when_to_use: User asks to improve, rewrite, or sharpen a prompt; turn a rough request into a reusable template; or reduce vagueness, sycophancy, or success-theater in a planning, coding, review, eval, or decision prompt.
-argument-hint: "[draft prompt or rough goal]"
 metadata:
   author: Andy Pai
-  version: "1.1.0"
+  version: "1.2.0"
   tags: "prompting prompt-engineering rewriting agent-workflows"
 ---
 
@@ -106,6 +104,12 @@ Cornering language ("must", "at all costs", "don't fail") and pleasantness-seeki
 ## Specialized patterns
 
 For decision memos, coding executors, reviews, or specs, use templates in [references/patterns.md](references/patterns.md). Load it only when the deliverable matches one of those shapes.
+
+## Optional prompt tuner
+
+When the prompt has many variables, examples, or output modes, create a throwaway HTML prompt tuner instead of only returning a rewritten prompt. Use it for side-by-side editing, highlighted variable slots, sample input previews, token/character counts, and a copy button that exports the final prompt.
+
+Keep the final improved prompt as copyable text. The HTML exists to help the user tune it.
 
 ## Do not use this skill for
 

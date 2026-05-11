@@ -25,6 +25,7 @@ Use this module when the user wants a dead-code audit, not a broad refactor. The
 - Keep the main report focused on the audit result, not on style commentary.
 - Use `references/report-shape.md` for the exact report sections, item formatting, and removal-order template.
 - Include correctness and algorithmic-soundness suggestions only for live code.
+- For broad audits, optionally add a self-contained HTML reachability dashboard with entry points, live/dead/conditional groups, confidence labels, and removal order. Keep the Markdown report as the source of truth.
 
 ## Decision Heuristics
 

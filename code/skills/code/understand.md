@@ -2,9 +2,9 @@
 
 > You can outsource thinking, but not your understanding.
 
-Build a mental model of a real code path. The output is a high-density walkthrough that makes the next move, assembling a scratch script by hand, obvious. The skeleton has imports filled in but logic left as TODOs because manually wiring it is how understanding lands.
+Build a mental model of a real code path. The output is a self-contained HTML artifact that makes the hot path spatial: entry points, call graph, concrete values, side effects, branches, and a scratch skeleton all visible in one browser page.
 
-Use when the user asks to understand a specific symbol, feature, behavior, file, or module in an existing codebase, especially when they want to trace the call stack so they can build a scratch script themselves.
+Use when the user asks to understand a specific symbol, feature, behavior, file, or module in an existing codebase, especially when the shape of the code matters more than a prose explanation.
 
 Do not use this for general concept explanations; use `explain` for that. Do not use this for extracting general primitives; use `distill` for that. Do not use this to auto-generate runnable scripts; use `scratch` for that.
 
@@ -40,7 +40,7 @@ Found 3 candidates for "how todos get saved":
 2. src/cli/add.ts:8 - `cli add` command
 3. src/sync/inbound.ts:42 - pulls from upstream queue
 
-Which one? (number, or "all" for separate walkthroughs)
+Which one? (number, or "all" for separate artifacts)
 ```
 
 ### 3. Trace happy path only
@@ -52,153 +52,81 @@ From the entry, follow each call:
   - I/O boundaries (DB driver, HTTP client, fs, queue producer, network socket)
   - Third-party library calls
   - "Obvious" helpers: loggers, type guards, simple formatters, identity transforms, trivial getters
-- Branches: trace happy path only. If a branch meaningfully changes the path (early returns, alternate destinations, fallback strategies), capture it as a one-liner in the "Branches" section. Do not recurse into branch paths.
+- Branches: trace happy path only. If a branch meaningfully changes the path (early returns, alternate destinations, fallback strategies), capture it as a one-liner in the branches section. Do not recurse into branch paths.
 
 ### 4. Capture concrete sample values
 
-While tracing, note realistic values flowing through. Prefer values from real fixtures or tests in the repo. Invent reasonable ones if none exist. These power the worked-example section.
+While tracing, note realistic values flowing through. Prefer values from real fixtures or tests in the repo. Invent reasonable ones if none exist. These power the worked-example panel.
 
 ### 5. Annotate side effects inline
 
-Tag every DB write, cache mutation, event emission, file write, network call, or external state change with `side effect:` at the relevant line in both the call stack and the worked example.
+Tag every DB write, cache mutation, event emission, file write, network call, or external state change with `side effect:` at the relevant line in both the call graph and worked example.
 
-### 6. Locate scratch-file imports
+### 6. Collect scratch skeleton imports
 
-For each module touched on the happy path, record the real import path and the symbols needed. These go straight into the skeleton's import block. No placeholders, no `TODO: figure out import`.
+For each module touched on the happy path, record the real import path and the symbols needed. These go into the HTML artifact's scratch skeleton panel. No placeholders, no `TODO: figure out import`.
 
-### 7. Write the file - do NOT render in chat
+### 7. Write the HTML artifact - do NOT render it in chat
 
-Write to `.understand/<topic>.md` at the repo root. Create the directory if missing. `<topic>` is a short kebab-case slug derived from the entry, such as `add-todo`, `todos-save-flow`, or `auth-middleware`.
+Write to `.understand/<topic>.html` at the repo root. Create the directory if missing. `<topic>` is a short kebab-case slug derived from the entry, such as `add-todo`, `todos-save-flow`, or `auth-middleware`.
 
-Confirm the path with the user. The file is the deliverable; the chat reply is just the path confirmation plus any disambiguation the user needed to make.
+Open the file in a browser when practical. Confirm the path with the user. The file is the deliverable; the chat reply is just the path confirmation plus any disambiguation the user needed to make.
 
-## Output format
+## HTML artifact structure
 
-The file has these sections, in order. Match the exact headings.
+The file should be self-contained: HTML, CSS, and small JavaScript only when it helps navigation. No build step.
 
-```markdown
-# /understand: <topic>
+Use this structure:
 
-**Entry**: `<symbol>` at `<file>:<line>`
-**Traced**: <YYYY-MM-DD>
-**Stack**: <languages / runtimes touched>
+1. **Header** - title, entry point, traced date, stack/language badges.
+2. **Hot path map** - SVG or CSS boxes/arrows showing the happy path. Mark boundaries and side effects visually.
+3. **Call stack table** - function, input shape, output shape, file:line, side effect.
+4. **Worked example** - concrete values flowing top-to-bottom with file:line refs in comments.
+5. **Branches noted** - collapsible one-line branch notes. Keep them shallow.
+6. **Scratch skeleton** - code block with real imports and TODOs for manual wiring.
+7. **Pointers** - entry, core logic, boundaries, fixtures/tests.
 
----
+For the visual style, prefer the same editorial card language as `visualize`: ivory background, serif headings, clay accent, restrained borders, spatial diagrams over ASCII.
 
-## 1. Call stack (shapes)
+## Example content shape
 
-Indented ASCII tree. Each node: `name(arg: Shape) -> ReturnShape @ file:line`
-Boundaries marked `[boundary]`. Side effects tagged inline.
+The artifact should express this information, but not as Markdown:
 
-addTodoHandler(req: AddTodoRequest) -> Response @ src/api/todos.ts:14
-|-- validateBody(body: unknown) -> AddTodoInput @ src/api/todos.ts:23
-|-- addTodo(input: AddTodoInput) -> Todo @ src/todos/service.ts:8
-|   |-- sanitize(text: string) -> string @ src/todos/sanitize.ts:3
-|   `-- saveTodo(draft: TodoDraft) -> Todo @ src/todos/repo.ts:12
-|       `-- db.todos.insert(...) side effect: DB write @ [boundary]
-`-- notify('todo.saved', todo: Todo) -> void @ src/events.ts:30
-    `-- eventBus.emit(...) side effect: emits 'todo.saved' @ [boundary]
+```text
+Entry: addTodoHandler @ src/api/todos.ts:14
 
----
+Happy path:
+addTodoHandler(req) -> validateBody(body) -> addTodo(input)
+  -> sanitize(text)
+  -> saveTodo(draft) side effect: DB write [boundary]
+  -> notify("todo.saved", todo) side effect: event emit [boundary]
 
-## 2. Worked example (concrete values)
+Worked value:
+req.body = { text: "buy milk" }
+validateBody(req.body) -> { text: "buy milk" }
+saveTodo({ text: "buy milk", createdAt: <now> }) -> { id: "t_01H..." }
 
-Pseudocode-flavored, real file:line refs in comments. Values flow top-to-bottom.
-
-# user submits the form with text "buy milk"
-req = { body: { text: "buy milk" } }
-
-# src/api/todos.ts:14 - entry
-input = validateBody(req.body)
-# -> { text: "buy milk" } (rejects empty, trims whitespace)
-
-# src/todos/service.ts:8 - orchestration
-todo = addTodo(input)
-
-  # src/todos/sanitize.ts:3
-  cleaned = sanitize("buy milk")
-  # -> "buy milk" (strips control chars, collapses whitespace)
-
-  # src/todos/repo.ts:12
-  draft = { text: "buy milk", createdAt: <now> }
-  saved = saveTodo(draft)
-  # side effect: INSERT into todos
-  # -> { id: "t_01H...", text: "buy milk", createdAt: ... }
-
-# src/events.ts:30
-notify("todo.saved", saved)
-# side effect: eventBus.emit("todo.saved", saved)
-
-# response back to client
-return Response.json(saved, { status: 201 })
-
----
-
-## 3. Branches noted in passing
-
-One line each. Just enough to know they exist.
-
-- `validateBody` throws `ValidationError` on empty text -> handler returns 400 (not traced)
-- `saveTodo` retries once on transient DB errors before throwing (not traced)
-- If `eventBus` is offline, `notify` swallows the error and logs (not traced)
-
----
-
-## 4. Build the scratch yourself
-
-Save as `.understand/<topic>.scratch.<ext>` and fill in the TODOs.
-
+Scratch imports:
 import { addTodo } from "../src/todos/service"
 import { sanitize } from "../src/todos/sanitize"
 import { saveTodo } from "../src/todos/repo"
 import { notify } from "../src/events"
-import type { AddTodoInput } from "../src/todos/types"
-
-async function main() {
-  // TODO: build a realistic AddTodoInput
-  const input: AddTodoInput = { text: "buy milk" }
-
-  // TODO: stub or mock the DB so saveTodo doesn't actually write
-  // real repo lives at src/todos/repo.ts:12, calls db.todos.insert
-
-  // TODO: stub eventBus so notify doesn't actually emit
-  // real bus lives at src/events.ts, .emit is the boundary
-
-  // TODO: call addTodo(input) and inspect what comes back
-  // TODO: log what saveTodo received (the sanitized draft)
-  // TODO: log what notify was called with
-}
-
-main()
-
-**Worth instrumenting at each step**:
-- input shape going into `addTodo`
-- sanitized text going into `saveTodo`
-- final `Todo` returned
-- exact payload to `notify`
-
----
-
-## 5. Pointers
-
-- Entry: src/api/todos.ts:14
-- Core logic: src/todos/service.ts
-- Boundaries: src/todos/repo.ts (DB), src/events.ts (eventBus)
-- Fixtures: src/todos/__tests__/service.test.ts
 ```
 
 ## Conventions
 
-- ASCII over Mermaid, always.
+- HTML/SVG over ASCII. Diffs and call graphs are spatial information.
 - Concrete file:line refs. Never paraphrase locations as "in the service file".
 - Polyglot adaptation. Match the codebase's idiom: TypeScript uses `.ts` plus ES imports, Python uses `.py` plus `from X import Y`, Go uses `.go` plus package imports, PHP uses `.php` plus `use` statements.
-- Density over completeness. Every line earns its place. Drop sections that add nothing.
+- Density over completeness. Every panel earns its place. Drop sections that add nothing.
 - No tutorial voice. The reader is the code owner. Do not explain language features, apologize, or preface.
-- Do not render the walkthrough in chat. Write the file. Confirm the path.
+- Do not paste the artifact into chat. Write the file. Confirm the path.
+- Never use `innerHTML` with untrusted repository content. Escape code, comments, filenames, and sample values.
 
 ## Anti-patterns
 
-- Dumping the walkthrough into chat instead of writing to `.understand/`
+- Dumping the walkthrough into chat instead of writing the HTML artifact
+- Generating a Markdown companion by default
 - Tracing branches when the user asked for happy path
 - Recursing into third-party libraries or obvious helpers
 - Vague refs like "in the service file"; always use `file:line`

@@ -5,17 +5,18 @@ description: >-
   flow, or concept. Use when the user asks to visualize, diagram, explain
   visually, or walk through a system, architecture, plan, or code flow. Outputs
   a single HTML file opened in the browser.
-argument-hint: "[what to visualize]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1"
+  version: "1.2"
   upstream_skill: https://github.com/nicobailon/visual-explainer
 ---
 
 # Visualize
 
 Generate a single, self-contained HTML file that visually explains a system, plan, code flow, or concept. The output opens in the browser — never fall back to ASCII art when this skill is loaded.
+
+Default aesthetic: the "HTML effectiveness" editorial gallery style. Use an ivory page, serif display headings, clay accents, quiet card grids, simple SVG illustrations, and generous whitespace. The page should feel like something the user wants to read, not a dashboard skin.
 
 ## When to Use
 
@@ -27,7 +28,7 @@ Generate a single, self-contained HTML file that visually explains a system, pla
 ## Workflow
 
 1. **Understand** what the user wants to see — the subject, the audience, the level of detail.
-2. **Read `./templates/base.html`** to absorb the tech stack and Threaded style. Read it each time, do not rely on memory.
+2. **Read `./templates/base.html`** to absorb the tech stack and HTML-effectiveness style. Read it each time, do not rely on memory.
 3. **Pick the format** (see Format Guide below).
 4. For Mermaid diagrams with 10+ nodes, also **read `./references/mermaid-tips.md`**.
 5. **Adapt** the base template for this specific visualization. Reuse the structure, swap the visual area content.
@@ -37,24 +38,26 @@ Generate a single, self-contained HTML file that visually explains a system, pla
 
 | Intent | Approach |
 |--------|----------|
-| Flows, processes, sequences | Mermaid.js in the visual area |
-| Architecture, system overview | Mermaid.js or CSS Grid cards |
+| Flows, processes, sequences | SVG/CSS boxes and arrows first; Mermaid.js when the graph is large |
+| Architecture, system overview | SVG/CSS module map or card grid |
 | Comparisons, data | HTML `<table>` |
-| Step-by-step concepts | Walkthrough (base template pattern) |
+| Step-by-step concepts | Numbered sections and cards |
 | Timelines, roadmaps | CSS timeline in the visual area |
+| Code review / PR explanation | Annotated diff cards, severity labels, reviewer focus list |
+| Prompt/config tuning | Purpose-built editor with copy/export button |
 
 ## Tech Stack
 
 Every generated file uses:
 
 - **Preact + htm** — ESM CDN imports, no build step
-- **Tailwind CSS CDN** — utility classes with inline config
-- **Google Fonts** — Merriweather (serif) + Inter (sans)
+- **Plain CSS custom properties** — no build step or generated CSS
+- **System fonts** — serif display, sans body, mono metadata
 - **Mermaid.js CDN** — add only when diagrams are needed
 
 No other dependencies. No build step.
 
-For the full Threaded design tokens (colors, typography, motion), see `./references/design-system.md`.
+For the full HTML-effectiveness design tokens (colors, typography, layout, motion), see `./references/design-system.md`.
 
 ## Principles
 
@@ -63,6 +66,7 @@ For the full Threaded design tokens (colors, typography, motion), see `./referen
 - **Adapt the base template** — don't start from scratch
 - **Correct over pretty** — the visualization must accurately represent the information
 - **Interactive when it helps** comprehension (step-through, hover, collapse)
+- **Export when the page edits data** — include copy as JSON/Markdown/prompt when the artifact is a tuner or editor
 - **Never use `innerHTML` with user-provided content** (XSS prevention)
 
 ## Avoiding Escaped Backticks in Output

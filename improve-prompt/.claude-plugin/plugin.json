@@ -1,6 +1,6 @@
 {
   "name": "improve-prompt",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Improve vague or underspecified prompts into sharp, reusable prompts that produce better decisions and execution.",
   "author": {
     "name": "Andy Pai"

@@ -211,6 +211,12 @@ failure signal so the user doesn't repeat your dead ends.>
 to a new team member in 2 minutes, what would you say?>
 ```
 
+### Optional Tutorial.html
+
+If the project shape is spatial, visual, or too dense for a linear tutorial, also write `.scratch/Tutorial.html`. It should mirror the Markdown tutorial, but make the module map, script outputs, composition flow, surprises, and dead ends easier to scan.
+
+Keep `.scratch/Tutorial.md` as the durable text artifact. Use HTML as the readable review layer.
+
 ## Execution Discipline
 
 Throughout all phases, follow this cadence:

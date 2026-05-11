@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "1.2.0",
-  "description": "Grouped code workflows for goals, review, explanation, exploration, cleanup, owner briefings, and dependency hardening.",
+  "version": "1.3.0",
+  "description": "Grouped code workflows for goals, review, explanation, exploration, cleanup, HTML artifacts, owner briefings, and dependency hardening.",
   "author": {
     "name": "Andy Pai"
   },

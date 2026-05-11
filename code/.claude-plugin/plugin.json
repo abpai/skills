@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "1.2.0",
-  "description": "Grouped code workflows exposed as /code:* commands.",
+  "version": "1.3.0",
+  "description": "Grouped code workflows exposed as /code:* commands, with optional HTML artifacts.",
   "author": {
     "name": "Andy Pai"
   },

@@ -74,6 +74,20 @@ Run relevant quality checks when available (for example lint, tests, type checks
 
 If checks cannot run, explicitly state what was skipped and why.
 
+## Optional HTML PR Explainer
+
+For complex diffs, risky PRs, unfamiliar code paths, or review handoffs, create a self-contained HTML explainer before or alongside the commit plan. Do not make this mandatory for small commits.
+
+Good HTML PR explainers include:
+
+- annotated diff snippets with severity-colored margin notes
+- before/after flow diagrams for changed behavior
+- file-by-file tour focused on why each file changed
+- reviewer focus areas and validation status
+- links or copied file:line refs for the exact hot spots
+
+Use Markdown for the commit plan and final chat summary. Use HTML when the reviewer needs spatial context they will not get from a terminal diff.
+
 ## 5) Build Commit Plan
 
 Group changes into atomic commits that can be reverted independently.

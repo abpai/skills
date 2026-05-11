@@ -1,258 +1,574 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Walkthrough — Reference Template</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visualize - Reference Template</title>
 <!--
   Reference template for the visualize skill.
-  Demonstrates the Threaded design system with a step-through walkthrough.
-  Claude reads this before generating, then adapts the structure for the
-  specific visualization (Mermaid diagram, table, timeline, etc.).
 
-  Tech stack (no build step):
+  The style follows the "HTML effectiveness" editorial gallery direction:
+  ivory page, serif display type, clay accent, quiet cards, simple SVG
+  illustrations, and generous whitespace. Read this before generating, then
+  adapt the sections, cards, diagrams, tables, and interactions to the user's
+  requested artifact.
+
+  Stack:
   - Preact + htm via ESM CDN
-  - Tailwind CSS CDN with inline config
-  - Google Fonts: Merriweather + Inter
-  - Mermaid.js CDN (add only when diagrams are needed)
+  - Plain CSS custom properties
+  - Mermaid.js only when a generated artifact needs a diagram
 
-  Key patterns:
-  - Threaded typography: serif headings, sans body, 1.125rem/1.8 reading rhythm
-  - Visual area: bg-slate-50 rounded-2xl border border-slate-200 p-10
-  - Spacious layout: max-w-2xl mx-auto px-6 py-16
-  - Step-through walkthrough with Preact components
-  - Subtle animations: fadeIn and fadeInSoft
-  - Light default with dark mode toggle (class-based, persisted to localStorage)
+  Keep generated pages self-contained. No build step.
 -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
-<script>
-  // Theme: light default, persist choice to localStorage
-  (function() {
-    var stored = localStorage.getItem('theme');
-    if (stored === 'dark') document.documentElement.classList.add('dark');
-  })();
-</script>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: {
-    extend: {
-      fontFamily: {
-        serif: ['Merriweather', 'Georgia', 'serif'],
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-      },
-      colors: {
-        accent: { DEFAULT: '#b45309', light: '#fef3c7' },
-      },
-      animation: {
-        'fade-in': 'fadeIn 0.4s ease forwards',
-        'fade-in-soft': 'fadeInSoft 0.6s ease forwards',
-      },
-      keyframes: {
-        fadeIn: {
-          from: { opacity: '0', transform: 'translateY(4px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
-        },
-        fadeInSoft: {
-          from: { opacity: '0' },
-          to: { opacity: '1' },
-        },
-      },
-    },
-  },
-}
-</script>
 <style>
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-  .dark ::-webkit-scrollbar-thumb { background: #334155; }
+  :root {
+    --ivory: #faf9f5;
+    --paper: #ffffff;
+    --ink: #141413;
+    --clay: #d97757;
+    --clay-dark: #b85c3e;
+    --oat: #e3dacc;
+    --olive: #788c5d;
+    --mist: #f0eee6;
+    --line: #d1cfc5;
+    --muted: #87867f;
+    --soft: #3d3d3a;
+    --serif: ui-serif, Georgia, "Times New Roman", Times, serif;
+    --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  }
 
-  /* Selection */
-  ::selection { background: #fef3c7; color: #78350f; }
-  .dark ::selection { background: #78350f; color: #fef3c7; }
+  * {
+    box-sizing: border-box;
+  }
 
-  /* Reduced motion */
+  body {
+    margin: 0;
+    background: var(--ivory);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  ::selection {
+    background: var(--oat);
+    color: var(--ink);
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 72px 32px 120px;
+  }
+
+  .masthead {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 48px;
+    align-items: end;
+    padding-bottom: 52px;
+    border-bottom: 1.5px solid var(--line);
+  }
+
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 18px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .eyebrow::before {
+    content: "";
+    width: 24px;
+    height: 1.5px;
+    background: var(--clay);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--serif);
+    font-weight: 500;
+    letter-spacing: -0.014em;
+  }
+
+  h1 {
+    max-width: 16ch;
+    margin: 0;
+    font-size: clamp(40px, 5.6vw, 68px);
+    line-height: 1.05;
+  }
+
+  h1 em {
+    color: var(--clay);
+    font-style: italic;
+  }
+
+  .intro {
+    max-width: 650px;
+    margin: 24px 0 0;
+    color: var(--soft);
+    font-size: 16.5px;
+  }
+
+  .hero-figure {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-items: end;
+  }
+
+  .pane {
+    position: relative;
+    display: flex;
+    min-height: 220px;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    background: var(--paper);
+  }
+
+  .pane.plain {
+    transform: rotate(-2deg) translateY(8px);
+    background: var(--mist);
+  }
+
+  .pane.rich {
+    transform: rotate(1deg);
+    border-color: var(--ink);
+    box-shadow: 0 14px 34px rgba(20, 20, 19, 0.10);
+  }
+
+  .tag {
+    position: absolute;
+    top: -11px;
+    left: 12px;
+    padding: 2px 8px;
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    background: var(--ivory);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+  }
+
+  .rich .tag {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+
+  .line {
+    height: 7px;
+    border-radius: 999px;
+    background: var(--line);
+  }
+
+  .rich .line {
+    background: var(--mist);
+  }
+
+  .w90 { width: 90%; }
+  .w75 { width: 75%; }
+  .w60 { width: 60%; }
+  .w50 { width: 50%; }
+
+  .visual-block {
+    position: relative;
+    flex: 1;
+    border-radius: 8px;
+    background: var(--oat);
+    overflow: hidden;
+  }
+
+  .visual-block::after {
+    content: "";
+    position: absolute;
+    inset: 24% 22%;
+    border: 2px solid var(--clay);
+    border-radius: 999px;
+  }
+
+  .bars {
+    display: flex;
+    align-items: end;
+    gap: 6px;
+  }
+
+  .bar {
+    flex: 1;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .b1 { height: 20px; background: var(--olive); }
+  .b2 { height: 34px; background: var(--clay); }
+  .b3 { height: 24px; background: var(--oat); }
+  .b4 { height: 38px; background: var(--ink); }
+
+  section {
+    margin-top: 72px;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+
+  .idx {
+    width: 34px;
+    flex: 0 0 34px;
+    color: var(--clay);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: clamp(28px, 3.4vw, 42px);
+    line-height: 1.1;
+  }
+
+  .count {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--mist);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .section-intro {
+    max-width: 760px;
+    margin: 0 0 28px 50px;
+    color: var(--soft);
+    font-size: 15px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    margin-left: 50px;
+  }
+
+  .card {
+    display: flex;
+    min-height: 430px;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    background: var(--paper);
+    color: inherit;
+    text-decoration: none;
+    transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: var(--ink);
+    box-shadow: 0 12px 32px rgba(20, 20, 19, 0.10);
+  }
+
+  .thumb {
+    display: flex;
+    height: 154px;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1.5px solid var(--line);
+    background: var(--mist);
+    padding: 18px;
+    transition: background 150ms ease;
+  }
+
+  .card:hover .thumb {
+    background: var(--oat);
+  }
+
+  .thumb svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .stroke {
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .white {
+    fill: var(--paper);
+    stroke: var(--muted);
+    stroke-width: 3;
+  }
+
+  .fill-muted { fill: var(--line); }
+  .fill-clay { fill: var(--clay); }
+  .fill-olive { fill: var(--olive); }
+  .fill-oat { fill: var(--oat); }
+  .fill-ink { fill: var(--ink); }
+  .clay-line {
+    fill: none;
+    stroke: var(--clay);
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+
+  .card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 22px 22px 18px;
+  }
+
+  h3 {
+    margin: 0 0 10px;
+    font-size: 25px;
+    line-height: 1.16;
+  }
+
+  .desc {
+    flex: 1;
+    margin: 0 0 22px;
+    color: var(--soft);
+    font-size: 15px;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--mist);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .arrow {
+    color: var(--line);
+    transition: transform 150ms ease, color 150ms ease;
+  }
+
+  .card:hover .meta {
+    color: var(--clay-dark);
+  }
+
+  .card:hover .arrow {
+    transform: translateX(3px);
+    color: var(--clay);
+  }
+
+  @media (max-width: 900px) {
+    .masthead {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-figure {
+      max-width: 420px;
+    }
+
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .wrap {
+      padding: 48px 20px 90px;
+    }
+
+    .section-head {
+      flex-wrap: wrap;
+    }
+
+    .section-intro,
+    .grid {
+      margin-left: 0;
+    }
+
+    .card {
+      min-height: 0;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-      animation-duration: 0.01ms !important;
+    *,
+    *::before,
+    *::after {
       transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
     }
   }
 </style>
 </head>
-<body class="bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen">
-
+<body>
 <div id="app"></div>
 
 <script type="module">
 import { h, render } from 'https://esm.sh/preact@10';
-import { useState } from 'https://esm.sh/preact@10/hooks';
 import htm from 'https://esm.sh/htm@3';
 
 const html = htm.bind(h);
 
-// ─── Data ──────────────────────────────────────────────
-const STEPS = [
+const cards = [
   {
-    title: 'Ingestion',
-    body: 'Raw payloads arrive and pass schema validation before entering the pipeline.',
-    visual: html`
-      <div class="flex flex-col items-center gap-3">
-        <div class="w-12 h-12 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22v-10"/></svg>
-        </div>
-        <span class="font-mono text-[10px] uppercase tracking-widest text-slate-400">Receiving</span>
-      </div>`,
+    title: 'Annotated flow',
+    body: 'A hot path rendered as boxes and arrows, with the risky transition called out in clay.',
+    file: '01-annotated-flow.html',
+    kind: 'flow',
   },
   {
-    title: 'Transformation',
-    body: 'Data is normalized, sensitive fields are hashed, and timestamps convert to UTC.',
-    visual: html`
-      <div class="w-36">
-        <div class="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-2">
-          <div class="h-full w-2/3 bg-amber-600 rounded-full"></div>
-        </div>
-        <div class="flex justify-between font-mono text-[10px] text-slate-400">
-          <span>0x8F…A2</span><span>Processing</span>
-        </div>
-      </div>`,
+    title: 'Comparison grid',
+    body: 'Three options side by side so the tradeoffs are visible without holding them in your head.',
+    file: '02-comparison-grid.html',
+    kind: 'grid',
   },
   {
-    title: 'Distribution',
-    body: 'Finalized objects push to the edge network for low-latency access worldwide.',
-    visual: html`
-      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-medium">
-        <svg class="text-emerald-600" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-        Synced
-      </div>`,
+    title: 'Implementation plan',
+    body: 'Milestones, data movement, risky files, and validation evidence arranged for handoff.',
+    file: '03-implementation-plan.html',
+    kind: 'plan',
   },
 ];
 
-// ─── Components ────────────────────────────────────────
-
-function StepDots({ current, total, onSelect }) {
+function FlowThumb() {
   return html`
-    <div class="flex gap-1.5">
-      ${Array.from({ length: total }, (_, i) => html`
-        <button
-          key=${i}
-          onClick=${() => onSelect(i)}
-          aria-label=${`Step ${i + 1}`}
-          class="h-6 flex items-center justify-center"
-        >
-          <span class=${`block h-1.5 rounded-full transition-all duration-300 ${
-            i === current
-              ? 'w-6 bg-amber-600'
-              : 'w-1.5 bg-slate-300 dark:bg-slate-600'
-          }`} />
-        </button>
-      `)}
-    </div>`;
+    <svg viewBox="0 0 120 80" role="img" aria-label="Flow thumbnail">
+      <rect class="white" x="8" y="14" width="30" height="24" rx="5" />
+      <rect class="fill-oat" x="46" y="14" width="30" height="24" rx="5" />
+      <rect class="white" x="84" y="14" width="30" height="24" rx="5" />
+      <path class="stroke" d="M38 26h8M76 26h8" />
+      <rect class="fill-clay" x="46" y="50" width="30" height="16" rx="4" />
+      <path class="clay-line" d="M61 38v12" />
+    </svg>
+  `;
 }
 
-function StepControls({ current, total, onPrev, onNext }) {
+function GridThumb() {
   return html`
-    <div class="flex gap-2">
-      <button
-        onClick=${onPrev}
-        disabled=${current === 0}
-        class="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-25 transition-colors"
-        aria-label="Previous"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-      </button>
-      <button
-        onClick=${onNext}
-        disabled=${current === total - 1}
-        class="h-8 px-3 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-sm font-semibold flex items-center gap-1.5 disabled:opacity-25 transition-colors"
-        aria-label="Next"
-      >
-        Next
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-      </button>
-    </div>`;
+    <svg viewBox="0 0 120 80" role="img" aria-label="Grid thumbnail">
+      <rect class="white" x="8" y="10" width="30" height="56" rx="5" />
+      <rect class="white" x="45" y="10" width="30" height="56" rx="5" />
+      <rect class="fill-oat" x="82" y="10" width="30" height="56" rx="5" />
+      <path class="stroke" d="M15 26h16M15 37h12M52 26h16M52 37h12" />
+      <path class="clay-line" d="M89 26h16M89 37h12" />
+      <circle class="fill-clay" cx="97" cy="53" r="6" />
+    </svg>
+  `;
 }
 
-function ThemeToggle() {
-  const [dark, setDark] = useState(document.documentElement.classList.contains('dark'));
-  const toggle = () => {
-    const next = !dark;
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('theme', next ? 'dark' : 'light');
-    setDark(next);
-  };
+function PlanThumb() {
   return html`
-    <button onClick=${toggle} aria-label=${dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      class="w-8 h-8 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-      ${dark
-        ? html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`
-        : html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`
-      }
-    </button>`;
+    <svg viewBox="0 0 120 80" role="img" aria-label="Plan thumbnail">
+      <path class="stroke" d="M18 12v56" />
+      <circle class="fill-clay" cx="18" cy="16" r="6" />
+      <circle class="fill-olive" cx="18" cy="40" r="6" />
+      <circle class="fill-muted" cx="18" cy="64" r="6" />
+      <path class="stroke" d="M34 17h44M34 40h34M34 64h42" />
+      <rect class="fill-oat" x="84" y="12" width="28" height="22" rx="5" />
+      <rect class="white" x="84" y="46" width="28" height="22" rx="5" />
+      <path class="clay-line" d="M91 57h14" />
+    </svg>
+  `;
+}
+
+function Thumb({ kind }) {
+  if (kind === 'flow') return html`<${FlowThumb} />`;
+  if (kind === 'grid') return html`<${GridThumb} />`;
+  return html`<${PlanThumb} />`;
+}
+
+function Card({ item }) {
+  return html`
+    <article class="card">
+      <div class="thumb"><${Thumb} kind=${item.kind} /></div>
+      <div class="card-body">
+        <h3>${item.title}</h3>
+        <p class="desc">${item.body}</p>
+        <div class="meta">
+          <span>${item.file}</span>
+          <span class="arrow">-&gt;</span>
+        </div>
+      </div>
+    </article>
+  `;
 }
 
 function App() {
-  const [step, setStep] = useState(0);
-  const current = STEPS[step];
-  const pad = n => String(n).padStart(2, '0');
-
-  const go = i => setStep(Math.max(0, Math.min(i, STEPS.length - 1)));
-
   return html`
-    <div class="max-w-2xl mx-auto px-6 py-16">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6">
-        <p class="font-mono text-xs uppercase tracking-widest text-slate-400 dark:text-slate-500">
-          Docs <span class="mx-1.5 text-slate-300 dark:text-slate-600">/</span> Workflow
-        </p>
-        <${ThemeToggle} />
-      </div>
-
-      <!-- Card -->
-      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-
-        <!-- Visual area -->
-        <div class="relative bg-slate-50 dark:bg-slate-800/50 aspect-video flex items-center justify-center border-b border-slate-200 dark:border-slate-800">
-          <div key=${step} class="animate-fade-in-soft">
-            ${current.visual}
-          </div>
-          <span class="absolute bottom-3 left-3 font-mono text-[10px] text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-            ${pad(step + 1)} / ${pad(STEPS.length)}
-          </span>
-        </div>
-
-        <!-- Text area -->
-        <div class="p-8" key=${step}>
-          <h2 class="font-serif text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2 animate-fade-in">
-            ${current.title}
-          </h2>
-          <p class="font-serif text-lg leading-relaxed text-slate-600 dark:text-slate-400 animate-fade-in" style="animation-delay: 80ms; opacity: 0;">
-            ${current.body}
+    <main class="wrap">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">HTML artifact</p>
+          <h1>The useful shape of <em>visual explanation</em></h1>
+          <p class="intro">
+            Use HTML when the user needs to compare, navigate, tune, or share the result.
+            Start with one strong visual surface, then add only the prose needed to make
+            the picture trustworthy.
           </p>
         </div>
 
-        <!-- Controls -->
-        <div class="flex items-center justify-between px-8 pb-8">
-          <${StepDots} current=${step} total=${STEPS.length} onSelect=${go} />
-          <${StepControls} current=${step} total=${STEPS.length} onPrev=${() => go(step - 1)} onNext=${() => go(step + 1)} />
+        <div class="hero-figure" aria-hidden="true">
+          <div class="pane plain">
+            <span class="tag">linear</span>
+            <span class="line w90"></span>
+            <span class="line w75"></span>
+            <span class="line w60"></span>
+            <span class="line w90"></span>
+            <span class="line w50"></span>
+            <span class="line w75"></span>
+          </div>
+          <div class="pane rich">
+            <span class="tag">spatial</span>
+            <span class="line w60"></span>
+            <span class="visual-block"></span>
+            <span class="bars">
+              <span class="bar b1"></span>
+              <span class="bar b2"></span>
+              <span class="bar b3"></span>
+              <span class="bar b4"></span>
+            </span>
+            <span class="line w75"></span>
+          </div>
         </div>
-      </div>
-    </div>`;
-}
+      </header>
 
-// ─── Keyboard navigation ───────────────────────────────
-document.addEventListener('keydown', e => {
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  const tag = (e.target.tagName || '').toLowerCase();
-  if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
-  if (e.key === 'ArrowRight') document.querySelector('[aria-label="Next"]')?.click();
-  if (e.key === 'ArrowLeft') document.querySelector('[aria-label="Previous"]')?.click();
-});
+      <section>
+        <div class="section-head">
+          <span class="idx">01</span>
+          <h2>Exploration & Planning</h2>
+          <span class="count">${cards.length} patterns</span>
+        </div>
+        <p class="section-intro">
+          Replace long sequential documents with a page the reader can scan once.
+          Use cards, diagrams, tables, and small interactions to make structure obvious.
+        </p>
+        <div class="grid">
+          ${cards.map(item => html`<${Card} key=${item.file} item=${item} />`)}
+        </div>
+      </section>
+    </main>
+  `;
+}
 
 render(html`<${App} />`, document.getElementById('app'));
 </script>

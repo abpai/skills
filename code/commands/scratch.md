@@ -12,5 +12,6 @@ Use the `scratch` module.
 2. Confirm the current directory is an existing project.
 3. Create `.scratch/` scripts that exercise real project modules read-only.
 4. Run each script, record findings, and finish with `.scratch/Tutorial.md`.
+5. For dense module maps, optionally add `.scratch/Tutorial.html`.
 
 User input: $ARGUMENTS

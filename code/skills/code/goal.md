@@ -188,6 +188,10 @@ GOAL_REPORT.md with STATUS, CHANGED, VERIFIED (paste output of all 3 checks), AS
 - **A small reversible edit you're staying in the loop for** — just go do it.
 - **Genuinely unverifiable taste calls** — see references/verification.md §5 (downgrade to candidates mode).
 
+## HTML boundary
+
+Keep the goal brief itself in Markdown because it is meant to be pasted into an agent and committed or copied cleanly. Use HTML only for complex readiness dashboards where the user needs to compare several candidate goals, see V/S/C/X/O scores side by side, or tune scope interactively before producing the final Markdown brief.
+
 ## Why this works (brief)
 
 Karpathy's framing: the lever now is **leverage** — few tokens in, huge work out. That requires the agent to self-verify (it can stop), self-bound (it doesn't sprawl), and self-report (you can audit when you come back). The brief skeleton encodes those three properties as fields. Fields you can't fill in are the seams where you'd otherwise get pulled back in.

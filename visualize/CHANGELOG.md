@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2] - 2026-05-11
+
+### HTML Effectiveness Style
+
+- Restyled the base template around the ivory/clay editorial gallery direction from the HTML effectiveness examples.
+- Replaced the old dark-mode walkthrough-card reference with a numbered-section/card-grid artifact pattern.
+- Updated the design-system reference to prefer system serif/sans/mono fonts, restrained borders, simple SVG thumbnails, and visual-first artifact structure.
+- Added explicit guidance for PR explainers, code understanding pages, comparison grids, prompt/config tuners, and copy/export affordances.
+
 ## [1.0] - 2026-03-17
 
 ### Rewrite as `visualize`

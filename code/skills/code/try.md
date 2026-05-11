@@ -240,6 +240,20 @@ Missing features. Version issues.>
 <- What I'd want to see before committing>
 ```
 
+### Optional HTML comparison
+
+When evaluating several libraries, APIs, design directions, or implementation approaches, also write `explorations/Comparison.html`. Use it when side-by-side judgment matters more than a linear report.
+
+Good comparison artifacts include:
+
+- option cards with tradeoffs called out inline
+- install/API snippets in tabs
+- risk and maintenance tables
+- benchmark or bundle-size visuals when available
+- a copyable final recommendation prompt
+
+Keep generated scripts and notes in the normal `explorations/` workspace. Use HTML as the decision surface the user can actually scan.
+
 ## Execution Discipline
 
 Throughout all phases, follow this cadence:

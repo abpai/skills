@@ -1,6 +1,6 @@
 # visualize
 
-Generate self-contained HTML visualizations that explain systems, plans, code flows, and concepts. Each output is a single `.html` file with Preact + Tailwind CSS + Merriweather/Inter typography — no build step, just open it in a browser.
+Generate self-contained HTML visualizations that explain systems, plans, code flows, and concepts. Each output is a single `.html` file with an ivory/clay editorial gallery style inspired by the unreasonable-effectiveness-of-HTML examples — no build step, just open it in a browser.
 
 ## Install
 
@@ -30,13 +30,13 @@ Output goes to `~/.agent/diagrams/` and opens in the browser automatically.
 SKILL.md (workflow + principles)
     ↓
 templates/base.html         ← agent reads before each generation
-references/design-system.md ← Threaded color/type/layout tokens
+references/design-system.md ← HTML-effectiveness color/type/layout tokens
 references/mermaid-tips.md  ← syntax + theming for diagrams
     ↓
 ~/.agent/diagrams/filename.html → opens in browser
 ```
 
-The agent reads the base template to absorb the Preact + Tailwind + Threaded structure, then adapts it for the specific visualization type (Mermaid diagram, walkthrough, table, timeline, etc.).
+The agent reads the base template to absorb the Preact + CSS + HTML-effectiveness structure, then adapts it for the specific visualization type (module map, annotated diff, comparison grid, Mermaid diagram, table, timeline, editor, etc.).
 
 ## Limitations
 
