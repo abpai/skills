@@ -87,10 +87,10 @@
     },
     {
       "name": "pi",
-      "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with /pi:debate for structured architecture debate.",
+      "description": "Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and structured debate.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "pi" },
       "category": "productivity",
-      "keywords": ["planning", "debate", "generator", "evaluator", "workflow", "codex"]
+      "keywords": ["planning", "debate", "generator", "evaluator", "workflow", "ui", "layout", "review", "codex"]
     },
     {
       "name": "visualize",

@@ -1,7 +1,8 @@
 # Agents
 
-- `planner`: Claude primary. Handles interactive planning steps (posture, clarify,
-  lateral thinking, distill, task proposal). Runs as a foreground subagent.
+- `planner`: Claude primary. Handles interactive planning steps (posture,
+  clarify, lateral thinking, distill, task proposal, and UI layout options when
+  applicable). Runs as a foreground subagent.
 - `claude-researcher`: Claude primary. Evaluates implementation approaches for a
   primitive using 3-layer analysis (boring/proven, trending, first-principles).
 - `generator`: Claude primary builder. Executes the brief as one coherent
@@ -12,8 +13,8 @@
   `execution_policy.primary_executor` is `codex`. Produces the same build
   checkpoint shape the coordinator expects.
 - `evaluator`: Claude primary. Runs verification, grades the build,
-  incorporates reviewer output from the coordinator, and produces repair
-  guidance.
+  incorporates reviewer output from the coordinator, checks screenshot-backed
+  visual evidence when UI applies, and produces repair guidance.
 - `codex-researcher`: Codex secondary critic. Evaluates implementation
   approaches for a primitive using the same 3-layer analysis via the Codex
   CLI. Enabled when `research_policy.providers` includes `codex`.

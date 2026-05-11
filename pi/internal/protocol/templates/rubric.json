@@ -15,7 +15,7 @@
     "visual_design": {
       "threshold": 6,
       "applicable": true,
-      "description": "Is the interface polished and intentional?"
+      "description": "Is the interface polished, responsive, and verified with screenshot/browser evidence against the selected layout direction?"
     }
   },
   "execution_policy": {

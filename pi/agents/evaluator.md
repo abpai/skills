@@ -114,6 +114,13 @@ Read the rubric from the active state root. Score each applicable criterion on a
 - 5-6: Functional — works but looks like unstyled defaults
 - 1-4: Broken — layout issues, overlapping elements, unusable on some viewports
 
+For applicable visual design scoring, require browser-backed evidence. Check
+desktop and mobile screenshots, console errors, overlapping text or controls,
+responsive behavior, and whether the implementation follows the selected
+direction in `research/ui-layout-decision.md`. If screenshots or equivalent UI
+test artifacts are missing, cap `visual_design.score` at 5 and explain that
+visual verification was blocked.
+
 Cross-reference the consensus matrix when evaluating code quality — flag
 implementations that contradict resolved planning decisions.
 

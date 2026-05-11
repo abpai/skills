@@ -38,6 +38,8 @@ Recommended layout:
         ├── evaluations/
         │   ├── build-pass-1.json
         │   └── review.json
+        ├── artifacts/
+        │   └── layout-options.html
         ├── checkpoints/
         │   └── build-pass-<N>-<task-id>.json
         └── LEARNINGS.md
@@ -48,6 +50,10 @@ finishes and deleted when the matching `evaluations/build-pass-<N>.json`
 lands. It exists so a coordinator that stops mid-handoff can resume into
 review/evaluation instead of re-running the generator. See the handoff
 lifecycle notes below.
+
+`artifacts/` holds durable human-facing planning or review artifacts. For UI
+work, `/pi:plan` writes `artifacts/layout-options.html`; the selected direction
+is recorded in `research/ui-layout-decision.md`.
 
 `current.json` is a checkout-local pointer to the active run, for example:
 

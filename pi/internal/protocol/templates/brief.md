@@ -35,6 +35,13 @@ needs. Each primitive is a noun the generator can build independently.>
 
 - <primitive name>: <chosen approach>
 
+## UI Direction (if applicable)
+
+<For UI work, reference `artifacts/layout-options.html` and
+`research/ui-layout-decision.md`. State the selected layout direction, what it
+optimizes for, and which alternatives were rejected. Omit this section for
+non-UI work.>
+
 ## Success Signal
 
 <How the user knows the build is done. Concrete: a URL returns X, a CLI command

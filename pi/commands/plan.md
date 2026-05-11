@@ -119,14 +119,23 @@ tool requires it when `message` is a string. Example:
 13. Spawn a **fresh** `planner` (foreground) with the primitives and resolved
     tech decisions as context. The planner proposes ordered task slices with
     specific test criteria.
-14. The planner presents tasks to the user for confirmation.
+14. If the work includes a user interface, have the planner create
+    `artifacts/layout-options.html` in `state_root` before final task
+    confirmation. The artifact must show 2-3 concrete layout directions with
+    visual wireframes, information hierarchy, primary workflow, responsive
+    behavior, tradeoffs, and risk. Use
+    `internal/protocol/templates/layout-options.html` as the starting point.
+15. Present the task slices and, for UI work, the layout options artifact to
+    the user. Record the selected direction in
+    `research/ui-layout-decision.md`, and fold that choice into the brief,
+    task verification, and `rubric.json.criteria.visual_design`.
 
 ### Phase D — Iterative External Review (coordinator-driven)
 
-15. Update `state.json` in `state_root`: `current_step` = `"codex_review"`
+16. Update `state.json` in `state_root`: `current_step` = `"codex_review"`
     (name preserved for state compatibility; the step runs whichever critics
     are in `research_policy.providers`).
-16. For each provider in the selection, run up to 3 iterative review passes
+17. For each provider in the selection, run up to 3 iterative review passes
     against the brief + tasks. Save each pass as
     `reviews/<provider>-plan-pass-<N>.json` in `state_root` (e.g.
     `codex-plan-pass-1.json`, `gemini-plan-pass-1.json`).
@@ -137,7 +146,9 @@ tool requires it when `message` is a string. Example:
     - Pass 3 (if needed): remaining issues become noted risks, not blockers.
     When the providers list contains both `codex` and `gemini`, run them in
     parallel per pass and merge their `must_address` items before re-running.
-17. If no providers are selected (`providers: []`), skip Phase D entirely.
+    For UI work, include `artifacts/layout-options.html` and
+    `research/ui-layout-decision.md` in the review context.
+18. If no providers are selected (`providers: []`), skip Phase D entirely.
 
 If a selected CLI is not available, check `execution_policy` from
 `rubric.json`. For Codex, `codex_policy` governs the fallback as before. For
@@ -146,10 +157,13 @@ block on required). Record the absence in the noted risks for Phase E.
 
 ### Phase E — Finalize
 
-18. Update `state.json` in `state_root`: `current_step` = `"finalize"`.
-19. Present the final plan to the user: brief summary, consensus matrix,
-    review results from each selected provider, ordered tasks, noted risks.
-20. On approval, write `brief.md`, `rubric.json`, and `tasks/*.json` in
+19. Update `state.json` in `state_root`: `current_step` = `"finalize"`.
+20. Present the final plan to the user as a decision-ready finalizer:
+    brief summary, selected implementation posture, consensus matrix,
+    incorporated reviewer changes, ordered tasks, validation plan, noted risks,
+    selected providers, selected builder, and for UI work, the chosen layout
+    direction with the path to `artifacts/layout-options.html`.
+21. On approval, write `brief.md`, `rubric.json`, and `tasks/*.json` in
     `state_root`. Set `rubric.json.research_policy.providers` from Phase A
     step 1. Update `state.json` in `state_root` with `phase: "execute"`,
     `project_slug`, `title`, the resolved `state_root`, and refresh the

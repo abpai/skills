@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Layout Options</title>
+  <style>
+    :root {
+      --paper: #f8f6f1;
+      --ink: #1f1f1b;
+      --muted: #6b6860;
+      --line: #d8d4ca;
+      --clay: #df7656;
+      --sage: #75875c;
+      --panel: #fffdf8;
+      --wash: #efede5;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1160px, calc(100vw - 40px));
+      margin: 48px auto 64px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      gap: 24px;
+      align-items: start;
+      margin-bottom: 32px;
+    }
+
+    .kicker {
+      color: var(--clay);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 18px;
+      font-weight: 700;
+      padding-top: 10px;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    h1 { font-size: clamp(40px, 6vw, 72px); line-height: 0.98; }
+    h2 { font-size: 34px; line-height: 1.1; }
+    h3 { font-size: 25px; line-height: 1.15; }
+
+    .lede {
+      max-width: 840px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 20px;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+      margin-top: 36px;
+    }
+
+    article {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .thumb {
+      display: grid;
+      place-items: center;
+      min-height: 220px;
+      background: var(--wash);
+      border-bottom: 1px solid var(--line);
+    }
+
+    svg {
+      width: min(78%, 280px);
+      height: auto;
+    }
+
+    .content { padding: 24px; }
+    .content p { margin: 10px 0 0; color: var(--muted); font-size: 16px; }
+
+    .meta {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .meta strong {
+      color: var(--ink);
+      font-weight: 650;
+    }
+
+    .decision {
+      margin-top: 36px;
+      padding: 26px;
+      border-top: 2px solid var(--ink);
+      background: transparent;
+    }
+
+    @media (max-width: 900px) {
+      main { width: min(100vw - 28px, 680px); margin-top: 32px; }
+      header { grid-template-columns: 1fr; gap: 8px; }
+      .options { grid-template-columns: 1fr; }
+      .thumb { min-height: 180px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="kicker">UI</div>
+      <div>
+        <h1><!-- Project or feature name --></h1>
+        <p class="lede"><!-- One paragraph: user, workflow, and planning question. --></p>
+      </div>
+    </header>
+
+    <section class="options" aria-label="Layout options">
+      <article>
+        <div class="thumb">
+          <!-- Replace with simple inline SVG wireframe for option 1. -->
+        </div>
+        <div class="content">
+          <h3><!-- Option 1 name --></h3>
+          <p><!-- What this layout optimizes for. --></p>
+          <div class="meta">
+            <div><strong>Workflow:</strong> <!-- Primary action path. --></div>
+            <div><strong>Responsive:</strong> <!-- Mobile behavior. --></div>
+            <div><strong>Risk:</strong> <!-- Main tradeoff. --></div>
+          </div>
+        </div>
+      </article>
+
+      <article>
+        <div class="thumb">
+          <!-- Replace with simple inline SVG wireframe for option 2. -->
+        </div>
+        <div class="content">
+          <h3><!-- Option 2 name --></h3>
+          <p><!-- What this layout optimizes for. --></p>
+          <div class="meta">
+            <div><strong>Workflow:</strong> <!-- Primary action path. --></div>
+            <div><strong>Responsive:</strong> <!-- Mobile behavior. --></div>
+            <div><strong>Risk:</strong> <!-- Main tradeoff. --></div>
+          </div>
+        </div>
+      </article>
+
+      <article>
+        <div class="thumb">
+          <!-- Replace with simple inline SVG wireframe for option 3, or remove this card. -->
+        </div>
+        <div class="content">
+          <h3><!-- Option 3 name --></h3>
+          <p><!-- What this layout optimizes for. --></p>
+          <div class="meta">
+            <div><strong>Workflow:</strong> <!-- Primary action path. --></div>
+            <div><strong>Responsive:</strong> <!-- Mobile behavior. --></div>
+            <div><strong>Risk:</strong> <!-- Main tradeoff. --></div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="decision">
+      <h2>Recommended Direction</h2>
+      <p><!-- State the default recommendation and what decision the human needs to make. --></p>
+    </section>
+  </main>
+</body>
+</html>

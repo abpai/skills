@@ -1,5 +1,5 @@
 ---
-description: Run a structured architecture debate with an independent Codex critique and final ADR.
+description: Run a structured architecture, product, or UI layout debate with an independent Codex critique and final ADR.
 argument-hint: "[question or decision]"
 allowed-tools: >
   Bash(codex *) Bash(git status *) Bash(git log *) Bash(git diff *)
@@ -26,7 +26,7 @@ synthesize pass.
 1. Read `internal/debate/README.md`.
 2. Follow its process exactly, including the repo snapshot and Codex critique
    fallback behavior.
-3. Treat `$ARGUMENTS` as the architecture question, tradeoff, or technical
-   decision to debate.
+3. Treat `$ARGUMENTS` as the architecture question, product workflow tradeoff,
+   UI layout direction, or technical decision to debate.
 
 User input: $ARGUMENTS

@@ -64,11 +64,21 @@ subagents, so you own all agent orchestration.
 4. Run the complete local verification suite the project supports.
 5. Run per-task verification: iterate each task's `verification` array and
    record results.
-6. Write suite results to `evaluations/suite-results.json`.
+6. If `rubric.json.criteria.visual_design.applicable` is `true`, run
+   browser-backed UI verification before final scoring:
+   - open the UI through Browser, Chrome DevTools, Playwright, or the
+     project's existing UI test harness
+   - capture or reference screenshots at desktop and mobile widths
+   - check console errors, obvious layout overlap, responsive behavior, and the
+     selected direction in `research/ui-layout-decision.md`
+   - record screenshot paths or test artifact paths
+   If no browser or screenshot path is available, mark visual verification
+   blocked; do not let the final `visual_design` score pass on prose alone.
+7. Write suite results to `evaluations/suite-results.json`.
 
 ### Phase C — Final Evaluation with External Critics
 
-7. Read `research_policy.providers` from `rubric.json`. For each provider,
+8. Read `research_policy.providers` from `rubric.json`. For each provider,
    spawn the matching reviewer for a final independent read of the full
    build:
    - `codex` → spawn `codex-reviewer`, save to `reviews/codex-final.json`
@@ -83,16 +93,18 @@ subagents, so you own all agent orchestration.
    apply `degraded_mode`: `warn_and_continue` — note the absence in the
    scorecard and proceed; `block` — halt and warn the user. The same
    policy applies to Gemini in this phase.
-8. Spawn `evaluator` (foreground) with:
+9. Spawn `evaluator` (foreground) with:
    - the brief, rubric, full build (not just last repair)
    - per-task verification arrays and consensus matrix
    - suite results and the review output from every active provider
    - all prior evaluations for context
-9. Write final evaluation to `evaluations/review.json`.
+   - for UI work, `research/ui-layout-decision.md` and screenshot/test
+     artifact paths from the suite
+10. Write final evaluation to `evaluations/review.json`.
 
 ### Phase D — Scorecard and Learnings
 
-10. Present the full scorecard:
+11. Present the full scorecard:
     - Global rubric scores (functionality, code_quality, product_depth,
       visual_design if applicable)
     - Per-task verification results (task_id, checks passed/failed)
@@ -105,12 +117,14 @@ subagents, so you own all agent orchestration.
       and where any of them changed the outcome
     - Which builder ran (`claude` or `codex`, from
       `execution_policy.primary_executor`)
-11. If the build still misses the bar:
+    - For UI work, screenshot/test artifact paths and whether the chosen
+      layout direction was followed
+12. If the build still misses the bar:
     - Update `state.json`: `phase` -> `"execute"` (not `"done"`)
     - Present the focused repair plan to the user
     - Do NOT write LEARNINGS.md or mark done — the workflow returns to
       `/pi:execute` for another repair cycle
-12. If the build passes:
+13. If the build passes:
     - Append durable project-specific learnings to `LEARNINGS.md`
     - Update `state.json`: `phase` -> `"done"`
 

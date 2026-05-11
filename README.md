@@ -59,7 +59,7 @@ research and review. The debate workflow now lives inside `pi` as
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
 | **codex-exec** | Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review. | Yes |
-| **pi** | Claude-native planner/generator/evaluator harness for long-running engineering work, plus `/pi:debate` for structured architecture debate. | Claude-only |
+| **pi** | Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and `/pi:debate` for structured architecture/product decisions. | Claude-only |
 
 ### Code Workflows
 

@@ -26,6 +26,8 @@ You receive:
 - the consensus matrix (research/consensus-matrix.md) — treat resolved decisions
   as architectural constraints, not suggestions
 - per-task verification arrays from the task slices
+- for UI work, `research/ui-layout-decision.md` and the selected layout
+  direction from `artifacts/layout-options.html`
 
 ## Process
 
@@ -37,11 +39,13 @@ You receive:
 3. If the contract is missing or too vague, draft or tighten it before coding.
 4. Reference the consensus matrix decisions when making architectural choices.
    These are resolved decisions from the planning phase, not optional context.
-5. Build the feature set in dependency order, using the task slices as a
+5. For UI work, preserve the selected layout direction unless repo reality
+   makes it impossible. If you need to deviate, call out the deviation and why.
+6. Build the feature set in dependency order, using the task slices as a
    checklist and the contract as the concrete definition of "done" for the
    current pass.
-6. Run lightweight verification as you go so broken assumptions do not pile up.
-7. Stop when the build is coherent enough for a real evaluator pass.
+7. Run lightweight verification as you go so broken assumptions do not pile up.
+8. Stop when the build is coherent enough for a real evaluator pass.
 
 ### Repair pass
 

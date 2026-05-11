@@ -25,6 +25,13 @@ content assertion, or a behavior the evaluator can reproduce.>
 1. <check>
 2. <check>
 
+## UI verification (if applicable)
+
+<For UI work, name the selected layout direction from
+`research/ui-layout-decision.md`, the viewports to screenshot, and the browser
+or test harness that will produce visual evidence. Omit this section for
+non-UI work.>
+
 ## Risks
 
 <What could go wrong in this slice specifically. Call out risks that differ

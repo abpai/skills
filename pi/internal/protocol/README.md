@@ -13,11 +13,13 @@ Use it when a task is large enough to benefit from:
 Pi is intentionally Claude-native. Codex and Gemini are supporting CLIs, not
 parallel runtimes or install targets.
 
-Three commands:
+Four commands:
 
 - `/pi:plan` creates the working brief, rubric, and ordered task slices
 - `/pi:execute` runs the generator loop against that brief
 - `/pi:review` runs final QA and presents the scorecard
+- `/pi:debate` runs a structured propose -> critique -> synthesize loop for
+  architecture, product workflow, or UI layout decisions
 
 ## Core Design
 
@@ -57,6 +59,9 @@ When producing the core artifacts, start from the templates in this module's
 - `internal/protocol/templates/rubric.json` — shape for `${state_root}/rubric.json`
 - `internal/protocol/templates/task.json` — shape for each file in `${state_root}/tasks/`
 - `internal/protocol/templates/contract.md` — shape for each file in `${state_root}/contracts/`
+- `internal/protocol/templates/layout-options.html` — starting point for
+  `${state_root}/artifacts/layout-options.html` when UI work needs layout
+  directions
 
 When a subagent (planner, generator, evaluator) produces one of these artifacts,
 the coordinator is responsible for passing the plugin-relative template path in,
@@ -248,6 +253,26 @@ Each task file should look like:
 
 Wait for user confirmation before proceeding.
 
+#### 7.5. Explore UI Layout Options (UI work only)
+
+If any primitive or task includes a user interface, create a visual planning
+artifact before final plan approval:
+
+- `artifacts/layout-options.html` — a self-contained HTML gallery with 2-3
+  concrete layout directions
+- `research/ui-layout-decision.md` — the chosen direction, rationale, rejected
+  alternatives, and visual verification notes
+
+Each layout direction must show the information hierarchy, main workflow,
+responsive behavior, empty/loading/error states where relevant, tradeoffs, and
+risks. Use `templates/layout-options.html` as the starting point for the visual
+style: ivory background, restrained clay/green accents, simple inline SVG
+wireframes, and a gallery that lets the human compare options at a glance.
+
+Present the artifact to the user and wait for a chosen direction. Fold the
+choice into `brief.md`, `rubric.json.criteria.visual_design`, and the relevant
+task `verification` arrays before external review.
+
 ### Phase D: External Review — Multi-Pass (coordinator-driven)
 
 Update `state.json` in `state_root`: `current_step` = `"codex_review"`
@@ -264,6 +289,9 @@ providers are active, pass 1 runs them in parallel and merges
 **Pass 1**: Review for gaps, risks, and test adequacy.
 - Incorporate `must_address` items from any provider directly into the plan.
 - Note `nice_to_have` items.
+- For UI work, include `artifacts/layout-options.html` and
+  `research/ui-layout-decision.md` in the review context. Ask reviewers to
+  flag visual hierarchy gaps, missing responsive states, and weak visual QA.
 
 **Pass 2**: Re-run on the updated plan for every provider that flagged issues.
 - If a provider returns `changed: false`, skip pass 3 for that provider.
@@ -297,6 +325,9 @@ Always pause for review before execution. Present:
 - the external review results from each active provider (Codex, Gemini, or
   both) and any noted risks
 - the ordered task slices
+- the validation plan, including commands and browser/screenshot checks
+- for UI work, the selected layout direction and the path to
+  `artifacts/layout-options.html`
 - the selected `research_policy.providers` and `primary_executor` (so the
   user sees which critics and which builder will run during execute)
 
@@ -311,7 +342,8 @@ On approval, write:
 
 See [STATE.md](STATE.md) for the default rubric shape, `execution_policy`
 field definitions, and enum values. Set `visual_design.applicable` to `false`
-for non-UI work.
+for non-UI work. For UI work, keep it `true` and ensure task verification
+includes screenshot/browser evidence for the selected layout direction.
 
 ## Phase 2: Execute
 
@@ -398,6 +430,8 @@ Either way, pass:
 - the current repository state
 - the current build / repair pass number
 - any prior evaluator feedback (if repair pass)
+- for UI work, `research/ui-layout-decision.md` and the selected direction
+  from `artifacts/layout-options.html`
 
 Builder rules (apply to both `generator` and `codex-executor`):
 
@@ -468,6 +502,8 @@ The evaluator must:
   run each check, and record per-task pass/fail results
 - run the verification steps from the contract, task slices, and brief
 - run project-appropriate tests
+- when visual design applies, run or require browser/screenshot verification
+  against `research/ui-layout-decision.md`
 - incorporate reviewer output from every active provider (`codex-reviewer`,
   `gemini-reviewer`, or both) into its assessment. The evaluator does not
   spawn external CLIs itself — the coordinator owns all external
@@ -554,6 +590,19 @@ Run per-task verification: iterate each task's `verification` array and record
 results. Write suite results to `evaluations/suite-results.json` in
 `state_root`.
 
+When `rubric.json.criteria.visual_design.applicable` is `true`, the full suite
+must include browser-backed visual evidence:
+
+- open the implemented UI through Browser, Chrome DevTools, Playwright, or the
+  project's existing UI test harness
+- capture or reference screenshots at desktop and mobile widths
+- check console errors, obvious layout overlap, responsive behavior, and the
+  selected layout direction from `research/ui-layout-decision.md`
+- record screenshot paths or test artifact paths in `suite-results.json`
+
+If no browser or screenshot path is available, mark visual verification blocked
+and do not let the final `visual_design` score pass on prose alone.
+
 ### 3. Final Evaluation
 
 For each provider in `research_policy.providers`, run the matching reviewer
@@ -576,6 +625,8 @@ repair), with:
 - per-task verification arrays and consensus matrix
 - suite results and the review output from every active provider
 - all prior evaluations for context
+- for UI work, `research/ui-layout-decision.md` and screenshot/test artifact
+  paths from the suite results
 
 The evaluator cross-references the consensus matrix and produces both global
 rubric scores and per-task verification results. Write final evaluation to
