@@ -1,6 +1,6 @@
 {
   "name": "engineering",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Engineering-practice workflow pack (Matt Pocock-inspired) with /engineering:* commands and one self-contained engineering skill.",
   "author": {
     "name": "Andy Pai"
