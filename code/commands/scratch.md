@@ -1,7 +1,6 @@
 ---
 description: Explore an existing codebase with runnable .scratch/ scripts.
 argument-hint: "[question, module, or script topic]"
-allowed-tools: Bash(mkdir *) Write(.scratch/**) Edit(.scratch/**)
 ---
 
 # /code:scratch
