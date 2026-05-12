@@ -1,8 +1,8 @@
 ---
 name: code
-description: Grouped coding workflow pack. Use when the user asks for /code:goal, /code:review-and-commit, /code:explain, /code:try, /code:simplify, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:socratic-owner, /code:secure-dependencies, or wants verifiable goal definition, code review, technical explanation, library evaluation, simplification, walkthroughs, call-path traces, HTML review artifacts, dead-code audits, runnable codebase exploration, owner briefings, or dependency hardening.
+description: Grouped coding workflow pack. Use when the user asks for /code:goal, /code:review-and-commit, /code:explain, /code:try, /code:simplify, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:socratic-owner, /code:secure-dependencies, /code:hexagon-audit, or wants verifiable goal definition, code review, technical explanation, library evaluation, simplification, walkthroughs, call-path traces, HTML review artifacts, dead-code audits, runnable codebase exploration, owner briefings, dependency hardening, or a Ports & Adapters / hexagonal-architecture compliance audit.
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # Code Workflow Pack
@@ -22,5 +22,6 @@ This plugin exposes one public Codex skill surface for common code workflows. Cl
 - Use `scratch.md` for hands-on codebase exploration with runnable `.scratch/` scripts.
 - Use `socratic-owner.md` for scenario-based owner briefings that quiz the developer on code, architecture, or a plan.
 - Use `secure-dependencies.md` for dependency resolution and supply-chain hardening in code repositories.
+- Use `hexagon-audit.md` for auditing Ports & Adapters / hexagonal compliance in a `packages/` + `adapters/` monorepo (it ships a deterministic scanner under `scripts/`).
 
 When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.

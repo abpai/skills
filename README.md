@@ -65,7 +65,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:*`: goal, review-and-commit, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, and secure-dependencies, with optional HTML artifacts where visual review helps |
+| **code** | Groups common code workflows under `/code:*`: goal, review-and-commit, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, secure-dependencies, and hexagon-audit, with optional HTML artifacts where visual review helps |
 
 ### Engineering Practices
 
@@ -119,7 +119,8 @@ abpai/skills/
 │   ├── commands/              ← Claude `/code:*` wrappers
 │   └── skills/code/           ← one public skill plus flat workflow modules
 │       ├── *.md
-│       └── references/
+│       ├── references/
+│       └── scripts/           ← bundled helpers (e.g. hexagon-audit scanner)
 ├── engineering/               ← grouped engineering-practice workflows
 │   ├── commands/              ← Claude `/engineering:*` wrappers
 │   └── skills/engineering/    ← one public skill plus flat workflow modules
