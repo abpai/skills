@@ -62,9 +62,9 @@ Examples:
 ## Glossary / non-obvious vocabulary
 
 <!--
-Terms a fresh reader will misread without help. Pull from
-UBIQUITOUS_LANGUAGE.md if it exists, but only the terms that genuinely trip
-people up.
+Terms a fresh reader will misread without help. Pull from a domain-vocab file
+if the repo has one (DEFINED_TERMS.md or CONTEXT.md), but only the terms that
+genuinely trip people up.
 
 - "tier-1 / tier-2 merger" — not seniority, refers to two retry attempts at a clean squash-merge.
 - "preserved sandbox" — a sandbox that survived past the ticket-done event, kept around for human inspection.

@@ -18,7 +18,7 @@ harden terminology, create a ubiquitous language, or mentions "domain model" or
 3. **Propose a canonical glossary** with opinionated term choices.
 4. **Write to `DEFINED_TERMS.md`** in the working directory using the
    format below. (If the repo already keeps a domain vocabulary file under
-   another name — e.g. `CONTEXT.md` for the `improve-codebase-architecture`
+   another name — e.g. `CONTEXT.md` for the `improve-architecture`
    workflow — update that instead of creating a parallel one; ask which to use
    if both could apply.)
 5. **Output a summary** inline in the conversation.

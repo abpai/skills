@@ -1,6 +1,6 @@
-# Improve Codebase Architecture
+# Improve Architecture
 
-Workflow module for `/engineering:improve-codebase-architecture`.
+Workflow module for `/engineering:improve-architecture`.
 
 Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/engineering/improve-codebase-architecture
 
