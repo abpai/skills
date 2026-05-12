@@ -251,12 +251,18 @@ Each task file should look like:
 }
 ```
 
-Wait for user confirmation before proceeding.
+**Non-UI work:** leave `rubric.json.criteria.visual_design.applicable` at the
+template default of `false`, present the task slices, and wait for user
+confirmation before proceeding.
+
+**UI work:** do not request task confirmation yet. First complete 7.5 to choose
+a layout direction and fold it into the brief and task slices, then present the
+layout-adjusted task slices and wait for confirmation.
 
 #### 7.5. Explore UI Layout Options (UI work only)
 
-If any primitive or task includes a user interface, create a visual planning
-artifact before final plan approval:
+When any primitive or task includes a user interface, create a visual planning
+artifact before the task-confirmation checkpoint in 7:
 
 - `artifacts/layout-options.html` — a self-contained HTML gallery with 2-3
   concrete layout directions
@@ -269,9 +275,12 @@ risks. Use `templates/layout-options.html` as the starting point for the visual
 style: ivory background, restrained clay/green accents, simple inline SVG
 wireframes, and a gallery that lets the human compare options at a glance.
 
-Present the artifact to the user and wait for a chosen direction. Fold the
-choice into `brief.md`, `rubric.json.criteria.visual_design`, and the relevant
-task `verification` arrays before external review.
+Present `artifacts/layout-options.html` to the user and wait for a chosen
+direction. Then write `research/ui-layout-decision.md`, set
+`rubric.json.criteria.visual_design.applicable` to `true`, and fold the chosen
+direction into `brief.md` and the affected task `verification` arrays — before
+presenting the task slices for confirmation in 7, so the user confirms the
+layout-adjusted slices, not a pre-layout draft.
 
 ### Phase D: External Review — Multi-Pass (coordinator-driven)
 

@@ -119,16 +119,18 @@ tool requires it when `message` is a string. Example:
 13. Spawn a **fresh** `planner` (foreground) with the primitives and resolved
     tech decisions as context. The planner proposes ordered task slices with
     specific test criteria.
-14. If the work includes a user interface, have the planner create
-    `artifacts/layout-options.html` in `state_root` before final task
-    confirmation. The artifact must show 2-3 concrete layout directions with
-    visual wireframes, information hierarchy, primary workflow, responsive
-    behavior, tradeoffs, and risk. Use
-    `internal/protocol/templates/layout-options.html` as the starting point.
-15. Present the task slices and, for UI work, the layout options artifact to
-    the user. Record the selected direction in
-    `research/ui-layout-decision.md`, and fold that choice into the brief,
-    task verification, and `rubric.json.criteria.visual_design`.
+14. For UI work, before asking the user to confirm task slices: have the
+    planner create `artifacts/layout-options.html` in `state_root` (2-3
+    concrete layout directions with visual wireframes, information hierarchy,
+    primary workflow, responsive behavior, tradeoffs, and risk; start from
+    `internal/protocol/templates/layout-options.html`), present it, and let
+    the user pick a direction. Record it in `research/ui-layout-decision.md`,
+    set `rubric.json.criteria.visual_design.applicable` to `true`, and fold
+    the chosen direction into the brief and the affected task `verification`
+    arrays. For non-UI work, leave `visual_design.applicable` at its template
+    default of `false`.
+15. Present the task slices (layout-adjusted, for UI work) and, for UI work,
+    the layout options artifact, then wait for user confirmation.
 
 ### Phase D — Iterative External Review (coordinator-driven)
 

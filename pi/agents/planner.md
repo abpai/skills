@@ -98,7 +98,9 @@ You are invoked twice during the plan phase:
    mandatory sprint walls.
 6. Present tasks to the user and wait for confirmation.
 7. Produce a rubric that reflects the real quality bar for this project. Set
-   `visual_design.applicable` to `true` only when the run includes UI work.
+   `visual_design.applicable` to `true` only when the run includes UI work;
+   otherwise leave it at the template default of `false` so review does not
+   demand screenshot/browser evidence for a non-UI build.
 
 ## Rules
 
