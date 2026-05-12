@@ -37,13 +37,6 @@
       "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "questions"]
     },
     {
-      "name": "agent-browser",
-      "description": "Browser automation CLI for AI agents. Navigate pages, fill forms, click buttons, take screenshots, extract data.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "agent-browser" },
-      "category": "tools",
-      "keywords": ["browser", "automation", "web", "scraping", "testing"]
-    },
-    {
       "name": "bun-expert",
       "description": "Expert guidance for JavaScript/TypeScript development with the Bun runtime. Covers setup, servers, APIs, testing, bundling, and Node.js migration.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "bun-expert" },

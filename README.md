@@ -83,7 +83,6 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **agent-browser** | Browser automation: navigate, fill forms, click, screenshot, extract data |
 | **claude** | Run Claude Code CLI for delegation, session continuation, machine-readable output |
 | **visualize** | Generate self-contained HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
 

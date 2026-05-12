@@ -1,7 +1,6 @@
 {
   "schema_version": 1,
   "skills": {
-    "agent-browser": "1.4",
     "bun-expert": "1.4",
     "claude": "1.5",
     "cli-design-expert": "1.2.0",
