@@ -27,7 +27,7 @@ type Finding = {
 }
 
 const root = process.cwd()
-const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts'])
+const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts'])
 const skippedDirs = new Set(['.git', 'dist', 'node_modules', 'coverage'])
 
 const vendorChecks = [
@@ -261,10 +261,16 @@ async function resolveSpecifier(fromFile: string, specifier: string): Promise<st
     `${absolute}.tsx`,
     `${absolute}.js`,
     `${absolute}.jsx`,
+    `${absolute}.mjs`,
+    `${absolute}.cjs`,
+    `${absolute}.mts`,
+    `${absolute}.cts`,
     path.join(absolute, 'index.ts'),
     path.join(absolute, 'index.tsx'),
     path.join(absolute, 'index.js'),
     path.join(absolute, 'index.jsx'),
+    path.join(absolute, 'index.mjs'),
+    path.join(absolute, 'index.cjs'),
   ]
 
   for (const candidate of candidates) {
