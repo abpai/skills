@@ -71,7 +71,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **engineering** | Groups engineering-practice workflows (Matt Pocock-inspired) as one plugin-owned skill surface, with Claude commands at `/engineering:grill-me`, `/engineering:tdd`, `/engineering:zoom-out`, and `/engineering:improve-codebase-architecture` backed by `engineering/internal/` modules |
+| **engineering** | Groups engineering-practice workflows (Matt Pocock-inspired) as one self-contained skill, with Claude commands at `/engineering:grill-me`, `/engineering:tdd`, `/engineering:zoom-out`, and `/engineering:improve-codebase-architecture` |
 
 ### Developer Productivity
 
@@ -122,9 +122,9 @@ abpai/skills/
 │       └── references/
 ├── engineering/               ← grouped engineering-practice workflows
 │   ├── commands/              ← Claude `/engineering:*` wrappers
-│   ├── internal/              ← flat workflow modules, not standalone skills
-│   │   └── references/
-│   └── skills/engineering/
+│   └── skills/engineering/    ← one public skill plus flat workflow modules
+│       ├── *.md
+│       └── references/
 ├── pi/                        ← intentional Claude-only exception
 │   ├── .claude-plugin/plugin.json
 │   ├── agents/

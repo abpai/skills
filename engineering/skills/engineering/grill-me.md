@@ -1,6 +1,6 @@
 # Grill Me
 
-Internal module for `/engineering:grill-me`.
+Workflow module for `/engineering:grill-me`.
 
 Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me
 

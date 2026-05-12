@@ -1,6 +1,6 @@
 # Test-Driven Development
 
-Internal module for `/engineering:tdd`.
+Workflow module for `/engineering:tdd`.
 
 Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd
 
