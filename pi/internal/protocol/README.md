@@ -602,15 +602,16 @@ results. Write suite results to `evaluations/suite-results.json` in
 When `rubric.json.criteria.visual_design.applicable` is `true`, the full suite
 must include browser-backed visual evidence:
 
-- open the implemented UI through Browser, Chrome DevTools, Playwright, or the
-  project's existing UI test harness
-- capture or reference screenshots at desktop and mobile widths
+- prefer a Bash-runnable capture path: the project's existing UI/e2e test
+  harness, or `npx playwright` / `playwright test` rendering desktop and mobile
+  widths. If a Browser or Chrome DevTools tool is available in the session, it
+  may be used instead.
 - check console errors, obvious layout overlap, responsive behavior, and the
   selected layout direction from `research/ui-layout-decision.md`
-- record screenshot paths or test artifact paths in `suite-results.json`
+- record screenshot or test-artifact paths in `suite-results.json`
 
-If no browser or screenshot path is available, mark visual verification blocked
-and do not let the final `visual_design` score pass on prose alone.
+If no screenshot path can be produced, mark visual verification blocked and do
+not let the final `visual_design` score pass on prose alone.
 
 ### 3. Final Evaluation
 

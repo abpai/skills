@@ -64,16 +64,17 @@ subagents, so you own all agent orchestration.
 4. Run the complete local verification suite the project supports.
 5. Run per-task verification: iterate each task's `verification` array and
    record results.
-6. If `rubric.json.criteria.visual_design.applicable` is `true`, run
-   browser-backed UI verification before final scoring:
-   - open the UI through Browser, Chrome DevTools, Playwright, or the
-     project's existing UI test harness
-   - capture or reference screenshots at desktop and mobile widths
+6. If `rubric.json.criteria.visual_design.applicable` is `true`, gather
+   browser-backed UI evidence before final scoring:
+   - prefer a Bash-runnable capture path: the project's existing UI/e2e test
+     harness, or `npx playwright` / `playwright test` rendering desktop and
+     mobile widths. If a Browser or Chrome DevTools tool is available in this
+     session, you may use it instead.
    - check console errors, obvious layout overlap, responsive behavior, and the
      selected direction in `research/ui-layout-decision.md`
-   - record screenshot paths or test artifact paths
-   If no browser or screenshot path is available, mark visual verification
-   blocked; do not let the final `visual_design` score pass on prose alone.
+   - record screenshot or test-artifact paths
+   If no screenshot path can be produced, mark visual verification blocked; do
+   not let the final `visual_design` score pass on prose alone.
 7. Write suite results to `evaluations/suite-results.json`.
 
 ### Phase C — Final Evaluation with External Critics
