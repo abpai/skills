@@ -149,22 +149,96 @@ function lineFor(text: string, index: number): number {
   return text.slice(0, index).split('\n').length
 }
 
+// Single-pass scanner: emit module specifiers from import/export/require, while
+// ignoring anything inside comments or unrelated string/template literals. This
+// keeps commented-out or example imports (and "import ... from ..." text that
+// merely lives inside a string) from registering as real dependencies.
 function importSpecifiers(text: string): Array<{ specifier: string; index: number }> {
   const specifiers: Array<{ specifier: string; index: number }> = []
-  const patterns = [
-    /\bimport\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]/g,
-    /\bexport\s+(?:type\s+)?[^'"]*?\s+from\s+['"]([^'"]+)['"]/g,
-    /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-    /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-  ]
+  const isWord = (ch: string) => /[A-Za-z0-9_$]/.test(ch)
+  let i = 0
+  let wordBuf = ''
+  // prevToken: last word or single punctuation char in code (whitespace skipped).
+  let prevToken = ''
+  // parenOwner: the token immediately before the most recent '('.
+  let parenOwner = ''
 
-  for (const pattern of patterns) {
-    for (const match of text.matchAll(pattern)) {
-      const specifier = match[1]
-      if (specifier) {
-        specifiers.push({ specifier, index: match.index ?? 0 })
-      }
+  const flushWord = () => {
+    if (wordBuf) {
+      prevToken = wordBuf
+      wordBuf = ''
     }
+  }
+
+  while (i < text.length) {
+    const c = text[i]
+    const n = text[i + 1]
+
+    // comments
+    if (c === '/' && n === '/') {
+      flushWord()
+      i += 2
+      while (i < text.length && text[i] !== '\n') i++
+      prevToken = ''
+      continue
+    }
+    if (c === '/' && n === '*') {
+      flushWord()
+      i += 2
+      while (i < text.length && !(text[i] === '*' && text[i + 1] === '/')) i++
+      i += 2
+      prevToken = ''
+      continue
+    }
+
+    // string / template literals
+    if (c === "'" || c === '"' || c === '`') {
+      flushWord()
+      const isSpecifier =
+        prevToken === 'from' ||
+        prevToken === 'import' ||
+        (prevToken === '(' && (parenOwner === 'import' || parenOwner === 'require'))
+      const quote = c
+      const contentStart = i + 1
+      let j = contentStart
+      while (j < text.length) {
+        if (text[j] === '\\') {
+          j += 2
+          continue
+        }
+        if (text[j] === quote) break
+        j++
+      }
+      if (isSpecifier && j <= text.length) {
+        const specifier = text.slice(contentStart, j)
+        if (specifier) specifiers.push({ specifier, index: contentStart })
+      }
+      i = j + 1
+      prevToken = 'string'
+      continue
+    }
+
+    // identifiers / keywords
+    if (isWord(c)) {
+      wordBuf += c
+      i++
+      continue
+    }
+
+    // any other character: it's a punctuation token
+    flushWord()
+    if (/\s/.test(c)) {
+      i++
+      continue
+    }
+    if (c === '(') {
+      parenOwner = prevToken
+      prevToken = '('
+      i++
+      continue
+    }
+    prevToken = c
+    i++
   }
 
   return specifiers
