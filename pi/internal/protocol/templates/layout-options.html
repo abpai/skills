@@ -5,15 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Layout Options</title>
   <style>
+    /* Shared editorial-gallery tokens — keep in sync with the visualize skill's base.html. */
     :root {
-      --paper: #f8f6f1;
-      --ink: #1f1f1b;
-      --muted: #6b6860;
-      --line: #d8d4ca;
-      --clay: #df7656;
-      --sage: #75875c;
-      --panel: #fffdf8;
-      --wash: #efede5;
+      --ivory: #faf9f5;
+      --paper: #ffffff;
+      --ink: #141413;
+      --clay: #d97757;
+      --clay-dark: #b85c3e;
+      --oat: #e3dacc;
+      --olive: #788c5d;
+      --mist: #f0eee6;
+      --line: #d1cfc5;
+      --muted: #87867f;
+      --soft: #3d3d3a;
+      --serif: ui-serif, Georgia, "Times New Roman", Times, serif;
+      --sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
     }
 
     * { box-sizing: border-box; }
@@ -21,9 +28,10 @@
     body {
       margin: 0;
       color: var(--ink);
-      background: var(--paper);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--ivory);
+      font-family: var(--sans);
       line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
     main {
@@ -41,7 +49,7 @@
 
     .kicker {
       color: var(--clay);
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-family: var(--mono);
       font-size: 18px;
       font-weight: 700;
       padding-top: 10px;
@@ -49,7 +57,7 @@
 
     h1, h2, h3 {
       margin: 0;
-      font-family: Georgia, "Times New Roman", serif;
+      font-family: var(--serif);
       font-weight: 700;
       letter-spacing: 0;
     }
@@ -76,14 +84,14 @@
       overflow: hidden;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--panel);
+      background: var(--paper);
     }
 
     .thumb {
       display: grid;
       place-items: center;
       min-height: 220px;
-      background: var(--wash);
+      background: var(--mist);
       border-bottom: 1px solid var(--line);
     }
 

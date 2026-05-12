@@ -1,6 +1,8 @@
 ---
 name: improve-prompt
 description: Improve a vague or under-specified prompt into a sharp, reusable one. Interviews the user briefly, then rewrites.
+when_to_use: User asks to improve, rewrite, or sharpen a prompt; turn a rough request into a reusable template; reduce vagueness, sycophancy, or success-theater in a planning, coding, review, eval, or decision prompt; or write a trustworthy end-of-session final summary or handoff.
+argument-hint: "[draft prompt or rough goal]"
 metadata:
   author: Andy Pai
   version: "1.3.0"
