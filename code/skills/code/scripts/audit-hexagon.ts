@@ -222,6 +222,17 @@ const packageWorkspaces = await workspacePackages('packages', 'package')
 const adapterWorkspaces = await workspacePackages('adapters', 'adapter')
 const allWorkspaces = [...packageWorkspaces, ...adapterWorkspaces]
 const adapterNames = new Set(adapterWorkspaces.map((pkg) => pkg.name))
+
+// Resolve an import specifier to its adapter package name, matching both the
+// bare name (`@acme/foo-adapter`) and exported subpaths (`@acme/foo-adapter/client`).
+function adapterNameForSpecifier(specifier: string): string | undefined {
+  if (adapterNames.has(specifier)) {
+    return specifier
+  }
+  const segments = specifier.split('/')
+  const base = specifier.startsWith('@') ? segments.slice(0, 2).join('/') : segments[0]
+  return adapterNames.has(base) ? base : undefined
+}
 const files = [...(await walk(path.join(root, 'packages'))), ...(await walk(path.join(root, 'adapters')))]
 
 const packageToAdapter: Finding[] = []
@@ -274,7 +285,7 @@ for (const file of files) {
     const line = lineFor(text, imported.index)
 
     if (owner.kind === 'package') {
-      if (adapterNames.has(imported.specifier)) {
+      if (adapterNameForSpecifier(imported.specifier)) {
         packageToAdapter.push({
           file: relative(file),
           line,
@@ -306,7 +317,8 @@ for (const file of files) {
     }
 
     if (owner.kind === 'adapter') {
-      if (adapterNames.has(imported.specifier) && imported.specifier !== owner.name) {
+      const peerAdapter = adapterNameForSpecifier(imported.specifier)
+      if (peerAdapter && peerAdapter !== owner.name) {
         adapterToPeerAdapter.push({
           file: relative(file),
           line,
