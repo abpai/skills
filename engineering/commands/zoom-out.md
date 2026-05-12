@@ -3,7 +3,7 @@ description: Map an unfamiliar code area at a higher level before diving into de
 argument-hint: "[code area or question]"
 ---
 
-# /mp:zoom-out
+# /engineering:zoom-out
 
 Use the Matt Pocock-inspired `zoom-out` module.
 

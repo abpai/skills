@@ -20,7 +20,7 @@ This repository now ships metadata for both runtimes:
 # Install common plugins
 /plugin install distill@abpai-skills
 /plugin install lateral-thinking@abpai-skills
-/plugin install mp@abpai-skills
+/plugin install engineering@abpai-skills
 /plugin install code@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install pi@abpai-skills
@@ -67,11 +67,11 @@ research and review. The debate workflow now lives inside `pi` as
 |--------|-------------|
 | **code** | Groups common code workflows under `/code:*`: goal, review-and-commit, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, and secure-dependencies, with optional HTML artifacts where visual review helps |
 
-### Matt Pocock Inspired
+### Engineering Practices
 
 | Plugin | What it does |
 |--------|-------------|
-| **mp** | Groups the Matt Pocock-inspired workflows as one plugin-owned skill surface, with Claude commands at `/mp:grill-me`, `/mp:tdd`, `/mp:zoom-out`, and `/mp:improve-codebase-architecture` backed by `mp/internal/` modules |
+| **engineering** | Groups engineering-practice workflows (Matt Pocock-inspired) as one plugin-owned skill surface, with Claude commands at `/engineering:grill-me`, `/engineering:tdd`, `/engineering:zoom-out`, and `/engineering:improve-codebase-architecture` backed by `engineering/internal/` modules |
 
 ### Developer Productivity
 
@@ -120,11 +120,11 @@ abpai/skills/
 │   └── skills/code/           ← one public skill plus flat workflow modules
 │       ├── *.md
 │       └── references/
-├── mp/                        ← grouped Matt Pocock-inspired workflows
-│   ├── commands/              ← Claude `/mp:*` wrappers
+├── engineering/               ← grouped engineering-practice workflows
+│   ├── commands/              ← Claude `/engineering:*` wrappers
 │   ├── internal/              ← flat workflow modules, not standalone skills
 │   │   └── references/
-│   └── skills/mp/
+│   └── skills/engineering/
 ├── pi/                        ← intentional Claude-only exception
 │   ├── .claude-plugin/plugin.json
 │   ├── agents/
@@ -219,9 +219,10 @@ Open the plugin directory with `codex /plugins` — all Codex-compatible
 plugins appear automatically from the repo marketplace.
 
 `pi` stays Claude-only in this repo and therefore does not appear in the Codex
-marketplace list. The Matt Pocock-inspired workflows are Codex-compatible as
-the grouped `mp` plugin. Codex sees a single `mp` skill; Claude also gets the
-namespaced `/mp:*` command wrappers.
+marketplace list. The engineering-practice workflows (Matt Pocock-inspired)
+are Codex-compatible as the grouped `engineering` plugin. Codex sees a single
+`engineering` skill; Claude also gets the namespaced `/engineering:*` command
+wrappers.
 
 #### Personal installation
 

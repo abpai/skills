@@ -1,6 +1,6 @@
 # Zoom Out
 
-Internal module for `/mp:zoom-out`.
+Internal module for `/engineering:zoom-out`.
 
 Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/engineering/zoom-out
 

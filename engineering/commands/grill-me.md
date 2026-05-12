@@ -3,7 +3,7 @@ description: Stress-test a plan or design by walking the decision tree one quest
 argument-hint: "[plan or design]"
 ---
 
-# /mp:grill-me
+# /engineering:grill-me
 
 Use the Matt Pocock-inspired `grill-me` module.
 

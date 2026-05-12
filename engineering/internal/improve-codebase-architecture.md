@@ -1,6 +1,6 @@
 # Improve Codebase Architecture
 
-Internal module for `/mp:improve-codebase-architecture`.
+Internal module for `/engineering:improve-codebase-architecture`.
 
 Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/engineering/improve-codebase-architecture
 

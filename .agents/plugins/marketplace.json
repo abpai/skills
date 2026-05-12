@@ -41,10 +41,10 @@
       "category": "Productivity"
     },
     {
-      "name": "mp",
+      "name": "engineering",
       "source": {
         "source": "local",
-        "path": "./mp"
+        "path": "./engineering"
       },
       "policy": {
         "installation": "AVAILABLE",

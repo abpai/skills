@@ -3,7 +3,7 @@ description: Find deepening opportunities that improve locality, leverage, testa
 argument-hint: "[codebase area or goal]"
 ---
 
-# /mp:improve-codebase-architecture
+# /engineering:improve-codebase-architecture
 
 Use the Matt Pocock-inspired `improve-codebase-architecture` module.
 

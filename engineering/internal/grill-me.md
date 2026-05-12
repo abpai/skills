@@ -1,6 +1,6 @@
 # Grill Me
 
-Internal module for `/mp:grill-me`.
+Internal module for `/engineering:grill-me`.
 
 Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me
 

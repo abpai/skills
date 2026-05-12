@@ -30,11 +30,11 @@
       "keywords": ["codex", "openai", "multi-model", "review"]
     },
     {
-      "name": "mp",
-      "description": "Matt Pocock-inspired workflows grouped under /mp:* commands, backed by internal plugin modules instead of standalone skill packages.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "mp" },
+      "name": "engineering",
+      "description": "Engineering-practice workflows (Matt Pocock-inspired) grouped under /engineering:* commands, backed by internal plugin modules instead of standalone skill packages.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "engineering" },
       "category": "productivity",
-      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "questions"]
+      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out"]
     },
     {
       "name": "bun-expert",

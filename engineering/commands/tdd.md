@@ -3,7 +3,7 @@ description: Use a vertical red-green-refactor loop with behavior-focused tests.
 argument-hint: "[feature or bug]"
 ---
 
-# /mp:tdd
+# /engineering:tdd
 
 Use the Matt Pocock-inspired `tdd` module.
 

@@ -1,0 +1,10 @@
+{
+  "name": "engineering",
+  "version": "1.2.0",
+  "description": "Engineering-practice workflow pack (Matt Pocock-inspired) with /engineering:* commands backed by internal modules.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT"
+}
