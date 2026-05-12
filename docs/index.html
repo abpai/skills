@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>abpai/skills — AI Workflow Plugins</title>
-  <meta name="description" content="Curated marketplace of 13 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
+  <meta name="description" content="Curated marketplace of 12 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
   <meta property="og:title" content="abpai/skills — AI Workflow Plugins">
-  <meta property="og:description" content="13 production-grade AI workflow plugins for Claude Code and Codex.">
+  <meta property="og:description" content="12 production-grade AI workflow plugins for Claude Code and Codex.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -702,7 +702,7 @@
         Cross-domain thinking, multi-model tooling, and developer productivity plugins for Claude Code and Codex.
       </p>
       <div class="hero-stats">
-        <span class="stat-pill"><strong>13</strong>&ensp;Plugins</span>
+        <span class="stat-pill"><strong id="pluginCount">12</strong>&ensp;Plugins</span>
         <span class="stat-pill"><strong>6</strong>&ensp;Categories</span>
         <span class="stat-pill"><strong>2</strong>&ensp;Runtimes</span>
         <span class="stat-pill">MIT</span>
@@ -718,7 +718,7 @@
         <div class="search-wrapper">
           <input type="text" class="search-input" id="searchInput" placeholder="Search plugins..." autocomplete="off" spellcheck="false">
         </div>
-        <span class="result-count" id="resultCount">13 / 13</span>
+        <span class="result-count" id="resultCount">12 / 12</span>
       </div>
       <div class="category-filters" id="categoryFilters">
         <button class="filter-pill active" data-category="All">All</button>
@@ -974,6 +974,10 @@ codex</code>
       setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
     });
     try { const saved = localStorage.getItem('theme'); if (saved) setTheme(saved); } catch(e) {}
+
+    // Sync counts from the rendered cards so the catalog never drifts.
+    document.getElementById('pluginCount').textContent = totalCount;
+    filterCards();
 
     // Nav scroll tracking
     const sections = ['hero', 'catalog', 'install'];
