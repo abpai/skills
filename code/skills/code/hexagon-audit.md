@@ -29,14 +29,22 @@ that layout.
 
 ### 1. Run the deterministic scan
 
-Run the bundled scanner from the repo root. When this skill is installed via
-`npx skills add`, the script lives at:
+Run the bundled scanner from the repo root. The script path depends on how the
+`code` skill is available:
 
 ```bash
+# installed via `npx skills add` (project-local skills dir)
 bun .agents/skills/code/scripts/audit-hexagon.ts
+
+# inside the abpai/skills checkout itself
+bun code/skills/code/scripts/audit-hexagon.ts
+
+# loaded as a Claude Code plugin (runtime cache)
+bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/audit-hexagon.ts"
 ```
 
-Under a Claude Code plugin install it is `${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/audit-hexagon.ts`.
+Pick whichever resolves; if none do, the scanner isn't on disk yet — re-install
+or re-add the `code` skill before continuing.
 
 The script discovers workspace package names and dependency edges from
 `packages/*/package.json` and `adapters/*/package.json`, then reports:
