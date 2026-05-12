@@ -71,7 +71,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **engineering** | Groups engineering-practice workflows as one self-contained skill, with Claude commands at `/engineering:grill-me`, `/engineering:tdd`, `/engineering:zoom-out`, `/engineering:improve-codebase-architecture` (Matt Pocock-inspired), and `/engineering:language` (DDD ubiquitous-language glossary) |
+| **engineering** | Groups engineering-practice workflows as one self-contained skill, with Claude commands at `/engineering:grill-me`, `/engineering:tdd`, `/engineering:zoom-out`, `/engineering:improve-codebase-architecture` (Matt Pocock-inspired), and `/engineering:defined-terms` (DDD ubiquitous-language glossary) |
 
 ### Developer Productivity
 

@@ -1,6 +1,6 @@
-# Ubiquitous Language
+# Defined Terms
 
-Workflow module for `/engineering:language` — the ubiquitous-language / DDD glossary workflow.
+Workflow module for `/engineering:defined-terms` — the ubiquitous-language / DDD glossary workflow.
 
 Extract and formalize domain terminology from the current conversation into a
 consistent DDD-style glossary, saved to a local file, so you and the agent share
@@ -16,7 +16,7 @@ harden terminology, create a ubiquitous language, or mentions "domain model" or
    - Different words used for the same concept (synonyms)
    - Vague or overloaded terms
 3. **Propose a canonical glossary** with opinionated term choices.
-4. **Write to `UBIQUITOUS_LANGUAGE.md`** in the working directory using the
+4. **Write to `DEFINED_TERMS.md`** in the working directory using the
    format below. (If the repo already keeps a domain vocabulary file under
    another name — e.g. `CONTEXT.md` for the `improve-codebase-architecture`
    workflow — update that instead of creating a parallel one; ask which to use
@@ -25,10 +25,10 @@ harden terminology, create a ubiquitous language, or mentions "domain model" or
 
 ## Output Format
 
-Write a `UBIQUITOUS_LANGUAGE.md` file with this structure:
+Write a `DEFINED_TERMS.md` file with this structure:
 
 ```md
-# Ubiquitous Language
+# Defined Terms
 
 ## Order lifecycle
 
@@ -90,7 +90,7 @@ Write a `UBIQUITOUS_LANGUAGE.md` file with this structure:
 
 When invoked again in the same conversation:
 
-1. Read the existing `UBIQUITOUS_LANGUAGE.md`.
+1. Read the existing `DEFINED_TERMS.md`.
 2. Incorporate any new terms from subsequent discussion.
 3. Update definitions if understanding has evolved.
 4. Re-flag any new ambiguities.
