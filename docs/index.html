@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>abpai/skills — AI Workflow Plugins</title>
-  <meta name="description" content="Curated marketplace of 17 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
+  <meta name="description" content="Curated marketplace of 12 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
   <meta property="og:title" content="abpai/skills — AI Workflow Plugins">
-  <meta property="og:description" content="17 production-grade AI workflow plugins for Claude Code and Codex.">
+  <meta property="og:description" content="12 production-grade AI workflow plugins for Claude Code and Codex.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -702,8 +702,8 @@
         Cross-domain thinking, multi-model tooling, and developer productivity plugins for Claude Code and Codex.
       </p>
       <div class="hero-stats">
-        <span class="stat-pill"><strong>17</strong>&ensp;Skills</span>
-        <span class="stat-pill"><strong>7</strong>&ensp;Categories</span>
+        <span class="stat-pill"><strong id="pluginCount">12</strong>&ensp;Plugins</span>
+        <span class="stat-pill"><strong>6</strong>&ensp;Categories</span>
         <span class="stat-pill"><strong>2</strong>&ensp;Runtimes</span>
         <span class="stat-pill">MIT</span>
       </div>
@@ -716,15 +716,14 @@
     <div class="container">
       <div class="filter-bar">
         <div class="search-wrapper">
-          <input type="text" class="search-input" id="searchInput" placeholder="Search skills..." autocomplete="off" spellcheck="false">
+          <input type="text" class="search-input" id="searchInput" placeholder="Search plugins..." autocomplete="off" spellcheck="false">
         </div>
-        <span class="result-count" id="resultCount">17 / 17</span>
+        <span class="result-count" id="resultCount">12 / 12</span>
       </div>
       <div class="category-filters" id="categoryFilters">
         <button class="filter-pill active" data-category="All">All</button>
         <button class="filter-pill" data-category="Planning & Reasoning">Planning & Reasoning</button>
         <button class="filter-pill" data-category="Code Quality">Code Quality</button>
-        <button class="filter-pill" data-category="Security">Security</button>
         <button class="filter-pill" data-category="Developer Productivity">Developer Productivity</button>
         <button class="filter-pill" data-category="Tools">Tools</button>
         <button class="filter-pill" data-category="Languages & Platforms">Languages & Platforms</button>
@@ -743,7 +742,7 @@
           <h3 class="card-name">distill</h3>
           <p class="card-description">Decompose complex systems into essential primitives. Codebases, papers, transcripts.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/distill" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
@@ -753,7 +752,7 @@
           <h3 class="card-name">lateral-thinking</h3>
           <p class="card-description">Cross-domain hypothesis generation. Find transferable mechanisms from distant fields.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/lateral-thinking" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
@@ -768,54 +767,34 @@
           </div>
         </article>
 
-        <article class="skill-card" data-category="Planning & Reasoning" data-keywords="planning generator evaluator workflow codex">
+        <article class="skill-card" data-category="Planning & Reasoning" data-keywords="planning generator evaluator workflow codex ui layout review debate">
           <span class="card-badge">Claude-only</span>
           <span class="card-category">Planning & Reasoning</span>
           <h3 class="card-name">pi</h3>
-          <p class="card-description">Claude-native planner/generator/evaluator harness, now including /pi:debate for structured architecture debate.</p>
+          <p class="card-description">Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and structured debate.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>0.9.0</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>0.10.0</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/pi" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
-        <article class="skill-card" data-category="Code Quality" data-keywords="code review commit explain try simplify walkthrough understand refactoring architecture call-stack">
+        <article class="skill-card" data-category="Code Quality" data-keywords="code goal review commit explain try simplify walkthrough understand refactoring architecture call-stack html artifact dead-code scratch socratic dependency-security supply-chain hexagon ports-adapters">
           <span class="card-category">Code Quality</span>
           <h3 class="card-name">code</h3>
-          <p class="card-description">Grouped coding workflows for review-and-commit, explain, try, simplify, walkthrough, and understand under /code:* commands.</p>
+          <p class="card-description">Grouped coding workflows for verifiable goals, review, explanation, exploration, cleanup, owner briefings, dependency hardening, hexagonal-architecture audits, and HTML review artifacts under /code:* commands.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0.0</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>1.4.0</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/code" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
-        <article class="skill-card" data-category="Code Quality" data-keywords="dead-code cleanup audit unused">
-          <span class="card-category">Code Quality</span>
-          <h3 class="card-name">dead-code-eliminator</h3>
-          <p class="card-description">Audit for unreachable functions, unused imports, orphaned classes, and stale feature flags.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.2</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/dead-code-eliminator" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Security" data-keywords="dependency-security supply-chain lockfiles cooldown hardening">
-          <span class="card-category">Security</span>
-          <h3 class="card-name">secure</h3>
-          <p class="card-description">Additive security hardening workflows, starting with dependency resolution and supply-chain policy.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0.0</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/secure" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="matt-pocock tdd grill-me zoom-out architecture">
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="matt-pocock tdd grill-me zoom-out architecture engineering ubiquitous-language ddd glossary domain-model">
           <span class="card-category">Developer Productivity</span>
-          <h3 class="card-name">mp</h3>
-          <p class="card-description">Matt Pocock-inspired workflow pack with one public mp skill and /mp:* Claude commands backed by internal modules.</p>
+          <h3 class="card-name">engineering</h3>
+          <p class="card-description">Engineering-practice workflow pack: grill-me, TDD, zoom-out, architecture deepening, and DDD ubiquitous-language glossaries — one self-contained skill plus /engineering:* Claude commands.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1.0</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/mp" target="_blank" rel="noopener" class="card-link">Source</a>
+            <div class="card-meta"><span class="card-version">v <strong>1.4.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/engineering" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -824,48 +803,8 @@
           <h3 class="card-name">cli-design-expert</h3>
           <p class="card-description">Design or review CLIs for usability: help text, flags, exit codes, TTY behavior, config precedence.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1.1</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>1.2.0</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/cli-design-expert" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="autonomy delegation briefs verification">
-          <span class="card-category">Developer Productivity</span>
-          <h3 class="card-name">task</h3>
-          <p class="card-description">Convert a rough ask into a hands-off task brief an agent can execute end-to-end.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>0.1.0</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/task" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="understand codebase mental-model primitives modules">
-          <span class="card-category">Developer Productivity</span>
-          <h3 class="card-name">scratch</h3>
-          <p class="card-description">Understand a project by playing with its real modules in a safe .scratch/ workspace.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/scratch" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="quiz understanding mental-model ownership">
-          <span class="card-category">Developer Productivity</span>
-          <h3 class="card-name">socratic-code-owner</h3>
-          <p class="card-description">Quiz the developer on code, architecture, or plans an AI agent built. Ensures human understanding.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/socratic-code-owner" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Tools" data-keywords="browser automation web scraping testing">
-          <span class="card-category">Tools</span>
-          <h3 class="card-name">agent-browser</h3>
-          <p class="card-description">Browser automation CLI for AI agents. Navigate pages, fill forms, click buttons, take screenshots, extract data.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.3</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/agent-browser" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -882,9 +821,9 @@
         <article class="skill-card" data-category="Tools" data-keywords="visualization html diagrams explanation">
           <span class="card-category">Tools</span>
           <h3 class="card-name">visualize</h3>
-          <p class="card-description">Generate self-contained HTML visualizations to explain a system, plan, code flow, or concept.</p>
+          <p class="card-description">Generate self-contained HTML visualizations with an ivory/clay editorial gallery style for systems, plans, code flows, and concepts.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>1.2</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/visualize" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
@@ -894,7 +833,7 @@
           <h3 class="card-name">bun-expert</h3>
           <p class="card-description">Expert Bun runtime guidance: project setup, servers, APIs, testing, bundling, and Node.js migration.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.3</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>1.4</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/bun-expert" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
@@ -906,6 +845,16 @@
           <div class="card-footer">
             <div class="card-meta"><span class="card-version">v <strong>1.4</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/human-writer" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Writing" data-keywords="prompting prompt-engineering rewriting agents handoff summary">
+          <span class="card-category">Writing</span>
+          <h3 class="card-name">improve-prompt</h3>
+          <p class="card-description">Upgrade vague prompts into sharp, reusable prompts for planning, coding, review, decision, and handoff work.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.3.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/improve-prompt" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -1025,6 +974,10 @@ codex</code>
       setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
     });
     try { const saved = localStorage.getItem('theme'); if (saved) setTheme(saved); } catch(e) {}
+
+    // Sync counts from the rendered cards so the catalog never drifts.
+    document.getElementById('pluginCount').textContent = totalCount;
+    filterCards();
 
     // Nav scroll tracking
     const sections = ['hero', 'catalog', 'install'];

@@ -1,7 +1,9 @@
 {
   "name": "lateral-thinking",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Generate non-obvious hypotheses by decomposing a problem to its mechanism and raiding distant fields for transferable patterns.",
-  "author": { "name": "Andy Pai" },
+  "author": {
+    "name": "Andy Pai"
+  },
   "license": "MIT"
 }

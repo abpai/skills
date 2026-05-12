@@ -13,6 +13,10 @@ It does three simple things:
 2. makes the generator work against an explicit contract instead of vague intent
 3. forces a real evaluator pass before calling the work done
 
+For UI work, Pi also makes the plan visible before implementation: it creates
+`artifacts/layout-options.html` so the user can compare layout directions and
+choose one before the task slices are locked.
+
 If helpful, Pi can also ask Codex for a second opinion. But Claude stays in
 charge of the workflow.
 
@@ -67,6 +71,7 @@ user
   |      |
   |      +--> Phase C: planner (foreground, fresh spawn)
   |      |      proposes task slices from resolved tech decisions
+  |      |      creates layout-options.html when UI is being planned
   |      |
   |      +--> Phase D: codex-reviewer (up to 3 iterative passes)
   |      |
@@ -105,10 +110,10 @@ user
 
 | Command | Phase | What it does |
 | --- | --- | --- |
-| `/pi:plan` | Plan | Posture -> clarify -> lateral thinking -> distill -> provider selection (None / Codex / Gemini / both) -> parallel research fanout -> consensus matrix -> task slices -> iterative external critique |
+| `/pi:plan` | Plan | Posture -> clarify -> lateral thinking -> distill -> provider selection (None / Codex / Gemini / both) -> parallel research fanout -> consensus matrix -> task slices -> optional UI layout-options artifact -> iterative external critique |
 | `/pi:execute` | Execute | Per-task: draft contract -> build (Claude `generator` or Codex `codex-executor` per `primary_executor`) -> external review (gated by `research_policy.providers`) -> evaluate with per-task verification -> task-scoped repair |
 | `/pi:review` | Review | Full suite + per-task verification -> external final reads (per provider) -> scorecard with consensus matrix cross-reference |
-| `/pi:debate` | Debate | Standalone propose -> Codex critique -> synthesize loop for architecture decisions and tradeoffs, ending in an ADR |
+| `/pi:debate` | Debate | Standalone propose -> Codex critique -> synthesize loop for architecture, product workflow, or UI layout decisions, ending in an ADR |
 
 ## Agents
 
@@ -157,6 +162,7 @@ state root:
         ├── research/
         ├── reviews/
         ├── evaluations/
+        ├── artifacts/
         ├── checkpoints/
         └── LEARNINGS.md
 ```
@@ -169,7 +175,7 @@ exactly one run, they auto-select it.
 `checkpoints/` holds short-lived handoff files written when a generator
 finishes a pass and deleted once the evaluator scores it. They let
 `/pi:execute` resume into review/evaluation after a mid-handoff stop
-instead of re-running the generator. See `pi-protocol/STATE.md` for the
+instead of re-running the generator. See `internal/protocol/STATE.md` for the
 full resume decision table.
 
 ## File Diagram
@@ -187,6 +193,8 @@ This is the artifact flow Pi tries to maintain:
   +--> .agents/work/runs/<slug>/research/lateral-thinking.md
   +--> .agents/work/runs/<slug>/research/fanout/*-claude.json, *-codex.json
   +--> .agents/work/runs/<slug>/research/consensus-matrix.md
+  +--> .agents/work/runs/<slug>/artifacts/layout-options.html  (UI work)
+  +--> .agents/work/runs/<slug>/research/ui-layout-decision.md  (UI work)
   \--> .agents/work/runs/<slug>/reviews/codex-plan-pass-{1,2,3}.json
 
 /pi:execute
@@ -281,8 +289,10 @@ Usually worth committing:
 - `.agents/work/runs/<slug>/rubric.json`
 - `.agents/work/runs/<slug>/tasks/`
 - `.agents/work/runs/<slug>/contracts/`
+- `.agents/work/runs/<slug>/artifacts/layout-options.html` when UI was planned
 - `.agents/work/runs/<slug>/research/consensus-matrix.md`
 - `.agents/work/runs/<slug>/research/lateral-thinking.md`
+- `.agents/work/runs/<slug>/research/ui-layout-decision.md` when UI was planned
 - `.agents/work/runs/<slug>/LEARNINGS.md`
 
 Usually keep local:

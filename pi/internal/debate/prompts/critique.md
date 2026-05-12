@@ -21,6 +21,12 @@ What is the day-2 story? How does this affect monitoring, debugging, incident re
 ### 5. Elegant-but-wrong abstractions
 Where is the proposal creating abstraction layers that look clean but will leak under load, edge cases, or future requirements? Where is simplicity being confused with sophistication?
 
+### 6. UI / product fit, when applicable
+For product or UI layout proposals, where does the information hierarchy fail?
+What common workflow takes too many steps? What breaks on mobile, empty state,
+loading state, or error state? Where does the layout look polished but fail the
+actual repeated-use job?
+
 ## Response format
 
 For each attack vector, provide:

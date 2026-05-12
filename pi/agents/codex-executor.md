@@ -22,6 +22,8 @@ You receive:
 - the current build / repair pass number
 - prior evaluator feedback (if this is a repair pass)
 - the state root path (for reading/writing run artifacts)
+- for UI work, `research/ui-layout-decision.md` and the selected layout
+  direction from `artifacts/layout-options.html`
 
 ## Process
 
@@ -34,6 +36,8 @@ You receive:
    - the brief summary
    - the active contract verbatim
    - the relevant consensus matrix decisions
+   - for UI work, the selected layout direction and screenshot/browser
+     verification expectations
    - the per-task verification array for the active task
    - if this is a repair pass, the failing evidence and task-scoped repair
      guidance; otherwise a note to build coherently

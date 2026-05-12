@@ -30,7 +30,7 @@ skip re-reading the resolved run's `state.json`: preflight is a snapshot and
 may be stale (for example, if a prior run stopped mid-handoff). Always read
 `state.json` and `checkpoints/` in Phase 0/A before deciding the next step.
 
-Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 2: Execute**.
+Read the Pi protocol module (`internal/protocol/README.md` in this plugin) and execute **Phase 2: Execute**.
 
 User input: $ARGUMENTS
 
@@ -90,6 +90,8 @@ subagents, so you own all agent orchestration.
    - per-task verification arrays (the `verification` array from each task JSON)
    - the current build/repair pass number
    - any prior evaluator feedback (if repair pass)
+   - for UI work, `research/ui-layout-decision.md` and the selected direction
+     from `artifacts/layout-options.html`
 
    When `primary_executor` is `claude`, spawn `generator`. When `codex`,
    spawn `codex-executor` instead. All downstream steps (9 onward) are
@@ -143,6 +145,8 @@ subagents, so you own all agent orchestration.
     - the consensus matrix
     - the review output from every active provider (Codex, Gemini, or both)
     - the current pass number
+    - for UI work, the selected layout direction and browser/screenshot
+      verification notes from the active contract
 12. Write evaluation to `evaluations/build-pass-<N>.json`, then delete the
     matching `checkpoints/build-pass-<N>-<task-id>.json` — the evaluation
     supersedes it as the durable record of this pass.

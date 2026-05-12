@@ -1,7 +1,7 @@
 {
   "name": "pi",
-  "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with /pi:debate for structured architecture debate.",
-  "version": "0.9.0",
+  "description": "Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and structured debate.",
+  "version": "0.10.0",
   "author": {
     "name": "Andy Pai"
   },
@@ -14,6 +14,9 @@
     "generator",
     "evaluator",
     "workflow",
+    "ui",
+    "layout",
+    "review",
     "codex",
     "gemini"
   ]

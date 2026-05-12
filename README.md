@@ -20,7 +20,7 @@ This repository now ships metadata for both runtimes:
 # Install common plugins
 /plugin install distill@abpai-skills
 /plugin install lateral-thinking@abpai-skills
-/plugin install mp@abpai-skills
+/plugin install engineering@abpai-skills
 /plugin install code@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install pi@abpai-skills
@@ -59,43 +59,32 @@ research and review. The debate workflow now lives inside `pi` as
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
 | **codex-exec** | Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review. | Yes |
-| **pi** | Claude-native planner/generator/evaluator harness for long-running engineering work, plus `/pi:debate` for structured architecture debate. | Claude-only |
+| **pi** | Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and `/pi:debate` for structured architecture/product decisions. | Claude-only |
 
 ### Code Workflows
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:review-and-commit`, `/code:explain`, `/code:try`, `/code:simplify`, `/code:walkthrough`, and `/code:understand` |
-| **dead-code-eliminator** | Audit for unreachable functions, unused imports, orphaned classes, stale flags |
+| **code** | Groups common code workflows under `/code:*`: goal, review-and-commit, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, secure-dependencies, and hexagon-audit, with optional HTML artifacts where visual review helps |
 
-### Security
-
-| Plugin | What it does |
-|--------|-------------|
-| **secure** | Additive security hardening workflows, starting with `/secure:dependencies` for dependency resolution and supply-chain policy |
-
-### Matt Pocock Inspired
+### Engineering Practices
 
 | Plugin | What it does |
 |--------|-------------|
-| **mp** | Groups the Matt Pocock-inspired workflows as one plugin-owned skill surface, with Claude commands at `/mp:grill-me`, `/mp:tdd`, `/mp:zoom-out`, and `/mp:improve-codebase-architecture` backed by `mp/internal/` modules |
+| **engineering** | Groups engineering-practice workflows as one self-contained skill, with Claude commands at `/engineering:grill-me`, `/engineering:tdd`, `/engineering:zoom-out`, `/engineering:improve-architecture` (Matt Pocock-inspired), and `/engineering:defined-terms` (DDD ubiquitous-language glossary) |
 
 ### Developer Productivity
 
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **scratch** | Understand a project's internals through runnable .scratch/ exploration scripts |
-| **socratic-code-owner** | Quiz the developer on AI-built code to ensure understanding |
-| **task** | Convert a rough ask into a hands-off task brief an agent can execute end-to-end |
 
 ### Tools
 
 | Plugin | What it does |
 |--------|-------------|
-| **agent-browser** | Browser automation: navigate, fill forms, click, screenshot, extract data |
 | **claude** | Run Claude Code CLI for delegation, session continuation, machine-readable output |
-| **visualize** | Generate self-contained HTML visualizations for systems, plans, or code flows |
+| **visualize** | Generate self-contained HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
 
 ### Languages & Platforms
 
@@ -128,21 +117,22 @@ abpai/skills/
 │       └── references/        (if any)
 ├── code/                      ← grouped coding workflows
 │   ├── commands/              ← Claude `/code:*` wrappers
-│   ├── internal/              ← flat workflow modules, not standalone skills
-│   │   └── references/
-│   └── skills/code/
-├── mp/                        ← grouped Matt Pocock-inspired workflows
-│   ├── commands/              ← Claude `/mp:*` wrappers
-│   ├── internal/              ← flat workflow modules, not standalone skills
-│   │   └── references/
-│   └── skills/mp/
+│   └── skills/code/           ← one public skill plus flat workflow modules
+│       ├── *.md
+│       ├── references/
+│       └── scripts/           ← bundled helpers (e.g. hexagon-audit scanner)
+├── engineering/               ← grouped engineering-practice workflows
+│   ├── commands/              ← Claude `/engineering:*` wrappers
+│   └── skills/engineering/    ← one public skill plus flat workflow modules
+│       ├── *.md
+│       └── references/
 ├── pi/                        ← intentional Claude-only exception
 │   ├── .claude-plugin/plugin.json
 │   ├── agents/
 │   ├── commands/
 │   ├── internal/
-│   │   └── debate/
-│   └── skills/pi-protocol/
+│   │   ├── debate/
+│   │   └── protocol/
 └── README.md
 ```
 
@@ -166,9 +156,11 @@ and [Claude Code plugin docs](https://code.claude.com/docs/en/plugins):
 - Shared support files stay inside the owning plugin folder. Paths must not
   rely on files outside the plugin, because installed plugins are copied into a
   runtime cache.
-- Use flat files in `internal/` for bundled implementation notes, prompts, or
-  command modules that should not become separate installable skills; use
-  `internal/references/` for shared supporting docs.
+- For grouped workflow packs with one public skill, keep workflow modules
+  directly inside `skills/<skill>/` and shared supporting docs under
+  `skills/<skill>/references/`.
+- Use flat files in `internal/` only for plugin-private implementation notes,
+  prompts, or command modules that are not part of a public skill.
 
 ## Installing Plugins
 
@@ -228,9 +220,10 @@ Open the plugin directory with `codex /plugins` — all Codex-compatible
 plugins appear automatically from the repo marketplace.
 
 `pi` stays Claude-only in this repo and therefore does not appear in the Codex
-marketplace list. The Matt Pocock-inspired workflows are Codex-compatible as
-the grouped `mp` plugin. Codex sees a single `mp` skill; Claude also gets the
-namespaced `/mp:*` command wrappers.
+marketplace list. The engineering-practice workflows (Matt Pocock-inspired)
+are Codex-compatible as the grouped `engineering` plugin. Codex sees a single
+`engineering` skill; Claude also gets the namespaced `/engineering:*` command
+wrappers.
 
 #### Personal installation
 

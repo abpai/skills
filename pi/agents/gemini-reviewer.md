@@ -19,6 +19,7 @@ You receive one of two review types:
 - Ordered task slices
 - The current posture
 - The specific review focus
+- For UI work: the layout options artifact and selected layout direction
 
 **Build review**:
 - A description of the latest build or repair pass
@@ -43,8 +44,9 @@ You receive one of two review types:
      gemini -p "Review the plan in stdin and return JSON only."
    ```
 
-   Include in the prompt: the brief, task slices, posture, review focus, and
-   the exact JSON schema below. Ask Gemini to emit JSON only.
+   Include in the prompt: the brief, task slices, posture, review focus, the
+   layout options artifact for UI work, and the exact JSON schema below. Ask
+   Gemini to emit JSON only.
 5. For build review against local changes:
    - If the coordinator provides a list of files changed in this pass, scope
      the review to those files only and include them (or their diffs) in
@@ -80,7 +82,7 @@ For **plan review**:
     {
       "scope": "brief|tasks|verification",
       "severity": "must_address|nice_to_have",
-      "category": "gap|risk|test_inadequate|simplification|ordering",
+      "category": "gap|risk|test_inadequate|simplification|ordering|visual_gap",
       "description": "...",
       "suggested_edit": "..."
     }
@@ -100,7 +102,7 @@ For **code review**:
     {
       "file": "path/to/file.ts",
       "severity": "must_address|nice_to_have",
-      "category": "bug|risk|quality|performance|test_gap",
+      "category": "bug|risk|quality|performance|test_gap|visual_regression",
       "description": "...",
       "suggestion": "..."
     }

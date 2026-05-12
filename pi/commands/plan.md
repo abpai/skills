@@ -30,7 +30,7 @@ availability. The coordinator must still re-read the chosen run's
 `state.json` before acting; the preflight is advisory. The Codex availability
 line feeds directly into the `codex_policy` branch in Phase D.
 
-Read the pi-protocol skill (`skills/pi-protocol/SKILL.md` in this plugin) and execute **Phase 1: Plan**.
+Read the Pi protocol module (`internal/protocol/README.md` in this plugin) and execute **Phase 1: Plan**.
 
 User input: $ARGUMENTS
 
@@ -119,14 +119,25 @@ tool requires it when `message` is a string. Example:
 13. Spawn a **fresh** `planner` (foreground) with the primitives and resolved
     tech decisions as context. The planner proposes ordered task slices with
     specific test criteria.
-14. The planner presents tasks to the user for confirmation.
+14. For UI work, before asking the user to confirm task slices: have the
+    planner create `artifacts/layout-options.html` in `state_root` (2-3
+    concrete layout directions with visual wireframes, information hierarchy,
+    primary workflow, responsive behavior, tradeoffs, and risk; start from
+    `internal/protocol/templates/layout-options.html`), present it, and let
+    the user pick a direction. Record it in `research/ui-layout-decision.md`,
+    set `rubric.json.criteria.visual_design.applicable` to `true`, and fold
+    the chosen direction into the brief and the affected task `verification`
+    arrays. For non-UI work, leave `visual_design.applicable` at its template
+    default of `false`.
+15. Present the task slices (layout-adjusted, for UI work) and, for UI work,
+    the layout options artifact, then wait for user confirmation.
 
 ### Phase D — Iterative External Review (coordinator-driven)
 
-15. Update `state.json` in `state_root`: `current_step` = `"codex_review"`
+16. Update `state.json` in `state_root`: `current_step` = `"codex_review"`
     (name preserved for state compatibility; the step runs whichever critics
     are in `research_policy.providers`).
-16. For each provider in the selection, run up to 3 iterative review passes
+17. For each provider in the selection, run up to 3 iterative review passes
     against the brief + tasks. Save each pass as
     `reviews/<provider>-plan-pass-<N>.json` in `state_root` (e.g.
     `codex-plan-pass-1.json`, `gemini-plan-pass-1.json`).
@@ -137,7 +148,9 @@ tool requires it when `message` is a string. Example:
     - Pass 3 (if needed): remaining issues become noted risks, not blockers.
     When the providers list contains both `codex` and `gemini`, run them in
     parallel per pass and merge their `must_address` items before re-running.
-17. If no providers are selected (`providers: []`), skip Phase D entirely.
+    For UI work, include `artifacts/layout-options.html` and
+    `research/ui-layout-decision.md` in the review context.
+18. If no providers are selected (`providers: []`), skip Phase D entirely.
 
 If a selected CLI is not available, check `execution_policy` from
 `rubric.json`. For Codex, `codex_policy` governs the fallback as before. For
@@ -146,10 +159,13 @@ block on required). Record the absence in the noted risks for Phase E.
 
 ### Phase E — Finalize
 
-18. Update `state.json` in `state_root`: `current_step` = `"finalize"`.
-19. Present the final plan to the user: brief summary, consensus matrix,
-    review results from each selected provider, ordered tasks, noted risks.
-20. On approval, write `brief.md`, `rubric.json`, and `tasks/*.json` in
+19. Update `state.json` in `state_root`: `current_step` = `"finalize"`.
+20. Present the final plan to the user as a decision-ready finalizer:
+    brief summary, selected implementation posture, consensus matrix,
+    incorporated reviewer changes, ordered tasks, validation plan, noted risks,
+    selected providers, selected builder, and for UI work, the chosen layout
+    direction with the path to `artifacts/layout-options.html`.
+21. On approval, write `brief.md`, `rubric.json`, and `tasks/*.json` in
     `state_root`. Set `rubric.json.research_policy.providers` from Phase A
     step 1. Update `state.json` in `state_root` with `phase: "execute"`,
     `project_slug`, `title`, the resolved `state_root`, and refresh the

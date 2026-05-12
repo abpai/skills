@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "1.0.0",
-  "description": "Grouped coding workflows exposed as one public code skill.",
+  "version": "1.4.0",
+  "description": "Grouped code workflows for goals, review, explanation, exploration, cleanup, HTML artifacts, owner briefings, dependency hardening, and hexagonal-architecture audits.",
   "author": {
     "name": "Andy Pai"
   },

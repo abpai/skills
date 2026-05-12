@@ -1,76 +1,91 @@
-# Threaded Design System
+# HTML Effectiveness Design System
 
-The visual identity for all generated HTML. Editorial, quiet, literary.
+The default visual identity for generated HTML artifacts. Editorial, quiet, warm, and easy to scan. It is inspired by the "unreasonable effectiveness of HTML" gallery style: ivory page, serif headings, clay accent, simple SVG illustration, and card grids with restrained borders.
+
+## Core Feel
+
+- The page should feel like a carefully edited gallery, not a SaaS dashboard.
+- Whitespace is the atmosphere. Avoid gradients, glass, heavy shadows, and neon.
+- Use one strong visual structure first: cards, map, annotated diff, table, timeline, or editor.
+- Prose explains the visual. It should not dominate the first screen.
 
 ## Fonts
 
-- **Serif** (headings, body content): `Merriweather`, Georgia, serif
-- **Sans** (UI labels, controls, meta): `Inter`, system-ui, sans-serif
-
-```html
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
-```
-
-## Reading Typography
+Use system fonts so the page works offline except for optional diagram libraries.
 
 ```css
-/* Body prose */
-font-family: 'Merriweather', Georgia, serif;
-font-size: 1.125rem;   /* 18px */
-line-height: 1.8;
-
-/* Headings */
-font-family: 'Merriweather', Georgia, serif;
-font-weight: 700;
-letter-spacing: -0.01em;
+--serif: ui-serif, Georgia, "Times New Roman", Times, serif;
+--sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+--mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
 ```
 
-## Theme
-
-Light is the default. Dark mode is class-based (`darkMode: 'class'` in Tailwind config) with a toggle button. Persist the user's choice to `localStorage`.
-
-```js
-// Inline in <head> before Tailwind loads (prevents flash)
-(function() {
-  var stored = localStorage.getItem('theme');
-  if (stored === 'dark') document.documentElement.classList.add('dark');
-})();
-```
+- Serif: titles, card headings, display text.
+- Sans: body copy, labels, controls.
+- Mono: section numbers, filenames, counters, small metadata.
 
 ## Color Tokens
 
-Light palette is the primary aesthetic. Dark values use Tailwind `dark:` prefix classes.
+```css
+:root {
+  --ivory: #faf9f5;
+  --paper: #ffffff;
+  --ink: #141413;
+  --clay: #d97757;
+  --clay-dark: #b85c3e;
+  --oat: #e3dacc;
+  --olive: #788c5d;
+  --mist: #f0eee6;
+  --line: #d1cfc5;
+  --muted: #87867f;
+  --soft: #3d3d3a;
+}
+```
 
-| Token | Light | Dark |
-|-------|-------|------|
-| bg | `#ffffff` (white) | `#020617` (slate-950) |
-| surface | `#f8fafc` (slate-50) | `#0f172a` (slate-900) |
-| border | `#e2e8f0` (slate-200) | `#1e293b` (slate-800) |
-| text | `#0f172a` (slate-900) | `#f1f5f9` (slate-100) |
-| text-secondary | `#475569` (slate-600) | `#94a3b8` (slate-400) |
-| text-dim | `#94a3b8` (slate-400) | `#475569` (slate-600) |
-| accent | `#b45309` (amber-700) | `#f59e0b` (amber-500) |
-| accent-light | `#fef3c7` (amber-100) | `#78350f` (amber-900) |
+Use clay sparingly for section numbers, selected paths, risk marks, or primary emphasis. Use olive for secondary success/alternate path marks. Use ink for the one thing that needs maximum contrast.
 
 ## Layout
 
-- Centered column: `max-w-2xl mx-auto px-6 py-16`
-- Visual area: `bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-10`
-- Card: `rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm`
-- Spacing follows an 8px grid
+- Page wrapper: `max-width: 1120px`, centered, `32px` side padding.
+- Masthead: large serif title plus optional visual figure.
+- Sections: numbered index, serif title, small count pill.
+- Cards: `border: 1.5px solid var(--line)`, `border-radius: 14px`, white background.
+- Thumbnail panels: warm mist background, simple SVG line art, no stock imagery.
+- Grids: `repeat(auto-fit, minmax(300px, 1fr))`.
+
+## Card Anatomy
+
+Each card should have:
+
+1. A visual thumbnail or mini diagram.
+2. A serif title.
+3. A short plain-language description.
+4. A mono footer: file name, command, status, or next action.
+
+Cards may link, expand, or reveal details, but the default state should already be useful.
+
+## Artifact Patterns
+
+| Artifact | Layout |
+|---|---|
+| PR explainer | annotated diff cards plus severity labels and reviewer-focus list |
+| Code understanding | module map, hot path, side-effect badges, scratch skeleton panel |
+| Implementation plan | timeline, data-flow diagram, risk table, validation checklist |
+| Comparison | option cards side by side with tradeoffs and copyable recommendation |
+| Prompt tuner | editable prompt panel, live examples, counters, copy button |
+| Report | section nav, evidence cards, charts/tables, concise executive summary |
 
 ## Motion
 
-- Duration: 150–300ms
-- Easing: `ease` or `cubic-bezier(0.16, 1, 0.3, 1)`
-- fadeIn: opacity 0→1 + translateY(4px→0)
-- fadeInSoft: opacity 0→1 only
-- Respect `prefers-reduced-motion: reduce`
+- Optional hover lift: `translateY(-3px)`.
+- Transition duration: `120ms` to `180ms`.
+- Shadow only on hover, and keep it soft.
+- Always respect `prefers-reduced-motion`.
 
 ## Constraints
 
-- `rounded-xl` or `rounded-2xl` on cards — no sharp corners
-- Restrained shadows: `shadow-sm` only, never `shadow-lg`
-- No gradients on backgrounds — whitespace is the atmosphere
-- Borders are low-opacity: `border-slate-200` light, `border-slate-800` dark
-- Selection color matches accent: `::selection { background: #fef3c7; }`
+- Do not default to dark mode.
+- Do not use large gradient backgrounds.
+- Do not use decorative blobs, glass panels, or neon palettes.
+- Do not hide the main idea below the fold.
+- Do not fill the page with prose before the first visual.
+- Never use `innerHTML` with user-provided content. Let Preact escape text or sanitize carefully.

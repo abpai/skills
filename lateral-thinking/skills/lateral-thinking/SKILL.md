@@ -8,7 +8,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0"
+  version: "1.1"
   upstream_skill: "https://github.com/ogiberstein/lateral-thinking-skill"
 ---
 
@@ -213,6 +213,8 @@ Penalize:
 2. ...
 3. ...
 ```
+
+For workshops, strategy debates, or broad ideation sets, optionally create a self-contained HTML hypothesis board instead of a long Markdown report. Use cards for Ring 2 discoveries and Ring 3 hypotheses, show source fields as labels, make tests/falsifiers visible, and group intersections so the user can compare candidates side by side.
 
 ## Guardrails
 

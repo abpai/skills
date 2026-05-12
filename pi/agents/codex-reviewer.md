@@ -16,6 +16,7 @@ You receive one of two review types:
 - Ordered task slices
 - The current posture
 - The specific review focus
+- For UI work: the layout options artifact and selected layout direction
 
 **Build review**:
 - A description of the latest build or repair pass
@@ -72,7 +73,7 @@ For **plan review**:
     {
       "scope": "brief|tasks|verification",
       "severity": "must_address|nice_to_have",
-      "category": "gap|risk|test_inadequate|simplification|ordering",
+      "category": "gap|risk|test_inadequate|simplification|ordering|visual_gap",
       "description": "...",
       "suggested_edit": "..."
     }
@@ -90,7 +91,7 @@ For **code review**:
     {
       "file": "path/to/file.ts",
       "severity": "must_address|nice_to_have",
-      "category": "bug|risk|quality|performance|test_gap",
+      "category": "bug|risk|quality|performance|test_gap|visual_regression",
       "description": "...",
       "suggestion": "..."
     }

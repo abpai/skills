@@ -1,0 +1,11 @@
+{
+  "name": "engineering",
+  "version": "1.4.0",
+  "description": "Engineering-practice workflow pack (Matt Pocock-inspired) as one self-contained engineering skill plus /engineering:* command wrappers.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}

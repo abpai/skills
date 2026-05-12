@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
       - name: Check version bumps for changed plugins
         run: |
-          extract_version() {
+          extract_skill_version() {
             awk '
               /^---$/ { fence++; next }
               fence == 1 && /^metadata:/ { in_meta=1; next }
@@ -43,8 +43,13 @@ jobs:
             ' "$1"
           }
 
-          changed_dirs=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
-            | cut -d/ -f1 | sort -u)
+          extract_manifest_version() {
+            # Reads the top-level "version" string from a plugin.json on stdin.
+            python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",""))' 2>/dev/null
+          }
+
+          base_ref="origin/${{ github.base_ref }}"
+          changed_dirs=$(git diff --name-only "$base_ref...HEAD" | cut -d/ -f1 | sort -u)
 
           failed=0
           checked=0
@@ -54,40 +59,41 @@ jobs:
             [ -d "$dir/.claude-plugin" ] || continue
 
             # Check if meaningful files changed
-            meaningful_changes=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" \
-              -- "$dir/skills/" "$dir/agents/" "$dir/commands/" "$dir/hooks/" \
+            meaningful_changes=$(git diff --name-only "$base_ref...HEAD" \
+              -- "$dir/skills/" "$dir/agents/" "$dir/commands/" "$dir/hooks/" "$dir/internal/" \
                  "$dir/.claude-plugin/plugin.json" "$dir/.codex-plugin/plugin.json")
             [ -n "$meaningful_changes" ] || continue
 
-            # Find SKILL.md
+            # Resolve the version source: SKILL.md if the plugin has one,
+            # otherwise the plugin manifest (command-only plugins like pi).
             skill_md=$(find "$dir/skills" -name SKILL.md -type f 2>/dev/null | head -1)
-            [ -n "$skill_md" ] || continue
+            if [ -n "$skill_md" ]; then
+              version_file="$skill_md"
+              current_version=$(extract_skill_version "$skill_md")
+              base_blob=$(git show "$base_ref:$skill_md" 2>/dev/null || true)
+              base_version=$([ -n "$base_blob" ] && printf '%s\n' "$base_blob" | extract_skill_version /dev/stdin || true)
+            else
+              version_file="$dir/.claude-plugin/plugin.json"
+              [ -f "$version_file" ] || continue
+              current_version=$(extract_manifest_version < "$version_file")
+              base_blob=$(git show "$base_ref:$version_file" 2>/dev/null || true)
+              base_version=$([ -n "$base_blob" ] && printf '%s\n' "$base_blob" | extract_manifest_version || true)
+            fi
 
             checked=$((checked + 1))
 
-            # Extract current version
-            current_version=$(extract_version "$skill_md")
-
-            # Extract base branch version (empty if new plugin)
-            base_content=$(git show "origin/${{ github.base_ref }}:$skill_md" 2>/dev/null || echo "")
-            if [ -n "$base_content" ]; then
-              base_version=$(echo "$base_content" | extract_version /dev/stdin)
-            else
-              base_version=""
-            fi
-
             if [ -n "$base_version" ] && [ "$current_version" = "$base_version" ]; then
-              echo "::error::$dir: SKILL.md version ($current_version) was not bumped"
+              echo "::error::$dir: version ($current_version) in $version_file was not bumped"
               failed=1
               continue
             fi
 
-            echo "  [OK] $dir: $base_version -> $current_version"
+            echo "  [OK] $dir: ${base_version:-new} -> $current_version ($version_file)"
           done
 
           if [ $failed -ne 0 ]; then
             echo ""
-            echo "Fix: bump metadata.version in the skill's SKILL.md."
+            echo "Fix: bump metadata.version in the skill's SKILL.md, or version in .claude-plugin/plugin.json for command-only plugins."
             exit 1
           fi
 

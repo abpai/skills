@@ -103,6 +103,31 @@ Rules: no marketing language; every section must help implementation; prefer con
 End with milestones: (1) minimal demo, (2) useful internal version, (3) hardened version.
 ```
 
+## F. Final summary / handoff
+
+Use when asking an agent to close out a long implementation, research, review, debugging, or planning session with a summary another human or agent can trust.
+
+```md
+Write the final summary for this work.
+
+Audience: someone who needs to understand the actual end state without reading the whole thread.
+
+Rules:
+- Be factual and concise. Do not write success theater.
+- Separate completed work from attempted work, skipped work, and unresolved work.
+- Do not claim validation passed unless it was actually run and passed.
+- Include exact commands, checks, links, commits, PRs, or files when they matter.
+- Name any caveats, dirty working-tree state, blocked checks, failing tests, or assumptions.
+- Prefer a useful handoff over a flattering recap.
+
+Return:
+1. Outcome: 2-4 sentences on what changed or was decided.
+2. Current state: branch/PR/artifact/status details a cold reader needs.
+3. Validation: checks run with pass/fail/blocked status and exact command names.
+4. Risks or open items: only real ones, with owner or next action when known.
+5. Next step: the smallest concrete action to continue from here.
+```
+
 ---
 
 ## Anti-patterns to rewrite
@@ -114,3 +139,4 @@ End with milestones: (1) minimal demo, (2) useful internal version, (3) hardened
 - comparison without axes → specify comparison axes
 - planning without a time horizon → add a deadline or milestone
 - parity when "most of the value" is enough → use the 80% framing
+- final recap that only says "done" → ask for end state, validation, risks, and next action

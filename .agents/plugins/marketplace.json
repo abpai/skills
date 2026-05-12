@@ -41,28 +41,16 @@
       "category": "Productivity"
     },
     {
-      "name": "mp",
+      "name": "engineering",
       "source": {
         "source": "local",
-        "path": "./mp"
+        "path": "./engineering"
       },
       "policy": {
         "installation": "AVAILABLE",
         "authentication": "ON_INSTALL"
       },
       "category": "Productivity"
-    },
-    {
-      "name": "agent-browser",
-      "source": {
-        "source": "local",
-        "path": "./agent-browser"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Tools"
     },
     {
       "name": "bun-expert",
@@ -113,30 +101,6 @@
       "category": "Code Quality"
     },
     {
-      "name": "dead-code-eliminator",
-      "source": {
-        "source": "local",
-        "path": "./dead-code-eliminator"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Code Quality"
-    },
-    {
-      "name": "secure",
-      "source": {
-        "source": "local",
-        "path": "./secure"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Security"
-    },
-    {
       "name": "human-writer",
       "source": {
         "source": "local",
@@ -159,42 +123,6 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Writing"
-    },
-    {
-      "name": "task",
-      "source": {
-        "source": "local",
-        "path": "./task"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
-      "name": "scratch",
-      "source": {
-        "source": "local",
-        "path": "./scratch"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Learning"
-    },
-    {
-      "name": "socratic-code-owner",
-      "source": {
-        "source": "local",
-        "path": "./socratic-code-owner"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Learning"
     },
     {
       "name": "visualize",

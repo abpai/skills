@@ -1,8 +1,8 @@
 # Debate
 
-Run a structured propose → critique → synthesize debate on an architecture or
-technical question. Claude owns the proposal and synthesis. Codex provides an
-independent critique via the CLI.
+Run a structured propose → critique → synthesize debate on an architecture,
+product workflow, UI layout, or technical question. Claude owns the proposal
+and synthesis. Codex provides an independent critique via the CLI.
 
 This is an internal Pi module. Invoke it through `/pi:debate`; do not expose it
 as a standalone skill.
@@ -12,7 +12,7 @@ as a standalone skill.
 ### 1. Confirm the Question
 
 Clarify:
-- The architecture or technical question
+- The architecture, product workflow, UI layout, or technical question
 - Which repos or areas of the codebase are relevant
 - Any constraints the user wants respected
 
@@ -27,6 +27,8 @@ Focus on:
 - Dependencies (package.json, go.mod, Cargo.toml, etc.)
 - API surface (routes, handlers, endpoints)
 - Auth patterns if relevant
+- Existing UI components, routes, design tokens, and layout constraints when
+  the question is product or UI-facing
 
 Compile this into a context summary to feed into the propose step.
 
@@ -40,6 +42,10 @@ Using the codebase context, produce an opinionated architecture proposal with:
 3. Key tradeoffs
 4. Cross-repo impact
 5. Migration path
+
+For UI layout or product workflow debates, the proposal should also name the
+recommended layout direction, the information hierarchy, the primary user flow,
+responsive behavior, and which alternatives it rejects.
 
 Present the proposal to the user before continuing.
 
@@ -60,6 +66,11 @@ The critique prompt instructs Codex to attack the proposal on five vectors
 elegant-but-wrong abstractions) and provide concrete alternatives for every
 criticism.
 
+For UI layout or product workflow debates, also ask Codex to attack the
+proposal on visual hierarchy, interaction cost, responsive failure modes,
+empty/loading/error states, and whether the chosen layout fits the product's
+real usage frequency.
+
 If `codex` is unavailable, perform the critique yourself. Note the absence so
 the user knows it was single-model.
 
@@ -72,8 +83,9 @@ recommendation:
 2. What changed from the proposal
 3. What was rejected from the critique
 4. Unresolved tensions
-5. Concrete next steps
-6. ADR (Architecture Decision Record) — use the template at
+5. UI / product decision, when applicable
+6. Concrete next steps
+7. ADR (Architecture Decision Record) — use the template at
    `templates/adr.md` in this module directory for the shape.
 
 ### 6. Present
@@ -82,6 +94,8 @@ Show the full synthesis to the user. Highlight:
 - The ADR
 - Unresolved tensions that need human judgment
 - The first concrete next step
+- For UI layout debates, the selected layout direction and any visual artifact
+  or screenshot that should be produced next
 
 ### 7. Additional Rounds (optional)
 

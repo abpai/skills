@@ -1,0 +1,31 @@
+{
+  "criteria": {
+    "functionality": {
+      "threshold": 7,
+      "description": "Does the build work as specified?"
+    },
+    "code_quality": {
+      "threshold": 7,
+      "description": "Is the code correct, readable, and maintainable?"
+    },
+    "product_depth": {
+      "threshold": 6,
+      "description": "Does the build cover the important real-world cases?"
+    },
+    "visual_design": {
+      "threshold": 6,
+      "applicable": false,
+      "description": "Is the interface polished, responsive, and verified with screenshot/browser evidence against the selected layout direction? Set applicable to true only for runs that include a user interface."
+    }
+  },
+  "execution_policy": {
+    "codex_policy": "optional",
+    "degraded_mode": "warn_and_continue",
+    "dependency_failure": "block_downstream",
+    "primary_executor": "claude"
+  },
+  "research_policy": {
+    "providers": ["codex"]
+  },
+  "max_repair_passes": 2
+}

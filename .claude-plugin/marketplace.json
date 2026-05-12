@@ -30,18 +30,11 @@
       "keywords": ["codex", "openai", "multi-model", "review"]
     },
     {
-      "name": "mp",
-      "description": "Matt Pocock-inspired workflows grouped under /mp:* commands, backed by internal plugin modules instead of standalone skill packages.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "mp" },
+      "name": "engineering",
+      "description": "Engineering-practice workflows (Matt Pocock-inspired) grouped under /engineering:* commands, backed by internal plugin modules instead of standalone skill packages.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "engineering" },
       "category": "productivity",
-      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "questions"]
-    },
-    {
-      "name": "agent-browser",
-      "description": "Browser automation CLI for AI agents. Navigate pages, fill forms, click buttons, take screenshots, extract data.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "agent-browser" },
-      "category": "tools",
-      "keywords": ["browser", "automation", "web", "scraping", "testing"]
+      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out"]
     },
     {
       "name": "bun-expert",
@@ -66,24 +59,10 @@
     },
     {
       "name": "code",
-      "description": "Grouped coding workflows under /code:* commands: review-and-commit, explain, try, simplify, walkthrough, and understand.",
+      "description": "Grouped coding workflows under /code:* commands, with optional HTML review artifacts for explanations, traces, PRs, walkthroughs, and comparisons.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "review", "commit", "explain", "try", "simplify", "walkthrough", "understand"]
-    },
-    {
-      "name": "dead-code-eliminator",
-      "description": "Audit a codebase for dead code: unreachable functions, unused imports, orphaned classes, stale feature flags.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "dead-code-eliminator" },
-      "category": "code-quality",
-      "keywords": ["dead-code", "cleanup", "audit", "unused"]
-    },
-    {
-      "name": "secure",
-      "description": "Additive security hardening workflows, starting with /secure:dependencies for dependency resolution and supply-chain policy.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "secure" },
-      "category": "security",
-      "keywords": ["dependency-security", "supply-chain", "lockfiles", "dependabot", "renovate"]
+      "keywords": ["code", "goal", "review", "commit", "explain", "try", "simplify", "walkthrough", "understand", "dead-code", "scratch", "socratic", "dependency-security", "html"]
     },
     {
       "name": "human-writer",
@@ -94,42 +73,21 @@
     },
     {
       "name": "improve-prompt",
-      "description": "Improve vague or underspecified prompts into sharp, reusable prompts for planning, coding, review, and decision work.",
+      "description": "Improve vague or underspecified prompts into sharp, reusable prompts for planning, coding, review, decision, and handoff work.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "improve-prompt" },
       "category": "writing",
-      "keywords": ["prompting", "prompt-engineering", "rewriting", "agents"]
-    },
-    {
-      "name": "task",
-      "description": "Convert a rough ask into a hands-off task brief an agent can execute end-to-end.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "task" },
-      "category": "productivity",
-      "keywords": ["autonomy", "delegation", "briefs", "verification"]
+      "keywords": ["prompting", "prompt-engineering", "rewriting", "agents", "handoff"]
     },
     {
       "name": "pi",
-      "description": "Claude-native planner/generator/evaluator harness for long-running engineering work, with /pi:debate for structured architecture debate.",
+      "description": "Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and structured debate.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "pi" },
       "category": "productivity",
-      "keywords": ["planning", "debate", "generator", "evaluator", "workflow", "codex"]
-    },
-    {
-      "name": "scratch",
-      "description": "Understand an existing project by playing with its real modules in a .scratch/ workspace.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "scratch" },
-      "category": "learning",
-      "keywords": ["understand", "codebase", "mental-model", "primitives", "modules"]
-    },
-    {
-      "name": "socratic-code-owner",
-      "description": "Quiz the developer on code, architecture, or plans an AI agent built. Ensures the human has a bulletproof mental model.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "socratic-code-owner" },
-      "category": "learning",
-      "keywords": ["quiz", "understanding", "mental-model", "ownership"]
+      "keywords": ["planning", "debate", "generator", "evaluator", "workflow", "ui", "layout", "review", "codex"]
     },
     {
       "name": "visualize",
-      "description": "Generate a self-contained HTML visualization to explain a system, plan, code flow, or concept.",
+      "description": "Generate a self-contained HTML visualization in an ivory/clay editorial gallery style for systems, plans, code flows, and concepts.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "visualize" },
       "category": "tools",
       "keywords": ["visualization", "html", "diagrams", "explanation"]

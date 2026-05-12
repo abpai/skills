@@ -4,7 +4,7 @@ description: "Design or review command-line interfaces for usability and automat
 license: CC-BY-SA-4.0
 compatibility: Works with any CLI language/framework. Best with an args parser library and POSIX conventions (stdout/stderr, exit codes, signals). See references/CLI_GUIDELINES.md.
 metadata:
-  version: "1.1.1"
+  version: "1.2.0"
   author: "cli-guidelines-community"
   upstream_guidelines: "https://clig.dev"
   reference_file: "references/CLI_GUIDELINES.md"
@@ -178,6 +178,12 @@ Produce two outputs.
 - P0: correctness, safety, and scriptability failures
 - P1: usability and discoverability issues
 - P2: polish and consistency
+
+## Optional HTML CLI Map
+
+For large CLIs, multi-command redesigns, or reviews that compare several command models, create a self-contained HTML CLI map. Use it for command cards, stdout/stderr contracts, TTY behavior tables, safety-risk badges, and before/after help text.
+
+Keep machine-readable schemas and final command specs in text. Use HTML when the user needs to scan the surface area visually.
 
 ## Templates
 

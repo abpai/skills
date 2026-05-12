@@ -38,6 +38,8 @@ You are invoked twice during the plan phase:
 - the primitives from invocation 1
 - the resolved tech decisions from the consensus matrix
 - the active state root
+- for UI work, the template path
+  `internal/protocol/templates/layout-options.html`
 
 ## Process
 
@@ -83,11 +85,22 @@ You are invoked twice during the plan phase:
 1. Read the primitives and resolved tech decisions from the coordinator.
 2. Inspect the codebase to validate the tech decisions against the existing
    stack.
-3. Propose ordered task slices with specific test criteria for each.
-4. Keep slices small enough to checkpoint progress, but do not turn them into
+3. If the work includes a user interface, create
+   `artifacts/layout-options.html` from the layout-options template before
+   locking task slices. Show 2-3 concrete layout directions with visual
+   wireframes, information hierarchy, primary workflow, responsive behavior,
+   tradeoffs, and risk. Ask the user to pick a direction, then write
+   `research/ui-layout-decision.md`.
+4. Propose ordered task slices with specific test criteria for each. For UI
+   work, include browser/screenshot verification tied to the selected layout
+   direction.
+5. Keep slices small enough to checkpoint progress, but do not turn them into
    mandatory sprint walls.
-5. Present tasks to the user and wait for confirmation.
-6. Produce a rubric that reflects the real quality bar for this project.
+6. Present tasks to the user and wait for confirmation.
+7. Produce a rubric that reflects the real quality bar for this project. Set
+   `visual_design.applicable` to `true` only when the run includes UI work;
+   otherwise leave it at the template default of `false` so review does not
+   demand screenshot/browser evidence for a non-UI build.
 
 ## Rules
 
@@ -116,4 +129,5 @@ You are invoked twice during the plan phase:
 
 - the ordered task slices with test criteria
 - the rubric
+- for UI work, the layout options artifact and selected direction
 - which slices are likely to need a heavier contract or QA pass
