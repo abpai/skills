@@ -78,6 +78,7 @@ COMPONENT_RE = re.compile(
     r"const\s+[A-Z][A-Za-z0-9_]*\s*=|"
     r"export\s+default\s+function\s+[A-Z])"
 )
+SCANNER_PATH = Path(__file__).resolve()
 
 
 @dataclass
@@ -98,7 +99,7 @@ def iter_source_files(root: Path, excludes: set[str]) -> Iterable[Path]:
         dirnames[:] = [name for name in dirnames if name not in excludes]
         for filename in filenames:
             path = Path(dirpath) / filename
-            if path.suffix in TEXT_EXTENSIONS:
+            if path.suffix in TEXT_EXTENSIONS and path.resolve() != SCANNER_PATH:
                 yield path
 
 
