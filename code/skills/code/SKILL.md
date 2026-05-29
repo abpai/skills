@@ -1,8 +1,8 @@
 ---
 name: code
-description: Grouped coding workflow pack. Use when the user asks for /code:goal, /code:review-and-commit, /code:explain, /code:try, /code:simplify, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:socratic-owner, /code:secure-dependencies, /code:hexagon-audit, or wants verifiable goal definition, code review, technical explanation, library evaluation, simplification, walkthroughs, call-path traces, HTML review artifacts, dead-code audits, runnable codebase exploration, owner briefings, dependency hardening, or a Ports & Adapters / hexagonal-architecture compliance audit.
+description: Grouped coding workflow pack. Use when the user asks for /code:goal, /code:review-and-commit, /code:explain, /code:try, /code:simplify, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:socratic-owner, /code:secure-dependencies, /code:hexagon-audit, /code:karpathy, or wants verifiable goal definition, code review, technical explanation, library evaluation, simplification, walkthroughs, call-path traces, HTML review artifacts, dead-code audits, runnable codebase exploration, owner briefings, dependency hardening, a Ports & Adapters / hexagonal-architecture compliance audit, or simple/surgical/verified coding guardrails.
 metadata:
-  version: "1.4.0"
+  version: "1.5.0"
 ---
 
 # Code Workflow Pack
@@ -23,5 +23,6 @@ This plugin exposes one public Codex skill surface for common code workflows. Cl
 - Use `socratic-owner.md` for scenario-based owner briefings that quiz the developer on code, architecture, or a plan.
 - Use `secure-dependencies.md` for dependency resolution and supply-chain hardening in code repositories.
 - Use `hexagon-audit.md` for auditing Ports & Adapters / hexagonal compliance in a `packages/` + `adapters/` monorepo (it ships a deterministic scanner under `scripts/`).
+- Use `karpathy.md` for applying simple, surgical, verified coding guardrails while writing, reviewing, or refactoring code.
 
 When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.
