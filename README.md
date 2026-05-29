@@ -65,7 +65,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:*`: goal, review-and-commit, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, secure-dependencies, hexagon-audit, and karpathy, with optional HTML artifacts where visual review helps |
+| **code** | Groups common code workflows under `/code:*`: goal, review-and-commit, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, secure-dependencies, hexagon-audit, karpathy, and handoff, with optional HTML artifacts where visual review helps |
 
 ### Engineering Practices
 

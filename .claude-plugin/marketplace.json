@@ -59,10 +59,10 @@
     },
     {
       "name": "code",
-      "description": "Grouped coding workflows under /code:* commands, with optional HTML review artifacts and Karpathy-style coding guardrails.",
+      "description": "Grouped coding workflows under /code:* commands, with optional HTML review artifacts, Karpathy-style coding guardrails, and handoff prompts.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "goal", "review", "commit", "explain", "try", "simplify", "walkthrough", "understand", "dead-code", "scratch", "socratic", "dependency-security", "html", "karpathy", "guidelines"]
+      "keywords": ["code", "goal", "review", "commit", "explain", "try", "simplify", "walkthrough", "understand", "dead-code", "scratch", "socratic", "dependency-security", "html", "karpathy", "guidelines", "handoff", "continuation"]
     },
     {
       "name": "human-writer",
