@@ -31,10 +31,10 @@
     },
     {
       "name": "engineering",
-      "description": "Engineering-practice workflows (Matt Pocock-inspired) grouped under /engineering:* commands, backed by internal plugin modules instead of standalone skill packages.",
+      "description": "Engineering-practice workflows under /engineering:* commands, including TDD, architecture, defined terms, and read-only complexity reports.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "engineering" },
       "category": "productivity",
-      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out"]
+      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out", "complexity", "performance"]
     },
     {
       "name": "bun-expert",
