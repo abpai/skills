@@ -24,7 +24,7 @@ artifacts, or test fixtures in this workflow.
    ```
 
    If the skill is installed as a plugin, locate this `complexity-report.md`
-   module beside `SKILL.md`; the scanner lives at `scripts/complexity_scan.py`.
+   module beside `SKILL.md`; run `python3 <that-directory>/scripts/complexity_scan.py <repo>`.
 4. Promote a scanner lead to a finding only after inspecting surrounding code
    enough to understand behavior, data shape, and path importance.
 5. Rank by expected impact, not smell count: hot path frequency, input size,

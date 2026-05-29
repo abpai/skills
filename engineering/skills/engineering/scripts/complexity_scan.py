@@ -2,7 +2,7 @@
 """Heuristic complexity lead scanner for mixed-language repositories.
 
 This is intentionally a lead generator, not proof. It flags code worth
-inspecting for the engineering/complexity-report skill.
+inspecting for the engineering complexity-report module.
 
 Inspired by Kappaemme-git/codex-complexity-optimizer, MIT licensed, commit
 6a1f9674d706a06d462296e53a40f668299e8893.

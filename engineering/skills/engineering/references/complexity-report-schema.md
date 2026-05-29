@@ -12,7 +12,7 @@ JSON when the report will feed a follow-up implementation turn.
 - Stack detected:
 - Evidence used:
 - Highest-impact finding:
-- Patch status: report-only / implemented / blocked
+- Patch status: report-only
 - Files modified: no
 
 ## Findings

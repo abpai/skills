@@ -1,7 +1,6 @@
 # Complexity Proof Obligations
 
-Use these as required checks before promoting a finding to fix-ready or before
-calling a patch verified.
+Use these as required checks before marking a finding ready for follow-up work.
 
 ## Repeated Lookups
 

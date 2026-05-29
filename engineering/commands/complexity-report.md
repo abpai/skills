@@ -5,7 +5,7 @@ argument-hint: "[repo path, area, or performance question]"
 
 # /engineering:complexity-report
 
-Use the `complexity-report` skill in this plugin.
+Use the `complexity-report` module in this plugin's `engineering` skill.
 
 1. Read `skills/engineering/complexity-report.md`.
 2. Keep the pass read-only; this command creates the decision report, not the patch.
