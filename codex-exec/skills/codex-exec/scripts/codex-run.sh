@@ -600,7 +600,7 @@ write_status() {
   } > "$STATUS_FILE"
 }
 
-# shellcheck disable=SC2329 # Invoked through signal traps.
+# shellcheck disable=SC2317,SC2329 # Invoked through signal traps.
 cleanup_children() {
   if [[ -n "${HEARTBEAT_PID:-}" ]]; then
     kill "$HEARTBEAT_PID" 2>/dev/null || true
@@ -610,7 +610,7 @@ cleanup_children() {
   fi
 }
 
-# shellcheck disable=SC2329 # Invoked through signal traps.
+# shellcheck disable=SC2317,SC2329 # Invoked through signal traps.
 handle_signal() {
   local signal="$1"
   local exit_code="$2"
