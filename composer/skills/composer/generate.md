@@ -26,8 +26,12 @@ Use `--model composer-2.5` for slower/careful execution. Use `--worktree NAME`
 and `--worktree-base REF` only when you want Cursor Agent to create its own
 worktree under `~/.cursor/worktrees`.
 
-6. Inspect Composer's changes yourself: `git status`, `git diff`, tests, and
-   the repo's existing validation gates.
+6. Inspect Composer's changes yourself in the workspace Composer actually used:
+   `git status`, `git diff`, tests, and the repo's existing validation gates.
+   If you used `--worktree NAME`, do not inspect only the original checkout;
+   Cursor writes under `~/.cursor/worktrees/<repo>/<name>` (or a generated
+   sibling when no name was supplied), so run `git -C <cursor-worktree> status`,
+   `git -C <cursor-worktree> diff`, and validation there.
 7. If Composer left findings or partial work, either repair directly or run a
    focused follow-up Composer prompt in the same branch.
 8. Open a draft PR only when the user asked for PR output or the brief calls

@@ -141,7 +141,7 @@ run_timeout_15() {
 
 run_cursor_timeout() {
   if [[ -n "$CURSOR_KEY_VALUE" ]]; then
-    run_timeout env CURSOR_API_KEY="$CURSOR_KEY_VALUE" cursor-agent "$@"
+    CURSOR_API_KEY="$CURSOR_KEY_VALUE" run_timeout cursor-agent "$@"
   else
     run_timeout cursor-agent "$@"
   fi

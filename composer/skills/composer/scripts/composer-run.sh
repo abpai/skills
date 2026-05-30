@@ -171,14 +171,22 @@ else
   cmd+=(--workspace "$WORKSPACE")
 fi
 
-if [[ -n "$CURSOR_KEY_VALUE" ]]; then
-  cmd=(env CURSOR_API_KEY="$CURSOR_KEY_VALUE" "${cmd[@]}")
-fi
-
 if command -v timeout >/dev/null 2>&1; then
-  timeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
+  if [[ -n "$CURSOR_KEY_VALUE" ]]; then
+    CURSOR_API_KEY="$CURSOR_KEY_VALUE" timeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
+  else
+    timeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
+  fi
 elif command -v gtimeout >/dev/null 2>&1; then
-  gtimeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
+  if [[ -n "$CURSOR_KEY_VALUE" ]]; then
+    CURSOR_API_KEY="$CURSOR_KEY_VALUE" gtimeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
+  else
+    gtimeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
+  fi
 else
-  "${cmd[@]}" "$prompt"
+  if [[ -n "$CURSOR_KEY_VALUE" ]]; then
+    CURSOR_API_KEY="$CURSOR_KEY_VALUE" "${cmd[@]}" "$prompt"
+  else
+    "${cmd[@]}" "$prompt"
+  fi
 fi
