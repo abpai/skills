@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "1.6.0",
-  "description": "Grouped code workflows for goals, review, explanation, exploration, cleanup, HTML artifacts, owner briefings, dependency hardening, hexagonal-architecture audits, Karpathy-style guardrails, and handoff prompts.",
+  "version": "1.6.1",
+  "description": "Grouped code workflows for goals, review with targeted QA, explanation, exploration, cleanup, HTML artifacts, owner briefings, dependency hardening, hexagonal-architecture audits, Karpathy-style guardrails, and handoff prompts.",
   "author": {
     "name": "Andy Pai"
   },
