@@ -23,6 +23,7 @@ This repository now ships metadata for both runtimes:
 /plugin install engineering@abpai-skills
 /plugin install code@abpai-skills
 /plugin install codex-exec@abpai-skills
+/plugin install composer@abpai-skills
 /plugin install pi@abpai-skills
 ```
 
@@ -59,6 +60,7 @@ research and review. The debate workflow now lives inside `pi` as
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
 | **codex-exec** | Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review. | Yes |
+| **composer** | Delegate bounded implementation and strict review tasks to Cursor Composer from planner-led workflows. | Yes |
 | **pi** | Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and `/pi:debate` for structured architecture/product decisions. | Claude-only |
 
 ### Code Workflows

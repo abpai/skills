@@ -1,0 +1,184 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODE="${1:-}"
+usage() {
+  cat >&2 <<'EOF'
+Usage: composer-run.sh generate|review --prompt-file PATH [options]
+
+Options:
+  --prompt-file PATH      Prompt file to send to Cursor Agent.
+  --workspace PATH        Workspace directory (default: current directory).
+  --model MODEL           Cursor model (generate default: composer-2.5-fast; review default: composer-2.5).
+  --output-format FORMAT  text, json, or stream-json (default: text).
+  --env-file PATH         Load CURSOR_API_KEY from this dotenv file.
+  --timeout SECONDS       Timeout for the run (default: 1800).
+  --worktree NAME         Let Cursor Agent create/use an isolated worktree.
+  --worktree-base REF     Base ref for Cursor Agent worktree.
+  --no-force              Generate without --force.
+EOF
+}
+
+if [[ "$MODE" == "-h" || "$MODE" == "--help" ]]; then
+  usage
+  exit 0
+elif [[ "$MODE" == "generate" || "$MODE" == "review" ]]; then
+  shift
+else
+  usage
+  exit 2
+fi
+
+PROMPT_FILE=""
+WORKSPACE="$PWD"
+MODEL=""
+OUTPUT_FORMAT="text"
+ENV_FILE="${CURSOR_ENV_FILE:-}"
+TIMEOUT_SECONDS="1800"
+WORKTREE_NAME=""
+WORKTREE_BASE=""
+FORCE_GENERATE="true"
+CURSOR_KEY_VALUE="${CURSOR_API_KEY:-}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --prompt-file)
+      PROMPT_FILE="${2:?missing value for --prompt-file}"
+      shift 2
+      ;;
+    --workspace)
+      WORKSPACE="${2:?missing value for --workspace}"
+      shift 2
+      ;;
+    --model)
+      MODEL="${2:?missing value for --model}"
+      shift 2
+      ;;
+    --output-format)
+      OUTPUT_FORMAT="${2:?missing value for --output-format}"
+      shift 2
+      ;;
+    --env-file)
+      ENV_FILE="${2:?missing value for --env-file}"
+      shift 2
+      ;;
+    --timeout)
+      TIMEOUT_SECONDS="${2:?missing value for --timeout}"
+      shift 2
+      ;;
+    --worktree)
+      WORKTREE_NAME="${2:?missing value for --worktree}"
+      shift 2
+      ;;
+    --worktree-base)
+      WORKTREE_BASE="${2:?missing value for --worktree-base}"
+      shift 2
+      ;;
+    --no-force)
+      FORCE_GENERATE="false"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "[FAIL] unknown argument: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+if [[ -z "$PROMPT_FILE" || ! -f "$PROMPT_FILE" ]]; then
+  echo "[FAIL] --prompt-file is required and must exist" >&2
+  exit 2
+fi
+
+if [[ -z "$MODEL" ]]; then
+  if [[ "$MODE" == "generate" ]]; then
+    MODEL="composer-2.5-fast"
+  else
+    MODEL="composer-2.5"
+  fi
+fi
+
+strip_quotes() {
+  local value="$1"
+  value="${value%$'\r'}"
+  if [[ "$value" == \"*\" && "$value" == *\" ]]; then
+    value="${value:1:${#value}-2}"
+  elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
+    value="${value:1:${#value}-2}"
+  fi
+  printf '%s' "$value"
+}
+
+load_env_file() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    case "$line" in
+      ''|'#'*) continue ;;
+    esac
+    if [[ "$line" == CURSOR_API_KEY=* ]]; then
+      CURSOR_KEY_VALUE="$(strip_quotes "${line#CURSOR_API_KEY=}")"
+      return 0
+    fi
+  done < "$file"
+  return 1
+}
+
+if [[ -n "$ENV_FILE" ]]; then
+  load_env_file "$ENV_FILE" || {
+    echo "[FAIL] explicit env file did not contain CURSOR_API_KEY: $ENV_FILE" >&2
+    exit 1
+  }
+elif [[ -z "${CURSOR_API_KEY:-}" ]]; then
+  dir="$PWD"
+  loaded="false"
+  while [[ "$dir" != "/" ]]; do
+    if load_env_file "$dir/.env"; then
+      loaded="true"
+      break
+    fi
+    dir="$(dirname "$dir")"
+  done
+  if [[ "$loaded" != "true" ]]; then
+    echo "[FAIL] CURSOR_API_KEY not found; set it or pass CURSOR_ENV_FILE/--env-file" >&2
+    exit 1
+  fi
+else
+  CURSOR_KEY_VALUE="$CURSOR_API_KEY"
+fi
+
+prompt="$(<"$PROMPT_FILE")"
+cmd=(cursor-agent -p --trust --output-format "$OUTPUT_FORMAT" --model "$MODEL")
+
+if [[ "$MODE" == "review" ]]; then
+  cmd+=(--mode plan)
+else
+  if [[ "$FORCE_GENERATE" == "true" ]]; then
+    cmd+=(--force)
+  fi
+fi
+
+if [[ -n "$WORKTREE_NAME" ]]; then
+  cmd+=(--worktree "$WORKTREE_NAME")
+  if [[ -n "$WORKTREE_BASE" ]]; then
+    cmd+=(--worktree-base "$WORKTREE_BASE")
+  fi
+else
+  cmd+=(--workspace "$WORKSPACE")
+fi
+
+if [[ -n "$CURSOR_KEY_VALUE" ]]; then
+  cmd=(env CURSOR_API_KEY="$CURSOR_KEY_VALUE" "${cmd[@]}")
+fi
+
+if command -v timeout >/dev/null 2>&1; then
+  timeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
+elif command -v gtimeout >/dev/null 2>&1; then
+  gtimeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
+else
+  "${cmd[@]}" "$prompt"
+fi
