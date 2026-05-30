@@ -5,10 +5,10 @@ description: >
   `codex exec`, `codex review`, or `codex exec resume`, continue a prior Codex
   session, or delegate software engineering work to OpenAI Codex from the
   terminal.
-allowed-tools: Bash(codex *) Bash(git status *) Bash(git rev-parse *)
+license: MIT
 metadata:
   author: Andy Pai
-  version: "1.4.1"
+  version: "1.5.0"
 ---
 
 # Codex CLI
@@ -19,16 +19,25 @@ user explicitly wants to stay inside it.
 
 ## Environment (preflight)
 
-```!
+```bash
 echo "CODEX_EXEC_PREFLIGHT_$(date +%s%N)"
-timeout 3 codex --version 2>&1 || echo "codex: not installed"
-timeout 3 codex exec --version 2>&1 || echo "codex exec: unavailable"
+codex_exec_timeout() {
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 3 "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then
+    gtimeout 3 "$@"
+  else
+    "$@"
+  fi
+}
+codex_exec_timeout codex --version 2>&1 || echo "codex: not installed"
+codex_exec_timeout codex exec --version 2>&1 || echo "codex exec: unavailable"
 git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
 git status --short 2>/dev/null | head -40
 ```
 
-The block above runs at skill-load time; treat it as ground truth. If it shows
-`codex: not installed`, stop and report the setup issue instead of retrying.
+Run the block above before launching a long Codex task and treat it as ground
+truth. If it shows `codex: not installed`, stop and report the setup issue instead of retrying.
 If it shows `codex exec: unavailable`, the installed Codex CLI is broken or its
 subcommand surface changed; stop and report that before launching a real task.
 If it shows `not a git repo`, note that `codex review --uncommitted` and
@@ -38,27 +47,114 @@ similar git-dependent flows will not work.
 
 Unless the user asks for something else:
 
+- Prefer `scripts/codex-run.sh` when Claude starts a run that it will monitor,
+  especially for long reviews, generated prompt files, or any task where
+  progress visibility matters.
 - Use `codex exec` for one-shot work.
-- Use `codex review` for code-review requests.
+- Use `scripts/codex-run.sh review` for monitored code reviews; use
+  `codex review` for short raw CLI review requests.
 - Use `codex exec resume --last` to continue the most recent saved session.
 - Do not pass `--model` by default; let the user's Codex configuration choose the model.
 - Pass `--model <MODEL>` only when the user explicitly requests a specific model.
 - Use `medium` reasoning for ordinary work, `high` for harder tasks, and `low` for tiny checks.
-- Use `--sandbox read-only` for `codex exec` analysis runs, and use `codex review` for review tasks.
-- Expand to `workspace-write` or `--full-auto` only when Codex should edit files.
+- Use `--sandbox read-only` for `codex exec` analysis runs, and use the wrapper or `codex review` for review tasks.
+- Expand to `workspace-write` only when Codex should edit files; use bypass flags only in externally sandboxed automation.
 - Use `--json` or `--output-schema` only when another tool will parse the result.
 
 Do not hide stderr by default, and do not add `--skip-git-repo-check` unless you
 are intentionally running outside a Git repo.
 
+Keep shell usage scoped to the documented `codex`, read-only `git`, and wrapper
+commands below. Do not use this skill as general-purpose shell access.
+
 For the current flag surface and example command matrix, see
 `./references/codex-cli.md`.
+
+## Monitor-Friendly Wrapper
+
+Resolve `scripts/codex-run.sh` relative to this `SKILL.md` and call it with an
+absolute path when your terminal cwd is the target repo. The wrapper exists to
+make Claude and MonitorTool handoffs more reliable; it is intentionally thin and
+still shells out to the local `codex` CLI.
+
+Use it when:
+
+- Claude will kick off the run and then monitor progress.
+- The prompt is generated, multi-line, or stored in a file.
+- You want stable artifacts for follow-up inspection.
+- You need `--output-last-message` captured even when terminal output is noisy.
+
+The wrapper prints stable lifecycle lines:
+
+```text
+[codex-exec] event=start ...
+[codex-exec] event=paths run_dir=... status=... monitor=... stdout=... stderr=... final=...
+[codex-exec] event=spawn pid=...
+[codex-exec] event=progress elapsed=...
+[codex-exec] event=finish exit_code=...
+```
+
+It writes each run under
+`${CODEX_EXEC_RUNS_DIR:-${CODEX_HOME:-~/.codex}/codex-exec-runs}` by default:
+
+- `status.env`: monitor-friendly state, paths, elapsed time, and exit code.
+- `monitor.sh`: a MonitorTool-friendly wait command with periodic progress and
+  the same exit code as the Codex run.
+- `stdout.log` / `stderr.log`: raw CLI streams.
+- `events.jsonl`: mirror of stdout when `--json` is enabled.
+- `final.md`: the `--output-last-message` capture.
+- `command.txt`: shell-quoted command without prompt text.
+- `prompt.txt`: prompt content sent through stdin.
+- `preflight.log`: Codex version and workspace git status.
+
+Example one-shot run:
+
+```bash
+scripts/codex-run.sh exec \
+  --workspace "$PWD" \
+  --sandbox read-only \
+  --reasoning medium \
+  --prompt-file prompt.txt
+```
+
+Example code review with MonitorTool-friendly heartbeats:
+
+```bash
+scripts/codex-run.sh review \
+  --workspace "$PWD" \
+  --heartbeat 15 \
+  --prompt "Focus on bugs, regressions, and missing tests. Findings first."
+```
+
+When Claude starts the wrapper as a background task, point MonitorTool at the
+printed `monitor.sh` path or run `bash "$run_dir/monitor.sh"`. That avoids
+fragile sleeps, raw task-output polling, and repeated `tail` loops.
+
+When review mode has custom instructions, the wrapper composes a read-only
+`codex exec` review prompt with explicit git inspection commands for the
+requested scope. This avoids current Codex CLI parsing behavior where scoped
+review flags such as `--uncommitted` can be rejected when combined with a prompt
+argument. When review mode has no custom prompt, the wrapper uses the dedicated
+`codex exec review` subcommand.
+
+Example resume:
+
+```bash
+scripts/codex-run.sh resume \
+  --workspace "$PWD" \
+  --last \
+  --prompt-file follow-up.txt
+```
+
+Use raw `codex` commands for very small manual checks or rare CLI flags the
+wrapper does not expose. For advanced cases, pass extra Codex arguments after
+`--`, but keep model selection explicit and user-requested.
 
 ## Pick The Run Shape
 
 ### One-shot run
 
-Default choice for most delegated work:
+Default raw CLI shape for short delegated work:
 
 ```bash
 codex exec \
@@ -99,19 +195,20 @@ with `-`.
 
 ### Code review
 
-Use the dedicated review subcommand instead of hand-rolling a review prompt
-through `exec`:
+Use the dedicated review subcommand for simple raw CLI reviews:
 
 ```bash
-codex review --uncommitted \
-  "Focus on bugs, regressions, and missing tests. Findings first." \
-  < /dev/null
+codex review --uncommitted < /dev/null
 ```
 
-For longer custom review instructions, use stdin:
+For custom review instructions plus a scoped diff, prefer the wrapper because
+current Codex CLI builds can reject scoped review flags combined with a prompt:
 
 ```bash
-codex review --uncommitted - < review-instructions.txt
+scripts/codex-run.sh review \
+  --workspace "$PWD" \
+  --uncommitted \
+  --prompt-file review-instructions.txt
 ```
 
 ### Resume the latest session
@@ -133,14 +230,24 @@ model, sandbox, or autonomy level.
 - If `codex exec` receives both an argv prompt and piped stdin, stdin is appended as a `<stdin>` block after
   the argv prompt. Do this only when you want that extra context.
 - `codex exec resume --last` is the non-interactive continuation path; do not replace it with the top-level interactive `codex resume` command.
-- `--full-auto` is only a convenience alias for editable autonomous runs. It is not appropriate for read-only analysis.
 - `--skip-git-repo-check` is a situational escape hatch, not a default.
 - `--ephemeral` is useful for disposable runs when session persistence would add noise.
 
 ## First-Run Sanity Check
 
 Before delegating a long prompt on a machine or shell you have not used in this
-session, verify that stdin transport works:
+session, verify that stdin transport works. With the wrapper:
+
+```bash
+scripts/codex-run.sh exec \
+  --workspace "$PWD" \
+  --sandbox read-only \
+  --reasoning low \
+  --timeout 60 \
+  --prompt "Reply with one short hello."
+```
+
+Raw CLI fallback:
 
 ```bash
 printf '%s\n' "Say hello in one short sentence." | \
@@ -167,12 +274,16 @@ codex exec \
 - If the preflight block above showed `codex: not installed`, report a CLI setup issue.
 - If the preflight block above showed `codex exec: unavailable`, report a CLI install or version issue.
 - If `codex exec` or `codex review` exits non-zero, treat the run as failed.
+- If the wrapper exits non-zero, inspect `status.env`, `stderr.log`, and
+  `final.md` in the printed run directory before retrying.
+- If MonitorTool needs progress, prefer the wrapper because it emits heartbeat
+  lines even when Codex has not produced new terminal output.
 - If a non-interactive run needs too much context, switch from argv text to stdin with `-`.
 - If a run prints `Reading additional input from stdin...`, that message alone is normal when Codex is
   consuming stdin. If it then produces no meaningful progress for more than about 30 seconds, kill it and
   rerun with either `- < prompt.txt` for stdin prompts or `< /dev/null` for short argv prompts.
 - If a prompt has newlines or is longer than about 500 characters, do not retry argv quoting. Use stdin.
-- If the task is review-oriented, use `codex review` before inventing a custom `exec` prompt.
+- If the task is review-oriented, use the wrapper for monitored/custom-instruction reviews and raw `codex review` for simple unprompted reviews.
 - If a run needs edits, change the sandbox and autonomy deliberately instead of piling on flags by habit.
 - If output includes warnings or partial results, summarize what Codex completed and what remains uncertain.
 
