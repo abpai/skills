@@ -41,6 +41,8 @@ Run:
 
 Map changes by concern (feature, fix, refactor, tests, docs) before suggesting commit boundaries.
 
+Enumerate untracked files explicitly. Flag anything large, data-shaped, or secret-looking (dumps, exports, `.env`, tokens) as commit-excluded by default — do not let it ride along into a commit.
+
 ## 2) Review Priorities
 
 Prioritize in this order:
@@ -61,6 +63,8 @@ Review for:
 - Resource-lifecycle problems (cleanup, context management).
 - Violations of repository conventions from project docs.
 - User-visible behavior that automated checks do not cover.
+- Parse/trust boundaries: when code decodes external data (JWT, API payload, header, cookie), confirm the test fixtures match a real sample, not an invented shape. A green suite whose fixtures encode the code's own assumption proves nothing.
+- Cross-boundary values: when a change emits a value that crosses a boundary (HTTP header, env var, API field, cache-key dimension), find the consumer and confirm it accepts that shape/value. Flag logic duplicated across modules or services that must agree — it drifts.
 
 ## 3) Apply Fixes
 
@@ -106,6 +110,10 @@ Run relevant quality checks when available (for example lint, tests, type checks
 
 If checks cannot run, explicitly state what was skipped and why.
 
+## Independent Review (recommended for correctness-sensitive diffs)
+
+Before the commit plan, have an independent reviewer read the staged diff — `codex review --uncommitted`, or a fresh sub-agent with no prior context. Self-review reliably misses regressions your own fix just introduced (for example, a corrected parser that now emits a value the consumer rejects). Fold its findings into `Review Findings` and triage them; do not auto-apply.
+
 ## Optional HTML PR Explainer
 
 For complex diffs, risky PRs, unfamiliar code paths, or review handoffs, create a self-contained HTML explainer before or alongside the commit plan. Do not make this mandatory for small commits.
@@ -148,7 +156,7 @@ If the user asks for changes, revise the plan and re-present before executing.
 
 After approval:
 
-1. Stage only planned files for the current commit.
+1. Stage only planned files for the current commit. Stage planned paths by name; never `git add -A` or `git add .`.
 1. Create the commit.
 1. Confirm success with commit hash and summary.
 1. Repeat for remaining commits.
@@ -177,6 +185,7 @@ Use this structure:
 - Favor project conventions over personal preference.
 - Surface trade-offs when multiple valid approaches exist.
 - Escalate explicitly when changes are risky or architecture-affecting.
+- When review or QA surfaces a bug outside the current change's scope, propose it as a separate commit or stacked PR rather than bundling it into unrelated work.
 
 ## Update Check
 
