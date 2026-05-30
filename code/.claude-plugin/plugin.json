@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "1.6.0",
-  "description": "Grouped code workflows exposed as /code:* commands, with optional HTML artifacts, Karpathy-style guardrails, and handoff prompts.",
+  "version": "1.6.1",
+  "description": "Grouped code workflows exposed as /code:* commands, with targeted QA, optional HTML artifacts, Karpathy-style guardrails, and handoff prompts.",
   "author": {
     "name": "Andy Pai"
   },

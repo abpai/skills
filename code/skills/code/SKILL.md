@@ -1,8 +1,8 @@
 ---
 name: code
-description: Grouped coding workflow pack. Use when the user asks for /code:goal, /code:review-and-commit, /code:explain, /code:try, /code:simplify, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:socratic-owner, /code:secure-dependencies, /code:hexagon-audit, /code:karpathy, /code:handoff, or wants verifiable goal definition, code review, technical explanation, library evaluation, simplification, walkthroughs, call-path traces, HTML review artifacts, dead-code audits, runnable codebase exploration, owner briefings, dependency hardening, a Ports & Adapters / hexagonal-architecture compliance audit, simple/surgical/verified coding guardrails, or a focused continuation prompt for another coding session.
+description: Grouped coding workflow pack. Use when the user asks for /code:goal, /code:review-and-commit, /code:explain, /code:try, /code:simplify, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:socratic-owner, /code:secure-dependencies, /code:hexagon-audit, /code:karpathy, /code:handoff, or wants verifiable goal definition, code review with targeted QA, technical explanation, library evaluation, simplification, walkthroughs, call-path traces, HTML review artifacts, dead-code audits, runnable codebase exploration, owner briefings, dependency hardening, a Ports & Adapters / hexagonal-architecture compliance audit, simple/surgical/verified coding guardrails, or a focused continuation prompt for another coding session.
 metadata:
-  version: "1.6.0"
+  version: "1.6.1"
 ---
 
 # Code Workflow Pack
@@ -11,7 +11,7 @@ This plugin exposes one public Codex skill surface for common code workflows. Cl
 
 ## Routing
 
-- Use `review-and-commit.md` for working-tree review, fixes, atomic commit planning, or committing after approval.
+- Use `review-and-commit.md` for working-tree review, targeted QA, fixes, atomic commit planning, or committing after approval.
 - Use `goal.md` for defining or auditing a coding goal so it has a verifier, bounded scope, context, stop conditions, and output shape.
 - Use `explain.md` for dense technical explanations, tutorials, walkthrough prose, README guidance, or onboarding docs.
 - Use `try.md` for evaluating a new library, tool, package, or GitHub repo before adoption.

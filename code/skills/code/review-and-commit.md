@@ -1,6 +1,6 @@
 # Code Review and Commit
 
-Perform a high-signal review of working-tree changes, fix meaningful issues, and produce an understandable commit history.
+Perform a high-signal review of working-tree changes, verify the changed behavior with targeted QA, fix meaningful issues, and produce an understandable commit history.
 
 Source basis: adapted from a local Claude Code agent prompt (`review-and-commit.md`).
 
@@ -25,6 +25,7 @@ Read/Bash calls where you need more than the stat summary.
 1. Inspect current change scope.
 1. Review for correctness and maintainability issues.
 1. Apply necessary fixes.
+1. Build and run a targeted QA plan.
 1. Validate updated changes.
 1. Build a commit plan.
 1. Ask for approval before creating commits.
@@ -47,7 +48,7 @@ Prioritize in this order:
 1. Correctness and regressions.
 1. Security and secret leakage risks.
 1. Broken architecture or project-pattern violations.
-1. Missing tests for behavior changes.
+1. Missing tests or missing QA coverage for behavior changes.
 1. Readability and maintainability improvements.
 
 Review for:
@@ -59,6 +60,7 @@ Review for:
 - Low-value comments that restate obvious code behavior.
 - Resource-lifecycle problems (cleanup, context management).
 - Violations of repository conventions from project docs.
+- User-visible behavior that automated checks do not cover.
 
 ## 3) Apply Fixes
 
@@ -68,7 +70,37 @@ When findings are actionable and safe, implement fixes directly.
 - Avoid unrelated refactors unless necessary for correctness.
 - Re-check diffs after each meaningful fix.
 
-## 4) Validate
+## 4) Build and Run a Targeted QA Plan
+
+For every review, generate the manual QA you would ask a human to perform for the changed behavior, then do as much of it as the current environment allows before proposing commits.
+
+The QA plan must name:
+
+- **Surface** - UI route, CLI command, API endpoint, worker/proxy path, background job, database migration, or docs-only behavior.
+- **Inputs** - URL, command, fixture, token, account, payload, browser state, or seed data.
+- **Expected result** - exact visible output, status code, header, console/network behavior, persisted state, or absence of a regression.
+- **Tooling** - browser, Chrome DevTools MCP, in-app Browser, Playwright, curl, app CLI, test harness, logs, database query, or another repo-native probe.
+- **Evidence to capture** - screenshot, console/network notes, command output, response snippet, log line, or test name.
+
+Choose the tool that best exercises the actual changed surface:
+
+- UI/browser changes: start or reuse the dev server when practical, then use Browser, Chrome DevTools MCP, Playwright, or the available browser tool. Check visible render, key interaction, console errors, and relevant network/request behavior.
+- API/edge/proxy changes: use curl or repo tests for status codes, headers, auth, cache behavior, and representative payloads. Use real tokens/fixtures when available, sanitized in reports.
+- CLI/dev-tooling changes: run the command a user would run, verify stdout/stderr, exit code, and generated side effects.
+- Data/backend changes: verify through the narrowest useful test plus a direct query/log/probe when the behavior is observable only outside unit tests.
+- Docs-only changes: QA the instructions by checking commands, paths, and expected outputs against the live repo.
+
+If a live QA path is blocked, do not skip it silently and do not invent a code fix for an environment limitation. Isolate the blocker with the smallest diagnostic that distinguishes client, server, network, auth, fixture, or sandbox failure. Then report:
+
+- what manual QA was attempted
+- where it blocked
+- why that blocker is or is not a code defect
+- the closest automated or lower-level proof you ran instead
+- the exact residual manual QA for the human to run
+
+Example: if a browser cannot get past a server-side outbound fetch hang, prove whether the inbound route works with a no-outbound request before concluding that Chrome/DevTools cannot route around it.
+
+## 5) Validate
 
 Run relevant quality checks when available (for example lint, tests, type checks).
 
@@ -88,7 +120,7 @@ Good HTML PR explainers include:
 
 Use Markdown for the commit plan and final chat summary. Use HTML when the reviewer needs spatial context they will not get from a terminal diff.
 
-## 5) Build Commit Plan
+## 6) Build Commit Plan
 
 Group changes into atomic commits that can be reverted independently.
 
@@ -106,13 +138,13 @@ Commit message rules:
 - Add body only when needed, explaining why.
 - Wrap body lines near 72 chars.
 
-## 6) Approval Gate
+## 7) Approval Gate
 
 Before running `git add` or `git commit`, present the full commit plan and request approval.
 
 If the user asks for changes, revise the plan and re-present before executing.
 
-## 7) Execute and Report
+## 8) Execute and Report
 
 After approval:
 
@@ -133,7 +165,9 @@ Use this structure:
 
 1. `Review Findings` grouped by severity (`Critical`, `Important`, `Suggestion`).
 1. `Applied Fixes` with file-level summary.
-1. `Validation Results` (commands run and outcomes).
+1. `QA Plan` (manual/user-path checks with inputs and expected results).
+1. `QA Results` (what was run, evidence, blockers, and residual human checks).
+1. `Validation Results` (automated commands run and outcomes).
 1. `Proposed Commit Plan` (numbered commits with file list + message).
 1. `Execution Results` after approval.
 
