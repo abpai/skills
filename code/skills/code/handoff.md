@@ -16,6 +16,10 @@ The next session should not need archaeology. Frontload the facts, file refs, cu
 
 The handoff must work without hidden transcript access. If a runtime has prior-session tools, mention them only as optional fallback; never rely on them as the primary context.
 
+## Success Criteria
+
+A good handoff lets a new agent start without asking what repo, branch, files, current state, next action, or verification command to use. If any of those are not known, mark the field `UNKNOWN` rather than guessing.
+
 ## Process
 
 ### 1. Resolve the continuation target
@@ -30,6 +34,8 @@ Continuation target: finish the auth migration, not continue debugging the old O
 
 ### 2. Inspect live state before writing
 
+Before using tools, say briefly what state you are checking and why. Then inspect the minimum live state needed to fill the handoff fields.
+
 When inside a repository, gather only the state needed to make the handoff true:
 
 - `git status -sb`
@@ -40,6 +46,8 @@ When inside a repository, gather only the state needed to make the handoff true:
 - validation commands already run, with pass/fail/unknown status
 
 Read the relevant files, tests, configs, docs, and generated artifacts before naming them. Do not trust stale plans, old summaries, or memory over the live tree.
+
+Stop once the handoff can work cold. Do not keep searching for completeness if the next action, required context, and verification path are already clear.
 
 ### 3. Select file refs
 
@@ -94,6 +102,11 @@ Continuing work from <repo/branch/thread/pr if known>. This prompt is self-conta
 ## Verification
 - `<command>` - current status: PASS | FAIL | NOT RUN | BLOCKED
 
+## Evidence And Unknowns
+- Verified facts:
+- Unknowns:
+- Do not infer successful validation from intention, old notes, or partial logs.
+
 ## Watchouts
 - <risk, conflict, flaky check, or likely false trail>
 
@@ -109,6 +122,10 @@ When done, reply with changed files, checks run, remaining risk, and any follow-
 - Include dead ends only when they prevent repeated wasted work.
 - Mark unknowns as `UNKNOWN` or `NOT RUN`; do not smooth them into confidence.
 - Do not dump raw chat logs. Summarize the load-bearing details.
+
+### 6. Quality check before finalizing
+
+Ask: Could a new agent continue from this prompt without needing the previous transcript? If not, fill the missing field from live evidence or mark it `UNKNOWN`.
 
 ## Output Rules
 
