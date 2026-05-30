@@ -30,6 +30,13 @@
       "keywords": ["codex", "openai", "multi-model", "review"]
     },
     {
+      "name": "composer",
+      "description": "Run Cursor Composer as a planner-led implementation or review worker without the Pi harness.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "composer" },
+      "category": "productivity",
+      "keywords": ["cursor", "composer", "implementation", "review", "subagents", "worktree", "pr"]
+    },
+    {
       "name": "engineering",
       "description": "Engineering-practice workflows under /engineering:* commands, including TDD, architecture, defined terms, and read-only complexity reports.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "engineering" },
