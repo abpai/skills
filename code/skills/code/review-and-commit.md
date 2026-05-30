@@ -27,6 +27,7 @@ Read/Bash calls where you need more than the stat summary.
 1. Apply necessary fixes.
 1. Build and run a targeted QA plan.
 1. Validate updated changes.
+1. Run an independent review when the diff is correctness-sensitive.
 1. Build a commit plan.
 1. Ask for approval before creating commits.
 1. Execute commits in order and report results.
@@ -63,7 +64,7 @@ Review for:
 - Resource-lifecycle problems (cleanup, context management).
 - Violations of repository conventions from project docs.
 - User-visible behavior that automated checks do not cover.
-- Parse/trust boundaries: when code decodes external data (JWT, API payload, header, cookie), confirm the test fixtures match a real sample, not an invented shape. A green suite whose fixtures encode the code's own assumption proves nothing.
+- Parse/trust boundaries: when code decodes external data (JWT, API payload, header, cookie), confirm the test fixtures match a sanitized real sample or shape-only example, not an invented shape. A green suite whose fixtures encode the code's own assumption proves nothing.
 - Cross-boundary values: when a change emits a value that crosses a boundary (HTTP header, env var, API field, cache-key dimension), find the consumer and confirm it accepts that shape/value. Flag logic duplicated across modules or services that must agree — it drifts.
 
 ## 3) Apply Fixes
@@ -89,7 +90,7 @@ The QA plan must name:
 Choose the tool that best exercises the actual changed surface:
 
 - UI/browser changes: start or reuse the dev server when practical, then use Browser, Chrome DevTools MCP, Playwright, or the available browser tool. Check visible render, key interaction, console errors, and relevant network/request behavior.
-- API/edge/proxy changes: use curl or repo tests for status codes, headers, auth, cache behavior, and representative payloads. Use real tokens/fixtures when available, sanitized in reports.
+- API/edge/proxy changes: use curl or repo tests for status codes, headers, auth, cache behavior, and representative payloads. Use real tokens/fixtures when available, but report only sanitized or shape-only evidence and never commit secrets.
 - CLI/dev-tooling changes: run the command a user would run, verify stdout/stderr, exit code, and generated side effects.
 - Data/backend changes: verify through the narrowest useful test plus a direct query/log/probe when the behavior is observable only outside unit tests.
 - Docs-only changes: QA the instructions by checking commands, paths, and expected outputs against the live repo.
@@ -110,9 +111,11 @@ Run relevant quality checks when available (for example lint, tests, type checks
 
 If checks cannot run, explicitly state what was skipped and why.
 
-## Independent Review (recommended for correctness-sensitive diffs)
+## 6) Independent Review
 
-Before the commit plan, have an independent reviewer read the staged diff — `codex review --uncommitted`, or a fresh sub-agent with no prior context. Self-review reliably misses regressions your own fix just introduced (for example, a corrected parser that now emits a value the consumer rejects). Fold its findings into `Review Findings` and triage them; do not auto-apply.
+Before the commit plan, run an independent review for correctness-sensitive or behavior-affecting diffs: `codex review --uncommitted`, or a fresh sub-agent with no prior context, should read the current working-tree diff. For trivial docs-only or metadata-only changes, state the skip rationale instead of forcing ceremony.
+
+Self-review reliably misses regressions your own fix just introduced (for example, a corrected parser that now emits a value the consumer rejects). Fold independent findings into `Review Findings` and triage them; do not auto-apply.
 
 ## Optional HTML PR Explainer
 
@@ -128,7 +131,7 @@ Good HTML PR explainers include:
 
 Use Markdown for the commit plan and final chat summary. Use HTML when the reviewer needs spatial context they will not get from a terminal diff.
 
-## 6) Build Commit Plan
+## 7) Build Commit Plan
 
 Group changes into atomic commits that can be reverted independently.
 
@@ -146,13 +149,13 @@ Commit message rules:
 - Add body only when needed, explaining why.
 - Wrap body lines near 72 chars.
 
-## 7) Approval Gate
+## 8) Approval Gate
 
 Before running `git add` or `git commit`, present the full commit plan and request approval.
 
 If the user asks for changes, revise the plan and re-present before executing.
 
-## 8) Execute and Report
+## 9) Execute and Report
 
 After approval:
 
@@ -176,6 +179,7 @@ Use this structure:
 1. `QA Plan` (manual/user-path checks with inputs and expected results).
 1. `QA Results` (what was run, evidence, blockers, and residual human checks).
 1. `Validation Results` (automated commands run and outcomes).
+1. `Independent Review Results` (findings, or skip rationale for trivial diffs).
 1. `Proposed Commit Plan` (numbered commits with file list + message).
 1. `Execution Results` after approval.
 
