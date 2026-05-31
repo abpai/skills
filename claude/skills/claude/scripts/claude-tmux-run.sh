@@ -408,6 +408,7 @@ write_status() {
     env_line workspace "${WORKSPACE:-}"
     env_line run_dir "${RUN_DIR:-}"
     env_line transcript_file "${TRANSCRIPT_FILE:-}"
+    env_line base_transcript_lines "${BASE_TRANSCRIPT_LINES:-0}"
     env_line final_file "${FINAL_FILE:-}"
     env_line continue_command "${RUN_DIR:-}/continue.sh --prompt '<follow-up>'"
     env_line submit_command "${RUN_DIR:-}/submit.sh"
@@ -427,6 +428,38 @@ find_transcript() {
   fi
 }
 
+persist_transcript_state() {
+  local run_env="${RUN_ENV_FILE:-${RUN_DIR:-}/run.env}"
+  if [[ -z "$run_env" || ! -f "$run_env" ]]; then
+    return 0
+  fi
+  python3 - "$run_env" "${TRANSCRIPT_FILE:-}" "${BASE_TRANSCRIPT_LINES:-0}" <<'PY'
+import shlex
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+updates = {
+    "TRANSCRIPT_FILE": sys.argv[2],
+    "BASE_TRANSCRIPT_LINES": sys.argv[3],
+}
+lines = path.read_text(encoding="utf-8").splitlines()
+output = []
+seen = set()
+for line in lines:
+    key = line.split("=", 1)[0] if "=" in line else ""
+    if key in updates:
+        output.append(f"{key}={shlex.quote(updates[key])}")
+        seen.add(key)
+    else:
+        output.append(line)
+for key, value in updates.items():
+    if key not in seen:
+        output.append(f"{key}={shlex.quote(value)}")
+path.write_text("\n".join(output) + "\n", encoding="utf-8")
+PY
+}
+
 capture_pane() {
   if [[ -n "${TMUX_SESSION:-}" ]] && tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
     tmux capture-pane -p -S -200 -t "$TMUX_SESSION" > "$PANE_FILE" 2>/dev/null || true
@@ -435,16 +468,20 @@ capture_pane() {
 
 parse_turn() {
   local transcript="$1"
-  python3 - "$RUN_ID" "$transcript" "$FINAL_FILE" <<'PY'
+  python3 - "$transcript" "$FINAL_FILE" "${BASE_TRANSCRIPT_LINES:-0}" <<'PY'
 import json
 import sys
 from pathlib import Path
 
-run_id, transcript_path, final_path = sys.argv[1:4]
-marker = f"claude-tmux-run:{run_id}"
-seen_marker = False
+transcript_path, final_path, base_lines_raw = sys.argv[1:4]
+try:
+    base_lines = max(0, int(base_lines_raw))
+except ValueError:
+    base_lines = 0
+
 last_text = ""
 turn_done = False
+saw_new_user = False
 
 def content_to_text(content):
     if isinstance(content, str):
@@ -468,17 +505,16 @@ except FileNotFoundError:
     print("missing-transcript")
     sys.exit(1)
 
-for line in lines:
+for line in lines[base_lines:]:
     try:
         event = json.loads(line)
     except json.JSONDecodeError:
         continue
-    if not seen_marker:
-      if event.get("type") == "user":
-          text = content_to_text(event.get("message", {}).get("content", ""))
-          if marker in text:
-              seen_marker = True
-      continue
+    if event.get("type") == "user":
+        saw_new_user = True
+        last_text = ""
+        turn_done = False
+        continue
     if event.get("type") == "assistant":
         content = event.get("message", {}).get("content", [])
         text = content_to_text(content).strip()
@@ -491,10 +527,10 @@ if turn_done:
     Path(final_path).write_text(last_text + "\n", encoding="utf-8")
     print("done")
     sys.exit(0)
-if seen_marker:
+if saw_new_user:
     print("waiting-assistant")
     sys.exit(1)
-print("waiting-marker")
+print("waiting-user")
 sys.exit(1)
 PY
 }
@@ -525,6 +561,7 @@ monitor_loop() {
     transcript="$(find_transcript)"
     if [[ -n "$transcript" && -f "$transcript" ]]; then
       TRANSCRIPT_FILE="$transcript"
+      persist_transcript_state
       if parse_turn "$transcript" >/tmp/claude-tmux-parse.$$ 2>/tmp/claude-tmux-parse-err.$$; then
         write_status "done" "0" "turn complete"
         rm -f /tmp/claude-tmux-parse.$$ /tmp/claude-tmux-parse-err.$$
@@ -663,6 +700,7 @@ CONTINUE_SCRIPT="$RUN_DIR/continue.sh"
 SUBMIT_SCRIPT="$RUN_DIR/submit.sh"
 RESEND_SCRIPT="$RUN_DIR/resend.sh"
 TRANSCRIPT_FILE=""
+BASE_TRANSCRIPT_LINES="0"
 
 if [[ -n "$PROMPT_TEXT" ]]; then
   printf '%s\n' "$PROMPT_TEXT" > "$PROMPT_PATH"
@@ -673,12 +711,7 @@ else
 fi
 
 if [[ "$MODE" == "run" ]]; then
-  {
-    printf '<claude_tmux_monitor run_id="claude-tmux-run:%s">\n' "$RUN_ID"
-    printf 'This marker is local monitoring metadata, not the user task.\n'
-    printf '</claude_tmux_monitor>\n\n'
-    cat "$PROMPT_PATH"
-  } > "$PROMPT_TO_SEND"
+  cp "$PROMPT_PATH" "$PROMPT_TO_SEND"
 else
   : > "$PROMPT_TO_SEND"
 fi
@@ -755,6 +788,7 @@ CLAUDE_CMD_STRING="${CLAUDE_CMD_STRING% }"
   env_line SUBMIT_SCRIPT "$SUBMIT_SCRIPT"
   env_line RESEND_SCRIPT "$RESEND_SCRIPT"
   env_line TRANSCRIPT_FILE "$TRANSCRIPT_FILE"
+  env_line BASE_TRANSCRIPT_LINES "$BASE_TRANSCRIPT_LINES"
   env_line STARTUP_WAIT_SECONDS "$STARTUP_WAIT_SECONDS"
   env_line HEARTBEAT_SECONDS "$HEARTBEAT_SECONDS"
   env_line TIMEOUT_SECONDS "$TIMEOUT_SECONDS"
@@ -830,6 +864,14 @@ if [[ "$MODE" == "start" ]]; then
   echo "[claude-tmux] event=ready attach=\"tmux attach -t $TMUX_SESSION\""
   exit 0
 fi
+
+TRANSCRIPT_FILE="$(find_transcript)"
+if [[ -n "$TRANSCRIPT_FILE" && -f "$TRANSCRIPT_FILE" ]]; then
+  BASE_TRANSCRIPT_LINES="$(wc -l < "$TRANSCRIPT_FILE" | tr -d '[:space:]')"
+else
+  BASE_TRANSCRIPT_LINES="0"
+fi
+persist_transcript_state
 
 BUFFER_NAME="claude-tmux-$RUN_SHORT"
 write_status "running" "" "pasting prompt"

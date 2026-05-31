@@ -50,9 +50,8 @@ rerun with `--submit-key C-j` or another tmux key name. If the prompt never
 appears after starting a new Claude pane, use `<run-dir>/resend.sh` in the same
 tmux session.
 
-The wrapper adds a small run marker to the prompt so it can find the matching
-turn in the transcript. Do not use it when the exact user-visible prompt bytes
-must be preserved; use an interactive attach or `claude -p` instead.
+The wrapper records the transcript line count before paste and monitors only
+events after that point, so the prompt sent to Claude stays unchanged.
 
 ## Built-In Claude Tmux
 

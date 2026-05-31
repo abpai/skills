@@ -47,7 +47,9 @@ scripts/claude-tmux-run.sh run \
 
 The wrapper starts or reuses a real tmux session running interactive Claude
 Code, pastes the prompt into the TUI, and monitors Claude's transcript for the
-completed turn. It writes `run.env`, `status.env`, `monitor.sh`, `prompt.txt`,
+completed turn. The prompt is pasted as-is; monitoring uses a transcript
+baseline instead of adding marker text to Claude's conversation. It writes
+`run.env`, `status.env`, `monitor.sh`, `prompt.txt`, `prompt-to-send.txt`,
 `final.md`, `command.txt`, `preflight.log`, `pane.txt`, `continue.sh`,
 `submit.sh`, and `resend.sh`.
 
