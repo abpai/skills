@@ -48,11 +48,17 @@ scripts/claude-tmux-run.sh run \
 The wrapper starts or reuses a real tmux session running interactive Claude
 Code, pastes the prompt into the TUI, and monitors Claude's transcript for the
 completed turn. It writes `run.env`, `status.env`, `monitor.sh`, `prompt.txt`,
-`final.md`, `command.txt`, `preflight.log`, and `pane.txt`.
+`final.md`, `command.txt`, `preflight.log`, `pane.txt`, `continue.sh`,
+`submit.sh`, and `resend.sh`.
 
 The monitor has a finite default timeout so schema drift or TUI state cannot
 hang Codex forever. Pass `--timeout 0` only for an intentionally unattended
 watch, and be ready to attach manually.
+
+If a prompt is pasted but not submitted, run the generated `<run-dir>/submit.sh`
+helper. If the local terminal needs a different submit key, pass
+`--submit-key C-j` or another tmux key name. If the prompt does not appear at
+all after a fresh session starts, run `<run-dir>/resend.sh`.
 
 To let the user take over:
 
@@ -102,8 +108,10 @@ Claude Code tmux session, prefer the generated continuation helper:
 ```
 
 This loads the prior `tmux_session`, `session_id`, and `workspace`, while
-writing fresh artifacts for the follow-up run. If you need to reconstruct the
-call manually, use `scripts/claude-tmux-run.sh run --continue-run <run-dir>`.
+writing fresh artifacts for the follow-up run. It also preserves the prior
+run-root, startup wait, and prompt-submit settings unless you override them. If
+you need to reconstruct the call manually, use
+`scripts/claude-tmux-run.sh run --continue-run <run-dir>`.
 
 If the tmux pane is gone, resume the Claude Code conversation into a new tmux
 pane:
@@ -232,8 +240,9 @@ Next action: inspect `pane.txt` or attach with `tmux attach -t <session>`. Do
 not kill the session just because the monitor is still waiting.
 
 If `pane.txt` shows a trust prompt, permission prompt, or the pasted prompt
-still sitting in Claude's input box, attach or send the needed key in the
-existing tmux session. Do not restart the run unless the session is unrecoverable.
+still sitting in Claude's input box, attach or run `<run-dir>/submit.sh` in the
+existing tmux session. If the prompt is absent, run `<run-dir>/resend.sh`. Do
+not restart the run unless the session is unrecoverable.
 
 ### Slow but still running
 

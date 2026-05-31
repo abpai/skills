@@ -29,8 +29,9 @@ Common options:
   --name NAME          Claude Code display name.
   --heartbeat SECONDS  Monitor heartbeat interval (default: 10).
   --timeout SECONDS    Give up monitoring after this many seconds (default: 900, 0 = never).
-  --startup-wait SECS  Seconds to wait after starting tmux before paste (default: 3).
+  --startup-wait SECS  Seconds to wait after starting tmux before paste (default: 5).
   --paste-settle SECS  Seconds to wait after paste before pressing Enter (default: 1).
+  --submit-key KEY     tmux key sent after paste to submit prompt (default: C-m).
   --no-wait            For run mode, send the prompt and exit after writing monitor.sh.
   --dry-run            Write artifacts and command.txt, but do not start tmux or paste.
 
@@ -47,7 +48,7 @@ Claude options:
 MonitorTool contract:
   Prints stable lines prefixed with "[claude-tmux] event=...".
   Writes run.env, status.env, monitor.sh, prompt.txt, final.md, command.txt,
-  preflight.log, and pane.txt.
+  preflight.log, pane.txt, submit.sh, and resend.sh.
 EOF
 }
 
@@ -78,8 +79,9 @@ RESUME_SESSION_ID=""
 DISPLAY_NAME=""
 HEARTBEAT_SECONDS="${CLAUDE_TMUX_HEARTBEAT_SECONDS:-10}"
 TIMEOUT_SECONDS="${CLAUDE_TMUX_TIMEOUT_SECONDS:-900}"
-STARTUP_WAIT_SECONDS="${CLAUDE_TMUX_STARTUP_WAIT_SECONDS:-3}"
+STARTUP_WAIT_SECONDS="${CLAUDE_TMUX_STARTUP_WAIT_SECONDS:-5}"
 PASTE_SETTLE_SECONDS="${CLAUDE_TMUX_PASTE_SETTLE_SECONDS:-1}"
+SUBMIT_KEY="${CLAUDE_TMUX_SUBMIT_KEY:-C-m}"
 NO_WAIT="false"
 DRY_RUN="false"
 MODEL=""
@@ -92,9 +94,16 @@ TOOLS=""
 ADD_DIRS=()
 EXTRA_ARGS=()
 WORKSPACE_SET="false"
+RUN_ROOT_SET="false"
 TMUX_SESSION_SET="false"
 SESSION_ID_SET="false"
 RESUME_SESSION_SET="false"
+STARTUP_WAIT_SET="false"
+PASTE_SETTLE_SET="false"
+SUBMIT_KEY_SET="false"
+[[ -n "${CLAUDE_TMUX_STARTUP_WAIT_SECONDS+x}" ]] && STARTUP_WAIT_SET="true"
+[[ -n "${CLAUDE_TMUX_PASTE_SETTLE_SECONDS+x}" ]] && PASTE_SETTLE_SET="true"
+[[ -n "${CLAUDE_TMUX_SUBMIT_KEY+x}" ]] && SUBMIT_KEY_SET="true"
 
 require_value() {
   local option="$1"
@@ -126,6 +135,7 @@ while [[ $# -gt 0 ]]; do
     --run-root)
       RUN_ROOT="${2:-}"
       require_value "$1" "$RUN_ROOT"
+      RUN_ROOT_SET="true"
       shift 2
       ;;
     --run-dir)
@@ -174,11 +184,19 @@ while [[ $# -gt 0 ]]; do
     --startup-wait)
       STARTUP_WAIT_SECONDS="${2:-}"
       require_value "$1" "$STARTUP_WAIT_SECONDS"
+      STARTUP_WAIT_SET="true"
       shift 2
       ;;
     --paste-settle)
       PASTE_SETTLE_SECONDS="${2:-}"
       require_value "$1" "$PASTE_SETTLE_SECONDS"
+      PASTE_SETTLE_SET="true"
+      shift 2
+      ;;
+    --submit-key)
+      SUBMIT_KEY="${2:-}"
+      require_value "$1" "$SUBMIT_KEY"
+      SUBMIT_KEY_SET="true"
       shift 2
       ;;
     --no-wait)
@@ -265,32 +283,56 @@ if [[ -n "$CONTINUE_RUN_DIR" ]]; then
     exit 2
   fi
   current_workspace="$WORKSPACE"
+  current_run_root="$RUN_ROOT"
   current_tmux_session="$TMUX_SESSION"
   current_session_id="$SESSION_ID"
   current_resume_session_id="$RESUME_SESSION_ID"
   current_run_dir="$RUN_DIR"
+  current_startup_wait_seconds="$STARTUP_WAIT_SECONDS"
   current_heartbeat_seconds="$HEARTBEAT_SECONDS"
   current_timeout_seconds="$TIMEOUT_SECONDS"
+  current_paste_settle_seconds="$PASTE_SETTLE_SECONDS"
+  current_submit_key="$SUBMIT_KEY"
   # shellcheck disable=SC1091
   source "$CONTINUE_RUN_DIR/run.env"
   prior_workspace="${WORKSPACE:-}"
+  prior_run_root="${RUN_ROOT:-}"
   prior_tmux_session="${TMUX_SESSION:-}"
   prior_session_id="${SESSION_ID:-}"
+  prior_startup_wait_seconds="${STARTUP_WAIT_SECONDS:-}"
+  prior_paste_settle_seconds="${PASTE_SETTLE_SECONDS:-}"
+  prior_submit_key="${SUBMIT_KEY:-}"
   WORKSPACE="$current_workspace"
+  RUN_ROOT="$current_run_root"
   TMUX_SESSION="$current_tmux_session"
   SESSION_ID="$current_session_id"
   RESUME_SESSION_ID="$current_resume_session_id"
   RUN_DIR="$current_run_dir"
+  STARTUP_WAIT_SECONDS="$current_startup_wait_seconds"
   HEARTBEAT_SECONDS="$current_heartbeat_seconds"
   TIMEOUT_SECONDS="$current_timeout_seconds"
+  PASTE_SETTLE_SECONDS="$current_paste_settle_seconds"
+  SUBMIT_KEY="$current_submit_key"
   if [[ "$WORKSPACE_SET" == "false" && -n "$prior_workspace" ]]; then
     WORKSPACE="$prior_workspace"
+  fi
+  if [[ "$RUN_ROOT_SET" == "false" && -n "$prior_run_root" ]]; then
+    RUN_ROOT="$prior_run_root"
   fi
   if [[ "$TMUX_SESSION_SET" == "false" && -n "$prior_tmux_session" ]]; then
     TMUX_SESSION="$prior_tmux_session"
   fi
   if [[ "$SESSION_ID_SET" == "false" && "$RESUME_SESSION_SET" == "false" && -n "$prior_session_id" ]]; then
     SESSION_ID="$prior_session_id"
+  fi
+  if [[ "$STARTUP_WAIT_SET" == "false" && -n "$prior_startup_wait_seconds" ]]; then
+    STARTUP_WAIT_SECONDS="$prior_startup_wait_seconds"
+  fi
+  if [[ "$PASTE_SETTLE_SET" == "false" && -n "$prior_paste_settle_seconds" ]]; then
+    PASTE_SETTLE_SECONDS="$prior_paste_settle_seconds"
+  fi
+  if [[ "$SUBMIT_KEY_SET" == "false" && -n "$prior_submit_key" ]]; then
+    SUBMIT_KEY="$prior_submit_key"
   fi
 fi
 
@@ -368,6 +410,8 @@ write_status() {
     env_line transcript_file "${TRANSCRIPT_FILE:-}"
     env_line final_file "${FINAL_FILE:-}"
     env_line continue_command "${RUN_DIR:-}/continue.sh --prompt '<follow-up>'"
+    env_line submit_command "${RUN_DIR:-}/submit.sh"
+    env_line resend_command "${RUN_DIR:-}/resend.sh"
     env_line attach_command "tmux attach -t ${TMUX_SESSION:-}"
     env_line updated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   } > "$STATUS_FILE"
@@ -597,7 +641,10 @@ else
 fi
 
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(new_uuid)"
-RUN_SHORT="${RUN_ID%%-*}"
+RUN_TIMESTAMP="${RUN_ID%%-*}"
+RUN_UUID_PART="${RUN_ID#*-}"
+RUN_UUID_SHORT="${RUN_UUID_PART%%-*}"
+RUN_SHORT="$RUN_TIMESTAMP-$RUN_UUID_SHORT"
 if [[ -z "$RUN_DIR" ]]; then
   RUN_DIR="$RUN_ROOT/$RUN_SHORT"
 fi
@@ -613,6 +660,8 @@ STATUS_FILE="$RUN_DIR/status.env"
 RUN_ENV_FILE="$RUN_DIR/run.env"
 MONITOR_SCRIPT="$RUN_DIR/monitor.sh"
 CONTINUE_SCRIPT="$RUN_DIR/continue.sh"
+SUBMIT_SCRIPT="$RUN_DIR/submit.sh"
+RESEND_SCRIPT="$RUN_DIR/resend.sh"
 TRANSCRIPT_FILE=""
 
 if [[ -n "$PROMPT_TEXT" ]]; then
@@ -670,8 +719,10 @@ CLAUDE_CMD_STRING="${CLAUDE_CMD_STRING% }"
   echo "resume session: $RESUME_SESSION_ID"
   echo "command: tmux new-session -d -s $(shell_quote "$TMUX_SESSION") -c $(shell_quote "$WORKSPACE") $CLAUDE_CMD_STRING"
   if [[ "$MODE" == "run" ]]; then
-    echo "prompt transport: tmux load-buffer + paste-buffer + ${PASTE_SETTLE_SECONDS}s settle + Enter"
+    echo "prompt transport: tmux load-buffer + paste-buffer + ${PASTE_SETTLE_SECONDS}s settle + tmux send-keys ${SUBMIT_KEY}"
     echo "prompt file: $PROMPT_PATH"
+    echo "submit helper: $SUBMIT_SCRIPT"
+    echo "resend helper: $RESEND_SCRIPT"
   fi
   echo "attach: tmux attach -t $(shell_quote "$TMUX_SESSION")"
 } > "$COMMAND_FILE"
@@ -691,6 +742,7 @@ CLAUDE_CMD_STRING="${CLAUDE_CMD_STRING% }"
   env_line RESUME_SESSION_ID "$RESUME_SESSION_ID"
   env_line TMUX_SESSION "$TMUX_SESSION"
   env_line WORKSPACE "$WORKSPACE"
+  env_line RUN_ROOT "$RUN_ROOT"
   env_line RUN_DIR "$RUN_DIR"
   env_line PROMPT_PATH "$PROMPT_PATH"
   env_line PROMPT_TO_SEND "$PROMPT_TO_SEND"
@@ -700,10 +752,14 @@ CLAUDE_CMD_STRING="${CLAUDE_CMD_STRING% }"
   env_line PANE_FILE "$PANE_FILE"
   env_line STATUS_FILE "$STATUS_FILE"
   env_line CONTINUE_SCRIPT "$CONTINUE_SCRIPT"
+  env_line SUBMIT_SCRIPT "$SUBMIT_SCRIPT"
+  env_line RESEND_SCRIPT "$RESEND_SCRIPT"
   env_line TRANSCRIPT_FILE "$TRANSCRIPT_FILE"
+  env_line STARTUP_WAIT_SECONDS "$STARTUP_WAIT_SECONDS"
   env_line HEARTBEAT_SECONDS "$HEARTBEAT_SECONDS"
   env_line TIMEOUT_SECONDS "$TIMEOUT_SECONDS"
   env_line PASTE_SETTLE_SECONDS "$PASTE_SETTLE_SECONDS"
+  env_line SUBMIT_KEY "$SUBMIT_KEY"
 } > "$RUN_ENV_FILE"
 
 cat > "$MONITOR_SCRIPT" <<EOF
@@ -720,9 +776,27 @@ exec $(shell_quote "$SCRIPT_PATH") run --continue-run $(shell_quote "$RUN_DIR") 
 EOF
 chmod u=rwx,go= "$CONTINUE_SCRIPT"
 
+cat > "$SUBMIT_SCRIPT" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec tmux send-keys -t $(shell_quote "$TMUX_SESSION") $(shell_quote "$SUBMIT_KEY")
+EOF
+chmod u=rwx,go= "$SUBMIT_SCRIPT"
+
+cat > "$RESEND_SCRIPT" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+buffer_name="claude-tmux-resend-\$(date +%s)"
+tmux load-buffer -b "\$buffer_name" $(shell_quote "$PROMPT_TO_SEND")
+tmux paste-buffer -d -b "\$buffer_name" -t $(shell_quote "$TMUX_SESSION")
+sleep $(shell_quote "$PASTE_SETTLE_SECONDS")
+exec tmux send-keys -t $(shell_quote "$TMUX_SESSION") $(shell_quote "$SUBMIT_KEY")
+EOF
+chmod u=rwx,go= "$RESEND_SCRIPT"
+
 write_status "created" "" "artifacts written"
 
-echo "[claude-tmux] event=paths run_dir=$RUN_DIR monitor=$MONITOR_SCRIPT continue=$CONTINUE_SCRIPT final=$FINAL_FILE attach=\"tmux attach -t $TMUX_SESSION\""
+echo "[claude-tmux] event=paths run_dir=$RUN_DIR monitor=$MONITOR_SCRIPT continue=$CONTINUE_SCRIPT submit=$SUBMIT_SCRIPT resend=$RESEND_SCRIPT final=$FINAL_FILE attach=\"tmux attach -t $TMUX_SESSION\""
 
 if [[ "$DRY_RUN" == "true" ]]; then
   write_status "dry-run" "0" "dry run complete"
@@ -770,7 +844,7 @@ if ! tmux paste-buffer -d -b "$BUFFER_NAME" -t "$TMUX_SESSION"; then
   exit 1
 fi
 sleep "$PASTE_SETTLE_SECONDS"
-if ! tmux send-keys -t "$TMUX_SESSION" C-m; then
+if ! tmux send-keys -t "$TMUX_SESSION" "$SUBMIT_KEY"; then
   write_status "failed" "1" "tmux send-keys failed"
   echo "[claude-tmux] event=finish state=failed exit_code=1 detail=\"tmux send-keys failed\" attach=\"tmux attach -t $TMUX_SESSION\""
   exit 1

@@ -28,15 +28,27 @@ scripts/claude-tmux-run.sh attach --run-dir <run-dir>
 scripts/claude-tmux-run.sh monitor --run-dir <run-dir>
 scripts/claude-tmux-run.sh stop --run-dir <run-dir>
 scripts/claude-tmux-run.sh list
+<run-dir>/submit.sh
+<run-dir>/resend.sh
 ```
 
 Use the generated `continue.sh` for the common Codex-to-Claude back-and-forth
 loop. It reuses the prior tmux session, Claude session id, and workspace, but
 creates a new run directory for the new prompt so earlier artifacts stay intact.
+It preserves the prior run-root, paste-settle delay, and submit key unless the
+new command overrides them. It also preserves the startup wait for cases where a
+dead tmux pane needs to be recreated.
 
 The monitor reads Claude's transcript JSONL under `~/.claude/projects`, not the
 ANSI terminal screen. `pane.txt` is only a diagnostic snapshot for permission
 prompts, trust dialogs, or other TUI states that require manual takeover.
+
+Prompt submission defaults to `tmux send-keys C-m` after a short paste-settle
+delay. If the prompt is visible in the TUI but not submitted, use
+`<run-dir>/submit.sh`; if that key binding is wrong for the local terminal,
+rerun with `--submit-key C-j` or another tmux key name. If the prompt never
+appears after starting a new Claude pane, use `<run-dir>/resend.sh` in the same
+tmux session.
 
 The wrapper adds a small run marker to the prompt so it can find the matching
 turn in the transcript. Do not use it when the exact user-visible prompt bytes
