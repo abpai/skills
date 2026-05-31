@@ -28,8 +28,9 @@ Common options:
   --resume-session ID  Resume an existing Claude Code session when starting the tmux pane.
   --name NAME          Claude Code display name.
   --heartbeat SECONDS  Monitor heartbeat interval (default: 10).
-  --timeout SECONDS    Give up monitoring after this many seconds (0 = never).
+  --timeout SECONDS    Give up monitoring after this many seconds (default: 900, 0 = never).
   --startup-wait SECS  Seconds to wait after starting tmux before paste (default: 3).
+  --paste-settle SECS  Seconds to wait after paste before pressing Enter (default: 1).
   --no-wait            For run mode, send the prompt and exit after writing monitor.sh.
   --dry-run            Write artifacts and command.txt, but do not start tmux or paste.
 
@@ -76,8 +77,9 @@ SESSION_ID=""
 RESUME_SESSION_ID=""
 DISPLAY_NAME=""
 HEARTBEAT_SECONDS="${CLAUDE_TMUX_HEARTBEAT_SECONDS:-10}"
-TIMEOUT_SECONDS="${CLAUDE_TMUX_TIMEOUT_SECONDS:-0}"
+TIMEOUT_SECONDS="${CLAUDE_TMUX_TIMEOUT_SECONDS:-900}"
 STARTUP_WAIT_SECONDS="${CLAUDE_TMUX_STARTUP_WAIT_SECONDS:-3}"
+PASTE_SETTLE_SECONDS="${CLAUDE_TMUX_PASTE_SETTLE_SECONDS:-1}"
 NO_WAIT="false"
 DRY_RUN="false"
 MODEL=""
@@ -172,6 +174,11 @@ while [[ $# -gt 0 ]]; do
     --startup-wait)
       STARTUP_WAIT_SECONDS="${2:-}"
       require_value "$1" "$STARTUP_WAIT_SECONDS"
+      shift 2
+      ;;
+    --paste-settle)
+      PASTE_SETTLE_SECONDS="${2:-}"
+      require_value "$1" "$PASTE_SETTLE_SECONDS"
       shift 2
       ;;
     --no-wait)
@@ -292,7 +299,7 @@ if [[ "$MODE" == "run" && -z "$PROMPT_TEXT" && -z "$PROMPT_FILE" ]]; then
   exit 2
 fi
 
-for numeric in HEARTBEAT_SECONDS TIMEOUT_SECONDS STARTUP_WAIT_SECONDS; do
+for numeric in HEARTBEAT_SECONDS TIMEOUT_SECONDS STARTUP_WAIT_SECONDS PASTE_SETTLE_SECONDS; do
   value="${!numeric}"
   case "$value" in
     ''|*[!0-9]*)
@@ -641,10 +648,14 @@ fi
 [[ -n "$ALLOWED_TOOLS" ]] && CLAUDE_CMD+=(--allowed-tools "$ALLOWED_TOOLS")
 [[ -n "$DISALLOWED_TOOLS" ]] && CLAUDE_CMD+=(--disallowed-tools "$DISALLOWED_TOOLS")
 [[ -n "$TOOLS" ]] && CLAUDE_CMD+=(--tools "$TOOLS")
-for dir in "${ADD_DIRS[@]}"; do
-  CLAUDE_CMD+=(--add-dir "$dir")
-done
-CLAUDE_CMD+=("${EXTRA_ARGS[@]}")
+if (( ${#ADD_DIRS[@]} > 0 )); then
+  for dir in "${ADD_DIRS[@]}"; do
+    CLAUDE_CMD+=(--add-dir "$dir")
+  done
+fi
+if (( ${#EXTRA_ARGS[@]} > 0 )); then
+  CLAUDE_CMD+=("${EXTRA_ARGS[@]}")
+fi
 
 CLAUDE_CMD_STRING=""
 for part in "${CLAUDE_CMD[@]}"; do
@@ -659,7 +670,7 @@ CLAUDE_CMD_STRING="${CLAUDE_CMD_STRING% }"
   echo "resume session: $RESUME_SESSION_ID"
   echo "command: tmux new-session -d -s $(shell_quote "$TMUX_SESSION") -c $(shell_quote "$WORKSPACE") $CLAUDE_CMD_STRING"
   if [[ "$MODE" == "run" ]]; then
-    echo "prompt transport: tmux load-buffer + paste-buffer + Enter"
+    echo "prompt transport: tmux load-buffer + paste-buffer + ${PASTE_SETTLE_SECONDS}s settle + Enter"
     echo "prompt file: $PROMPT_PATH"
   fi
   echo "attach: tmux attach -t $(shell_quote "$TMUX_SESSION")"
@@ -692,6 +703,7 @@ CLAUDE_CMD_STRING="${CLAUDE_CMD_STRING% }"
   env_line TRANSCRIPT_FILE "$TRANSCRIPT_FILE"
   env_line HEARTBEAT_SECONDS "$HEARTBEAT_SECONDS"
   env_line TIMEOUT_SECONDS "$TIMEOUT_SECONDS"
+  env_line PASTE_SETTLE_SECONDS "$PASTE_SETTLE_SECONDS"
 } > "$RUN_ENV_FILE"
 
 cat > "$MONITOR_SCRIPT" <<EOF
@@ -746,9 +758,23 @@ if [[ "$MODE" == "start" ]]; then
 fi
 
 BUFFER_NAME="claude-tmux-$RUN_SHORT"
-tmux load-buffer -b "$BUFFER_NAME" "$PROMPT_TO_SEND"
-tmux paste-buffer -d -b "$BUFFER_NAME" -t "$TMUX_SESSION"
-tmux send-keys -t "$TMUX_SESSION" C-m
+write_status "running" "" "pasting prompt"
+if ! tmux load-buffer -b "$BUFFER_NAME" "$PROMPT_TO_SEND"; then
+  write_status "failed" "1" "tmux load-buffer failed"
+  echo "[claude-tmux] event=finish state=failed exit_code=1 detail=\"tmux load-buffer failed\" attach=\"tmux attach -t $TMUX_SESSION\""
+  exit 1
+fi
+if ! tmux paste-buffer -d -b "$BUFFER_NAME" -t "$TMUX_SESSION"; then
+  write_status "failed" "1" "tmux paste-buffer failed"
+  echo "[claude-tmux] event=finish state=failed exit_code=1 detail=\"tmux paste-buffer failed\" attach=\"tmux attach -t $TMUX_SESSION\""
+  exit 1
+fi
+sleep "$PASTE_SETTLE_SECONDS"
+if ! tmux send-keys -t "$TMUX_SESSION" C-m; then
+  write_status "failed" "1" "tmux send-keys failed"
+  echo "[claude-tmux] event=finish state=failed exit_code=1 detail=\"tmux send-keys failed\" attach=\"tmux attach -t $TMUX_SESSION\""
+  exit 1
+fi
 write_status "running" "" "prompt sent"
 capture_pane
 echo "[claude-tmux] event=sent run_id=$RUN_ID tmux=$TMUX_SESSION attach=\"tmux attach -t $TMUX_SESSION\""

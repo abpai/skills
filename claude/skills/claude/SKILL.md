@@ -50,6 +50,10 @@ Code, pastes the prompt into the TUI, and monitors Claude's transcript for the
 completed turn. It writes `run.env`, `status.env`, `monitor.sh`, `prompt.txt`,
 `final.md`, `command.txt`, `preflight.log`, and `pane.txt`.
 
+The monitor has a finite default timeout so schema drift or TUI state cannot
+hang Codex forever. Pass `--timeout 0` only for an intentionally unattended
+watch, and be ready to attach manually.
+
 To let the user take over:
 
 ```bash
@@ -85,6 +89,8 @@ scripts/claude-tmux-run.sh run \
 ```
 
 Narrow the working set first if the change is broad or the repo is noisy.
+For unattended edit modes, be explicit about whether Claude may commit, push, or
+run live side effects; otherwise assume it should only edit and report back.
 
 ### Continue Or Resume
 
@@ -224,6 +230,10 @@ The tmux-backed run is still active but the transcript is not complete.
 
 Next action: inspect `pane.txt` or attach with `tmux attach -t <session>`. Do
 not kill the session just because the monitor is still waiting.
+
+If `pane.txt` shows a trust prompt, permission prompt, or the pasted prompt
+still sitting in Claude's input box, attach or send the needed key in the
+existing tmux session. Do not restart the run unless the session is unrecoverable.
 
 ### Slow but still running
 
