@@ -5,6 +5,66 @@ Use this file only when the main `claude` workflow is not enough.
 Verify every flag here against the local `claude --help` or `claude -p --help`
 before first use in a new environment.
 
+## Tmux Wrapper Details
+
+The main skill uses `scripts/claude-tmux-run.sh` instead of `claude -p` for
+default delegation. The wrapper creates or reuses a normal tmux session running
+interactive Claude Code, so the user can attach and take over:
+
+```bash
+scripts/claude-tmux-run.sh run \
+  --workspace "$PWD" \
+  --tmux-session claude-review \
+  --permission-mode plan \
+  --prompt "Review the current diff"
+```
+
+Useful follow-up commands:
+
+```bash
+<run-dir>/continue.sh --prompt "Follow up in the same Claude session"
+scripts/claude-tmux-run.sh run --continue-run <run-dir> --prompt "Follow up in the same Claude session"
+scripts/claude-tmux-run.sh attach --run-dir <run-dir>
+scripts/claude-tmux-run.sh monitor --run-dir <run-dir>
+scripts/claude-tmux-run.sh stop --run-dir <run-dir>
+scripts/claude-tmux-run.sh list
+<run-dir>/submit.sh
+<run-dir>/resend.sh
+```
+
+Use the generated `continue.sh` for the common Codex-to-Claude back-and-forth
+loop. It reuses the prior tmux session, Claude session id, and workspace, but
+creates a new run directory for the new prompt so earlier artifacts stay intact.
+It preserves the prior run-root, paste-settle delay, and submit key unless the
+new command overrides them. It also preserves the startup wait for cases where a
+dead tmux pane needs to be recreated.
+
+The monitor reads Claude's transcript JSONL under `~/.claude/projects`, not the
+ANSI terminal screen. `pane.txt` is only a diagnostic snapshot for permission
+prompts, trust dialogs, or other TUI states that require manual takeover.
+
+Prompt submission defaults to `tmux send-keys C-m` after a short paste-settle
+delay. If the prompt is visible in the TUI but not submitted, use
+`<run-dir>/submit.sh`; if that key binding is wrong for the local terminal,
+rerun with `--submit-key C-j` or another tmux key name. If the prompt never
+appears after starting a new Claude pane, use `<run-dir>/resend.sh` in the same
+tmux session.
+
+The wrapper records the transcript line count before paste and monitors only
+events after that point, so the prompt sent to Claude stays unchanged.
+
+## Built-In Claude Tmux
+
+Claude's own `--tmux` flag is tied to `--worktree`:
+
+```bash
+claude --worktree feature-auth --tmux
+```
+
+Use that when Claude should create and own an isolated worktree. Prefer the
+bundled wrapper when Codex needs to drive the current checkout and keep
+MonitorTool-friendly artifacts.
+
 ## Tool Controls
 
 Claude exposes three tool controls:

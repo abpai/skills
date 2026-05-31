@@ -1,7 +1,7 @@
 {
   "name": "claude",
-  "version": "1.5.0",
-  "description": "Run Claude Code CLI for code analysis and automated edits. Delegate coding tasks, continue sessions, get machine-readable output.",
+  "version": "1.6.0",
+  "description": "Run Claude Code CLI with tmux-backed TUI delegation, session continuation, manual takeover, and non-interactive fallback.",
   "author": {
     "name": "Andy Pai"
   },
