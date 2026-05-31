@@ -52,10 +52,10 @@
     },
     {
       "name": "claude",
-      "description": "Run Claude Code CLI for code analysis and automated edits. Delegate tasks, continue sessions, get machine-readable output.",
+      "description": "Run Claude Code CLI with tmux-backed TUI delegation, session continuation, manual takeover, and non-interactive fallback.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "claude" },
       "category": "tools",
-      "keywords": ["claude", "cli", "delegation", "automation"]
+      "keywords": ["claude", "cli", "tmux", "tui", "delegation", "automation"]
     },
     {
       "name": "cli-design-expert",

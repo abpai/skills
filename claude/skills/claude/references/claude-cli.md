@@ -5,6 +5,49 @@ Use this file only when the main `claude` workflow is not enough.
 Verify every flag here against the local `claude --help` or `claude -p --help`
 before first use in a new environment.
 
+## Tmux Wrapper Details
+
+The main skill uses `scripts/claude-tmux-run.sh` instead of `claude -p` for
+default delegation. The wrapper creates or reuses a normal tmux session running
+interactive Claude Code, so the user can attach and take over:
+
+```bash
+scripts/claude-tmux-run.sh run \
+  --workspace "$PWD" \
+  --tmux-session claude-review \
+  --permission-mode plan \
+  --prompt "Review the current diff"
+```
+
+Useful follow-up commands:
+
+```bash
+scripts/claude-tmux-run.sh attach --run-dir <run-dir>
+scripts/claude-tmux-run.sh monitor --run-dir <run-dir>
+scripts/claude-tmux-run.sh stop --run-dir <run-dir>
+scripts/claude-tmux-run.sh list
+```
+
+The monitor reads Claude's transcript JSONL under `~/.claude/projects`, not the
+ANSI terminal screen. `pane.txt` is only a diagnostic snapshot for permission
+prompts, trust dialogs, or other TUI states that require manual takeover.
+
+The wrapper adds a small run marker to the prompt so it can find the matching
+turn in the transcript. Do not use it when the exact user-visible prompt bytes
+must be preserved; use an interactive attach or `claude -p` instead.
+
+## Built-In Claude Tmux
+
+Claude's own `--tmux` flag is tied to `--worktree`:
+
+```bash
+claude --worktree feature-auth --tmux
+```
+
+Use that when Claude should create and own an isolated worktree. Prefer the
+bundled wrapper when Codex needs to drive the current checkout and keep
+MonitorTool-friendly artifacts.
+
 ## Tool Controls
 
 Claude exposes three tool controls:
