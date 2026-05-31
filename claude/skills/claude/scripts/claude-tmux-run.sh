@@ -47,8 +47,9 @@ Claude options:
 
 MonitorTool contract:
   Prints stable lines prefixed with "[claude-tmux] event=...".
-  Writes run.env, status.env, monitor.sh, prompt.txt, final.md, command.txt,
-  preflight.log, pane.txt, submit.sh, and resend.sh.
+  Writes run.env, status.env, monitor.sh, prompt.txt, prompt-to-send.txt,
+  final.md, command.txt, preflight.log, pane.txt, continue.sh, submit.sh, and
+  resend.sh.
 EOF
 }
 
@@ -428,36 +429,43 @@ find_transcript() {
   fi
 }
 
-persist_transcript_state() {
-  local run_env="${RUN_ENV_FILE:-${RUN_DIR:-}/run.env}"
-  if [[ -z "$run_env" || ! -f "$run_env" ]]; then
+write_run_env() {
+  local run_env="${RUN_ENV_FILE:-}"
+  if [[ -z "$run_env" && -n "${RUN_DIR:-}" ]]; then
+    run_env="$RUN_DIR/run.env"
+  fi
+  if [[ -z "$run_env" ]]; then
     return 0
   fi
-  python3 - "$run_env" "${TRANSCRIPT_FILE:-}" "${BASE_TRANSCRIPT_LINES:-0}" <<'PY'
-import shlex
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-updates = {
-    "TRANSCRIPT_FILE": sys.argv[2],
-    "BASE_TRANSCRIPT_LINES": sys.argv[3],
-}
-lines = path.read_text(encoding="utf-8").splitlines()
-output = []
-seen = set()
-for line in lines:
-    key = line.split("=", 1)[0] if "=" in line else ""
-    if key in updates:
-        output.append(f"{key}={shlex.quote(updates[key])}")
-        seen.add(key)
-    else:
-        output.append(line)
-for key, value in updates.items():
-    if key not in seen:
-        output.append(f"{key}={shlex.quote(value)}")
-path.write_text("\n".join(output) + "\n", encoding="utf-8")
-PY
+  local tmp_env="$run_env.tmp.$$"
+  {
+    env_line RUN_ID "${RUN_ID:-}"
+    env_line SESSION_ID "${SESSION_ID:-}"
+    env_line RESUME_SESSION_ID "${RESUME_SESSION_ID:-}"
+    env_line TMUX_SESSION "${TMUX_SESSION:-}"
+    env_line WORKSPACE "${WORKSPACE:-}"
+    env_line RUN_ROOT "${RUN_ROOT:-}"
+    env_line RUN_DIR "${RUN_DIR:-}"
+    env_line RUN_ENV_FILE "$run_env"
+    env_line PROMPT_PATH "${PROMPT_PATH:-}"
+    env_line PROMPT_TO_SEND "${PROMPT_TO_SEND:-}"
+    env_line FINAL_FILE "${FINAL_FILE:-}"
+    env_line COMMAND_FILE "${COMMAND_FILE:-}"
+    env_line PREFLIGHT_FILE "${PREFLIGHT_FILE:-}"
+    env_line PANE_FILE "${PANE_FILE:-}"
+    env_line STATUS_FILE "${STATUS_FILE:-}"
+    env_line CONTINUE_SCRIPT "${CONTINUE_SCRIPT:-}"
+    env_line SUBMIT_SCRIPT "${SUBMIT_SCRIPT:-}"
+    env_line RESEND_SCRIPT "${RESEND_SCRIPT:-}"
+    env_line TRANSCRIPT_FILE "${TRANSCRIPT_FILE:-}"
+    env_line BASE_TRANSCRIPT_LINES "${BASE_TRANSCRIPT_LINES:-0}"
+    env_line STARTUP_WAIT_SECONDS "${STARTUP_WAIT_SECONDS:-}"
+    env_line HEARTBEAT_SECONDS "${HEARTBEAT_SECONDS:-}"
+    env_line TIMEOUT_SECONDS "${TIMEOUT_SECONDS:-}"
+    env_line PASTE_SETTLE_SECONDS "${PASTE_SETTLE_SECONDS:-}"
+    env_line SUBMIT_KEY "${SUBMIT_KEY:-}"
+  } > "$tmp_env"
+  mv "$tmp_env" "$run_env"
 }
 
 capture_pane() {
@@ -561,7 +569,7 @@ monitor_loop() {
     transcript="$(find_transcript)"
     if [[ -n "$transcript" && -f "$transcript" ]]; then
       TRANSCRIPT_FILE="$transcript"
-      persist_transcript_state
+      write_run_env
       if parse_turn "$transcript" >/tmp/claude-tmux-parse.$$ 2>/tmp/claude-tmux-parse-err.$$; then
         write_status "done" "0" "turn complete"
         rm -f /tmp/claude-tmux-parse.$$ /tmp/claude-tmux-parse-err.$$
@@ -769,32 +777,7 @@ CLAUDE_CMD_STRING="${CLAUDE_CMD_STRING% }"
   git -C "$WORKSPACE" status --short 2>/dev/null | head -40 || true
 } > "$PREFLIGHT_FILE"
 
-{
-  env_line RUN_ID "$RUN_ID"
-  env_line SESSION_ID "$SESSION_ID"
-  env_line RESUME_SESSION_ID "$RESUME_SESSION_ID"
-  env_line TMUX_SESSION "$TMUX_SESSION"
-  env_line WORKSPACE "$WORKSPACE"
-  env_line RUN_ROOT "$RUN_ROOT"
-  env_line RUN_DIR "$RUN_DIR"
-  env_line PROMPT_PATH "$PROMPT_PATH"
-  env_line PROMPT_TO_SEND "$PROMPT_TO_SEND"
-  env_line FINAL_FILE "$FINAL_FILE"
-  env_line COMMAND_FILE "$COMMAND_FILE"
-  env_line PREFLIGHT_FILE "$PREFLIGHT_FILE"
-  env_line PANE_FILE "$PANE_FILE"
-  env_line STATUS_FILE "$STATUS_FILE"
-  env_line CONTINUE_SCRIPT "$CONTINUE_SCRIPT"
-  env_line SUBMIT_SCRIPT "$SUBMIT_SCRIPT"
-  env_line RESEND_SCRIPT "$RESEND_SCRIPT"
-  env_line TRANSCRIPT_FILE "$TRANSCRIPT_FILE"
-  env_line BASE_TRANSCRIPT_LINES "$BASE_TRANSCRIPT_LINES"
-  env_line STARTUP_WAIT_SECONDS "$STARTUP_WAIT_SECONDS"
-  env_line HEARTBEAT_SECONDS "$HEARTBEAT_SECONDS"
-  env_line TIMEOUT_SECONDS "$TIMEOUT_SECONDS"
-  env_line PASTE_SETTLE_SECONDS "$PASTE_SETTLE_SECONDS"
-  env_line SUBMIT_KEY "$SUBMIT_KEY"
-} > "$RUN_ENV_FILE"
+write_run_env
 
 cat > "$MONITOR_SCRIPT" <<EOF
 #!/usr/bin/env bash
@@ -871,7 +854,7 @@ if [[ -n "$TRANSCRIPT_FILE" && -f "$TRANSCRIPT_FILE" ]]; then
 else
   BASE_TRANSCRIPT_LINES="0"
 fi
-persist_transcript_state
+write_run_env
 
 BUFFER_NAME="claude-tmux-$RUN_SHORT"
 write_status "running" "" "pasting prompt"
