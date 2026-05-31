@@ -22,11 +22,17 @@ scripts/claude-tmux-run.sh run \
 Useful follow-up commands:
 
 ```bash
+<run-dir>/continue.sh --prompt "Follow up in the same Claude session"
+scripts/claude-tmux-run.sh run --continue-run <run-dir> --prompt "Follow up in the same Claude session"
 scripts/claude-tmux-run.sh attach --run-dir <run-dir>
 scripts/claude-tmux-run.sh monitor --run-dir <run-dir>
 scripts/claude-tmux-run.sh stop --run-dir <run-dir>
 scripts/claude-tmux-run.sh list
 ```
+
+Use the generated `continue.sh` for the common Codex-to-Claude back-and-forth
+loop. It reuses the prior tmux session, Claude session id, and workspace, but
+creates a new run directory for the new prompt so earlier artifacts stay intact.
 
 The monitor reads Claude's transcript JSONL under `~/.claude/projects`, not the
 ANSI terminal screen. `pane.txt` is only a diagnostic snapshot for permission

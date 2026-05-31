@@ -88,16 +88,16 @@ Narrow the working set first if the change is broad or the repo is noisy.
 
 ### Continue Or Resume
 
-The wrapper prints and stores the Claude session id and tmux session name. To
-send a follow-up to the same live tmux pane:
+The wrapper prints and stores the run directory. For follow-ups in the same
+Claude Code tmux session, prefer the generated continuation helper:
 
 ```bash
-scripts/claude-tmux-run.sh run \
-  --workspace "$PWD" \
-  --tmux-session <tmux-session> \
-  --session-id <session-id> \
-  --prompt "Continue from the prior result and focus on the tests."
+<run-dir>/continue.sh --prompt "Continue from the prior result and focus on the tests."
 ```
+
+This loads the prior `tmux_session`, `session_id`, and `workspace`, while
+writing fresh artifacts for the follow-up run. If you need to reconstruct the
+call manually, use `scripts/claude-tmux-run.sh run --continue-run <run-dir>`.
 
 If the tmux pane is gone, resume the Claude Code conversation into a new tmux
 pane:

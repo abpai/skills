@@ -22,6 +22,7 @@ Common options:
   --workspace PATH     Directory for the Claude Code tmux pane (default: current directory).
   --run-root PATH      Directory for run logs (default: $CLAUDE_TMUX_RUNS_DIR or ~/.claude/tmux-runs).
   --run-dir PATH       Exact run directory to use.
+  --continue-run PATH  Reuse tmux/session/workspace defaults from a prior run directory.
   --tmux-session NAME  tmux session name (default: claude-<session-short-id>).
   --session-id UUID    Claude Code session id for new sessions.
   --resume-session ID  Resume an existing Claude Code session when starting the tmux pane.
@@ -69,6 +70,7 @@ PROMPT_FILE=""
 WORKSPACE="$PWD"
 RUN_ROOT="${CLAUDE_TMUX_RUNS_DIR:-${CLAUDE_HOME:-$HOME/.claude}/tmux-runs}"
 RUN_DIR=""
+CONTINUE_RUN_DIR=""
 TMUX_SESSION=""
 SESSION_ID=""
 RESUME_SESSION_ID=""
@@ -87,6 +89,10 @@ DISALLOWED_TOOLS=""
 TOOLS=""
 ADD_DIRS=()
 EXTRA_ARGS=()
+WORKSPACE_SET="false"
+TMUX_SESSION_SET="false"
+SESSION_ID_SET="false"
+RESUME_SESSION_SET="false"
 
 require_value() {
   local option="$1"
@@ -112,6 +118,7 @@ while [[ $# -gt 0 ]]; do
     --workspace|--cd)
       WORKSPACE="${2:-}"
       require_value "$1" "$WORKSPACE"
+      WORKSPACE_SET="true"
       shift 2
       ;;
     --run-root)
@@ -124,19 +131,27 @@ while [[ $# -gt 0 ]]; do
       require_value "$1" "$RUN_DIR"
       shift 2
       ;;
+    --continue-run)
+      CONTINUE_RUN_DIR="${2:-}"
+      require_value "$1" "$CONTINUE_RUN_DIR"
+      shift 2
+      ;;
     --tmux-session)
       TMUX_SESSION="${2:-}"
       require_value "$1" "$TMUX_SESSION"
+      TMUX_SESSION_SET="true"
       shift 2
       ;;
     --session-id)
       SESSION_ID="${2:-}"
       require_value "$1" "$SESSION_ID"
+      SESSION_ID_SET="true"
       shift 2
       ;;
     --resume-session|--resume)
       RESUME_SESSION_ID="${2:-}"
       require_value "$1" "$RESUME_SESSION_ID"
+      RESUME_SESSION_SET="true"
       shift 2
       ;;
     --name)
@@ -237,6 +252,41 @@ if [[ -n "$SESSION_ID" && -n "$RESUME_SESSION_ID" ]]; then
   exit 2
 fi
 
+if [[ -n "$CONTINUE_RUN_DIR" ]]; then
+  if [[ ! -f "$CONTINUE_RUN_DIR/run.env" ]]; then
+    echo "[FAIL] missing prior run env: $CONTINUE_RUN_DIR/run.env" >&2
+    exit 2
+  fi
+  current_workspace="$WORKSPACE"
+  current_tmux_session="$TMUX_SESSION"
+  current_session_id="$SESSION_ID"
+  current_resume_session_id="$RESUME_SESSION_ID"
+  current_run_dir="$RUN_DIR"
+  current_heartbeat_seconds="$HEARTBEAT_SECONDS"
+  current_timeout_seconds="$TIMEOUT_SECONDS"
+  # shellcheck disable=SC1091
+  source "$CONTINUE_RUN_DIR/run.env"
+  prior_workspace="${WORKSPACE:-}"
+  prior_tmux_session="${TMUX_SESSION:-}"
+  prior_session_id="${SESSION_ID:-}"
+  WORKSPACE="$current_workspace"
+  TMUX_SESSION="$current_tmux_session"
+  SESSION_ID="$current_session_id"
+  RESUME_SESSION_ID="$current_resume_session_id"
+  RUN_DIR="$current_run_dir"
+  HEARTBEAT_SECONDS="$current_heartbeat_seconds"
+  TIMEOUT_SECONDS="$current_timeout_seconds"
+  if [[ "$WORKSPACE_SET" == "false" && -n "$prior_workspace" ]]; then
+    WORKSPACE="$prior_workspace"
+  fi
+  if [[ "$TMUX_SESSION_SET" == "false" && -n "$prior_tmux_session" ]]; then
+    TMUX_SESSION="$prior_tmux_session"
+  fi
+  if [[ "$SESSION_ID_SET" == "false" && "$RESUME_SESSION_SET" == "false" && -n "$prior_session_id" ]]; then
+    SESSION_ID="$prior_session_id"
+  fi
+fi
+
 if [[ "$MODE" == "run" && -z "$PROMPT_TEXT" && -z "$PROMPT_FILE" ]]; then
   echo "[FAIL] run mode requires --prompt or --prompt-file" >&2
   exit 2
@@ -310,6 +360,7 @@ write_status() {
     env_line run_dir "${RUN_DIR:-}"
     env_line transcript_file "${TRANSCRIPT_FILE:-}"
     env_line final_file "${FINAL_FILE:-}"
+    env_line continue_command "${RUN_DIR:-}/continue.sh --prompt '<follow-up>'"
     env_line attach_command "tmux attach -t ${TMUX_SESSION:-}"
     env_line updated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   } > "$STATUS_FILE"
@@ -554,6 +605,7 @@ PANE_FILE="$RUN_DIR/pane.txt"
 STATUS_FILE="$RUN_DIR/status.env"
 RUN_ENV_FILE="$RUN_DIR/run.env"
 MONITOR_SCRIPT="$RUN_DIR/monitor.sh"
+CONTINUE_SCRIPT="$RUN_DIR/continue.sh"
 TRANSCRIPT_FILE=""
 
 if [[ -n "$PROMPT_TEXT" ]]; then
@@ -636,6 +688,7 @@ CLAUDE_CMD_STRING="${CLAUDE_CMD_STRING% }"
   env_line PREFLIGHT_FILE "$PREFLIGHT_FILE"
   env_line PANE_FILE "$PANE_FILE"
   env_line STATUS_FILE "$STATUS_FILE"
+  env_line CONTINUE_SCRIPT "$CONTINUE_SCRIPT"
   env_line TRANSCRIPT_FILE "$TRANSCRIPT_FILE"
   env_line HEARTBEAT_SECONDS "$HEARTBEAT_SECONDS"
   env_line TIMEOUT_SECONDS "$TIMEOUT_SECONDS"
@@ -648,9 +701,16 @@ exec $(shell_quote "$SCRIPT_PATH") monitor --run-dir $(shell_quote "$RUN_DIR")
 EOF
 chmod u=rwx,go= "$MONITOR_SCRIPT"
 
+cat > "$CONTINUE_SCRIPT" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec $(shell_quote "$SCRIPT_PATH") run --continue-run $(shell_quote "$RUN_DIR") "\$@"
+EOF
+chmod u=rwx,go= "$CONTINUE_SCRIPT"
+
 write_status "created" "" "artifacts written"
 
-echo "[claude-tmux] event=paths run_dir=$RUN_DIR monitor=$MONITOR_SCRIPT final=$FINAL_FILE attach=\"tmux attach -t $TMUX_SESSION\""
+echo "[claude-tmux] event=paths run_dir=$RUN_DIR monitor=$MONITOR_SCRIPT continue=$CONTINUE_SCRIPT final=$FINAL_FILE attach=\"tmux attach -t $TMUX_SESSION\""
 
 if [[ "$DRY_RUN" == "true" ]]; then
   write_status "dry-run" "0" "dry run complete"
