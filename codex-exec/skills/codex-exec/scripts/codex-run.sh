@@ -298,37 +298,46 @@ shell_quote() {
   printf '%q' "$1"
 }
 
-env_value() {
+# Parse several keys from an env file in a single python pass and emit
+# tab-separated "key<TAB>value" lines for the keys that are present. Values are
+# parsed with shlex (matching the printf %q quoting used to write the files) so
+# a crafted run.env cannot execute shell, unlike `source`. The metadata fields
+# we read (paths, ids, booleans, integers) never contain tabs or newlines.
+read_env_values() {
   local env_file="$1"
-  local key="$2"
-  if [[ ! -f "$env_file" ]]; then
+  shift
+  if [[ ! -f "$env_file" ]] || (( $# == 0 )); then
     return 0
   fi
-  python3 - "$env_file" "$key" <<'PY'
+  python3 - "$env_file" "$@" <<'PY'
 import shlex
 import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
-target = sys.argv[2]
+targets = sys.argv[2:]
 try:
     lines = path.read_text(encoding="utf-8").splitlines()
 except FileNotFoundError:
     sys.exit(0)
 
+found = {}
 for line in reversed(lines):
     if "=" not in line or line.lstrip().startswith("#"):
         continue
     key, value = line.split("=", 1)
-    if key != target:
+    if key not in targets or key in found:
         continue
     try:
         parts = shlex.split(value)
     except ValueError:
-        print(value, end="")
+        found[key] = value
     else:
-        print(parts[0] if parts else "", end="")
-    break
+        found[key] = parts[0] if parts else ""
+
+for key in targets:
+    if key in found:
+        sys.stdout.write("%s\t%s\n" % (key, found[key]))
 PY
 }
 
@@ -352,24 +361,43 @@ load_continue_defaults() {
     exit 2
   fi
 
-  local prior_workspace prior_run_root prior_heartbeat prior_timeout prior_reasoning prior_model prior_sandbox prior_ephemeral prior_session prior_stderr
-  prior_workspace="$(env_value "$prior_env" WORKSPACE)"
+  local prior_workspace="" prior_run_root="" prior_heartbeat="" prior_timeout=""
+  local prior_reasoning="" prior_model="" prior_sandbox="" prior_ephemeral=""
+  local prior_session="" prior_status_workspace="" prior_status_session="" prior_stderr=""
+  local key value
+
+  # One python pass over run.env for all preserved settings.
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      WORKSPACE) prior_workspace="$value" ;;
+      RUN_ROOT) prior_run_root="$value" ;;
+      HEARTBEAT_SECONDS) prior_heartbeat="$value" ;;
+      TIMEOUT_SECONDS) prior_timeout="$value" ;;
+      REASONING) prior_reasoning="$value" ;;
+      MODEL) prior_model="$value" ;;
+      SANDBOX) prior_sandbox="$value" ;;
+      EPHEMERAL) prior_ephemeral="$value" ;;
+      SESSION_ID) prior_session="$value" ;;
+    esac
+  done < <(read_env_values "$prior_env" \
+    WORKSPACE RUN_ROOT HEARTBEAT_SECONDS TIMEOUT_SECONDS REASONING MODEL SANDBOX EPHEMERAL SESSION_ID)
+
+  # One python pass over status.env for back-compat fallbacks (older runs predate run.env).
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      workspace) prior_status_workspace="$value" ;;
+      session_id) prior_status_session="$value" ;;
+      stderr_log) prior_stderr="$value" ;;
+    esac
+  done < <(read_env_values "$prior_status" workspace session_id stderr_log)
+
   if [[ -z "$prior_workspace" ]]; then
-    prior_workspace="$(env_value "$prior_status" workspace)"
-  fi
-  prior_run_root="$(env_value "$prior_env" RUN_ROOT)"
-  prior_heartbeat="$(env_value "$prior_env" HEARTBEAT_SECONDS)"
-  prior_timeout="$(env_value "$prior_env" TIMEOUT_SECONDS)"
-  prior_reasoning="$(env_value "$prior_env" REASONING)"
-  prior_model="$(env_value "$prior_env" MODEL)"
-  prior_sandbox="$(env_value "$prior_env" SANDBOX)"
-  prior_ephemeral="$(env_value "$prior_env" EPHEMERAL)"
-  prior_session="$(env_value "$prior_env" SESSION_ID)"
-  if [[ -z "$prior_session" ]]; then
-    prior_session="$(env_value "$prior_status" session_id)"
+    prior_workspace="$prior_status_workspace"
   fi
   if [[ -z "$prior_session" ]]; then
-    prior_stderr="$(env_value "$prior_status" stderr_log)"
+    prior_session="$prior_status_session"
+  fi
+  if [[ -z "$prior_session" ]]; then
     prior_session="$(extract_session_id_from_file "$prior_stderr")"
   fi
 
