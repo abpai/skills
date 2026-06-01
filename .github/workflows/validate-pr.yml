@@ -19,6 +19,16 @@ jobs:
       - name: Run skill validation
         run: scripts/validate-skills.sh
 
+  wrapper-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run wrapper parity tests
+        run: scripts/test-wrapper-parity.sh
+
   check-version-bump:
     runs-on: ubuntu-latest
     steps:

@@ -80,12 +80,23 @@ Run:
 scripts/validate-skills.sh
 ```
 
+For wrapper changes that affect `codex-exec` or `claude`, also run:
+
+```bash
+scripts/test-wrapper-parity.sh
+```
+
 If `skills-ref` is installed, the script runs official validation and still enforces the local version/manifest checks. Otherwise it falls back to local structural checks plus the version/manifest checks.
 
 The local validator also checks Claude plugin command frontmatter, plugin agent
 frontmatter, plugin-manifest path safety, and `hooks/hooks.json` structure so
 plugin-only workflows like `pi` stay aligned with current Claude plugin
 conventions.
+
+The wrapper parity test uses fake `codex`, `claude`, and `tmux` binaries to
+verify prompt transport, private run artifacts, generated monitor/continue
+helpers, session continuation, and safe env-file parsing without requiring real
+agent subscriptions in CI.
 
 ## Pre-commit Hook
 

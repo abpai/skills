@@ -8,7 +8,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.6"
+  version: "1.6.1"
 ---
 
 # Claude Code CLI
