@@ -8,7 +8,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.5.0"
+  version: "1.5.1"
 ---
 
 # Codex CLI
@@ -53,7 +53,9 @@ Unless the user asks for something else:
 - Use `codex exec` for one-shot work.
 - Use `scripts/codex-run.sh review` for monitored code reviews; use
   `codex review` for short raw CLI review requests.
-- Use `codex exec resume --last` to continue the most recent saved session.
+- Use a prior wrapper run's generated `continue.sh` for follow-up reviews or
+  critiques in the same Codex session; use `codex exec resume --last` only when
+  no wrapper run directory is available.
 - Do not pass `--model` by default; let the user's Codex configuration choose the model.
 - Pass `--model <MODEL>` only when the user explicitly requests a specific model.
 - Use `medium` reasoning for ordinary work, `high` for harder tasks, and `low` for tiny checks.
@@ -88,18 +90,21 @@ The wrapper prints stable lifecycle lines:
 
 ```text
 [codex-exec] event=start ...
-[codex-exec] event=paths run_dir=... status=... monitor=... stdout=... stderr=... final=...
+[codex-exec] event=paths run_dir=... status=... run_env=... monitor=... continue=... stdout=... stderr=... final=...
 [codex-exec] event=spawn pid=...
 [codex-exec] event=progress elapsed=...
-[codex-exec] event=finish exit_code=...
+[codex-exec] event=finish exit_code=... session_id=... continue=...
 ```
 
 It writes each run under
 `${CODEX_EXEC_RUNS_DIR:-${CODEX_HOME:-~/.codex}/codex-exec-runs}` by default:
 
 - `status.env`: monitor-friendly state, paths, elapsed time, and exit code.
+- `run.env`: stable run metadata, including the captured Codex session id once
+  the run has started.
 - `monitor.sh`: a MonitorTool-friendly wait command with periodic progress and
   the same exit code as the Codex run.
+- `continue.sh`: resumes this exact Codex session in a fresh run directory.
 - `stdout.log` / `stderr.log`: raw CLI streams.
 - `events.jsonl`: mirror of stdout when `--json` is enabled.
 - `final.md`: the `--output-last-message` capture.
@@ -145,6 +150,23 @@ scripts/codex-run.sh resume \
   --last \
   --prompt-file follow-up.txt
 ```
+
+Preferred follow-up after a wrapper run:
+
+```bash
+<run-dir>/continue.sh --prompt-file follow-up.txt
+```
+
+`continue.sh` calls `codex exec resume` with the captured session id when
+available, preserving the prior workspace, run root, reasoning effort, timeout,
+heartbeat, and sandbox defaults unless the follow-up command overrides them.
+This is the best path when Claude is using MonitorTool because every follow-up
+gets its own `run.env`, `status.env`, `monitor.sh`, and `final.md` while
+keeping Codex conversation context warm.
+If the prior run has no captured session id, the helper fails instead of
+guessing with `--last`; pass `--last` explicitly only when that is intended.
+Do not expect continuation to work from `--ephemeral` runs; those are
+intentionally disposable.
 
 Use raw `codex` commands for very small manual checks or rare CLI flags the
 wrapper does not expose. For advanced cases, pass extra Codex arguments after
@@ -222,6 +244,18 @@ printf '%s\n' "Continue and focus on the failing tests only" | \
 
 When resuming, keep prior settings unless the user explicitly wants to change
 model, sandbox, or autonomy level.
+
+### Resume a wrapper session
+
+After `scripts/codex-run.sh exec` or `scripts/codex-run.sh review`, prefer the
+generated continuation helper:
+
+```bash
+<run-dir>/continue.sh --prompt "Follow up on the same review and focus on tests."
+```
+
+This avoids guessing with `--last` and is usually faster/token-lighter than
+restarting a fresh review because Codex can reuse the prior session context.
 
 ## Codex-Specific Gotchas
 

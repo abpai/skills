@@ -14,6 +14,7 @@ Common options:
   --workspace PATH       Workspace passed to codex with --cd (default: current directory).
   --run-root PATH        Directory for run logs (default: $CODEX_HOME/codex-exec-runs).
   --run-dir PATH         Exact run directory to use.
+  --continue-run PATH    Reuse session/workspace defaults from a prior wrapper run.
   --heartbeat SECONDS    Monitor heartbeat interval (default: 15).
   --timeout SECONDS      Kill the run after this many seconds if timeout/gtimeout exists.
   --reasoning LEVEL      model_reasoning_effort value (default: medium).
@@ -41,7 +42,8 @@ resume options:
 
 MonitorTool contract:
   Prints stable lines prefixed with "[codex-exec] event=...".
-  Writes status.env, monitor.sh, stdout.log, stderr.log, final.md, command.txt, and preflight.log.
+  Writes run.env, status.env, monitor.sh, continue.sh, stdout.log, stderr.log,
+  final.md, command.txt, prompt.txt, and preflight.log.
 EOF
 }
 
@@ -55,11 +57,13 @@ else
   exit 2
 fi
 
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/$(basename "${BASH_SOURCE[0]}")"
 PROMPT_TEXT=""
 PROMPT_FILE=""
 WORKSPACE="$PWD"
 RUN_ROOT="${CODEX_EXEC_RUNS_DIR:-${CODEX_HOME:-$HOME/.codex}/codex-exec-runs}"
 RUN_DIR=""
+CONTINUE_RUN_DIR=""
 HEARTBEAT_SECONDS="${CODEX_EXEC_HEARTBEAT_SECONDS:-15}"
 TIMEOUT_SECONDS="${CODEX_EXEC_TIMEOUT_SECONDS:-0}"
 REASONING="medium"
@@ -83,6 +87,14 @@ RESUME_LAST="true"
 SESSION_ID=""
 CHILD_PID=""
 HEARTBEAT_PID=""
+WORKSPACE_SET="false"
+RUN_ROOT_SET="false"
+HEARTBEAT_SET="false"
+TIMEOUT_SET="false"
+REASONING_SET="false"
+MODEL_SET="false"
+SESSION_SET="false"
+SANDBOX_SET="false"
 
 require_value() {
   local option="$1"
@@ -108,11 +120,13 @@ while [[ $# -gt 0 ]]; do
     --workspace|--cd)
       WORKSPACE="${2:-}"
       require_value "$1" "$WORKSPACE"
+      WORKSPACE_SET="true"
       shift 2
       ;;
     --run-root)
       RUN_ROOT="${2:-}"
       require_value "$1" "$RUN_ROOT"
+      RUN_ROOT_SET="true"
       shift 2
       ;;
     --run-dir)
@@ -120,24 +134,33 @@ while [[ $# -gt 0 ]]; do
       require_value "$1" "$RUN_DIR"
       shift 2
       ;;
+    --continue-run)
+      CONTINUE_RUN_DIR="${2:-}"
+      require_value "$1" "$CONTINUE_RUN_DIR"
+      shift 2
+      ;;
     --heartbeat)
       HEARTBEAT_SECONDS="${2:-}"
       require_value "$1" "$HEARTBEAT_SECONDS"
+      HEARTBEAT_SET="true"
       shift 2
       ;;
     --timeout)
       TIMEOUT_SECONDS="${2:-}"
       require_value "$1" "$TIMEOUT_SECONDS"
+      TIMEOUT_SET="true"
       shift 2
       ;;
     --reasoning)
       REASONING="${2:-}"
       require_value "$1" "$REASONING"
+      REASONING_SET="true"
       shift 2
       ;;
     --model)
       MODEL="${2:-}"
       require_value "$1" "$MODEL"
+      MODEL_SET="true"
       shift 2
       ;;
     --json)
@@ -155,6 +178,7 @@ while [[ $# -gt 0 ]]; do
     --sandbox)
       SANDBOX="${2:-}"
       require_value "$1" "$SANDBOX"
+      SANDBOX_SET="true"
       shift 2
       ;;
     --output-schema)
@@ -196,12 +220,14 @@ while [[ $# -gt 0 ]]; do
     --last)
       RESUME_LAST="true"
       SESSION_ID=""
+      SESSION_SET="true"
       shift
       ;;
     --session)
       SESSION_ID="${2:-}"
       require_value "$1" "$SESSION_ID"
       RESUME_LAST="false"
+      SESSION_SET="true"
       shift 2
       ;;
     -c|--config)
@@ -272,6 +298,118 @@ shell_quote() {
   printf '%q' "$1"
 }
 
+env_value() {
+  local env_file="$1"
+  local key="$2"
+  if [[ ! -f "$env_file" ]]; then
+    return 0
+  fi
+  python3 - "$env_file" "$key" <<'PY'
+import shlex
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+target = sys.argv[2]
+try:
+    lines = path.read_text(encoding="utf-8").splitlines()
+except FileNotFoundError:
+    sys.exit(0)
+
+for line in reversed(lines):
+    if "=" not in line or line.lstrip().startswith("#"):
+        continue
+    key, value = line.split("=", 1)
+    if key != target:
+        continue
+    try:
+        parts = shlex.split(value)
+    except ValueError:
+        print(value, end="")
+    else:
+        print(parts[0] if parts else "", end="")
+    break
+PY
+}
+
+extract_session_id_from_file() {
+  local path="$1"
+  if [[ -f "$path" ]]; then
+    awk -F': ' '/^session id: / { value=$2 } END { print value }' "$path"
+  fi
+}
+
+load_continue_defaults() {
+  if [[ -z "$CONTINUE_RUN_DIR" ]]; then
+    return 0
+  fi
+
+  CONTINUE_RUN_DIR="$(absolute_path "$CONTINUE_RUN_DIR")"
+  local prior_env="$CONTINUE_RUN_DIR/run.env"
+  local prior_status="$CONTINUE_RUN_DIR/status.env"
+  if [[ ! -f "$prior_env" && ! -f "$prior_status" ]]; then
+    echo "[FAIL] --continue-run requires a prior run.env or status.env: $CONTINUE_RUN_DIR" >&2
+    exit 2
+  fi
+
+  local prior_workspace prior_run_root prior_heartbeat prior_timeout prior_reasoning prior_model prior_sandbox prior_ephemeral prior_session prior_stderr
+  prior_workspace="$(env_value "$prior_env" WORKSPACE)"
+  if [[ -z "$prior_workspace" ]]; then
+    prior_workspace="$(env_value "$prior_status" workspace)"
+  fi
+  prior_run_root="$(env_value "$prior_env" RUN_ROOT)"
+  prior_heartbeat="$(env_value "$prior_env" HEARTBEAT_SECONDS)"
+  prior_timeout="$(env_value "$prior_env" TIMEOUT_SECONDS)"
+  prior_reasoning="$(env_value "$prior_env" REASONING)"
+  prior_model="$(env_value "$prior_env" MODEL)"
+  prior_sandbox="$(env_value "$prior_env" SANDBOX)"
+  prior_ephemeral="$(env_value "$prior_env" EPHEMERAL)"
+  prior_session="$(env_value "$prior_env" SESSION_ID)"
+  if [[ -z "$prior_session" ]]; then
+    prior_session="$(env_value "$prior_status" session_id)"
+  fi
+  if [[ -z "$prior_session" ]]; then
+    prior_stderr="$(env_value "$prior_status" stderr_log)"
+    prior_session="$(extract_session_id_from_file "$prior_stderr")"
+  fi
+
+  if [[ "$WORKSPACE_SET" == "false" && -n "$prior_workspace" ]]; then
+    WORKSPACE="$prior_workspace"
+  fi
+  if [[ "$RUN_ROOT_SET" == "false" && -n "$prior_run_root" ]]; then
+    RUN_ROOT="$prior_run_root"
+  fi
+  if [[ "$HEARTBEAT_SET" == "false" && -n "$prior_heartbeat" ]]; then
+    HEARTBEAT_SECONDS="$prior_heartbeat"
+  fi
+  if [[ "$TIMEOUT_SET" == "false" && -n "$prior_timeout" ]]; then
+    TIMEOUT_SECONDS="$prior_timeout"
+  fi
+  if [[ "$REASONING_SET" == "false" && -n "$prior_reasoning" ]]; then
+    REASONING="$prior_reasoning"
+  fi
+  if [[ "$MODEL_SET" == "false" && -n "$prior_model" ]]; then
+    MODEL="$prior_model"
+  fi
+  if [[ "$SANDBOX_SET" == "false" && -n "$prior_sandbox" ]]; then
+    SANDBOX="$prior_sandbox"
+  fi
+  if [[ "$SESSION_SET" == "false" && "$prior_ephemeral" == "true" ]]; then
+    echo "[FAIL] prior run used --ephemeral and cannot be resumed: $CONTINUE_RUN_DIR" >&2
+    exit 2
+  fi
+  if [[ "$SESSION_SET" == "false" && -z "$prior_session" ]]; then
+    echo "[FAIL] prior run has no captured Codex session id; pass --last explicitly to resume the latest session" >&2
+    exit 2
+  fi
+  if [[ "$SESSION_SET" == "false" && -n "$prior_session" ]]; then
+    SESSION_ID="$prior_session"
+    RESUME_LAST="false"
+  fi
+}
+
+load_continue_defaults
+
 WORKSPACE="$(absolute_path "$WORKSPACE")"
 if [[ ! -d "$WORKSPACE" ]]; then
   echo "[FAIL] workspace does not exist: $WORKSPACE" >&2
@@ -314,10 +452,12 @@ STDOUT_LOG="$RUN_DIR/stdout.log"
 STDERR_LOG="$RUN_DIR/stderr.log"
 EVENTS_LOG="$RUN_DIR/events.jsonl"
 FINAL_MESSAGE="$RUN_DIR/final.md"
+RUN_ENV_FILE="$RUN_DIR/run.env"
 STATUS_FILE="$RUN_DIR/status.env"
 COMMAND_FILE="$RUN_DIR/command.txt"
 PREFLIGHT_LOG="$RUN_DIR/preflight.log"
 MONITOR_SCRIPT="$RUN_DIR/monitor.sh"
+CONTINUE_SCRIPT="$RUN_DIR/continue.sh"
 
 : > "$STDOUT_LOG"
 : > "$STDERR_LOG"
@@ -401,6 +541,13 @@ while true; do
 done
 MONITOR_EOF
 chmod u=rwx,go= "$MONITOR_SCRIPT"
+
+cat > "$CONTINUE_SCRIPT" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+exec $(shell_quote "$SCRIPT_PATH") resume --continue-run $(shell_quote "$RUN_DIR") "\$@"
+EOF
+chmod u=rwx,go= "$CONTINUE_SCRIPT"
 
 HAS_PROMPT="false"
 if [[ -n "$PROMPT_TEXT" ]]; then
@@ -519,6 +666,7 @@ elif [[ "$MODE" == "review" ]]; then
     fi
   fi
 else
+  codex_cmd+=(--sandbox "$SANDBOX")
   codex_cmd+=(resume)
   if [[ "$RESUME_LAST" == "true" ]]; then
     codex_cmd+=(--last)
@@ -577,6 +725,36 @@ run_cmd+=("${codex_cmd[@]}")
   fi
 } > "$COMMAND_FILE"
 
+write_run_env() {
+  {
+    printf 'RUN_ID=%q\n' "$RUN_ID"
+    printf 'MODE=%q\n' "$MODE"
+    printf 'WORKSPACE=%q\n' "$WORKSPACE"
+    printf 'RUN_ROOT=%q\n' "$RUN_ROOT"
+    printf 'RUN_DIR=%q\n' "$RUN_DIR"
+    printf 'RUN_ENV_FILE=%q\n' "$RUN_ENV_FILE"
+    printf 'STATUS_FILE=%q\n' "$STATUS_FILE"
+    printf 'MONITOR_SCRIPT=%q\n' "$MONITOR_SCRIPT"
+    printf 'CONTINUE_SCRIPT=%q\n' "$CONTINUE_SCRIPT"
+    printf 'PROMPT_RUN_FILE=%q\n' "$PROMPT_RUN_FILE"
+    printf 'STDOUT_LOG=%q\n' "$STDOUT_LOG"
+    printf 'STDERR_LOG=%q\n' "$STDERR_LOG"
+    printf 'EVENTS_LOG=%q\n' "$EVENTS_LOG"
+    printf 'FINAL_MESSAGE=%q\n' "$FINAL_MESSAGE"
+    printf 'COMMAND_FILE=%q\n' "$COMMAND_FILE"
+    printf 'PREFLIGHT_LOG=%q\n' "$PREFLIGHT_LOG"
+    printf 'SESSION_ID=%q\n' "$SESSION_ID"
+    printf 'RESUME_LAST=%q\n' "$RESUME_LAST"
+    printf 'REASONING=%q\n' "$REASONING"
+    printf 'MODEL=%q\n' "$MODEL"
+    printf 'JSON_OUTPUT=%q\n' "$JSON_OUTPUT"
+    printf 'EPHEMERAL=%q\n' "$EPHEMERAL"
+    printf 'SANDBOX=%q\n' "$SANDBOX"
+    printf 'TIMEOUT_SECONDS=%q\n' "$TIMEOUT_SECONDS"
+    printf 'HEARTBEAT_SECONDS=%q\n' "$HEARTBEAT_SECONDS"
+  } > "$RUN_ENV_FILE"
+}
+
 write_status() {
   local state="$1"
   local exit_code="${2:-}"
@@ -588,8 +766,10 @@ write_status() {
     printf 'pid=%q\n' "${CHILD_PID:-}"
     printf 'exit_code=%q\n' "$exit_code"
     printf 'elapsed_seconds=%q\n' "$elapsed"
+    printf 'session_id=%q\n' "$SESSION_ID"
     printf 'workspace=%q\n' "$WORKSPACE"
     printf 'run_dir=%q\n' "$RUN_DIR"
+    printf 'run_env=%q\n' "$RUN_ENV_FILE"
     printf 'stdout_log=%q\n' "$STDOUT_LOG"
     printf 'stderr_log=%q\n' "$STDERR_LOG"
     printf 'events_log=%q\n' "$EVENTS_LOG"
@@ -597,6 +777,7 @@ write_status() {
     printf 'command_file=%q\n' "$COMMAND_FILE"
     printf 'preflight_log=%q\n' "$PREFLIGHT_LOG"
     printf 'monitor_script=%q\n' "$MONITOR_SCRIPT"
+    printf 'continue_script=%q\n' "$CONTINUE_SCRIPT"
   } > "$STATUS_FILE"
 }
 
@@ -675,10 +856,11 @@ heartbeat_loop() {
   git -C "$WORKSPACE" status --short 2>/dev/null | head -40 || true
 } > "$PREFLIGHT_LOG"
 
+write_run_env
 write_status "planned" "" 0
 printf '[codex-exec] event=start run_id=%s mode=%s workspace=%q\n' "$RUN_ID" "$MODE" "$WORKSPACE"
-printf '[codex-exec] event=paths run_dir=%q status=%q monitor=%q stdout=%q stderr=%q final=%q command=%q preflight=%q\n' \
-  "$RUN_DIR" "$STATUS_FILE" "$MONITOR_SCRIPT" "$STDOUT_LOG" "$STDERR_LOG" "$FINAL_MESSAGE" "$COMMAND_FILE" "$PREFLIGHT_LOG"
+printf '[codex-exec] event=paths run_dir=%q status=%q run_env=%q monitor=%q continue=%q stdout=%q stderr=%q final=%q command=%q preflight=%q\n' \
+  "$RUN_DIR" "$STATUS_FILE" "$RUN_ENV_FILE" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT" "$STDOUT_LOG" "$STDERR_LOG" "$FINAL_MESSAGE" "$COMMAND_FILE" "$PREFLIGHT_LOG"
 
 if [[ "$JSON_OUTPUT" == "true" ]]; then
   printf '[codex-exec] event=json events=%q\n' "$EVENTS_LOG"
@@ -734,12 +916,20 @@ FINAL_STATE="finished"
 if (( EXIT_CODE != 0 )); then
   FINAL_STATE="failed"
 fi
+if [[ "$EPHEMERAL" != "true" ]]; then
+  detected_session_id="$(extract_session_id_from_file "$STDERR_LOG")"
+  if [[ -n "$detected_session_id" ]]; then
+    SESSION_ID="$detected_session_id"
+    RESUME_LAST="false"
+  fi
+fi
+write_run_env
 write_status "$FINAL_STATE" "$EXIT_CODE" "$ELAPSED"
 
 stdout_lines="$(line_count "$STDOUT_LOG")"
 stderr_lines="$(line_count "$STDERR_LOG")"
-printf '[codex-exec] event=finish exit_code=%s elapsed=%ss stdout_lines=%s stderr_lines=%s final=%q\n' \
-  "$EXIT_CODE" "$ELAPSED" "$stdout_lines" "$stderr_lines" "$FINAL_MESSAGE"
+printf '[codex-exec] event=finish exit_code=%s elapsed=%ss stdout_lines=%s stderr_lines=%s session_id=%q final=%q continue=%q\n' \
+  "$EXIT_CODE" "$ELAPSED" "$stdout_lines" "$stderr_lines" "$SESSION_ID" "$FINAL_MESSAGE" "$CONTINUE_SCRIPT"
 
 if (( TIMEOUT_SECONDS > 0 && EXIT_CODE == 124 )); then
   echo "[codex-exec] event=timeout timeout_seconds=$TIMEOUT_SECONDS"

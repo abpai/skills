@@ -26,6 +26,9 @@ skills/codex-exec/scripts/codex-run.sh review --workspace "$PWD" --heartbeat 15 
 run_dir="/path/from/event-paths"
 bash "$run_dir/monitor.sh"
 
+# Follow up in the same Codex session with fresh artifacts
+"$run_dir/continue.sh" --prompt-file follow-up.txt
+
 # One-shot analysis (read-only)
 codex exec --sandbox read-only "Summarize uncommitted changes"
 
@@ -45,7 +48,7 @@ codex exec --sandbox read-only --output-schema schema.json "Review the diff"
 - Sandbox: `read-only` for analysis, `workspace-write` when edits needed
 - Reasoning: `medium` (ordinary), `high` (hard tasks), `low` (quick checks)
 - Monitoring: prefer `skills/codex-exec/scripts/codex-run.sh` when Claude starts the run and tracks it with MonitorTool
-- Run artifacts: wrapper logs live under `${CODEX_EXEC_RUNS_DIR:-${CODEX_HOME:-~/.codex}/codex-exec-runs}` and include `status.env`, `monitor.sh`, `stdout.log`, `stderr.log`, `final.md`, and `command.txt`
+- Run artifacts: wrapper logs live under `${CODEX_EXEC_RUNS_DIR:-${CODEX_HOME:-~/.codex}/codex-exec-runs}` and include `run.env`, `status.env`, `monitor.sh`, `continue.sh`, `stdout.log`, `stderr.log`, `final.md`, `prompt.txt`, and `command.txt`
 
 ## Prerequisites
 
