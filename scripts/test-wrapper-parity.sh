@@ -24,17 +24,21 @@ assert_file() {
   [[ -f "$1" ]] || fail "missing file: $1"
 }
 
+file_mode() {
+  stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"
+}
+
 assert_executable_private() {
   assert_file "$1"
   local mode
-  mode="$(stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1")"
+  mode="$(file_mode "$1")"
   [[ "$mode" == "700" ]] || fail "expected 700 mode for $1, got $mode"
 }
 
 assert_private_file() {
   assert_file "$1"
   local mode
-  mode="$(stat -f '%Lp' "$1" 2>/dev/null || stat -c '%a' "$1")"
+  mode="$(file_mode "$1")"
   [[ "$mode" == "600" ]] || fail "expected 600 mode for $1, got $mode"
 }
 
