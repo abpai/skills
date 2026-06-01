@@ -66,10 +66,10 @@
     },
     {
       "name": "code",
-      "description": "Grouped coding workflows under /code:* commands, with targeted QA, optional HTML review artifacts, Karpathy-style coding guardrails, and handoff prompts.",
+      "description": "Grouped coding workflows under /code:* commands. prepare-pr is full PR readiness, review-and-commit is quick local review plus commit, and finish-lane runs internally from PR prep after code is working.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "goal", "review", "commit", "qa", "manual-qa", "browser", "explain", "try", "simplify", "walkthrough", "understand", "dead-code", "scratch", "socratic", "dependency-security", "html", "karpathy", "guidelines", "handoff", "continuation"]
+      "keywords": ["code", "goal", "prepare-pr", "review", "commit", "qa", "manual-qa", "pr-prep", "browser", "explain", "try", "simplify", "walkthrough", "understand", "dead-code", "scratch", "socratic", "dependency-security", "html", "karpathy", "guidelines", "handoff", "continuation"]
     },
     {
       "name": "human-writer",

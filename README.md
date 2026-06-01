@@ -67,7 +67,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:*`: goal, review-and-commit with targeted QA, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, secure-dependencies, hexagon-audit, karpathy, and handoff, with optional HTML artifacts where visual review helps |
+| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is full PR readiness, `review-and-commit` is quick local review plus commit, and the finish-lane helper runs internally from PR prep after code is working. Also includes goal, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, secure-dependencies, hexagon-audit, karpathy, and handoff |
 
 ### Engineering Practices
 

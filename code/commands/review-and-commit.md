@@ -1,5 +1,5 @@
 ---
-description: Review working-tree changes, perform targeted QA, fix worthwhile issues, and prepare safe atomic commits.
+description: Quickly review local changes, run targeted checks, and create an approved commit without the full PR-prep lane.
 argument-hint: "[scope or message hint]"
 allowed-tools: >
   Bash(git status *) Bash(git diff *) Bash(git log *)
@@ -17,8 +17,10 @@ allowed-tools: >
 Use the `review-and-commit` module.
 
 1. Read `skills/code/review-and-commit.md`.
-2. Review the current working-tree changes for correctness, security, architecture, tests, manual QA coverage, and maintainability.
-3. Apply safe fixes, run relevant automated checks and targeted QA, then propose atomic commit boundaries.
-4. Ask for approval before staging or committing.
+2. Inspect the working tree, staged changes, and untracked files.
+3. Review the diff, apply scoped fixes, and run targeted validation.
+4. Propose the exact files and commit message.
+5. Ask for approval before staging or committing.
+6. Do not run the full finish lane or draft PR text unless the user asks for PR readiness.
 
 User input: $ARGUMENTS
