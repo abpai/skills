@@ -59,6 +59,15 @@ jobs:
             python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",""))' 2>/dev/null
           }
 
+          is_disabled_model_invocation() {
+            awk '
+              /^---$/ { fence++; next }
+              fence == 1 && /^disable-model-invocation:[ ]*true[ ]*$/ { found=1 }
+              fence >= 2 { exit }
+              END { exit found ? 0 : 1 }
+            ' "$1"
+          }
+
           base_ref="origin/${{ github.base_ref }}"
           changed_dirs=$(git diff --name-only "$base_ref...HEAD" | cut -d/ -f1 | sort -u)
 
@@ -75,9 +84,17 @@ jobs:
                  "$dir/.claude-plugin/plugin.json" "$dir/.codex-plugin/plugin.json")
             [ -n "$meaningful_changes" ] || continue
 
-            # Resolve the version source: SKILL.md if the plugin has one,
-            # otherwise the plugin manifest (command-only plugins like pi).
-            skill_md=$(find "$dir/skills" -name SKILL.md -type f 2>/dev/null | head -1)
+            # Resolve the version source: a model-invocable/versioned SKILL.md
+            # if the plugin has one, otherwise the plugin manifest (command-only
+            # plugins like pi, whose slash entries are disabled skill shims).
+            skill_md=""
+            while IFS= read -r candidate; do
+              is_disabled_model_invocation "$candidate" && continue
+              [ -n "$(extract_skill_version "$candidate")" ] || continue
+              skill_md="$candidate"
+              break
+            done < <(find "$dir/skills" -name SKILL.md -type f 2>/dev/null | sort)
+
             if [ -n "$skill_md" ]; then
               version_file="$skill_md"
               current_version=$(extract_skill_version "$skill_md")
@@ -104,7 +121,7 @@ jobs:
 
           if [ $failed -ne 0 ]; then
             echo ""
-            echo "Fix: bump metadata.version in the skill's SKILL.md, or version in .claude-plugin/plugin.json for command-only plugins."
+            echo "Fix: bump metadata.version in the model-invocable SKILL.md, or version in .claude-plugin/plugin.json for command-only plugins."
             exit 1
           fi
 

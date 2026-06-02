@@ -19,11 +19,16 @@ This repo is plugin-oriented:
    - always `.claude-plugin/plugin.json`
    - add `.codex-plugin/plugin.json` only when the plugin is intended to be installable in Codex
 3. Keep only `plugin.json` inside `.claude-plugin/`. Put `skills/`, `agents/`,
-   `commands/`, `hooks/`, `settings.json`, and related assets at the plugin
-   root.
+   `hooks/`, `settings.json`, and related assets at the plugin root.
 4. Put durable workflow logic in `skills/<name>/SKILL.md`.
-5. If you expose Claude slash commands, keep `commands/*.md` as thin shims; the
-   long-lived protocol should still live in `skills/`.
+5. Expose every namespaced slash command (`/<plugin>:<name>`) as its own
+   `skills/<name>/SKILL.md` subdirectory. **Do not use a plugin-root
+   `commands/` directory** — flat files there do not acquire the plugin
+   namespace and never appear in the `/` menu. For a grouped pack, add a
+   model-invocable umbrella skill (`skills/<plugin>/SKILL.md` → `/<plugin>`)
+   plus one per-command skill (`skills/<workflow>/SKILL.md`) with
+   `disable-model-invocation: true`. See the README section "Why every
+   namespaced command is a `skills/<name>/SKILL.md`".
 6. Plugin agents may use normal subagent frontmatter, but Claude plugin agents
    must not rely on `hooks`, `mcpServers`, or `permissionMode`. If you need
    those, copy the agent into `.claude/agents/` or `~/.claude/agents/`.
@@ -51,20 +56,22 @@ When importing from upstream:
 - [ ] `name` matches folder name.
 - [ ] `name` is lowercase kebab-case, <= 64 chars.
 - [ ] `description` is specific enough to trigger correct usage.
-- [ ] `metadata.version` is set in frontmatter (see Versioning below).
+- [ ] `metadata.version` is set in frontmatter for model-invocable skills
+  (disabled per-command shims use the owning plugin version).
 - [ ] Root docs mention any new plugin or runtime exception.
 - [ ] Validation script passes.
 
 ## Versioning
 
-Every skill must have a `metadata.version` field in its YAML frontmatter. This powers the auto-update check that notifies users when a newer version is available.
+Every model-invocable skill must have a `metadata.version` field in its YAML frontmatter. This powers the auto-update check that notifies users when a newer version is available. Per-command shims with `disable-model-invocation: true` intentionally use the owning plugin version instead of carrying separate version metadata.
 
 When publishing changes to a skill:
 
-1. Bump `metadata.version` in the skill's `SKILL.md`.
+1. Bump `metadata.version` in the model-invocable skill's `SKILL.md`, or bump
+   `.claude-plugin/plugin.json` for command-only plugins.
 2. Commit and open a PR.
 
-CI enforces that changed plugins have bumped versions. On merge, plugin manifests (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) and `versions.json` are auto-synced from the `SKILL.md` version.
+CI enforces that changed plugins have bumped versions. On merge, plugin manifests (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) and `versions.json` are auto-synced from the model-invocable `SKILL.md` version when one exists; command-only plugins are tracked from the plugin manifest version.
 
 ## Validation
 

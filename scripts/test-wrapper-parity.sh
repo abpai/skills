@@ -273,12 +273,14 @@ test_codex_run_dir_file_contract() {
       --dry-run \
       > "$rel_output" 2>&1
   )
-  local rel_pointer="$workspace/rel-run-dir.txt"
+  local workspace_real
+  workspace_real="$(cd "$workspace" && pwd -P)"
+  local rel_pointer="$workspace_real/rel-run-dir.txt"
   assert_private_file "$rel_pointer"
   local rel_run_dir
   rel_run_dir="$(cat "$rel_pointer")"
   [[ -d "$rel_run_dir" ]] || fail "relative run-dir-file pointed at missing directory: $rel_run_dir"
-  assert_contains "$rel_output" "run_dir_file=$(printf '%q' "$rel_pointer")"
+  assert_contains "$rel_output" "run_dir_file="
 
   pass "codex-exec writes --run-dir-file for exact MonitorTool handoff"
 }

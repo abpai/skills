@@ -53,6 +53,18 @@
       "category": "Productivity"
     },
     {
+      "name": "decision-worksheet",
+      "source": {
+        "source": "local",
+        "path": "./decision-worksheet"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "engineering",
       "source": {
         "source": "local",

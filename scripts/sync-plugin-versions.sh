@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sync plugin.json versions from SKILL.md metadata.version.
+# Sync plugin.json versions from model-invocable SKILL.md metadata.version.
 # SKILL.md "X.Y" becomes "X.Y.0"; "X.Y.Z" stays "X.Y.Z".
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -9,11 +9,17 @@ cd "$ROOT_DIR"
 
 updated=0
 
-for skill_file in $(find . -path './*/skills/*/SKILL.md' -type f | sort); do
-  plugin_dir="$(echo "$skill_file" | cut -d/ -f2)"
+is_disabled_model_invocation() {
+  awk '
+    /^---$/ { fence++; next }
+    fence == 1 && /^disable-model-invocation:[ ]*true[ ]*$/ { found=1 }
+    fence >= 2 { exit }
+    END { exit found ? 0 : 1 }
+  ' "$1"
+}
 
-  # Extract version from SKILL.md frontmatter
-  version="$(awk '
+extract_skill_version() {
+  awk '
     /^---$/ { fence++; next }
     fence == 1 && /^metadata:/ { in_meta=1; next }
     fence == 1 && in_meta && /^[^ ]/ { in_meta=0 }
@@ -25,8 +31,24 @@ for skill_file in $(find . -path './*/skills/*/SKILL.md' -type f | sort); do
       exit
     }
     fence >= 2 { exit }
-  ' "$skill_file")"
+  ' "$1"
+}
 
+while IFS= read -r manifest; do
+  plugin_dir="$(dirname "$(dirname "$manifest")")"
+  version=""
+
+  while IFS= read -r skill_file; do
+    if is_disabled_model_invocation "$skill_file"; then
+      continue
+    fi
+    version="$(extract_skill_version "$skill_file")"
+    if [[ -n "$version" ]]; then
+      break
+    fi
+  done < <(find "$plugin_dir/skills" -name 'SKILL.md' -type f 2>/dev/null | sort)
+
+  # Command-only plugins use their plugin.json as the version source.
   [ -n "$version" ] || continue
 
   # Normalize to semver: X.Y -> X.Y.0, X.Y.Z stays X.Y.Z
@@ -55,6 +77,6 @@ with open(path, 'w') as f:
       updated=$((updated + 1))
     fi
   done
-done
+done < <(find . -mindepth 3 -maxdepth 3 -path './*/.claude-plugin/plugin.json' -type f | sort)
 
 echo "Synced plugin versions ($updated file(s) updated)."
