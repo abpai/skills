@@ -81,7 +81,7 @@ research and review. The debate workflow now lives inside `pi` as
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and export the decisions back |
+| **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and return the decisions |
 
 ### Tools
 
@@ -324,7 +324,8 @@ validation script below, which checks both Claude and Codex manifests.
 This repo includes a comprehensive validator at `scripts/validate-skills.sh` that checks:
 
 - Claude and Codex plugin manifests (name, version, description, paths)
-- SKILL.md frontmatter (name, description, metadata.version)
+- SKILL.md frontmatter (name, description, version metadata for
+  model-invocable skills)
 - Agent and command frontmatter
 - Both marketplace.json catalogs (completeness and consistency)
 - versions.json (all skills present with matching versions)

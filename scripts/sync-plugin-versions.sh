@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sync plugin.json versions from SKILL.md metadata.version.
+# Sync plugin.json versions from model-invocable SKILL.md metadata.version.
 # SKILL.md "X.Y" becomes "X.Y.0"; "X.Y.Z" stays "X.Y.Z".
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

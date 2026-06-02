@@ -1,24 +1,24 @@
 ---
 name: decision-worksheet
-description: Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet that lets the user ratify or override a recommended verdict per item and export the decisions back.
+description: Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet that lets the user ratify or override a recommended verdict per item and return the decisions.
 when_to_use: User wants to review and rule on many similar items one-by-one — unsubscribe candidates in an inbox, dead-code functions, PRs, files, rows, vendors, line items — and wants a fast ratify-or-override surface instead of deciding each from scratch. Any "go through X and let me decide keep/cut on each" task.
 argument-hint: "[what to review, e.g. 'inbox for unsubscribe candidates']"
 license: MIT
 metadata:
   author: Andy Pai
   version: "1.0.0"
-  tags: "decision review worksheet html triage ratify-override export"
+  tags: "decision review worksheet html triage ratify-override"
 ---
 
 # Decision Worksheet
 
 Build **one** self-contained HTML file that lets the user rule on every item in a
-scope, then export those rulings back to you as JSON.
+scope, then return those rulings to you as a decisions payload.
 
 The core idea: **ratify-or-override beats decide-from-scratch.** You do the reading,
 pre-select a recommended verdict with a reason and a confidence tag, and the user's
 job shrinks to confirming or flipping each one. Their overrides become meaningful
-signal — and the export hands you their reasoning, not just their verdict.
+signal — and the returned payload carries their reasoning, not just their verdict.
 
 Do not lower the bar because there's a default. The recommendation is a starting
 point that must be honestly reasoned, not the answer.
@@ -77,13 +77,13 @@ Controls:
 - optional grouping into ~N areas, each with a one-line blurb and its own
   recommended-verdict mix bar.
 
-Export:
+Decision output:
 
-- an **Export button** that serializes all marks to a JSON file (with a
-  copy-to-clipboard fallback). See the schema below.
+- a **Download decisions** button that writes the current marks to a local `.json`
+  file (with a copy-to-clipboard fallback). See the schema below.
 - **persist marks to `localStorage`** so a reload never loses work.
-- after writing the file, **tell the user exactly what the exported JSON looks like**
-  (show the shape) so they know what to paste back.
+- after writing the file, **tell the user exactly what the decisions payload looks
+  like** (show the shape) so they know what to paste back.
 
 ## 4. Reconcile before finishing
 
@@ -107,7 +107,7 @@ This is a tool the user will stare at while making dozens of judgments. Design i
 - **Quiet, smooth interactions** (hover, selection, filter). No jank, no layout shift.
 - Default every item to its recommended verdict; overriding stays one click.
 
-## Export schema
+## Decisions payload schema
 
 Per item, include enough for you to act on the decision *and* understand the reasoning:
 
@@ -115,7 +115,7 @@ Per item, include enough for you to act on the decision *and* understand the rea
 {
   "scope": "<what was reviewed>",
   "verdicts": ["keep", "unsubscribe"],
-  "exported_at": "<iso timestamp from the browser>",
+  "created_at": "<iso timestamp from the browser>",
   "items": [
     {
       "id": "<stable id>",

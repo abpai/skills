@@ -38,8 +38,10 @@ into `skills/<name>/SKILL.md`. Don't reintroduce `commands/`.
 - Paths referenced from a skill must stay **inside the owning plugin** —
   installed plugins are copied into a runtime cache.
 - Bump the plugin `version` in `.claude-plugin/plugin.json`,
-  `.codex-plugin/plugin.json`, the umbrella `SKILL.md` `metadata.version`, and
-  the root `versions.json` when you change a plugin, so users receive the update.
+  `.codex-plugin/plugin.json`, the model-invocable `SKILL.md`
+  `metadata.version` when the plugin has one, and the root `versions.json` when
+  you change a plugin, so users receive the update. Command-only plugins use the
+  plugin manifest version as their version source.
 
 See the README section ["Why every namespaced command is a
 `skills/<name>/SKILL.md`"](README.md#why-every-namespaced-command-is-a-skillsnameskillmd)

@@ -25,8 +25,9 @@ Grouped workflow packs use a model-invocable umbrella skill
 (`skills/<workflow>/SKILL.md`) carrying `disable-model-invocation: true`.
 
 When you change a plugin, bump its `version` in `.claude-plugin/plugin.json`,
-`.codex-plugin/plugin.json`, the umbrella `SKILL.md` `metadata.version`, and the
-root `versions.json`.
+`.codex-plugin/plugin.json`, the model-invocable `SKILL.md` `metadata.version`
+when the plugin has one, and the root `versions.json`. Command-only plugins use
+the plugin manifest version as their version source.
 
 Full rationale: see [CLAUDE.md](CLAUDE.md) and the README section ["Why every
 namespaced command is a

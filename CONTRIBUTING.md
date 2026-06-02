@@ -56,20 +56,22 @@ When importing from upstream:
 - [ ] `name` matches folder name.
 - [ ] `name` is lowercase kebab-case, <= 64 chars.
 - [ ] `description` is specific enough to trigger correct usage.
-- [ ] `metadata.version` is set in frontmatter (see Versioning below).
+- [ ] `metadata.version` is set in frontmatter for model-invocable skills
+  (disabled per-command shims use the owning plugin version).
 - [ ] Root docs mention any new plugin or runtime exception.
 - [ ] Validation script passes.
 
 ## Versioning
 
-Every skill must have a `metadata.version` field in its YAML frontmatter. This powers the auto-update check that notifies users when a newer version is available.
+Every model-invocable skill must have a `metadata.version` field in its YAML frontmatter. This powers the auto-update check that notifies users when a newer version is available. Per-command shims with `disable-model-invocation: true` intentionally use the owning plugin version instead of carrying separate version metadata.
 
 When publishing changes to a skill:
 
-1. Bump `metadata.version` in the skill's `SKILL.md`.
+1. Bump `metadata.version` in the model-invocable skill's `SKILL.md`, or bump
+   `.claude-plugin/plugin.json` for command-only plugins.
 2. Commit and open a PR.
 
-CI enforces that changed plugins have bumped versions. On merge, plugin manifests (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) and `versions.json` are auto-synced from the `SKILL.md` version.
+CI enforces that changed plugins have bumped versions. On merge, plugin manifests (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) and `versions.json` are auto-synced from the model-invocable `SKILL.md` version when one exists; command-only plugins are tracked from the plugin manifest version.
 
 ## Validation
 

@@ -95,7 +95,7 @@ output="versions.json"
   echo '  "skills": {'
 
   # Sort keys and emit JSON entries
-  sorted_keys=($(printf '%s\n' "${!versions[@]}" | sort))
+  mapfile -t sorted_keys < <(printf '%s\n' "${!versions[@]}" | sort)
   last_idx=$(( ${#sorted_keys[@]} - 1 ))
 
   for i in "${!sorted_keys[@]}"; do

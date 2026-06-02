@@ -121,7 +121,7 @@ jobs:
 
           if [ $failed -ne 0 ]; then
             echo ""
-            echo "Fix: bump metadata.version in the skill's SKILL.md, or version in .claude-plugin/plugin.json for command-only plugins."
+            echo "Fix: bump metadata.version in the model-invocable SKILL.md, or version in .claude-plugin/plugin.json for command-only plugins."
             exit 1
           fi
 
