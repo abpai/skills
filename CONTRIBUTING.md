@@ -19,11 +19,16 @@ This repo is plugin-oriented:
    - always `.claude-plugin/plugin.json`
    - add `.codex-plugin/plugin.json` only when the plugin is intended to be installable in Codex
 3. Keep only `plugin.json` inside `.claude-plugin/`. Put `skills/`, `agents/`,
-   `commands/`, `hooks/`, `settings.json`, and related assets at the plugin
-   root.
+   `hooks/`, `settings.json`, and related assets at the plugin root.
 4. Put durable workflow logic in `skills/<name>/SKILL.md`.
-5. If you expose Claude slash commands, keep `commands/*.md` as thin shims; the
-   long-lived protocol should still live in `skills/`.
+5. Expose every namespaced slash command (`/<plugin>:<name>`) as its own
+   `skills/<name>/SKILL.md` subdirectory. **Do not use a plugin-root
+   `commands/` directory** — flat files there do not acquire the plugin
+   namespace and never appear in the `/` menu. For a grouped pack, add a
+   model-invocable umbrella skill (`skills/<plugin>/SKILL.md` → `/<plugin>`)
+   plus one per-command skill (`skills/<workflow>/SKILL.md`) with
+   `disable-model-invocation: true`. See the README section "Why every
+   namespaced command is a `skills/<name>/SKILL.md`".
 6. Plugin agents may use normal subagent frontmatter, but Claude plugin agents
    must not rely on `hooks`, `mcpServers`, or `permissionMode`. If you need
    those, copy the agent into `.claude/agents/` or `~/.claude/agents/`.

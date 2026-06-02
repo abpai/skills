@@ -81,6 +81,7 @@ research and review. The debate workflow now lives inside `pi` as
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
+| **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and export the decisions back |
 
 ### Tools
 
@@ -113,38 +114,66 @@ abpai/skills/
 ├── <plugin>/                  ← most plugins ship both runtimes
 │   ├── .claude-plugin/plugin.json
 │   ├── .codex-plugin/plugin.json  ← optional when a plugin is installable in Codex
-│   ├── commands/              (if any)
 │   ├── internal/              (optional plugin-private docs/modules)
 │   └── skills/<skill>/
 │       ├── SKILL.md
 │       └── references/        (if any)
 ├── code/                      ← grouped coding workflows
-│   ├── commands/              ← Claude `/code:*` wrappers
-│   └── skills/code/           ← one public skill plus flat workflow modules
-│       ├── *.md
-│       ├── references/
-│       └── scripts/           ← bundled helpers (e.g. finish-lane.ts)
+│   └── skills/
+│       ├── code/              ← umbrella skill (/code) + flat workflow modules
+│       │   ├── *.md
+│       │   ├── references/
+│       │   └── scripts/       ← bundled helpers (e.g. finish-lane.ts)
+│       ├── review-and-commit/ ← /code:review-and-commit (one SKILL.md per command)
+│       ├── prepare-pr/        ← /code:prepare-pr
+│       └── <workflow>/        ← one namespaced skill per workflow
 ├── engineering/               ← grouped engineering-practice workflows
-│   ├── commands/              ← Claude `/engineering:*` wrappers
-│   └── skills/engineering/    ← one public skill plus flat workflow modules
-│       ├── *.md
-│       ├── references/
-│       └── scripts/           ← bundled helpers (e.g. complexity scanner)
+│   └── skills/
+│       ├── engineering/       ← umbrella skill (/engineering) + flat modules
+│       │   ├── *.md
+│       │   ├── references/
+│       │   └── scripts/       ← bundled helpers (e.g. complexity scanner)
+│       └── <workflow>/        ← /engineering:<workflow> (one SKILL.md each)
 ├── pi/                        ← intentional Claude-only exception
 │   ├── .claude-plugin/plugin.json
 │   ├── agents/
-│   ├── commands/
 │   ├── internal/
 │   │   ├── debate/
 │   │   └── protocol/
+│   └── skills/<phase>/        ← /pi:plan, /pi:execute, /pi:review, /pi:debate
 └── README.md
 ```
 
 Within each plugin folder, only `plugin.json` belongs inside
-`.claude-plugin/`. `skills/`, `agents/`, `commands/`, `hooks/`, and optional
-`internal/` support docs stay at the plugin root. `internal/` is deliberately
-not a runtime discovery directory; use it for flat command-private playbooks or
-supporting material that should be bundled without becoming separate skills.
+`.claude-plugin/`. `skills/`, `agents/`, `hooks/`, and optional `internal/`
+support docs stay at the plugin root. `internal/` is deliberately not a runtime
+discovery directory; use it for flat plugin-private playbooks or supporting
+material that should be bundled without becoming separate skills.
+
+### Why every namespaced command is a `skills/<name>/SKILL.md`
+
+> **Do not add a plugin-root `commands/` directory to expose `/<plugin>:<name>`
+> commands.** Flat Markdown files under a plugin's `commands/` directory do
+> **not** acquire the plugin namespace — they never appear as
+> `/code:review-and-commit`, `/engineering:tdd`, etc., so the command is
+> silently missing from the `/` menu. Only a **skill subdirectory**
+> (`code/skills/review-and-commit/SKILL.md`) deterministically produces the
+> namespaced command `/code:review-and-commit`, per the
+> [skills command-name rules](https://code.claude.com/docs/en/skills#how-a-skill-gets-its-command-name)
+> ("Use `skills/` for new plugins").
+
+The pattern for a grouped workflow pack:
+
+- `skills/<plugin>/SKILL.md` — the model-invocable **umbrella** skill that
+  collapses to `/<plugin>` and routes to the bundled workflow modules
+  (`skills/<plugin>/*.md`, which are loose support files, not skills).
+- `skills/<workflow>/SKILL.md` — one **per-command** skill that surfaces
+  `/<plugin>:<workflow>` in the menu. These carry
+  `disable-model-invocation: true` so only the user triggers them directly,
+  while the model continues to auto-route through the single umbrella skill.
+
+If you reintroduce a `commands/` directory, the namespaced commands disappear.
+Keep new workflows as `skills/<name>/SKILL.md`.
 
 ## Packaging Notes
 
@@ -155,8 +184,11 @@ and [Claude Code plugin docs](https://code.claude.com/docs/en/plugins):
   point `skills` at `./skills/`, and are exposed through the repo marketplace
   at `.agents/plugins/marketplace.json`.
 - Claude Code plugins use `.claude-plugin/plugin.json` for identity and expose
-  namespaced skills or command wrappers from plugin-root `skills/` and
-  `commands/` directories.
+  namespaced skills from plugin-root `skills/<name>/SKILL.md` directories. A
+  namespaced command (`/<plugin>:<name>`) **must** be a skill subdirectory;
+  flat files in a plugin `commands/` directory do not get the namespace and
+  never appear in the menu (see [Why every namespaced command is a
+  `skills/<name>/SKILL.md`](#why-every-namespaced-command-is-a-skillsnameskillmd)).
 - Shared support files stay inside the owning plugin folder. Paths must not
   rely on files outside the plugin, because installed plugins are copied into a
   runtime cache.

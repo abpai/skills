@@ -2,12 +2,12 @@
 name: code
 description: Grouped coding workflow pack. Use /code:prepare-pr for full PR readiness, /code:review-and-commit for quick local review plus commit, and the internal finish-lane helper only from prepare-pr after code is working. Also use for /code:goal, /code:explain, /code:try, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:secure-dependencies, and /code:handoff.
 metadata:
-  version: "1.8.0"
+  version: "1.9.0"
 ---
 
 # Code Workflow Pack
 
-This plugin exposes one public Codex skill surface for common code workflows. Claude Code also exposes command wrappers under `/code:*`. The workflow modules live beside this `SKILL.md` so they are bundled with the plugin without becoming separate installable skills or per-workflow folders.
+This umbrella skill is the model-invocable entry point for the pack. Each public workflow also ships as its own `code/skills/<name>/SKILL.md` so it surfaces as a namespaced `/code:<name>` command (those per-command skills set `disable-model-invocation: true`, so only the user invokes them directly while the model routes through this umbrella). The workflow modules referenced below live beside this `SKILL.md` as flat support files.
 
 ## Routing
 

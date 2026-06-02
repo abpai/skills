@@ -3,7 +3,7 @@ name: composer
 description: Use when the user asks for /composer:setup, /composer:generate, /composer:review, Cursor Composer delegation, Composer 2.5 implementation subagents, Cursor-agent setup checks, Cursor API key validation, or a thin planner/executor workflow that uses Cursor without the Pi harness.
 license: MIT
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Composer Workflow Pack

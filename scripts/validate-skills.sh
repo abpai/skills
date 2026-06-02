@@ -545,6 +545,21 @@ def extract_version(path: Path) -> str | None:
             in_metadata = False
     return None
 
+def is_disabled_model_invocation(path: Path) -> bool:
+    in_frontmatter = False
+    for raw_line in path.read_text(encoding='utf-8').splitlines():
+        line = raw_line.rstrip('\n')
+        if line == '---':
+            if not in_frontmatter:
+                in_frontmatter = True
+                continue
+            break
+        if not in_frontmatter:
+            continue
+        if line.strip() == 'disable-model-invocation: true':
+            return True
+    return False
+
 path = Path(sys.argv[1])
 try:
     data = json.loads(path.read_text(encoding='utf-8'))
@@ -554,17 +569,36 @@ except Exception as exc:
 
 expected = {}
 missing_versions = []
-for skill_file in sorted(Path('.').glob('*/skills/*/SKILL.md')):
-    skill_name = skill_file.parent.name
-    version = extract_version(skill_file)
-    if not version:
-        missing_versions.append(str(skill_file))
-        continue
-    expected[skill_name] = version
+for manifest in sorted(Path('.').glob('*/.claude-plugin/plugin.json')):
+    plugin_dir = manifest.parent.parent
+    plugin_name = plugin_dir.name
+    versioned_skill_found = False
+    for skill_file in sorted((plugin_dir / 'skills').glob('*/SKILL.md')):
+        if is_disabled_model_invocation(skill_file):
+            continue
+        skill_name = skill_file.parent.name
+        version = extract_version(skill_file)
+        if not version:
+            missing_versions.append(str(skill_file))
+            continue
+        expected[skill_name] = version
+        versioned_skill_found = True
+
+    if not versioned_skill_found:
+        try:
+            manifest_data = json.loads(manifest.read_text(encoding='utf-8'))
+        except Exception as exc:
+            print(f'[FAIL] {manifest}: cannot parse JSON: {exc}')
+            sys.exit(1)
+        version = manifest_data.get('version')
+        if not version:
+            missing_versions.append(str(manifest))
+            continue
+        expected[plugin_name] = version
 
 if missing_versions:
-    for skill_file in missing_versions:
-        print(f'[FAIL] {skill_file}: missing metadata.version in frontmatter')
+    for version_file in missing_versions:
+        print(f'[FAIL] {version_file}: missing version metadata')
     sys.exit(1)
 
 actual = data.get('skills')
