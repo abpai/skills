@@ -592,11 +592,18 @@ function isSourcePath(file: string): boolean {
 }
 
 function isUiPath(file: string): boolean {
-  return /routes\/|app\/components\/|pages\/|components\/|ui\/|frontend\/|\.(tsx|jsx|html|css|scss|sass)$/i.test(file)
+  return /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|html|css|scss|sass)$/i.test(file)
 }
 
 function isApiPath(file: string): boolean {
-  return /api|server|worker|edge|db|database|migration|webhook/i.test(file)
+  // Match these tokens as whole path segments, and the unambiguous ones also as
+  // dot/dash/underscore-delimited filename tokens. Short/ambiguous tokens (`db`,
+  // `edge`) stay segment-only so identifiers like `feedbacker` or `edge-cases`
+  // are not misread as backend surfaces.
+  return (
+    /(^|\/)(api|server|workers?|edge|db|database|migrations?|webhooks?)(\/|$)/i.test(file) ||
+    /(^|[._/-])(api|server|workers?|database|migrations?|webhooks?)([._-]|$)/i.test(file)
+  )
 }
 
 function isGoldenPath(file: string): boolean {
@@ -608,9 +615,13 @@ function isOraclePath(file: string): boolean {
 }
 
 function isPerfPath(file: string): boolean {
+  // `profile` is intentionally dropped from the delimited filename clause, and
+  // the segment clause requires plural `profiles/` or `profiling/`: singular
+  // `profile/` is overwhelmingly a user-profile UI route, not profiling. Content
+  // signals catch the rest.
   return (
-    /(^|\/)(benchmarks?|perf|performance|profiles?)(\/|$)|\.(bench|benchmark)\./i.test(file) ||
-    (!isDocPath(file) && /profile|benchmark|hotpath|latency|throughput/i.test(file))
+    /(^|\/)(benchmarks?|perf|performance|profiles|profiling)(\/|$)|\.(bench|benchmark)\./i.test(file) ||
+    (!isDocPath(file) && /(^|[._-])(benchmark|hotpath|latency|throughput)([._-]|$)/i.test(file))
   )
 }
 
@@ -2294,6 +2305,19 @@ function runAgentPass(agentMode: AgentMode, agentExplicit: boolean, outDir: stri
       logDir,
       steps,
     )
+  }
+
+  // The review command redirects its stdout into agent-review.md, truncating the
+  // placeholder before it runs. If the reviewer wrote nothing to stdout (e.g. an
+  // auth error sent only to stderr), restore a placeholder that points at the
+  // captured log instead of leaving an empty artifact the report links to. A
+  // non-empty partial review is kept as-is; its step status in steps.tsv already
+  // records any non-zero exit.
+  const reviewStep = steps[steps.length - 1]
+  const producedReview = existsSync(output) && readFileSync(output, "utf8").trim().length > 0
+  if (!producedReview) {
+    const logRef = reviewStep ? reviewStep.logFile : path.join(logDir, "agent-review.log")
+    writeAgentReviewPlaceholder(outDir, `Agent \`${agent}\` review did not produce output. See \`${logRef}\`.`)
   }
   return agent
 }
