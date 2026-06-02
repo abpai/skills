@@ -117,59 +117,53 @@ repo-owned setup script, fixture, or testing skill for the next run.
 
 ## 4) Run Quality Gates
 
-Open `quality-gates.md` and `gate-decisions.md` together. The script makes a
-cheap recommendation from bounded path, diff, and text signals, but the active
-agent makes the final applicability call. Accept the recommendation, override it
-with a concrete reason, or add a one-off local gate when the change introduces a
-new surface or risk the defaults missed. For each selected gate, run the quick
-pass and record evidence, or mark it skipped with a concrete reason. Use the
-deep pass only when the diff risk justifies it.
+Open `review-patterns.md`, `quality-gates.md`, and `gate-decisions.md` together.
+The script makes a cheap recommendation from bounded path, diff, and text
+signals, but the active agent makes the final applicability call. Accept the
+recommendation, override it with a concrete reason, or add a one-off local gate
+when the change introduces a new surface or risk the defaults missed. For each
+selected gate, read only the bundled playbook named in `review-patterns.md`, run
+the quick pass, and record evidence. Mark skipped gates with a concrete reason.
+Use the deep pass only when the diff risk justifies it.
 
 The default gate set internalizes the useful review patterns directly in this
-workflow:
+workflow. The underlying prompts live in `review-patterns/` beside this module
+so the plugin can be published independently:
 
-- **Prose quality** - public docs, handoffs, and PR body text should be
+- `review-patterns/prose-quality-pr-copy.md` - public docs, handoffs, and PR body text should be
   specific, human, and low-hype.
-- **Mock code finder** - changed code should not leave fake implementations,
+- `review-patterns/config-contract-check.md` - manifests, versions, command
+  names, and plugin metadata should describe the same public surface.
+- `review-patterns/mock-stub-placeholder-sweep.md` - changed code should not leave fake implementations,
   placeholder data, TODO traps, or overly broad mocks.
-- **Multi-pass bug hunting** - do a correctness/security pass, fix findings,
+- `review-patterns/multi-pass-bug-hunting.md` - do a correctness/security pass, fix findings,
   then do a fresh-eyes pass over the resulting diff.
-- **UBS/static risk scan** - run `ubs` when available on changed code and triage
+- `review-patterns/ubs-static-risk-scanner.md` - run `ubs` when available on changed code and triage
   findings instead of treating scanner output as automatically correct.
-- **Isomorphic simplification** - remove accidental complexity only when
+- `review-patterns/isomorphic-simplification.md` - remove accidental complexity only when
   behavior is protected by tests, goldens, or explicit invariants.
-- **E2E/webapp verification** - UI changes need real route/component exercise,
+- `review-patterns/browser-e2e-verification.md` - UI changes need real route/component exercise,
   console/network checks, and screenshot/trace evidence when practical.
-- **Real-service E2E** - auth, billing, webhooks, data deletion, migrations, and
+- `review-patterns/ux-accessibility-audit.md` - changed UI should pass a focused
+  usability, keyboard, responsive, state, and accessibility check.
+- `review-patterns/real-service-integration-check.md` - auth, billing, webhooks, data deletion, migrations, and
   cache/proxy behavior should prefer real service paths over mocks when safe.
-- **Golden artifacts** - complex stable outputs should be frozen and reviewed
+- `review-patterns/golden-artifact-decision.md` - complex stable outputs should be frozen and reviewed
   by diff when exact field assertions would be weaker.
-- **Metamorphic/property tests** - when exact expected output is hard, test
+- `review-patterns/metamorphic-property-test-decision.md` - when exact expected output is hard, test
   invariant relationships instead of guessing a weak oracle.
-- **CLI ergonomics/doctor** - CLI/script changes should check help, exit codes,
-  non-TTY behavior, JSON/robot output, actionable errors, and recurring setup
-  repair opportunities.
-- **Profiling** - performance claims require a baseline, profile, one lever per
+- `review-patterns/cli-agent-ergonomics.md` - CLI/script changes should check help, exit codes,
+  non-TTY behavior, JSON/robot output, and actionable errors.
+- `review-patterns/doctor-self-healing-candidate.md` - recurring setup or repair
+  pain should become a safe check/doctor/setup workflow only when justified.
+- `review-patterns/performance-profiling.md` - performance claims require a baseline, profile, one lever per
   change, and behavior proof.
 
-For clarity: these are the Jeffery-skills-inspired ideas, but they are now
-bundled as local `prepare-pr` / `finish-lane` guidance rather than imported as
-external skill dependencies. The mapping is:
-
-| Inspired idea | Local gate / behavior |
-|---|---|
-| Prose cleanup / de-slop pass | Prose quality and PR copy cleanup |
-| Mock/stub finder | Mock / stub / placeholder sweep |
-| Multi-pass bug review | Multi-pass bug hunting |
-| Static risk scan | UBS / static risk scanner when available |
-| Behavior-preserving cleanup | Isomorphic simplification |
-| Real webapp exercise | Web/UI E2E verification and UX/accessibility audit |
-| Real-service over mock-only testing | Real-service integration check |
-| Golden output review | Golden artifact decision |
-| Oracle-free invariant testing | Metamorphic/property test decision |
-| Agent-friendly CLI review | CLI agent ergonomics |
-| Diagnose-and-repair workflows | Doctor/self-healing candidate |
-| Profile before optimizing | Performance profiling |
+For clarity: these are Jeffery-skills-inspired ideas plus local repo metadata
+checks, but they are now bundled as local `prepare-pr` / `finish-lane`
+playbooks rather than imported as external skill dependencies. The generated
+`review-patterns.md` repeats the selected mapping with absolute paths for the
+current install.
 
 Do a quick new-functionality check before QA. If the diff adds a surface the
 project did not previously have, such as a first web UI, public CLI, API route,

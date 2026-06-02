@@ -19,7 +19,7 @@ Use the `prepare-pr` module.
 1. Read `skills/code/prepare-pr.md`.
 2. Run the finish-lane helper to create QA, cleanup, validation, gate-decision, HTML visual status, and PR-prep artifacts.
 3. Review the current working-tree changes for correctness, security, architecture, tests, manual QA coverage, and maintainability.
-4. Accept, override, or add quality gates in the gate-decision ledger, including intentionally skipped gates.
+4. Accept, override, or add quality gates in the gate-decision ledger; load only the selected bundled review-pattern playbooks.
 5. Apply safe fixes, run exact targeted QA, and draft or update PR text from evidence.
 6. Ask for approval before staging, committing, pushing, or editing a live PR.
 

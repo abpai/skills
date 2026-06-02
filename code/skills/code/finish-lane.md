@@ -76,8 +76,9 @@ The script creates `.workflow/finish-lane/<timestamp>/` with:
 - `secret-risk.md` - filename-only scan for secret-looking or bulky files
 - `setup-scripts.txt` - deterministic setup/auth/test entrypoint candidates
 - `setup-blueprint-template.yml` - template for saving hard-won setup knowledge
-- `quality-gates.md` - self-contained gate manifest with review patterns, quick
-  passes, deep passes, and evidence requirements
+- `review-patterns.md` - generated index of bundled detailed gate playbooks
+- `quality-gates.md` - gate manifest with playbook links, quick passes, deep
+  passes, and evidence requirements
 - `gate-decisions.md` - agent-owned applicability ledger, new-gate check, and
   intentionally skipped gate summary
 - `qa-plan.md` - targeted manual QA starter based on changed surfaces
@@ -91,7 +92,7 @@ The script creates `.workflow/finish-lane/<timestamp>/` with:
 
 It runs:
 
-1. `git status`, diff stats, and `git diff --check`
+1. `git status`, diff stats, untracked-file inventory, and `git diff --check`
 2. optional mechanical cleanup with discovered package scripts such as
    `format`, `fmt`, `lint:fix`, or `fix`
 3. discovered validation scripts such as `validate`, `check`, `lint`,
@@ -128,13 +129,15 @@ mode:
 ## Quality Gates
 
 `quality-gates.md` makes the finishing passes explicit so the user does not have
-to remember to invoke them one by one. It is a compact, self-contained gate
-manifest; all instructions needed to run the gates are generated into the
-artifact. The script recommends applicability from bounded path, diff, and text
-signals, then `gate-decisions.md` asks the active agent to accept, override, or
-add gates from project context. Each row records:
+to remember to invoke them one by one. It is a compact gate manifest backed by
+detailed bundled playbooks under `review-patterns/`; `review-patterns.md`
+generates the absolute paths for the current install. The script recommends
+applicability from bounded path, diff, and text signals, then
+`gate-decisions.md` asks the active agent to accept, override, or add gates from
+project context. Each row records:
 
 - review pattern
+- playbook path
 - why the script recommended or skipped the gate
 - when the gate usually applies
 - quick pass for normal PR prep
@@ -153,28 +156,29 @@ add gates from project context. Each row records:
 - performance profiling when performance is changed or claimed
 
 These are the Jeffery-skills-inspired review ideas, but they are bundled here as
-local instructions rather than external skill dependencies. The generated
-`quality-gates.md` includes the same map so the active agent can see where the
-guidance lives:
+local playbooks rather than external skill dependencies. The generated
+`review-patterns.md` and `quality-gates.md` include the same map so the active
+agent can see where the guidance lives:
 
-| Inspired idea | Local gate / behavior |
+| Inspired idea | Bundled playbook |
 |---|---|
-| Prose cleanup / de-slop pass | Prose quality and PR copy cleanup |
-| Mock/stub finder | Mock / stub / placeholder sweep |
-| Multi-pass bug review | Multi-pass bug hunting |
-| Static risk scan | UBS / static risk scanner when available |
-| Behavior-preserving cleanup | Isomorphic simplification |
-| Real webapp exercise | Web/UI E2E verification and UX/accessibility audit |
-| Real-service over mock-only testing | Real-service integration check |
-| Golden output review | Golden artifact decision |
-| Oracle-free invariant testing | Metamorphic/property test decision |
-| Agent-friendly CLI review | CLI agent ergonomics |
-| Diagnose-and-repair workflows | Doctor/self-healing candidate |
-| Profile before optimizing | Performance profiling |
+| Prose cleanup / de-slop pass | `review-patterns/prose-quality-pr-copy.md` |
+| Manifest/config drift check | `review-patterns/config-contract-check.md` |
+| Mock/stub finder | `review-patterns/mock-stub-placeholder-sweep.md` |
+| Multi-pass bug review | `review-patterns/multi-pass-bug-hunting.md` |
+| Static risk scan | `review-patterns/ubs-static-risk-scanner.md` |
+| Behavior-preserving cleanup | `review-patterns/isomorphic-simplification.md` |
+| Real webapp exercise | `review-patterns/browser-e2e-verification.md` and `review-patterns/ux-accessibility-audit.md` |
+| Real-service over mock-only testing | `review-patterns/real-service-integration-check.md` |
+| Golden output review | `review-patterns/golden-artifact-decision.md` |
+| Oracle-free invariant testing | `review-patterns/metamorphic-property-test-decision.md` |
+| Agent-friendly CLI review | `review-patterns/cli-agent-ergonomics.md` |
+| Diagnose-and-repair workflows | `review-patterns/doctor-self-healing-candidate.md` |
+| Profile before optimizing | `review-patterns/performance-profiling.md` |
 
-For each selected pass, run the quick pass and record evidence; for each
-intentionally skipped pass, write the reason in `gate-decisions.md`. Use the deep
-pass only when the diff risk justifies it.
+For each selected pass, load only that gate's playbook, run the quick pass, and
+record evidence; for each intentionally skipped pass, write the reason in
+`gate-decisions.md`. Use the deep pass only when the diff risk justifies it.
 
 The agent also does a new-gate check. If the change introduces something the
 project did not previously have, such as a first web UI, new public CLI, API
@@ -192,11 +196,12 @@ After the script finishes:
 3. Annotate `verification-timeline.md` before and after each test action.
 4. Fill `gate-decisions.md`: accept or override recommended gates, add any
    one-off local gate for new functionality, and summarize intentional skips.
-5. Run each selected quick pass in `quality-gates.md`, escalate only when risk
+5. Load only the selected gate playbooks from `review-patterns.md`.
+6. Run each selected quick pass in `quality-gates.md`, escalate only when risk
    justifies it, or write a skip rationale.
-6. Fix true defects and cleanup only where behavior can be proved unchanged.
-7. Rerun the script after fixes.
-8. Use `pr-body-draft.md` as raw material, but rewrite it against the actual
+7. Fix true defects and cleanup only where behavior can be proved unchanged.
+8. Rerun the script after fixes.
+9. Use `pr-body-draft.md` as raw material, but rewrite it against the actual
    behavior and validation before opening or updating a PR.
 
 ## Decision Rules

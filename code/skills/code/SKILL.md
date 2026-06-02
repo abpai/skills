@@ -14,6 +14,7 @@ This plugin exposes one public Codex skill surface for common code workflows. Cl
 - Use `prepare-pr.md` for full PR readiness: finish-lane artifacts, quality gates, targeted QA, evidence, and PR narrative.
 - Use `review-and-commit.md` for quick local review plus commit: inspect scope, fix real issues, run targeted checks, plan a commit, ask approval, then commit.
 - Treat `finish-lane.md` as an internal helper used by `prepare-pr.md`, not as a public command route.
+- Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. Load only the playbooks selected by the generated `review-patterns.md` index.
 - Use `goal.md` for defining or auditing a coding goal so it has a verifier, bounded scope, context, stop conditions, and output shape.
 - Use `explain.md` for dense technical explanations, tutorials, walkthrough prose, README guidance, or onboarding docs.
 - Use `try.md` for evaluating a new library, tool, package, or GitHub repo before adoption.

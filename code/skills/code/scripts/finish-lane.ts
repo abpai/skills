@@ -31,6 +31,7 @@ type QualityGate = {
   evidence: string
   gate: string
   pattern: string
+  playbook: string
   quickPass: string
   signal: string
 }
@@ -256,6 +257,14 @@ function jsonForHtml(value: unknown): string {
     .replace(/&/g, "\\u0026")
     .replace(/\u2028/g, "\\u2028")
     .replace(/\u2029/g, "\\u2029")
+}
+
+function bundledReviewPatternDir(): string {
+  return path.resolve(import.meta.dir, "..", "review-patterns")
+}
+
+function playbookPath(gate: QualityGate): string {
+  return path.join(bundledReviewPatternDir(), path.basename(gate.playbook))
 }
 
 function timestamp(): string {
@@ -591,7 +600,7 @@ function isApiPath(file: string): boolean {
 }
 
 function isGoldenPath(file: string): boolean {
-  return /golden|snapshot|\.snap$|\.golden$|approval/i.test(file)
+  return /(^|\/)(goldens?|snapshots?|__snapshots__|approvals?)(\/|$)|\.(snap|golden)(\.[^/]*)?$/i.test(file)
 }
 
 function isOraclePath(file: string): boolean {
@@ -599,7 +608,10 @@ function isOraclePath(file: string): boolean {
 }
 
 function isPerfPath(file: string): boolean {
-  return /perf|profile|benchmark|hotpath|cache|latency|throughput/i.test(file)
+  return (
+    /(^|\/)(benchmarks?|perf|performance|profiles?)(\/|$)|\.(bench|benchmark)\./i.test(file) ||
+    (!isDocPath(file) && /profile|benchmark|hotpath|latency|throughput/i.test(file))
+  )
 }
 
 function isTestPath(file: string): boolean {
@@ -686,6 +698,12 @@ function hasOracleSignal(signal: FileSignal): boolean {
 
 function hasPerfSignal(signal: FileSignal): boolean {
   return /\b(Benchmark|benchmark\(|performance\.mark|performance\.measure|p95|latency|throughput|hot\s+path)\b/i.test(
+    signal.sample,
+  )
+}
+
+function hasSimplificationSignal(signal: FileSignal): boolean {
+  return /\b(simplif(?:y|ication)|refactor|duplicate|duplication|dry|accidental\s+complexity|reduce\s+complexity|shared\s+helper|common\s+helper)\b/i.test(
     signal.sample,
   )
 }
@@ -802,6 +820,9 @@ function classify(rootDir: string, baseRef: string, files: string[]): Classifica
     if (allowsPerfSignal(file) && hasPerfSignal(signal)) {
       addReason(classification, "perf", file, "bounded diff/content shows benchmark or performance metric")
     }
+    if (isSourcePath(file) && hasSimplificationSignal(signal)) {
+      addReason(classification, "code", file, "bounded diff/content shows simplification, refactor, duplication, or complexity signal")
+    }
 
     classification.surfaces[file] = surfaceForSignal(signal)
   }
@@ -835,6 +856,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Before/after diff with removed filler, verified commands/paths, and a PR body that matches the actual diff.",
       gate: "Prose quality and PR copy cleanup",
       pattern: "prose-quality",
+      playbook: "review-patterns/prose-quality-pr-copy.md",
       quickPass: "Manually read changed prose and remove AI-ish filler, formulaic phrasing, hype, awkward punctuation, and vague claims.",
       signal: gateSignal(classification, ["doc"]),
     },
@@ -845,6 +867,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Validator output or schema check, plus the exact manifests/config files reviewed and any intentional version/reference decisions.",
       gate: "Manifest and config consistency",
       pattern: "config-contract-check",
+      playbook: "review-patterns/config-contract-check.md",
       quickPass: "Run the repo validator or nearest schema/config check, then compare changed manifests, versions, command names, descriptions, and docs references.",
       signal: gateSignal(classification, ["config"]),
     },
@@ -855,6 +878,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Search output, reviewed suspects with file:line refs, and either fixes or concrete skip rationales.",
       gate: "Mock / stub / placeholder sweep",
       pattern: "placeholder-detection",
+      playbook: "review-patterns/mock-stub-placeholder-sweep.md",
       quickPass: "Search changed files for TODOs, fake implementations, placeholder data, overbroad mocks, and suspicious no-op paths.",
       signal: gateSignal(classification, ["code", "test"]),
     },
@@ -865,6 +889,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Findings list, fixes applied or rejected, second-pass notes after fixes, and validation for each real bug.",
       gate: "Multi-pass bug hunting",
       pattern: "iterative-correctness-review",
+      playbook: "review-patterns/multi-pass-bug-hunting.md",
       quickPass: "Do one correctness/security pass, fix findings, then do a fresh-eyes pass over the updated diff.",
       signal: gateSignal(classification, ["code", "api", "cli"]),
     },
@@ -875,16 +900,20 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "`ubs` command, exit code, finding triage, fixes, suppressions, or skip reason if the tool cannot run.",
       gate: "UBS / static risk scanner",
       pattern: "tool-backed-static-risk-scan",
+      playbook: "review-patterns/ubs-static-risk-scanner.md",
       quickPass: "Run `ubs --diff` or `ubs <changed-files>` and triage every finding before commit or PR prep.",
       signal: gateSignal(classification, ["code", "api", "cli"]),
     },
     {
-      applies: flags.code,
-      appliesWhen: "Changed code contains duplicated logic, accidental complexity, or cleanup opportunities after behavior is protected.",
+      applies:
+        flags.code &&
+        hasGateReason(classification, "code", /simplification|refactor|duplication|complexity|accidental complexity/i),
+      appliesWhen: "Changed code contains explicit duplication, refactor, simplification, or complexity signals after behavior is protected.",
       deepPass: "For larger refactors, write a behavior-preservation note first: tests/goldens/invariants, one lever per change, and rerun proof after each edit.",
       evidence: "Tests/goldens/invariants proving behavior unchanged, plus a small note on why the simplification is safe.",
       gate: "Isomorphic simplification",
       pattern: "behavior-preserving-simplification",
+      playbook: "review-patterns/isomorphic-simplification.md",
       quickPass: "After behavior is protected, remove accidental complexity only where tests, goldens, or explicit invariants prove behavior unchanged.",
       signal: gateSignal(classification, ["code"]),
     },
@@ -895,6 +924,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Route, user action, expected result, screenshot/trace, console/network notes, and any residual manual QA.",
       gate: "Web/UI E2E verification",
       pattern: "browser-e2e-verification",
+      playbook: "review-patterns/browser-e2e-verification.md",
       quickPass: "Exercise the real route/component through browser or Playwright, with console/network checks and screenshot/trace evidence.",
       signal: gateSignal(classification, ["ui"]),
     },
@@ -905,6 +935,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Keyboard path, responsive check, visible states checked, accessibility notes, and screenshots when useful.",
       gate: "UX and accessibility audit",
       pattern: "heuristic-ux-a11y-review",
+      playbook: "review-patterns/ux-accessibility-audit.md",
       quickPass: "Check obviousness, keyboard path, error states, loading/empty states, responsive layout, and accessibility basics.",
       signal: gateSignal(classification, ["ui"]),
     },
@@ -915,6 +946,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Real-service command/request, status, sanitized response/log snippet, isolation strategy, and any unsafe-to-run rationale.",
       gate: "Real-service integration check",
       pattern: "mock-free-integration-risk",
+      playbook: "review-patterns/real-service-integration-check.md",
       quickPass: "Prefer real DB/API/service test paths for auth, billing, webhooks, data deletion, migrations, and cache/proxy behavior.",
       signal: gateSignal(classification, ["api"]),
     },
@@ -925,6 +957,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Golden generation/update command, canonicalization note, diff reviewed by a human/agent, and update rationale.",
       gate: "Golden artifact decision",
       pattern: "golden-output-regression",
+      playbook: "review-patterns/golden-artifact-decision.md",
       quickPass: "If outputs are complex but reviewable, capture/canonicalize a golden and require human diff review for updates.",
       signal: gateSignal(classification, ["golden"]),
     },
@@ -935,6 +968,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Named invariant, input transformation, expected relationship, property test or skip rationale.",
       gate: "Metamorphic/property test decision",
       pattern: "oracle-free-invariant-testing",
+      playbook: "review-patterns/metamorphic-property-test-decision.md",
       quickPass: "If exact expected output is hard, define invariant-preserving transformations and property tests instead of weak examples.",
       signal: gateSignal(classification, ["oracle"]),
     },
@@ -945,6 +979,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Help output, success/failure commands, exit codes, stdout/stderr split, non-TTY check, JSON/robot mode notes.",
       gate: "CLI agent ergonomics",
       pattern: "agent-friendly-cli-contract",
+      playbook: "review-patterns/cli-agent-ergonomics.md",
       quickPass: "Verify help, exit codes, stdout/stderr split, JSON/robot mode if present, non-TTY behavior, and actionable errors.",
       signal: gateSignal(classification, ["cli"]),
     },
@@ -955,6 +990,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Failure mode, detector idea, safe fixer/undo notes, or why a doctor command is not warranted.",
       gate: "Doctor/self-healing candidate",
       pattern: "diagnose-and-repair-contract",
+      playbook: "review-patterns/doctor-self-healing-candidate.md",
       quickPass: "If setup or failure recovery is recurring, propose a doctor/check/repair command or deterministic setup skill.",
       signal: gateSignal(classification, ["cli"]),
     },
@@ -965,6 +1001,7 @@ function qualityGates(classification: Classification): QualityGate[] {
       evidence: "Baseline, scenario, metric, profile or benchmark output, changed lever, and behavior proof.",
       gate: "Performance profiling",
       pattern: "profile-before-optimization",
+      playbook: "review-patterns/performance-profiling.md",
       quickPass: "If performance was changed or claimed, baseline first, profile or benchmark, change one lever, and prove behavior unchanged.",
       signal: gateSignal(classification, ["perf"]),
     },
@@ -974,19 +1011,22 @@ function qualityGates(classification: Classification): QualityGate[] {
 function writeQualityGates(outDir: string, rootDir: string, classification: Classification): QualityGate[] {
   const gates = qualityGates(classification)
   const changedFilesPath = path.join(outDir, "changed-files.txt")
+  const reviewPatternDir = bundledReviewPatternDir()
   writeFileSync(
     path.join(outDir, "quality-gates.md"),
     [
       "# Quality Gates",
       "",
-      "These gates are self-contained PR-prep checks. The script makes a cheap",
-      "recommendation from bounded path, diff, and text samples; the active",
-      "agent makes the final applicability call in `gate-decisions.md`. For each",
-      "selected gate, run the quick pass and record evidence, or mark it skipped",
-      "with a reason. Use the deep pass only when the diff risk justifies the",
-      "extra ceremony.",
+      "These gates are PR-prep checks with detailed bundled playbooks. The script",
+      "makes a cheap recommendation from bounded path, diff, and text samples;",
+      "the active agent makes the final applicability call in `gate-decisions.md`.",
+      "For each selected gate, load only the playbook named in the row, run the",
+      "quick pass, and record evidence. Mark skipped gates with a reason. Use the",
+      "deep pass only when the diff risk justifies the extra ceremony.",
       "",
       `Detection caps: first ${maxSignalFiles} changed files, ${maxPerFileSignalChars} chars per file, ${maxTotalSignalChars} chars total.`,
+      `Bundled playbook directory: \`${reviewPatternDir}\``,
+      "Generated playbook index: `review-patterns.md`.",
       "",
       "## Agent Applicability Review",
       "",
@@ -1000,11 +1040,14 @@ function writeQualityGates(outDir: string, rootDir: string, classification: Clas
       "",
       "These are local instructions bundled with this skill. They are inspired by",
       "the downloaded review-skill patterns, but this artifact does not require any",
-      "external skill package to be installed.",
+      "external skill package to be installed. The detailed prompts live under",
+      "`review-patterns/` beside this skill, and the generated index names the",
+      "absolute path for this run.",
       "",
       "| Inspired idea | Local gate / workflow behavior |",
       "|---|---|",
       "| Prose cleanup / de-slop pass | Prose quality and PR copy cleanup |",
+      "| Manifest/config drift check | Manifest and config consistency |",
       "| Mock/stub finder | Mock / stub / placeholder sweep |",
       "| Multi-pass bug review | Multi-pass bug hunting |",
       "| Static risk scan | UBS / static risk scanner when available |",
@@ -1023,11 +1066,11 @@ function writeQualityGates(outDir: string, rootDir: string, classification: Clas
       "|---|---|",
       ...classificationReasonRows(classification),
       "",
-      "| Gate | Recommended | Signal | Pattern | Applies when | Quick pass | Deep pass | Evidence / skip rationale |",
-      "|---|---|---|---|---|---|---|---|",
+      "| Gate | Recommended | Signal | Pattern | Playbook | Applies when | Quick pass | Deep pass | Evidence / skip rationale |",
+      "|---|---|---|---|---|---|---|---|---|",
       ...gates.map(
         (gate) =>
-          `| ${markdownEscape(gate.gate)} | ${gate.applies} | ${markdownEscape(gate.signal)} | ${markdownEscape(gate.pattern)} | ${markdownEscape(gate.appliesWhen)} | ${markdownEscape(gate.quickPass)} | ${markdownEscape(gate.deepPass)} | ${markdownEscape(gate.evidence)} |`,
+          `| ${markdownEscape(gate.gate)} | ${gate.applies} | ${markdownEscape(gate.signal)} | ${markdownEscape(gate.pattern)} | \`${markdownEscape(gate.playbook)}\` | ${markdownEscape(gate.appliesWhen)} | ${markdownEscape(gate.quickPass)} | ${markdownEscape(gate.deepPass)} | ${markdownEscape(gate.evidence)} |`,
       ),
       "",
       "## Fast Local Scans",
@@ -1073,6 +1116,38 @@ function writeQualityGates(outDir: string, rootDir: string, classification: Clas
   return gates
 }
 
+function writeReviewPatternIndex(outDir: string, gates: QualityGate[]): void {
+  writeFileSync(
+    path.join(outDir, "review-patterns.md"),
+    [
+      "# Review Pattern Playbooks",
+      "",
+      "The detailed gate prompts are bundled with the `code` skill so the workflow",
+      "does not depend on any external skill collection. Load only the playbooks",
+      "for gates selected in `gate-decisions.md`, plus any one-off local gate you",
+      "add for new functionality.",
+      "",
+      `Bundled directory: \`${bundledReviewPatternDir()}\``,
+      "",
+      "| Gate | Recommended | Playbook | Absolute path |",
+      "|---|---|---|---|",
+      ...gates.map(
+        (gate) =>
+          `| ${markdownEscape(gate.gate)} | ${gate.applies} | \`${markdownEscape(gate.playbook)}\` | \`${markdownEscape(playbookPath(gate))}\` |`,
+      ),
+      "",
+      "## Loading Rule",
+      "",
+      "- Do not bulk-load every playbook.",
+      "- For each selected gate, read the listed playbook before running the gate.",
+      "- For an intentionally skipped gate, record the skip reason without loading the playbook unless the decision is unclear.",
+      "- For a new local gate, write a short gate-specific checklist in `gate-decisions.md` and cite any project source that justifies it.",
+      "",
+    ].join("\n"),
+    "utf8",
+  )
+}
+
 function writeGateDecisions(outDir: string, gates: QualityGate[]): void {
   const selectedGates = gates.filter((gate) => gate.applies)
   const unselectedGates = gates.filter((gate) => !gate.applies)
@@ -1080,16 +1155,16 @@ function writeGateDecisions(outDir: string, gates: QualityGate[]): void {
     selectedGates.length > 0
       ? selectedGates.map(
           (gate) =>
-            `| ${markdownEscape(gate.gate)} | ${markdownEscape(gate.signal)} | TODO: run / skip / deep / override | TODO | ${markdownEscape(gate.evidence)} |`,
+            `| ${markdownEscape(gate.gate)} | \`${markdownEscape(gate.playbook)}\` | ${markdownEscape(gate.signal)} | TODO: run / skip / deep / override | TODO | ${markdownEscape(gate.evidence)} |`,
         )
-      : ["| `none` | No gates were recommended from bounded signals. | n/a | n/a | n/a |"]
+      : ["| `none` | n/a | No gates were recommended from bounded signals. | n/a | n/a | n/a |"]
   const unselectedRows =
     unselectedGates.length > 0
       ? unselectedGates.map(
           (gate) =>
-            `| ${markdownEscape(gate.gate)} | not selected | ${markdownEscape(gate.signal)} | Override only if project context makes it applicable. |`,
+            `| ${markdownEscape(gate.gate)} | \`${markdownEscape(gate.playbook)}\` | not selected | ${markdownEscape(gate.signal)} | Override only if project context makes it applicable. |`,
         )
-      : ["| `none` | n/a | n/a | n/a |"]
+      : ["| `none` | n/a | n/a | n/a | n/a |"]
 
   writeFileSync(
     path.join(outDir, "gate-decisions.md"),
@@ -1105,14 +1180,15 @@ function writeGateDecisions(outDir: string, gates: QualityGate[]): void {
       "- Prefer the recommended gate set unless project intent or the actual diff shows it is wrong.",
       "- Add a one-off local gate when the change introduces a new user-facing surface, runtime, integration, data contract, security boundary, or operational path.",
       "- Do not run a gate just because it exists; do record the reason when an obvious gate is intentionally skipped.",
+      "- Load only the detailed playbooks for gates you select. See `review-patterns.md` for bundled paths.",
       "- Keep evidence concrete: command output, file refs, route checked, screenshot/trace path, response snippet, or explicit blocker.",
       "",
       "## Recommended Gates To Decide",
       "",
       "Only these rows require an agent decision by default.",
       "",
-      "| Gate | Signal | Agent decision | Reason | Evidence target or skip rationale |",
-      "|---|---|---|---|---|",
+      "| Gate | Playbook | Signal | Agent decision | Reason | Evidence target or skip rationale |",
+      "|---|---|---|---|---|---|",
       ...selectedRows,
       "",
       "## Not Selected By The Script",
@@ -1120,8 +1196,8 @@ function writeGateDecisions(outDir: string, gates: QualityGate[]): void {
       "Do not justify every row here. Override only when project context or new",
       "functionality makes one applicable.",
       "",
-      "| Gate | Default | Signal | Override rule |",
-      "|---|---|---|---|",
+      "| Gate | Playbook | Default | Signal | Override rule |",
+      "|---|---|---|---|---|",
       ...unselectedRows,
       "",
       "## New Gate Check",
@@ -1297,7 +1373,7 @@ function writeSubagentPlan(outDir: string, gates: QualityGate[]): void {
       "## Rules",
       "",
       "- Do not let subagents mutate the working tree unless the user explicitly asks.",
-      "- Give each subagent the current diff, quality-gates.md, qa-plan.md, and a narrow output format.",
+      "- Give each subagent the current diff, quality-gates.md, qa-plan.md, and only the selected gate playbook from review-patterns.md.",
       "- Main agent triages findings; subagents do not decide commit or PR readiness.",
       "- Keep browser, real-service, golden updates, and profiling sequential unless each run has isolated state.",
       "",
@@ -1329,6 +1405,7 @@ Read these artifacts first:
 - ${outDir}/setup-scripts.txt
 - ${outDir}/setup-blueprint-template.yml
 - ${outDir}/verification-timeline.md
+- ${outDir}/review-patterns.md
 - ${outDir}/quality-gates.md
 - ${outDir}/gate-decisions.md
 - ${outDir}/subagent-plan.md
@@ -1340,11 +1417,12 @@ Then do the following:
 3. Run feasible QA through real user paths when applicable; use JavaScript/state injection only as a labeled lower-level probe.
 4. Annotate verification-timeline.md with setup notes, named test starts, pass/fail/untested assertions, and evidence paths.
 5. Review gate-decisions.md: accept or override recommended gates, add any one-off gate for new functionality, and list intentionally skipped gates.
-6. Run each selected quick pass in quality-gates.md or write a concrete skip rationale; escalate only when risk justifies it.
-7. Use subagent-plan.md for read-only specialist reviews when subagents are available and worthwhile.
-8. Active prepare-pr agent only: apply safe, scoped fixes. Second-pass agents report findings only. Do not stage, commit, push, or create a PR unless the user asks.
-9. If setup was painful or repeated, fill setup-blueprint-template.yml and propose a repo-owned deterministic setup skill or script.
-10. Produce PR text with: behavior change, why it matters, how it works, validation evidence, quality gates, skipped gates, and residual risk.
+6. Load only the detailed playbooks for gates you select from review-patterns.md.
+7. Run each selected quick pass in quality-gates.md or write a concrete skip rationale; escalate only when risk justifies it.
+8. Use subagent-plan.md for read-only specialist reviews when subagents are available and worthwhile.
+9. Active prepare-pr agent only: apply safe, scoped fixes. Second-pass agents report findings only. Do not stage, commit, push, or create a PR unless the user asks.
+10. If setup was painful or repeated, fill setup-blueprint-template.yml and propose a repo-owned deterministic setup skill or script.
+11. Produce PR text with: behavior change, why it matters, how it works, validation evidence, quality gates, skipped gates, and residual risk.
 
 Be explicit about skipped checks and blockers. Keep unrelated worktree changes out of scope.
 `,
@@ -1446,10 +1524,10 @@ function workflowPhases(steps: Step[], gates: QualityGate[], agent: AgentMode): 
       title: "Validation",
     },
     {
-      artifact: "quality-gates.md, gate-decisions.md",
+      artifact: "review-patterns.md, quality-gates.md, gate-decisions.md",
       detail:
         applicableGates.length > 0
-          ? `${applicableGates.length} gate(s) are recommended; agent must accept, override, or add local gates.`
+          ? `${applicableGates.length} gate(s) are recommended; agent must accept, override, add local gates, and load selected playbooks only.`
           : "No gate was auto-recommended; agent still checks whether new functionality needs a local gate.",
       status: "todo",
       title: "Quality Gates",
@@ -1531,6 +1609,7 @@ function writeWorkflowStatusHtml(outDir: string, steps: Step[], gates: QualityGa
       { href: "report.md", label: "Report" },
       { href: "changed-files.txt", label: "Changed Files" },
       { href: "secret-risk.md", label: "Secret Risk" },
+      { href: "review-patterns.md", label: "Review Patterns" },
       { href: "quality-gates.md", label: "Quality Gates" },
       { href: "gate-decisions.md", label: "Gate Decisions" },
       { href: "qa-plan.md", label: "QA Plan" },
@@ -1550,6 +1629,7 @@ function writeWorkflowStatusHtml(outDir: string, steps: Step[], gates: QualityGa
       evidence: gate.evidence,
       gate: gate.gate,
       pattern: gate.pattern,
+      playbook: gate.playbook,
       quickPass: gate.quickPass,
       signal: gate.signal,
     })),
@@ -2018,6 +2098,7 @@ function writeWorkflowStatusHtml(outDir: string, steps: Step[], gates: QualityGa
             pill(gate.applies ? "todo" : "optional"),
             element("strong", { text: gate.gate }, []),
             element("div", { className: "gate-pattern", text: gate.pattern }, []),
+            gateField("Playbook", gate.playbook),
             gateField("Signal", gate.signal),
             gateField("When", gate.appliesWhen),
             gateField("Quick pass", gate.quickPass),
@@ -2087,7 +2168,8 @@ function writeReport(
     "- `secret-risk.md` - filename-only secret/bulky-file risk scan",
     "- `setup-scripts.txt` - deterministic setup/auth/test entrypoint candidates",
     "- `setup-blueprint-template.yml` - template for saving hard-won setup knowledge",
-    "- `quality-gates.md` - self-contained gate manifest with patterns, quick passes, deep passes, and evidence requirements",
+    "- `review-patterns.md` - generated index of bundled detailed gate playbooks",
+    "- `quality-gates.md` - gate manifest with playbook links, quick passes, deep passes, and evidence requirements",
     "- `gate-decisions.md` - agent applicability ledger, one-off local gate check, and skipped-gate summary",
     "- `qa-plan.md` - targeted manual QA starter",
     "- `verification-timeline.md` - chronological setup/action/assertion ledger",
@@ -2110,12 +2192,13 @@ function writeReport(
     "2. Read `qa-plan.md` and replace generic probes with source-grounded exact routes, commands, payloads, and expected results.",
     "3. Write expectations into `verification-timeline.md` before taking each QA action, then mark assertions passed, failed, or untested.",
     "4. Fill `gate-decisions.md`: accept or override recommended gates, add any one-off local gate for new functionality, and summarize intentional skips.",
-    "5. Run each selected quick pass in `quality-gates.md`, escalate only when risk justifies it, or write a concrete skip rationale.",
-    "6. Use `subagent-plan.md` for read-only specialist reviews when useful, while keeping fixes sequential.",
-    "7. Inspect failed logs and decide whether each failure is a code defect, environment blocker, or unrelated pre-existing issue.",
-    "8. Apply scoped cleanup only where behavior can be proved unchanged.",
-    "9. Promote repeated setup pain into a deterministic setup script or repo skill using `setup-blueprint-template.yml`.",
-    "10. Re-run this script after fixes, then use `pr-body-draft.md` for PR creation or update.",
+    "5. Load only the detailed playbooks for selected gates from `review-patterns.md`.",
+    "6. Run each selected quick pass in `quality-gates.md`, escalate only when risk justifies it, or write a concrete skip rationale.",
+    "7. Use `subagent-plan.md` for read-only specialist reviews when useful, while keeping fixes sequential.",
+    "8. Inspect failed logs and decide whether each failure is a code defect, environment blocker, or unrelated pre-existing issue.",
+    "9. Apply scoped cleanup only where behavior can be proved unchanged.",
+    "10. Promote repeated setup pain into a deterministic setup script or repo skill using `setup-blueprint-template.yml`.",
+    "11. Re-run this script after fixes, then use `pr-body-draft.md` for PR creation or update.",
     "",
   ]
 
@@ -2248,6 +2331,7 @@ function main(): void {
   writeSetupBlueprintTemplate(outDir)
   writeVerificationTimeline(outDir)
   const gates = writeQualityGates(outDir, rootDir, classification)
+  writeReviewPatternIndex(outDir, gates)
   writeGateDecisions(outDir, gates)
   writeSubagentPlan(outDir, gates)
   writeQaPlan(outDir, baseRef, changedFiles, classification)
@@ -2256,6 +2340,7 @@ function main(): void {
 
   runStep("git-status", "git status --short", rootDir, logDir, steps)
   runStep("diff-stat", `git diff --stat ${shellQuote(baseRef)}...HEAD && git diff --stat && git diff --cached --stat`, rootDir, logDir, steps)
+  runStep("untracked-files", "git ls-files --others --exclude-standard", rootDir, logDir, steps)
   runStep("diff-check", "git diff --check && git diff --cached --check", rootDir, logDir, steps)
 
   if (options.runFixes && pm) {
