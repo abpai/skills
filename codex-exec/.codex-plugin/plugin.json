@@ -1,6 +1,6 @@
 {
   "name": "codex-exec",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Run the Codex CLI for non-interactive coding work. Delegate prompts, code review, and second opinions to OpenAI Codex.",
   "author": {
     "name": "Andy Pai"

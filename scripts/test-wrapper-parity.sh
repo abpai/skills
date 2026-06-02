@@ -247,6 +247,44 @@ test_codex_continue_env_is_not_sourced() {
   pass "codex-exec continuation parses run.env without executing shell"
 }
 
+test_codex_monitor_status_is_not_sourced() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-monitor"
+  local output="$TMP_DIR/codex-monitor-output.txt"
+  local monitor_output="$TMP_DIR/codex-monitor-malicious.txt"
+  local pwned="$TMP_DIR/codex-monitor-pwned"
+
+  setup_workspace "$workspace"
+
+  # A dry run still writes a real monitor.sh, the only place codex-exec reads
+  # status.env, so it is the path a malicious status.env could exploit.
+  PATH="$fakebin:$PATH" bash "$CODEX_RUN" exec \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/codex-monitor-runs" \
+    --prompt "safe monitor prompt" \
+    --sandbox read-only \
+    --dry-run \
+    > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_executable_private "$run_dir/monitor.sh"
+
+  {
+    printf 'state=finished\n'
+    printf 'exit_code=0\n'
+    printf 'EVIL=%s\n' "\$(touch $(printf '%q' "$pwned"))"
+  } > "$run_dir/status.env"
+
+  CODEX_EXEC_MONITOR_POLL_SECONDS=1 CODEX_EXEC_MONITOR_REPORT_SECONDS=1 \
+    bash "$run_dir/monitor.sh" > "$monitor_output" 2>&1
+
+  assert_not_exists "$pwned"
+  assert_contains "$monitor_output" "monitor=done state=finished exit_code=0"
+
+  pass "codex-exec monitor parses status.env without executing shell"
+}
+
 test_claude_dry_run_continue_contract() {
   local fakebin="$TMP_DIR/fakebin"
   local workspace="$TMP_DIR/workspace-claude"
@@ -363,6 +401,7 @@ main() {
 
   test_codex_exec_continue_contract
   test_codex_continue_env_is_not_sourced
+  test_codex_monitor_status_is_not_sourced
   test_claude_dry_run_continue_contract
   test_claude_run_env_is_not_sourced
 }

@@ -278,6 +278,14 @@ if [[ -n "$SESSION_ID" && -n "$RESUME_SESSION_ID" ]]; then
   exit 2
 fi
 
+# python3 parses env files and transcripts. Fail loudly here (after --help is
+# handled) instead of letting a missing interpreter silently empty parsed values
+# inside process substitution.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "[FAIL] python3 is required but was not found on PATH" >&2
+  exit 127
+fi
+
 read_env_values() {
   local env_file="$1"
   shift
@@ -321,17 +329,6 @@ if [[ -n "$CONTINUE_RUN_DIR" ]]; then
     echo "[FAIL] missing prior run env: $CONTINUE_RUN_DIR/run.env" >&2
     exit 2
   fi
-  current_workspace="$WORKSPACE"
-  current_run_root="$RUN_ROOT"
-  current_tmux_session="$TMUX_SESSION"
-  current_session_id="$SESSION_ID"
-  current_resume_session_id="$RESUME_SESSION_ID"
-  current_run_dir="$RUN_DIR"
-  current_startup_wait_seconds="$STARTUP_WAIT_SECONDS"
-  current_heartbeat_seconds="$HEARTBEAT_SECONDS"
-  current_timeout_seconds="$TIMEOUT_SECONDS"
-  current_paste_settle_seconds="$PASTE_SETTLE_SECONDS"
-  current_submit_key="$SUBMIT_KEY"
   prior_workspace=""
   prior_run_root=""
   prior_tmux_session=""
@@ -351,17 +348,8 @@ if [[ -n "$CONTINUE_RUN_DIR" ]]; then
     esac
   done < <(read_env_values "$CONTINUE_RUN_DIR/run.env" \
     WORKSPACE RUN_ROOT TMUX_SESSION SESSION_ID STARTUP_WAIT_SECONDS PASTE_SETTLE_SECONDS SUBMIT_KEY)
-  WORKSPACE="$current_workspace"
-  RUN_ROOT="$current_run_root"
-  TMUX_SESSION="$current_tmux_session"
-  SESSION_ID="$current_session_id"
-  RESUME_SESSION_ID="$current_resume_session_id"
-  RUN_DIR="$current_run_dir"
-  STARTUP_WAIT_SECONDS="$current_startup_wait_seconds"
-  HEARTBEAT_SECONDS="$current_heartbeat_seconds"
-  TIMEOUT_SECONDS="$current_timeout_seconds"
-  PASTE_SETTLE_SECONDS="$current_paste_settle_seconds"
-  SUBMIT_KEY="$current_submit_key"
+  # CLI/env-provided globals are left untouched above (the parser only writes
+  # prior_* locals), so prior values apply only where the caller did not set one.
   if [[ "$WORKSPACE_SET" == "false" && -n "$prior_workspace" ]]; then
     WORKSPACE="$prior_workspace"
   fi

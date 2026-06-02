@@ -269,6 +269,14 @@ if [[ "$MODE" == "exec" && -z "$PROMPT_TEXT" && -z "$PROMPT_FILE" ]]; then
   exit 2
 fi
 
+# python3 parses env files and Codex output. Fail loudly here (after --help is
+# handled) instead of letting a missing interpreter silently empty parsed values
+# inside process substitution.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "[FAIL] python3 is required but was not found on PATH" >&2
+  exit 127
+fi
+
 case "$HEARTBEAT_SECONDS" in
   ''|*[!0-9]*)
     echo "[FAIL] --heartbeat must be a positive integer" >&2
@@ -514,6 +522,13 @@ if (( REPORT_SECONDS < 1 )); then
   REPORT_SECONDS=30
 fi
 
+# This monitor parses status.env with python3 (see below). Fail loudly instead
+# of polling forever if the interpreter is missing at monitor runtime.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "[codex-exec] monitor=error detail=\"python3 is required to parse status.env\"" >&2
+  exit 127
+fi
+
 started_at="$(date +%s)"
 last_report=0
 
@@ -535,8 +550,48 @@ while true; do
   final_message=""
 
   if [[ -f "$STATUS_FILE" ]]; then
-    # shellcheck source=/dev/null
-    . "$STATUS_FILE"
+    # Parse known keys with python/shlex instead of sourcing, so a crafted
+    # status.env cannot execute shell (matches the wrapper's read_env_values).
+    while IFS=$'\t' read -r key value; do
+      case "$key" in
+        state) state="$value" ;;
+        exit_code) exit_code="$value" ;;
+        elapsed_seconds) elapsed_seconds="$value" ;;
+        stdout_log) stdout_log="$value" ;;
+        stderr_log) stderr_log="$value" ;;
+        final_message) final_message="$value" ;;
+      esac
+    done < <(python3 - "$STATUS_FILE" state exit_code elapsed_seconds stdout_log stderr_log final_message <<'PY'
+import shlex
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+targets = sys.argv[2:]
+try:
+    lines = path.read_text(encoding="utf-8").splitlines()
+except FileNotFoundError:
+    sys.exit(0)
+
+found = {}
+for line in reversed(lines):
+    if "=" not in line or line.lstrip().startswith("#"):
+        continue
+    key, value = line.split("=", 1)
+    if key not in targets or key in found:
+        continue
+    try:
+        parts = shlex.split(value)
+    except ValueError:
+        found[key] = value
+    else:
+        found[key] = parts[0] if parts else ""
+
+for key in targets:
+    if key in found:
+        sys.stdout.write("%s\t%s\n" % (key, found[key]))
+PY
+)
   fi
 
   now="$(date +%s)"
@@ -817,6 +872,20 @@ cleanup_children() {
   if [[ -n "${CHILD_PID:-}" ]]; then
     kill "$CHILD_PID" 2>/dev/null || true
   fi
+  # Kill the tee readers before unlinking the FIFOs so a signal that arrives
+  # before Codex opens both pipes cannot leave a tee blocked on a removed path.
+  if [[ -n "${STDOUT_TEE_PID:-}" ]]; then
+    kill "$STDOUT_TEE_PID" 2>/dev/null || true
+  fi
+  if [[ -n "${STDERR_TEE_PID:-}" ]]; then
+    kill "$STDERR_TEE_PID" 2>/dev/null || true
+  fi
+  if [[ -n "${STDOUT_PIPE:-}" ]]; then
+    rm -f "$STDOUT_PIPE"
+  fi
+  if [[ -n "${STDERR_PIPE:-}" ]]; then
+    rm -f "$STDERR_PIPE"
+  fi
 }
 
 # shellcheck disable=SC2317,SC2329 # Invoked through signal traps.
@@ -909,18 +978,31 @@ fi
 
 STARTED_AT="$(date +%s)"
 
-if [[ "$HAS_PROMPT" == "true" ]]; then
-  if [[ "$JSON_OUTPUT" == "true" ]]; then
-    "${run_cmd[@]}" < "$PROMPT_RUN_FILE" > >(tee -a "$STDOUT_LOG" | tee -a "$EVENTS_LOG") 2> >(tee -a "$STDERR_LOG" >&2) &
-  else
-    "${run_cmd[@]}" < "$PROMPT_RUN_FILE" > >(tee -a "$STDOUT_LOG") 2> >(tee -a "$STDERR_LOG" >&2) &
-  fi
+# Mirror Codex output to logs and the terminal through named pipes with tracked
+# tee PIDs. Process substitution (`> >(tee ...)`) leaves the tee unwaited, so
+# `wait "$CHILD_PID"` can return before the final stderr line (the session id)
+# is flushed to STDERR_LOG. Waiting on the tee PIDs makes capture deterministic.
+STDOUT_PIPE="$RUN_DIR/.stdout.pipe"
+STDERR_PIPE="$RUN_DIR/.stderr.pipe"
+rm -f "$STDOUT_PIPE" "$STDERR_PIPE"
+mkfifo "$STDOUT_PIPE" "$STDERR_PIPE"
+
+if [[ "$JSON_OUTPUT" == "true" ]]; then
+  # One tee fans out to both logs and the terminal, so $! is the FIFO reader
+  # (a pipeline would set $! to the downstream tee, leaving the reader untracked
+  # and unkillable in cleanup_children).
+  tee -a "$STDOUT_LOG" "$EVENTS_LOG" < "$STDOUT_PIPE" &
 else
-  if [[ "$JSON_OUTPUT" == "true" ]]; then
-    "${run_cmd[@]}" < /dev/null > >(tee -a "$STDOUT_LOG" | tee -a "$EVENTS_LOG") 2> >(tee -a "$STDERR_LOG" >&2) &
-  else
-    "${run_cmd[@]}" < /dev/null > >(tee -a "$STDOUT_LOG") 2> >(tee -a "$STDERR_LOG" >&2) &
-  fi
+  tee -a "$STDOUT_LOG" < "$STDOUT_PIPE" &
+fi
+STDOUT_TEE_PID=$!
+tee -a "$STDERR_LOG" < "$STDERR_PIPE" >&2 &
+STDERR_TEE_PID=$!
+
+if [[ "$HAS_PROMPT" == "true" ]]; then
+  "${run_cmd[@]}" < "$PROMPT_RUN_FILE" > "$STDOUT_PIPE" 2> "$STDERR_PIPE" &
+else
+  "${run_cmd[@]}" < /dev/null > "$STDOUT_PIPE" 2> "$STDERR_PIPE" &
 fi
 
 CHILD_PID=$!
@@ -937,6 +1019,12 @@ set -e
 
 kill "$HEARTBEAT_PID" 2>/dev/null || true
 wait "$HEARTBEAT_PID" 2>/dev/null || true
+
+# Codex has exited and closed the pipes; drain the tees so the logs are fully
+# written before we read the session id below, then remove the pipes.
+wait "$STDOUT_TEE_PID" 2>/dev/null || true
+wait "$STDERR_TEE_PID" 2>/dev/null || true
+rm -f "$STDOUT_PIPE" "$STDERR_PIPE"
 
 ENDED_AT="$(date +%s)"
 ELAPSED=$((ENDED_AT - STARTED_AT))
