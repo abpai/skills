@@ -488,6 +488,7 @@ STDOUT_LOG="$RUN_DIR/stdout.log"
 STDERR_LOG="$RUN_DIR/stderr.log"
 EVENTS_LOG="$RUN_DIR/events.jsonl"
 FINAL_MESSAGE="$RUN_DIR/final.md"
+FINAL_SOURCE="output-last-message"
 RUN_ENV_FILE="$RUN_DIR/run.env"
 STATUS_FILE="$RUN_DIR/status.env"
 COMMAND_FILE="$RUN_DIR/command.txt"
@@ -824,6 +825,7 @@ write_run_env() {
     printf 'STDERR_LOG=%q\n' "$STDERR_LOG"
     printf 'EVENTS_LOG=%q\n' "$EVENTS_LOG"
     printf 'FINAL_MESSAGE=%q\n' "$FINAL_MESSAGE"
+    printf 'FINAL_SOURCE=%q\n' "$FINAL_SOURCE"
     printf 'COMMAND_FILE=%q\n' "$COMMAND_FILE"
     printf 'PREFLIGHT_LOG=%q\n' "$PREFLIGHT_LOG"
     printf 'SESSION_ID=%q\n' "$SESSION_ID"
@@ -857,6 +859,7 @@ write_status() {
     printf 'stderr_log=%q\n' "$STDERR_LOG"
     printf 'events_log=%q\n' "$EVENTS_LOG"
     printf 'final_message=%q\n' "$FINAL_MESSAGE"
+    printf 'final_source=%q\n' "$FINAL_SOURCE"
     printf 'command_file=%q\n' "$COMMAND_FILE"
     printf 'preflight_log=%q\n' "$PREFLIGHT_LOG"
     printf 'monitor_script=%q\n' "$MONITOR_SCRIPT"
@@ -918,6 +921,29 @@ last_output_line() {
   fi
   line="$(printf '%s' "$line" | tr '\r\n' '  ' | cut -c1-180)"
   printf '%s' "$line"
+}
+
+populate_final_message_fallback() {
+  if (( EXIT_CODE != 0 )) || [[ -s "$FINAL_MESSAGE" ]]; then
+    FINAL_SOURCE="output-last-message"
+    return 0
+  fi
+
+  if [[ -s "$STDOUT_LOG" ]]; then
+    cp "$STDOUT_LOG" "$FINAL_MESSAGE"
+    FINAL_SOURCE="stdout.log"
+    printf '[codex-exec] event=final-fallback source=%q reason=empty_final\n' "$FINAL_SOURCE"
+    return 0
+  fi
+
+  if [[ "$MODE" == "review" && -s "$STDERR_LOG" ]]; then
+    cp "$STDERR_LOG" "$FINAL_MESSAGE"
+    FINAL_SOURCE="stderr.log"
+    printf '[codex-exec] event=final-fallback source=%q reason=empty_final_review_stderr\n' "$FINAL_SOURCE"
+    return 0
+  fi
+
+  FINAL_SOURCE="empty"
 }
 
 heartbeat_loop() {
@@ -1039,13 +1065,14 @@ if [[ "$EPHEMERAL" != "true" ]]; then
     RESUME_LAST="false"
   fi
 fi
+populate_final_message_fallback
 write_run_env
 write_status "$FINAL_STATE" "$EXIT_CODE" "$ELAPSED"
 
 stdout_lines="$(line_count "$STDOUT_LOG")"
 stderr_lines="$(line_count "$STDERR_LOG")"
-printf '[codex-exec] event=finish exit_code=%s elapsed=%ss stdout_lines=%s stderr_lines=%s session_id=%q final=%q continue=%q\n' \
-  "$EXIT_CODE" "$ELAPSED" "$stdout_lines" "$stderr_lines" "$SESSION_ID" "$FINAL_MESSAGE" "$CONTINUE_SCRIPT"
+printf '[codex-exec] event=finish exit_code=%s elapsed=%ss stdout_lines=%s stderr_lines=%s session_id=%q final=%q final_source=%q continue=%q\n' \
+  "$EXIT_CODE" "$ELAPSED" "$stdout_lines" "$stderr_lines" "$SESSION_ID" "$FINAL_MESSAGE" "$FINAL_SOURCE" "$CONTINUE_SCRIPT"
 
 if (( TIMEOUT_SECONDS > 0 && EXIT_CODE == 124 )); then
   echo "[codex-exec] event=timeout timeout_seconds=$TIMEOUT_SECONDS"

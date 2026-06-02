@@ -104,9 +104,13 @@ for arg in "$@"; do
 done
 
 cat >/dev/null || true
-printf 'fake codex stdout\n'
+if [[ "${FAKE_CODEX_STDERR_VERDICT:-}" == "1" ]]; then
+  printf 'fake review verdict from stderr\n' >&2
+else
+  printf 'fake codex stdout\n'
+fi
 printf 'session id: fake-session-123\n' >&2
-if [[ -n "$out_file" ]]; then
+if [[ -n "$out_file" && "${FAKE_CODEX_SKIP_FINAL:-}" != "1" ]]; then
   printf 'fake codex final\n' > "$out_file"
 fi
 EOF
@@ -285,6 +289,30 @@ test_codex_monitor_status_is_not_sourced() {
   pass "codex-exec monitor parses status.env without executing shell"
 }
 
+test_codex_review_stderr_fallback_populates_final() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-review"
+  local output="$TMP_DIR/codex-review-output.txt"
+
+  setup_workspace "$workspace"
+
+  FAKE_CODEX_SKIP_FINAL=1 FAKE_CODEX_STDERR_VERDICT=1 \
+    PATH="$fakebin:$PATH" bash "$CODEX_RUN" review \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-review-runs" \
+      --prompt "review with stderr-only fake verdict" \
+      --heartbeat 1 \
+      > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_contains "$run_dir/final.md" "fake review verdict from stderr"
+  assert_contains "$run_dir/status.env" "final_source=stderr.log"
+  assert_contains "$output" "event=final-fallback source=stderr.log"
+
+  pass "codex-exec review backfills final.md from stderr when output-last-message is empty"
+}
+
 test_claude_dry_run_continue_contract() {
   local fakebin="$TMP_DIR/fakebin"
   local workspace="$TMP_DIR/workspace-claude"
@@ -402,6 +430,7 @@ main() {
   test_codex_exec_continue_contract
   test_codex_continue_env_is_not_sourced
   test_codex_monitor_status_is_not_sourced
+  test_codex_review_stderr_fallback_populates_final
   test_claude_dry_run_continue_contract
   test_claude_run_env_is_not_sourced
 }
