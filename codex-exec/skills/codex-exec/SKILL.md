@@ -8,7 +8,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.5.2"
+  version: "1.5.3"
 ---
 
 # Codex CLI
@@ -53,6 +53,9 @@ Unless the user asks for something else:
 - Use `codex exec` for one-shot work.
 - Use `scripts/codex-run.sh review` for monitored code reviews; use
   `codex review` for short raw CLI review requests.
+- Use direct `codex exec ... - < prompt.txt > result.md 2> stderr.log` when
+  the caller needs the text back in the same turn more than background
+  monitoring artifacts.
 - Use a prior wrapper run's generated `continue.sh` for follow-up reviews or
   critiques in the same Codex session; use `codex exec resume --last` only when
   no wrapper run directory is available.
@@ -93,7 +96,7 @@ The wrapper prints stable lifecycle lines:
 [codex-exec] event=paths run_dir=... status=... run_env=... monitor=... continue=... stdout=... stderr=... final=...
 [codex-exec] event=spawn pid=...
 [codex-exec] event=progress elapsed=...
-[codex-exec] event=finish exit_code=... session_id=... continue=...
+[codex-exec] event=finish exit_code=... session_id=... final_source=... continue=...
 ```
 
 It writes each run under
@@ -107,7 +110,8 @@ It writes each run under
 - `continue.sh`: resumes this exact Codex session in a fresh run directory.
 - `stdout.log` / `stderr.log`: raw CLI streams.
 - `events.jsonl`: mirror of stdout when `--json` is enabled.
-- `final.md`: the `--output-last-message` capture.
+- `final.md`: the `--output-last-message` capture, or the successful-run
+  fallback recorded in `status.env`'s `final_source`.
 - `command.txt`: shell-quoted command without prompt text.
 - `prompt.txt`: prompt content sent through stdin.
 - `preflight.log`: Codex version and workspace git status.
@@ -134,6 +138,16 @@ scripts/codex-run.sh review \
 When Claude starts the wrapper as a background task, point MonitorTool at the
 printed `monitor.sh` path or run `bash "$run_dir/monitor.sh"`. That avoids
 fragile sleeps, raw task-output polling, and repeated `tail` loops.
+Capture `run_dir` from the printed `event=paths` line. Do not rediscover the
+"latest" run with `ls -t`; concurrent Codex runs from other workspaces can win
+that race. If you lost the path, narrow by workspace:
+
+```bash
+grep -l "workspace=$(pwd -P)" \
+  "${CODEX_EXEC_RUNS_DIR:-${CODEX_HOME:-$HOME/.codex}/codex-exec-runs}"/*/status.env |
+  xargs -n1 dirname |
+  tail -20
+```
 
 When review mode has custom instructions, the wrapper composes a read-only
 `codex exec` review prompt with explicit git inspection commands for the
@@ -141,6 +155,13 @@ requested scope. This avoids current Codex CLI parsing behavior where scoped
 review flags such as `--uncommitted` can be rejected when combined with a prompt
 argument. When review mode has no custom prompt, the wrapper uses the dedicated
 `codex exec review` subcommand.
+The wrapper always requests `--output-last-message` into `final.md`. If Codex
+exits 0 but leaves `final.md` empty, the wrapper backfills it from `stdout.log`;
+for review mode only, it can backfill from `stderr.log` because some review
+builds stream the verdict there. JSON stdout is not copied into `final.md`; in
+that case `final_source=empty-json-stdout` and consumers should read
+`events.jsonl`. Check `status.env`'s `final_source` field when you need to know
+which path supplied the result.
 
 Example resume:
 
@@ -244,6 +265,16 @@ printf '%s\n' "Continue and focus on the failing tests only" | \
 
 When resuming, keep prior settings unless the user explicitly wants to change
 model, sandbox, or autonomy level.
+Raw `resume` has a different flag surface than initial `exec`. In particular,
+`codex exec resume --last --sandbox read-only -` is invalid because `--sandbox`
+is an `exec` parent flag, not a `resume` flag. Prefer the wrapper's
+`continue.sh`; if you must use raw CLI, either inherit the prior sandbox or put
+parent flags before the subcommand, for example:
+
+```bash
+printf '%s\n' "Continue the review." | \
+  codex exec --sandbox read-only resume --last -
+```
 
 ### Resume a wrapper session
 
@@ -310,6 +341,14 @@ codex exec \
 - If `codex exec` or `codex review` exits non-zero, treat the run as failed.
 - If the wrapper exits non-zero, inspect `status.env`, `stderr.log`, and
   `final.md` in the printed run directory before retrying.
+- If the wrapper's shell exit and `status.env` disagree, trust `status.env` for
+  the Codex child process result; shell exits like 143/144 usually mean the
+  wrapper or monitor process was interrupted during teardown.
+- If `final.md` is empty but `status.env` says `exit_code=0`, inspect
+  `status.env`'s `final_source`, then `stdout.log` and `stderr.log`. Some
+  successful review builds emit their verdict on stderr. If
+  `final_source=empty-json-stdout`, use `events.jsonl`; the wrapper deliberately
+  left `final.md` empty instead of copying raw JSONL into a Markdown artifact.
 - If MonitorTool needs progress, prefer the wrapper because it emits heartbeat
   lines even when Codex has not produced new terminal output.
 - If a non-interactive run needs too much context, switch from argv text to stdin with `-`.
@@ -318,7 +357,16 @@ codex exec \
   rerun with either `- < prompt.txt` for stdin prompts or `< /dev/null` for short argv prompts.
 - If a prompt has newlines or is longer than about 500 characters, do not retry argv quoting. Use stdin.
 - If the task is review-oriented, use the wrapper for monitored/custom-instruction reviews and raw `codex review` for simple unprompted reviews.
+- If the task is "run and read the answer now", use direct `codex exec` with
+  stdout redirection instead of the wrapper, for example
+  `codex exec --sandbox read-only - < prompt.txt > result.md 2> stderr.log`.
 - If a run needs edits, change the sandbox and autonomy deliberately instead of piling on flags by habit.
+- MCP auth failures such as Cloudflare `rmcp` auth-token errors are usually
+  environment noise unless the task required that MCP server. Note them, but do
+  not treat them as the Codex run result.
+- On macOS, read-only sandbox runs can print `confstr()`, `xcrun_db`, or
+  `xcodebuild` cache-write errors from developer tools. Treat them as benign
+  sandbox noise when the run exit code is 0 and the requested analysis completed.
 - If output includes warnings or partial results, summarize what Codex completed and what remains uncertain.
 
 ## Update Check
