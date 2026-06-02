@@ -599,6 +599,24 @@ else
   failed=1
 fi
 
+# ── Validate bundled TypeScript helpers ──
+
+finish_lane_script="code/skills/code/scripts/finish-lane.ts"
+if [[ -f "$finish_lane_script" ]]; then
+  if ! command -v bun >/dev/null 2>&1; then
+    echo "[FAIL] $finish_lane_script: bun is required to validate this helper"
+    failed=1
+  elif bun build "$finish_lane_script" --target=bun --outfile /tmp/skills-validate-finish-lane.js >/tmp/skills-validate-finish-lane.log 2>&1; then
+    echo "  [OK] $finish_lane_script (bun build)"
+    rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
+  else
+    echo "[FAIL] $finish_lane_script: bun build failed"
+    cat /tmp/skills-validate-finish-lane.log
+    rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
+    failed=1
+  fi
+fi
+
 if [[ $failed -ne 0 ]]; then
   echo "Validation failed."
   exit 1

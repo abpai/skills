@@ -14,7 +14,7 @@ Use this as a coding guardrail when writing, reviewing, or refactoring code. It 
 
 ## Don't Use When
 
-- The user explicitly asks for a specialized workflow such as `/code:understand`, `/code:simplify`, or `/code:review-and-commit`; use that workflow first and apply these guardrails only as a secondary check.
+- The user explicitly asks for a specialized workflow such as `/code:understand`, `/code:simplify`, `/code:prepare-pr`, or `/code:review-and-commit`; use that workflow first and apply these guardrails only as a secondary check.
 - The task needs domain-specific guidance that conflicts with this module; follow the domain workflow and name the tradeoff.
 
 ## Operating Rules
