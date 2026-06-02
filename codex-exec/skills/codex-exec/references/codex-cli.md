@@ -69,7 +69,9 @@ grep -l "workspace=$(pwd -P)" \
 The wrapper requests `--output-last-message` into `final.md`. If a successful
 run leaves that file empty, it backfills from `stdout.log`; review mode can also
 backfill from `stderr.log` because some Codex review builds stream the verdict
-there. JSON stdout is not copied into `final.md`; when
+there, filtering out the benign environmental noise listed below (the
+`session id:` marker, `rmcp` auth errors, and macOS sandbox messages) so the
+captured verdict stays clean. JSON stdout is not copied into `final.md`; when
 `final_source=empty-json-stdout`, read `events.jsonl` instead. Inspect
 `status.env`'s `final_source` field to see which artifact supplied `final.md`.
 

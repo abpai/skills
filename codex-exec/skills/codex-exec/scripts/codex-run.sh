@@ -940,12 +940,14 @@ populate_final_message_fallback() {
   fi
 
   if [[ "$MODE" == "review" && -s "$STDERR_LOG" ]]; then
-    # Some review builds stream the verdict to stderr. Drop the trailing
-    # `session id:` marker the CLI always emits there so it does not pollute
-    # the captured verdict.
+    # Some review builds stream the verdict to stderr. Drop known-benign
+    # environmental noise the CLI also emits there so it does not pollute the
+    # captured verdict: the trailing `session id:` marker, Cloudflare MCP
+    # (`rmcp`) auth-token errors, and macOS read-only-sandbox messages such as
+    # `confstr()`, `xcrun_db`, and `xcodebuild` cache-write errors.
     local filtered_stderr
     filtered_stderr="$RUN_DIR/.final.stderr.filtered"
-    if grep -v '^session id: ' "$STDERR_LOG" > "$filtered_stderr" && [[ -s "$filtered_stderr" ]]; then
+    if grep -vE '^session id: |rmcp|confstr\(|xcrun_db|xcodebuild' "$STDERR_LOG" > "$filtered_stderr" && [[ -s "$filtered_stderr" ]]; then
       mv "$filtered_stderr" "$FINAL_MESSAGE"
       FINAL_SOURCE="stderr.log"
       printf '[codex-exec] event=final-fallback source=%q reason=empty_final_review_stderr\n' "$FINAL_SOURCE"

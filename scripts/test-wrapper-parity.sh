@@ -116,6 +116,11 @@ elif [[ "${FAKE_CODEX_JSON_STDOUT:-}" == "1" ]]; then
   printf '{"type":"agent_message","message":"fake json stdout"}\n'
 elif [[ "${FAKE_CODEX_STDERR_VERDICT:-}" == "1" ]]; then
   printf 'fake review verdict from stderr\n' >&2
+elif [[ "${FAKE_CODEX_STDERR_NOISE:-}" == "1" ]]; then
+  printf 'rmcp auth-token error: token expired\n' >&2
+  printf 'confstr() failed: errno 22\n' >&2
+  printf 'xcodebuild: error writing cache\n' >&2
+  printf 'fake review verdict from stderr\n' >&2
 else
   printf 'fake codex stdout\n'
 fi
@@ -324,6 +329,33 @@ test_codex_review_stderr_fallback_populates_final() {
   pass "codex-exec review backfills final.md from stderr when output-last-message is empty"
 }
 
+test_codex_review_stderr_noise_filtered_from_final() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-review-noise"
+  local output="$TMP_DIR/codex-review-noise-output.txt"
+
+  setup_workspace "$workspace"
+
+  FAKE_CODEX_SKIP_FINAL=1 FAKE_CODEX_STDERR_NOISE=1 \
+    PATH="$fakebin:$PATH" bash "$CODEX_RUN" review \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-review-noise-runs" \
+      --prompt "review with benign stderr noise mixed into the verdict" \
+      --heartbeat 1 \
+      > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_contains "$run_dir/final.md" "fake review verdict from stderr"
+  assert_not_contains "$run_dir/final.md" "rmcp auth-token error"
+  assert_not_contains "$run_dir/final.md" "confstr() failed"
+  assert_not_contains "$run_dir/final.md" "xcodebuild: error writing cache"
+  assert_not_contains "$run_dir/final.md" "session id: fake-session-123"
+  assert_contains "$run_dir/status.env" "final_source=stderr.log"
+
+  pass "codex-exec review stderr fallback filters benign environmental noise from final.md"
+}
+
 test_codex_json_stdout_fallback_keeps_final_empty() {
   local fakebin="$TMP_DIR/fakebin"
   local workspace="$TMP_DIR/workspace-codex-json"
@@ -494,6 +526,7 @@ main() {
   test_codex_continue_env_is_not_sourced
   test_codex_monitor_status_is_not_sourced
   test_codex_review_stderr_fallback_populates_final
+  test_codex_review_stderr_noise_filtered_from_final
   test_codex_json_stdout_fallback_keeps_final_empty
   test_codex_review_stderr_session_only_keeps_final_empty
   test_claude_dry_run_continue_contract
