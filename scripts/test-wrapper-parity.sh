@@ -56,6 +56,12 @@ assert_not_contains() {
   fi
 }
 
+assert_empty_file() {
+  local path="$1"
+  assert_file "$path"
+  [[ ! -s "$path" ]] || fail "expected empty file: $path"
+}
+
 assert_not_exists() {
   [[ ! -e "$1" ]] || fail "unexpected file exists: $1"
 }
@@ -104,7 +110,11 @@ for arg in "$@"; do
 done
 
 cat >/dev/null || true
-if [[ "${FAKE_CODEX_STDERR_VERDICT:-}" == "1" ]]; then
+if [[ "${FAKE_CODEX_NO_STDOUT:-}" == "1" ]]; then
+  :
+elif [[ "${FAKE_CODEX_JSON_STDOUT:-}" == "1" ]]; then
+  printf '{"type":"agent_message","message":"fake json stdout"}\n'
+elif [[ "${FAKE_CODEX_STDERR_VERDICT:-}" == "1" ]]; then
   printf 'fake review verdict from stderr\n' >&2
 else
   printf 'fake codex stdout\n'
@@ -314,6 +324,58 @@ test_codex_review_stderr_fallback_populates_final() {
   pass "codex-exec review backfills final.md from stderr when output-last-message is empty"
 }
 
+test_codex_json_stdout_fallback_keeps_final_empty() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-json"
+  local output="$TMP_DIR/codex-json-output.txt"
+
+  setup_workspace "$workspace"
+
+  FAKE_CODEX_SKIP_FINAL=1 FAKE_CODEX_JSON_STDOUT=1 \
+    PATH="$fakebin:$PATH" bash "$CODEX_RUN" exec \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-json-runs" \
+      --prompt "json stdout should not become final markdown" \
+      --json \
+      --heartbeat 1 \
+      > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_empty_file "$run_dir/final.md"
+  assert_contains "$run_dir/stdout.log" '{"type":"agent_message","message":"fake json stdout"}'
+  assert_contains "$run_dir/events.jsonl" '{"type":"agent_message","message":"fake json stdout"}'
+  assert_contains "$run_dir/status.env" "final_source=empty-json-stdout"
+  assert_contains "$output" "event=final-fallback source=empty-json-stdout"
+
+  pass "codex-exec JSON stdout fallback keeps final.md empty instead of copying JSONL"
+}
+
+test_codex_review_stderr_session_only_keeps_final_empty() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-review-session-only"
+  local output="$TMP_DIR/codex-review-session-only-output.txt"
+
+  setup_workspace "$workspace"
+
+  FAKE_CODEX_SKIP_FINAL=1 FAKE_CODEX_NO_STDOUT=1 \
+    PATH="$fakebin:$PATH" bash "$CODEX_RUN" review \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-review-session-only-runs" \
+      --prompt "session id alone should not become final markdown" \
+      --heartbeat 1 \
+      > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_empty_file "$run_dir/final.md"
+  assert_contains "$run_dir/stderr.log" "session id: fake-session-123"
+  assert_not_contains "$run_dir/final.md" "session id: fake-session-123"
+  assert_contains "$run_dir/status.env" "final_source=empty"
+
+  pass "codex-exec review stderr fallback ignores session-only stderr"
+}
+
 test_claude_dry_run_continue_contract() {
   local fakebin="$TMP_DIR/fakebin"
   local workspace="$TMP_DIR/workspace-claude"
@@ -432,6 +494,8 @@ main() {
   test_codex_continue_env_is_not_sourced
   test_codex_monitor_status_is_not_sourced
   test_codex_review_stderr_fallback_populates_final
+  test_codex_json_stdout_fallback_keeps_final_empty
+  test_codex_review_stderr_session_only_keeps_final_empty
   test_claude_dry_run_continue_contract
   test_claude_run_env_is_not_sourced
 }

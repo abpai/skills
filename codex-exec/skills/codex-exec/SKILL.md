@@ -158,8 +158,10 @@ argument. When review mode has no custom prompt, the wrapper uses the dedicated
 The wrapper always requests `--output-last-message` into `final.md`. If Codex
 exits 0 but leaves `final.md` empty, the wrapper backfills it from `stdout.log`;
 for review mode only, it can backfill from `stderr.log` because some review
-builds stream the verdict there. Check `status.env`'s `final_source` field when
-you need to know which path supplied the result.
+builds stream the verdict there. JSON stdout is not copied into `final.md`; in
+that case `final_source=empty-json-stdout` and consumers should read
+`events.jsonl`. Check `status.env`'s `final_source` field when you need to know
+which path supplied the result.
 
 Example resume:
 
@@ -344,7 +346,9 @@ codex exec \
   wrapper or monitor process was interrupted during teardown.
 - If `final.md` is empty but `status.env` says `exit_code=0`, inspect
   `status.env`'s `final_source`, then `stdout.log` and `stderr.log`. Some
-  successful review builds emit their verdict on stderr.
+  successful review builds emit their verdict on stderr. If
+  `final_source=empty-json-stdout`, use `events.jsonl`; the wrapper deliberately
+  left `final.md` empty instead of copying raw JSONL into a Markdown artifact.
 - If MonitorTool needs progress, prefer the wrapper because it emits heartbeat
   lines even when Codex has not produced new terminal output.
 - If a non-interactive run needs too much context, switch from argv text to stdin with `-`.

@@ -929,7 +929,10 @@ populate_final_message_fallback() {
     return 0
   fi
 
-  if [[ -s "$STDOUT_LOG" ]]; then
+  if [[ -s "$STDOUT_LOG" && "$JSON_OUTPUT" == "true" ]]; then
+    FINAL_SOURCE="empty-json-stdout"
+    printf '[codex-exec] event=final-fallback source=%q reason=empty_final_json_stdout\n' "$FINAL_SOURCE"
+  elif [[ -s "$STDOUT_LOG" ]]; then
     cp "$STDOUT_LOG" "$FINAL_MESSAGE"
     FINAL_SOURCE="stdout.log"
     printf '[codex-exec] event=final-fallback source=%q reason=empty_final\n' "$FINAL_SOURCE"
@@ -939,16 +942,21 @@ populate_final_message_fallback() {
   if [[ "$MODE" == "review" && -s "$STDERR_LOG" ]]; then
     # Some review builds stream the verdict to stderr. Drop the trailing
     # `session id:` marker the CLI always emits there so it does not pollute
-    # the captured verdict; fall back to the raw copy if filtering empties it.
-    if ! grep -v '^session id: ' "$STDERR_LOG" > "$FINAL_MESSAGE" || [[ ! -s "$FINAL_MESSAGE" ]]; then
-      cp "$STDERR_LOG" "$FINAL_MESSAGE"
+    # the captured verdict.
+    local filtered_stderr
+    filtered_stderr="$RUN_DIR/.final.stderr.filtered"
+    if grep -v '^session id: ' "$STDERR_LOG" > "$filtered_stderr" && [[ -s "$filtered_stderr" ]]; then
+      mv "$filtered_stderr" "$FINAL_MESSAGE"
+      FINAL_SOURCE="stderr.log"
+      printf '[codex-exec] event=final-fallback source=%q reason=empty_final_review_stderr\n' "$FINAL_SOURCE"
+      return 0
     fi
-    FINAL_SOURCE="stderr.log"
-    printf '[codex-exec] event=final-fallback source=%q reason=empty_final_review_stderr\n' "$FINAL_SOURCE"
-    return 0
+    rm -f "$filtered_stderr"
   fi
 
-  FINAL_SOURCE="empty"
+  if [[ "$FINAL_SOURCE" != "empty-json-stdout" ]]; then
+    FINAL_SOURCE="empty"
+  fi
 }
 
 heartbeat_loop() {

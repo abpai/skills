@@ -53,7 +53,8 @@ codex exec --sandbox read-only --output-schema schema.json "Review the diff"
   "latest" lookups because another workspace may have a newer run
 - Final capture: `final.md` is populated from `--output-last-message`; when
   Codex exits 0 but leaves it empty, check `status.env`'s `final_source`, then
-  `stdout.log` and `stderr.log`
+  `stdout.log` and `stderr.log`; `final_source=empty-json-stdout` means raw
+  JSONL was left in `events.jsonl` instead of copied into `final.md`
 - Same-turn reads: use raw `codex exec ... > result.md 2> stderr.log` when the
   caller needs to consume the answer immediately; use the wrapper for monitored
   long runs and resumable follow-ups
