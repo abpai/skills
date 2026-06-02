@@ -1,3 +1,10 @@
+---
+name: hexagon-audit
+description: Audit Ports & Adapters (Hexagonal Architecture) compliance in a monorepo that separates interface packages under packages/ from provider implementations under adapters/. Use when asked to audit hexagon compliance, check ports/adapters separation, or verify inward-dependency invariants. Ships a deterministic scanner that reports package-to-adapter imports, peer-adapter imports, and vendor SDKs leaking into ports.
+metadata:
+  version: "1.0.0"
+---
+
 # Hexagon Audit
 
 Audit Ports & Adapters (Hexagonal Architecture, Cockburn 2005) compliance in a
@@ -6,7 +13,7 @@ typically a top-level `packages/` (ports, shared kernel, inner-core code) and
 `adapters/` (provider implementations). This is a read-only audit unless the
 user explicitly asks for fixes.
 
-Use this module when the user asks to audit hexagon compliance, check
+Use this skill when the user asks to audit hexagon compliance, check
 ports/adapters separation, or verify architecture invariants in a repo with
 that layout.
 
@@ -30,21 +37,21 @@ that layout.
 ### 1. Run the deterministic scan
 
 Run the bundled scanner from the repo root. The script path depends on how the
-`code` skill is available:
+`hexagon-audit` skill is available:
 
 ```bash
 # installed via `npx skills add` (project-local skills dir)
-bun .agents/skills/code/scripts/audit-hexagon.ts
+bun .agents/skills/hexagon-audit/scripts/audit-hexagon.ts
 
 # inside the abpai/skills checkout itself
-bun code/skills/code/scripts/audit-hexagon.ts
+bun hexagon-audit/skills/hexagon-audit/scripts/audit-hexagon.ts
 
 # loaded as a Claude Code plugin (runtime cache)
-bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/audit-hexagon.ts"
+bun "${CLAUDE_PLUGIN_ROOT}/skills/hexagon-audit/scripts/audit-hexagon.ts"
 ```
 
 Pick whichever resolves; if none do, the scanner isn't on disk yet — re-install
-or re-add the `code` skill before continuing.
+or re-add the `hexagon-audit` skill before continuing.
 
 The script discovers workspace package names and dependency edges from
 `packages/*/package.json` and `adapters/*/package.json`, then reports:
@@ -56,7 +63,7 @@ The script discovers workspace package names and dependency edges from
 If the script reports package-to-adapter or adapter-to-peer-adapter imports,
 surface them as Tier 1 hard violations. Vendor SDK hits need human
 classification in step 3. If the repo does not have `packages/` and `adapters/`
-top-level directories, this module does not apply — say so instead of guessing.
+top-level directories, this skill does not apply — say so instead of guessing.
 
 ### 2. Run focused source checks
 
