@@ -1,63 +1,72 @@
 # UX And Accessibility Audit
 
-Role: Review changed UI for usability and accessibility blockers. Avoid
-taste-only commentary; report user-impacting issues with concrete fixes.
+Role: Review changed UI for usability and accessibility blockers. Report
+user-impacting issues with concrete fixes, not taste preferences.
 
 ## Goal
 
-Find user-facing flow, comprehension, interaction, responsive, keyboard, and
-basic assistive-technology issues before PR handoff.
+Catch UI that passes its route test but is unusable or inaccessible for real
+users: unreachable controls, unlabeled inputs, missing focus, broken keyboard
+paths, dead-end error states, and layout that collapses on small viewports.
+Done means every changed surface has been exercised and each blocker carries a
+file:line, the user path that hits it, and a specific fix.
 
 ## Use When
 
-Use when interface copy, layout, interaction, forms, navigation, loading/empty
-/error states, disabled states, or accessibility surfaces changed.
+Changed copy, layout, interaction, forms, navigation, loading/empty/error
+states, disabled states, or any accessibility surface.
 
 ## Success Criteria
 
-- Critical and important findings include file:line, user path, impact, and fix.
-- Keyboard path, responsive behavior, visible states, and labeling concerns are
-  checked or explicitly skipped.
-- Findings are prioritized as `Critical`, `Important`, or `Polish`.
-- Evidence ties to routes, actions, screenshots, traces, or blockers.
+- Every finding has file:line, the user path that triggers it, impact, and a fix.
+- Keyboard reachability, responsive behavior, visible states, and labeling are
+  each checked or explicitly marked skipped with a reason.
+- Findings carry severity `Critical`, `Important`, or `Polish`; any `Critical`
+  blocks the gate.
+- Each finding ties to a route, action, screenshot, or trace.
 
 ## Constraints
 
 - Do not duplicate Browser E2E. E2E proves the route works; this gate judges
   whether the experience is usable and accessible.
-- Do not reduce accessibility to color contrast only.
-- Do not report generic heuristic scores without fixable findings.
+- Cover keyboard, focus, labels, and semantics, not color contrast alone.
+- No generic heuristic scores. Every claim resolves to a fixable finding.
 
 ## Quick Pass
 
-1. Identify changed UI surfaces from the diff and `qa-plan.md`.
-2. Exercise the real route/component when practical.
-3. Check obviousness, navigation, happy/error paths, cognitive load, and form
-   recovery.
-4. Check keyboard reachability, focus order, labels, alt text, ARIA where used,
-   contrast, and non-color-only meaning.
-5. Check loading, empty, error, disabled, and success states.
-6. Group findings by severity and record evidence.
+1. List changed UI surfaces from the diff and `qa-plan.md`.
+2. Open each real route or component; fall back to source review if it will not
+   run.
+3. Walk the happy path, then the error path, watching for unclear copy, hidden
+   navigation, and unrecoverable form states.
+4. Tab through with the keyboard: confirm reachability, focus order, visible
+   focus, labels, alt text, ARIA where used, and meaning that survives without
+   color.
+5. Trigger loading, empty, error, disabled, and success states.
+6. Record each issue with severity and evidence.
 
 ## Deep Escalation
 
-Use for launch-quality or high-traffic UI changes. Add mobile/desktop viewport
-passes, screen-reader smoke notes when practical, input stress, error injection,
-and a prioritized UX/a11y report.
+For launch-quality or high-traffic UI, add mobile and desktop viewport passes,
+screen-reader smoke notes where practical, input stress, error injection, and a
+prioritized UX/a11y report.
 
 ## Evidence
 
-Record route/component, user action, screenshot/trace, keyboard path notes,
-responsive viewport, visible states checked, accessibility notes, console/network
-notes if relevant, and residual manual QA.
+Per finding: route/component, user action, severity, file:line, fix. Plus the
+coverage record: keyboard path notes, viewports checked, visible states
+exercised, accessibility notes, relevant console/network output, screenshot or
+trace path, and any QA left for a human.
 
 ## Skip Or Stop Rules
 
-Skip docs/config/backend-only diffs with no user-facing interface change. If
-setup/auth/server is blocked, record the blocker and do a static/component-level
-review instead.
+Skip docs/config/backend-only diffs with no user-facing change. If
+setup/auth/server is blocked, record the blocker and do a static
+component-level review instead.
 
 ## Output
 
-Return prioritized findings and evidence. If clean, state which paths and states
-were checked.
+Write prioritized findings and evidence to `gate-decisions.md` with a `run`,
+`skip`, `deep`, `override`, or `blocked` decision per the verb set in `gate-decisions.md`.
+A `Critical` finding means `blocked`. If clean, name the paths and states
+checked.

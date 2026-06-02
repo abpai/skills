@@ -1,14 +1,16 @@
 # Prose Quality And PR Copy
 
-Role: Review changed prose and PR copy as a skeptical technical editor. Preserve
-meaning while making the text specific, human, evidence-backed, and useful to a
-reviewer.
+Role: Review changed prose and PR copy as a skeptical technical editor. Keep the
+meaning; make the text specific, human, and backed by evidence a reviewer can
+check.
 
 ## Goal
 
-Remove vague or AI-ish writing without adding unsupported claims. PR copy should
-lead with the behavior change, then explain why it matters, how it works
-briefly, validation, selected/skipped gates, and residual risk.
+Catch the risk that user-facing prose ships claims no one verified: invented
+behavior, hyped value props, commands or paths that do not exist, or rewritten
+history. Done means every kept claim traces to the diff, a validation artifact,
+a repo source, or a cited external source, and anything unverifiable is marked
+unknown rather than polished over.
 
 ## Use When
 
@@ -17,50 +19,56 @@ inline user-facing guidance, or `pr-body-draft.md`.
 
 ## Success Criteria
 
-- Claims are grounded in the diff, validation artifacts, repo sources, or cited
-  external sources.
-- Commands, paths, flags, versions, links, and examples are verified or marked
-  unknown.
-- PR body starts with behavior change, not implementation inventory.
-- Filler, hype, formulaic contrast, awkward punctuation, and generic adjectives
-  are removed or rewritten.
-- Changelog/release claims preserve real chronology and source evidence.
+- Every claim traces to the diff, a validation artifact, a repo source, or a
+  cited external source; the rest are marked unknown.
+- Commands, paths, flags, versions, links, and examples are verified against the
+  repo or marked unknown.
+- The PR body opens with the behavior change, then why it matters, a brief how,
+  validation, selected/skipped gates, and residual risk.
+- Filler, hype adjectives, formulaic contrast, and generic phrasing are cut or
+  rewritten into concrete statements.
+- Changelog and release claims keep real chronology and source evidence.
 
 ## Constraints
 
 - Do not turn PR text into marketing copy.
 - Do not invent value props, metrics, dates, customer impact, or roadmap status.
-- Do not mechanically rewrite punctuation; improve the sentence.
-- Do not expand a small docs edit into a full docs rewrite unless the user asks.
+- Do not mechanically swap punctuation; fix the sentence.
+- Do not expand a small docs edit into a full docs rewrite unless asked.
 
 ## Quick Pass
 
-1. Scope changed prose and generated PR text.
-2. Read once for intended meaning, behavior change, validation, and risk.
-3. Replace generic claims with concrete changed surfaces and evidence.
-4. Verify command/path/example claims against the repo.
-5. Rewrite PR copy into concise reviewer-facing sections.
-6. Record files reviewed and any claims not verified.
+1. List the changed prose files and any generated PR text.
+2. Read each for the behavior change it claims, its validation, and its stated
+   risk.
+3. Replace generic claims with the specific changed surface plus its evidence.
+4. Verify each command, path, flag, and example against the repo; mark any you
+   cannot confirm as unknown.
+5. Restructure the PR copy to the section order in Success Criteria.
+6. Record files reviewed and every claim left unverified.
 
 ## Deep Escalation
 
-Use for public READMEs, release notes, changelogs, docs that users follow to set
-up a project, or PRs with high reviewer/customer visibility. Check examples by
-running or tracing the command where practical, verify historical claims from
-git/tags/issues/releases, and preserve a before/after prose diff.
+Use for public READMEs, release notes, changelogs, setup docs users follow, or
+PRs with high reviewer or customer visibility. Run or trace each example command
+where practical, verify historical claims against git history, tags, issues, and
+releases, and keep a before/after prose diff.
 
 ## Evidence
 
-Record files reviewed, replacement summary or before/after snippets, verified
-commands/paths/links, validation evidence used in claims, and skipped checks.
+Record the files reviewed (with `file:line` for changed claims), before/after
+snippets for rewritten passages, the commands or links you ran to verify
+examples and their results, the validation artifacts each claim leans on, and
+any check you skipped.
 
 ## Skip Or Stop Rules
 
 Skip when there is no human-facing prose and no PR copy is being prepared. Stop
-if a claim needs external truth that cannot be verified; mark it unknown instead
-of polishing around it.
+when a claim needs external truth you cannot verify; mark it unknown instead of
+writing around it.
 
 ## Output
 
-Return actionable edits or a concise replacement PR body. Include a gate
-decision: `run`, `deep`, `skipped`, or `blocked`, plus evidence.
+Return the edits to apply or a replacement PR body in the Success Criteria
+section order, the gate decision recorded in `gate-decisions.md` (`run`, `skip`,
+`deep`, `override`, or `blocked`), and the supporting evidence.

@@ -1,62 +1,67 @@
 # Isomorphic Simplification
 
-Role: Find behavior-preserving simplifications only when behavior is protected.
-This is not a negative-LOC contest.
+Role: Recommend behavior-preserving simplifications, and only when behavior is
+protected by proof.
 
 ## Goal
 
-Remove accidental complexity without changing public behavior, outputs, side
-effects, interfaces, ordering, timing assumptions, or error semantics.
+Catch the case where a refactor that reads as pure cleanup silently changes what
+the code does. Remove accidental complexity while preserving public behavior,
+outputs, side effects, interfaces, ordering, timing assumptions, and error
+semantics. A diff that touches behavior is out of scope for this gate.
 
 ## Use When
 
-Use when changed code shows duplication, accidental complexity, helper/component
-reuse opportunities, refactor intent, DRY intent, or `prepare-pr` recommends
-this gate.
+Changed code shows duplication, accidental complexity, helper or component reuse
+opportunities, refactor or DRY intent, or `prepare-pr` routes this gate.
 
 ## Success Criteria
 
-- Behavior proof exists: tests, goldens, explicit invariants, callsite evidence,
-  or source contract.
-- Duplication is classified before merging: exact, parametric, bounded variance,
+- Behavior proof exists before any change: tests, goldens, explicit invariants,
+  callsite evidence, or a source contract.
+- Each duplication candidate is classified: exact, parametric, bounded variance,
   semantic clone, or accidental rhyme.
-- Any simplification has low coupling cost and clear preservation evidence.
-- Skips are explicit and concrete.
+- Each recommended simplification carries preservation evidence and a stated
+  coupling cost.
 
 ## Constraints
 
-- Do not hide behavior changes inside cleanup.
+- Do not hide a behavior change inside cleanup.
 - Do not merge similar-looking code with different lifecycles.
-- Do not introduce generic helpers for two weakly related cases.
-- Do not cross async/order/error/side-effect boundaries without proof.
+- Do not introduce a generic helper for two weakly related cases.
+- Do not cross async, ordering, error, or side-effect boundaries without proof.
 
 ## Quick Pass
 
-1. Decide applicability from the diff, not vibes.
-2. Bound scope to changed files and direct callers.
-3. Gather behavior proof before recommending changes.
-4. Classify simplification candidates.
+1. Confirm applicability from the diff itself, not from naming or structure.
+2. Bound scope to changed files and their direct callers.
+3. Gather behavior proof before proposing anything.
+4. Classify each duplication candidate.
 5. Check preservation axes: error semantics, ordering, laziness, side effects,
-   logs/metrics, nullability, units, type narrowing, render behavior.
-6. Recommend one small lever at a time.
-7. Rerun targeted validation after any change.
+   logs and metrics, nullability, units, type narrowing, render behavior.
+6. Propose one change at a time, smallest first.
+7. Rerun targeted validation after each accepted change.
 
 ## Deep Escalation
 
-Use for larger refactors. Write a behavior-preservation note, enumerate call
-sites, update or add goldens/invariants where appropriate, and validate after
-each lever instead of one giant rewrite.
+For larger refactors, write a behavior-preservation note, enumerate affected call
+sites, add or update goldens and invariants where they are missing, and validate
+after each individual change rather than after one combined rewrite.
 
 ## Evidence
 
-Record candidate file:line refs, callsite/search output, preservation proof,
-validation commands/results, golden diff status if relevant, and skip reasons.
+Record candidate `file:line` refs, callsite or search output, the preservation
+proof relied on, validation commands and results, golden diff status when
+relevant, and the reason for each skip.
 
 ## Skip Or Stop Rules
 
-Skip when tests are red without a baseline, no proof exists, candidates merely
-look similar, parameter sprawl would grow, or coupling risk exceeds clarity gain.
+Skip when tests are red with no baseline, no behavior proof exists, candidates
+only look alike, the change would grow parameter sprawl, or coupling risk exceeds
+the clarity gain.
 
 ## Output
 
-Return proposed simplifications with proof and risk, or a clean skip rationale.
+Return either proposed simplifications (each with classification, preservation
+proof, and coupling cost) or a concrete skip rationale. Record the gate decision
+in `gate-decisions.md` as `run`, `skip`, `deep`, `override`, or `blocked`.

@@ -1166,7 +1166,7 @@ function writeGateDecisions(outDir: string, gates: QualityGate[]): void {
     selectedGates.length > 0
       ? selectedGates.map(
           (gate) =>
-            `| ${markdownEscape(gate.gate)} | \`${markdownEscape(gate.playbook)}\` | ${markdownEscape(gate.signal)} | TODO: run / skip / deep / override | TODO | ${markdownEscape(gate.evidence)} |`,
+            `| ${markdownEscape(gate.gate)} | \`${markdownEscape(gate.playbook)}\` | ${markdownEscape(gate.signal)} | TODO: run / skip / deep / override / blocked | TODO | ${markdownEscape(gate.evidence)} |`,
         )
       : ["| `none` | n/a | No gates were recommended from bounded signals. | n/a | n/a | n/a |"]
   const unselectedRows =
@@ -1188,6 +1188,7 @@ function writeGateDecisions(outDir: string, gates: QualityGate[]): void {
       "",
       "## Decision Rules",
       "",
+      "- Decision verbs: `run` (do the quick pass), `deep` (do the deep pass), `skip` (not applicable; record why), `override` (change the script's recommendation), `blocked` (cannot execute; record the obstacle).",
       "- Prefer the recommended gate set unless project intent or the actual diff shows it is wrong.",
       "- Add a one-off local gate when the change introduces a new user-facing surface, runtime, integration, data contract, security boundary, or operational path.",
       "- Do not run a gate just because it exists; do record the reason when an obvious gate is intentionally skipped.",

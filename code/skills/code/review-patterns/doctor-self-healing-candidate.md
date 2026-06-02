@@ -1,69 +1,75 @@
 # Doctor Self-Healing Candidate
 
-Role: Decide whether recurring setup, auth, bootstrap, diagnostics, or repair
-pain should become a safe `doctor`, `check`, `repair`, setup script, or skill.
+Role: Decide whether recurring setup, auth, bootstrap, diagnostics, or repair pain
+should become a safe `doctor`, `check`, `repair`, setup script, or skill.
 
 ## Goal
 
-Review or propose self-healing surfaces as agent-facing safety contracts, not as
-hidden mutation.
+Catch two failures: a self-healing surface that mutates state while claiming to
+only diagnose, and a one-off environment hiccup being hardened into a permanent
+repair command. A passing change has a read-only default, an explicit fix path,
+and a repair proven against a real broken state.
 
 ## Use When
 
-Use for CLI/script changes involving setup, auth, bootstrap, diagnostics, repair
-flows, seed/fixture workflows, or QA failures that agents keep rediscovering and
-the repo can detect or repair.
+CLI or script changes touch setup, auth, bootstrap, diagnostics, repair, or
+seed/fixture flows, or a QA failure keeps recurring and the repo can detect or
+repair it itself.
 
 ## Success Criteria
 
-- Gate decision is `not needed`, `setup skill enough`, `doctor candidate`, or
-  `doctor hardening required`.
-- Diagnosis is read-only by default.
-- Repair requires explicit `--fix` or equivalent.
-- Fixers detect before fixing, name preconditions, scope writes, support backup
-  or undo when practical, and are idempotent.
-- Non-interactive surface has help, stable exit codes, stdout/stderr discipline,
-  JSON/robot output when appropriate, and actionable errors.
-- Repair claims have fixture or reproducible broken-state evidence.
+- Decision is one of `not needed`, `setup skill enough`, `doctor candidate`, or
+  `doctor hardening required`, with the triggering failure mode named.
+- Diagnosis is read-only; repair requires an explicit `--fix` or equivalent.
+- Fixers detect before writing, name preconditions, scope their writes, are
+  idempotent, and back up or undo where the change is reversible.
+- Non-interactive surface has `--help`, stable exit codes, separated
+  stdout/stderr, robot/JSON output where machines consume it, and errors that
+  say what to do next.
+- Every repair claim is backed by fixture or reproducible broken-state evidence.
 
 ## Constraints
 
-- No hidden mutation in diagnose mode.
-- No broad destructive cleanup.
-- No unsafe network or secret use by default.
-- Do not build a doctor command for a one-off external environment issue.
+- No state change in diagnose mode.
+- No broad or destructive cleanup.
+- No network calls or secret reads by default.
+- No doctor command for a one-off external environment issue.
 
 ## Quick Pass
 
-1. Name failure mode: symptom, likely cause, and repo-owned repair boundary.
-2. Check CLI discoverability, `--help`, failure output, exit code, and non-TTY
-   behavior.
-3. Classify response: better error, setup script, read-only checker, full doctor
-   command, or no action.
-4. For repair, inspect detector purity, explicit fix flag, atomic/scoped writes,
-   backup/undo, lock/concurrency behavior, and offline defaults.
-5. Check JSON/robot schema and stdout/stderr separation if present.
-6. Require or propose round-trip proof: corrupt -> diagnose -> dry-run -> fix ->
-   healthy -> second fix no-op -> undo when applicable.
+1. Name the failure mode: symptom, likely cause, and the repair boundary the repo
+   actually owns.
+2. Run the surface non-interactively: check `--help`, failure output, exit codes,
+   non-TTY behavior, and validate any robot/JSON output against its schema.
+3. Classify the response: better error, setup script, read-only checker, full
+   doctor command, or no action.
+4. For repair, inspect detector purity, the explicit fix flag, scoped and atomic
+   writes, backup/undo, lock/concurrency handling, and offline defaults.
+5. Demand the round trip: corrupt -> diagnose -> dry-run -> fix -> healthy ->
+   second fix is a no-op -> undo where reversible. This is the gate's core proof.
 
 ## Deep Escalation
 
-Use when a doctor/repair surface already exists or the failure is common and
-repo-controlled. Add fixture-based tests, precise finding IDs, rollback proof,
-and safe failure behavior.
+Escalate when a doctor/repair surface already exists, or the failure is common and
+repo-controlled. Require fixture-based tests, precise finding IDs, rollback proof,
+and safe behavior when the repair itself fails.
 
 ## Evidence
 
-Record help output, commands, exit codes, stdout/stderr notes, detector/fixer
-file refs, backup/undo path, fixture/test name, or reason self-healing is not
-warranted.
+Record in verification-timeline.md: `--help` output, commands run with exit codes,
+stdout/stderr notes, the robot/JSON schema check, detector and fixer file:line
+refs, the backup/undo path, the fixture or test name, and the round-trip
+transcript. If self-healing is not warranted, record why.
 
 ## Skip Or Stop Rules
 
-Skip docs-only changes, one-off external environment problems, unrelated feature
-work, unsafe repair requirements, or existing validators that clearly cover the
-failure.
+Skip docs-only changes, unrelated feature work, and failures an existing validator
+already covers. Stop and block if a proposed repair is unsafe or destructive.
 
 ## Output
 
-Return the self-healing decision, evidence, and any narrow follow-up candidate.
+Write the decision to gate-decisions.md: `skip` for `not needed`, `run` for
+`setup skill enough` or a verified `doctor candidate`, `deep` for
+`doctor hardening required`, `blocked` for an unsafe repair, and `override` when
+the recommendation does not fit this diff. Include the evidence refs and any
+narrow follow-up candidate.

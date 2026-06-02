@@ -1,28 +1,30 @@
 # Golden Artifact Decision
 
-Role: Decide whether complex stable output should be protected by a golden,
-snapshot, approval artifact, or explicit skip.
+Role: Decide whether complex stable output should be locked behind a golden,
+snapshot, or approval artifact, or skipped in favor of stronger evidence.
 
 ## Goal
 
-Any golden add/update should be deterministic, normalized, diff-reviewed, and
-justified as behavior evidence.
+Every golden added or updated is deterministic, normalized, and reviewed as a
+semantic diff before it lands. Catch the failure where a golden is committed
+without scrubbing or review and silently locks in nondeterministic noise or a
+real regression as the expected output.
 
 ## Use When
 
-Use for snapshots, `.snap`, `.golden`, approval tests, generated CLI/UI/compiler
-/query/serialization output, or complex stable output where field-by-field
-assertions would be weaker.
+Output is a snapshot, `.snap`, `.golden`, approval test, or generated
+CLI/UI/compiler/query/serialization result, or any complex stable output where
+field-by-field assertions would be weaker than comparing the whole artifact.
 
 ## Success Criteria
 
-- Decision is recorded: add, update, keep, or skip.
-- Output strategy is chosen: exact, scrubbed, fuzzy, semantic, canonicalized, or
-  structural.
-- Dynamic fields are scrubbed or normalized.
-- Generation/update and validation commands are captured.
-- Diff is reviewed semantically, not blindly accepted.
-- Skip cites stronger alternative evidence.
+- Decision recorded in gate-decisions.md: add, update, keep, or skip.
+- Comparison strategy chosen: exact, scrubbed, fuzzy, semantic, canonicalized,
+  or structural.
+- Dynamic fields scrubbed or normalized before the artifact is written.
+- Generation/update command and validation command both captured and rerun.
+- Golden diff read line by line and its changes explained.
+- A skip names the stronger evidence that replaces the golden.
 
 ## Constraints
 
@@ -33,30 +35,35 @@ assertions would be weaker.
 
 ## Quick Pass
 
-1. Inspect changed files and output contracts.
-2. Classify output: deterministic, dynamic, numeric, binary, cross-platform, or
-   volatile.
-3. Pick the lightest stable comparison strategy.
-4. Run the repo generation/update command, then normal validation.
-5. Review the golden diff and summarize semantic changes.
-6. Record decision and evidence.
+1. Inspect the changed files and the output contract each golden asserts.
+2. Classify the output: deterministic, dynamic, numeric, binary, cross-platform,
+   or volatile.
+3. Pick the cheapest comparison strategy that stays stable across runs.
+4. Run the repo generation/update command, then the normal validation command.
+5. Read the golden diff and write a one-line summary of what changed and why.
 
 ## Deep Escalation
 
-Use for durable golden suites. Define canonicalization/scrubbing, update command,
-human review flow, CI behavior, and how to regenerate artifacts safely.
+Escalate for durable golden suites. Define the canonicalization and scrubbing
+rules, the single update command, the human review step, the CI behavior on
+mismatch, and the safe regeneration procedure.
 
 ## Evidence
 
-Record golden paths, command output, validation result, canonicalization note,
-reviewed diff summary, and update rationale.
+Record golden paths, generation and validation command output with status, the
+canonicalization rule applied, the reviewed diff summary, and the update
+rationale. Pair each claim with a path or command, not a description.
 
 ## Skip Or Stop Rules
 
-Skip when output is not stable/observable, too volatile or huge to review,
-existing assertions are stronger, or no safe canonicalization exists. If exact
-output is a weak oracle, route to metamorphic/property testing.
+Skip when output is not stable or observable, too volatile or large to review,
+already covered by stronger assertions, or has no safe canonicalization. When
+exact output is a weak oracle, route to metamorphic or property testing instead.
 
 ## Output
 
-Return add/update/keep/skip with rationale and proof.
+Map the decision to the gate set: add or update is `run`, a durable suite is
+`deep`, keep or skip is `skip`, an unreviewable or auto-updating golden is
+`blocked`; use `override` when the recommendation does not fit. Return the gate
+decision, the add/update/keep/skip choice, the
+rationale, and the supporting paths and command output.

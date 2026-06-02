@@ -1,13 +1,17 @@
 # Manifest And Config Consistency
 
-Role: Review installable metadata, workflow routing, and tool configuration as
-a contract checker. Look for drift between what files declare and what the
-plugin actually exposes.
+Role: Review installable metadata, workflow routing, and tool configuration as a
+contract checker. Catch drift between what config files declare and what the
+plugin actually loads and exposes.
 
 ## Goal
 
-Prove that manifests, version maps, marketplace entries, command wrappers,
-frontmatter, and docs describe the same product surface.
+Confirm that every config surface in the diff agrees: manifests, `versions.json`,
+marketplace entries, command wrappers, skill frontmatter, loader paths, and docs
+must name the same versions, command names, and source paths. The risk this gate
+catches is a config that ships a broken or misrepresented surface: a version that
+disagrees across files, a loader path that points outside its plugin root, or
+docs that advertise an internal-only helper as a public command.
 
 ## Use When
 
@@ -17,46 +21,51 @@ files, JSON, YAML, TOML, or docs that name public workflow surfaces.
 
 ## Success Criteria
 
-- Repo validator or nearest schema/config check passes, or every failure is
-  classified with exact file refs.
-- Version/name/description chains are internally consistent.
-- Plugin source paths and loader paths stay inside intended plugin roots.
-- Public docs do not expose internal-only helpers as public commands.
-- Platform-specific manifest differences are intentional, not accidental drift.
+- Repo validator (or nearest schema/config check) passes, or every failure is
+  classified with exact `file:line` refs.
+- Version, name, and description fields agree across all files that declare them.
+- Plugin source paths and loader paths resolve inside their intended plugin root.
+- No public doc names an internal-only helper as a public command.
+- Platform-specific manifest differences are confirmed intentional, not accidental
+  divergence.
 
 ## Constraints
 
 - Do not demand byte-for-byte equality between platform manifests when semantic
   consistency is enough.
 - Do not normalize unrelated metadata.
-- Do not hide invalid JSON/YAML/TOML behind later semantic review.
+- Do not defer invalid JSON/YAML/TOML to later semantic review.
 
 ## Quick Pass
 
-1. Identify changed config and adjacent contract files.
-2. Run the repo validator or closest available schema/config check.
-3. Compare versions, names, descriptions, command names, source paths, and docs.
-4. Check public/private workflow wording.
-5. Report only actionable drift or a concrete skip.
+1. List changed config files and the adjacent contract files they reference.
+2. Run the repo validator or nearest schema/config check; record command and exit
+   status.
+3. Diff versions, names, and descriptions across the files that declare them.
+4. Resolve each command name, source path, and loader path against its plugin root.
+5. Check docs for internal helpers exposed as public commands.
+6. Report actionable drift with `file:line` refs, or a concrete skip.
 
 ## Deep Escalation
 
-Use for published packages/plugins, marketplace changes, release version bumps,
-or loader behavior. Verify install/load paths, schema behavior, marketplace
-entries, command wrappers, and release/version maps together.
+Escalate for published packages/plugins, marketplace changes, release version
+bumps, or loader-behavior changes. Verify install/load paths, schema behavior,
+marketplace entries, command wrappers, and release/version maps together as one
+chain.
 
 ## Evidence
 
-Record the validator command and exit status, files reviewed, version chain,
-surface contract decision, mismatches, and intentionally skipped checks.
+Record in `gate-decisions.md`: validator command and exit status, files reviewed,
+the version chain and where it diverges, the public/private surface decision,
+each mismatch with `file:line`, and any check intentionally skipped.
 
 ## Skip Or Stop Rules
 
 Skip when no config, manifest, marketplace, package metadata, skill frontmatter,
-or workflow-name docs changed. Stop early on invalid structured files because
-semantic checks are unreliable until parsing is fixed.
+or workflow-name docs changed. Stop early on an invalid structured file: semantic
+checks are unreliable until parsing is fixed.
 
 ## Output
 
-Return `pass`, `findings`, `blocked`, or `skipped`, with file refs and exact
-commands.
+Return the gate decision (`run`, `skip`, `deep`, `override`, or `blocked`), with
+`file:line` refs and the exact commands run.
