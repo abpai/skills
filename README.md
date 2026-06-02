@@ -67,7 +67,8 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is full PR readiness, `review-and-commit` is quick local review plus commit, and the finish-lane helper runs internally from PR prep after code is working. Also includes goal, explain, try, simplify, walkthrough, understand, dead-code, scratch, socratic-owner, secure-dependencies, hexagon-audit, karpathy, and handoff |
+| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is full PR readiness, `review-and-commit` is quick local review plus commit, and the finish-lane helper runs internally from PR prep after code is working. Also includes goal, explain, try, walkthrough (teach a system to verified mastery), understand, dead-code, scratch, secure-dependencies, and handoff |
+| **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
 
 ### Engineering Practices
 
@@ -122,7 +123,7 @@ abpai/skills/
 │   └── skills/code/           ← one public skill plus flat workflow modules
 │       ├── *.md
 │       ├── references/
-│       └── scripts/           ← bundled helpers (e.g. hexagon-audit scanner)
+│       └── scripts/           ← bundled helpers (e.g. finish-lane.ts)
 ├── engineering/               ← grouped engineering-practice workflows
 │   ├── commands/              ← Claude `/engineering:*` wrappers
 │   └── skills/engineering/    ← one public skill plus flat workflow modules
