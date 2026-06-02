@@ -152,6 +152,26 @@ add gates from project context. Each row records:
 - CLI ergonomics and doctor/self-healing candidates
 - performance profiling when performance is changed or claimed
 
+These are the Jeffery-skills-inspired review ideas, but they are bundled here as
+local instructions rather than external skill dependencies. The generated
+`quality-gates.md` includes the same map so the active agent can see where the
+guidance lives:
+
+| Inspired idea | Local gate / behavior |
+|---|---|
+| Prose cleanup / de-slop pass | Prose quality and PR copy cleanup |
+| Mock/stub finder | Mock / stub / placeholder sweep |
+| Multi-pass bug review | Multi-pass bug hunting |
+| Static risk scan | UBS / static risk scanner when available |
+| Behavior-preserving cleanup | Isomorphic simplification |
+| Real webapp exercise | Web/UI E2E verification and UX/accessibility audit |
+| Real-service over mock-only testing | Real-service integration check |
+| Golden output review | Golden artifact decision |
+| Oracle-free invariant testing | Metamorphic/property test decision |
+| Agent-friendly CLI review | CLI agent ergonomics |
+| Diagnose-and-repair workflows | Doctor/self-healing candidate |
+| Profile before optimizing | Performance profiling |
+
 For each selected pass, run the quick pass and record evidence; for each
 intentionally skipped pass, write the reason in `gate-decisions.md`. Use the deep
 pass only when the diff risk justifies it.

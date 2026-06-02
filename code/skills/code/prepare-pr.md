@@ -152,6 +152,25 @@ workflow:
 - **Profiling** - performance claims require a baseline, profile, one lever per
   change, and behavior proof.
 
+For clarity: these are the Jeffery-skills-inspired ideas, but they are now
+bundled as local `prepare-pr` / `finish-lane` guidance rather than imported as
+external skill dependencies. The mapping is:
+
+| Inspired idea | Local gate / behavior |
+|---|---|
+| Prose cleanup / de-slop pass | Prose quality and PR copy cleanup |
+| Mock/stub finder | Mock / stub / placeholder sweep |
+| Multi-pass bug review | Multi-pass bug hunting |
+| Static risk scan | UBS / static risk scanner when available |
+| Behavior-preserving cleanup | Isomorphic simplification |
+| Real webapp exercise | Web/UI E2E verification and UX/accessibility audit |
+| Real-service over mock-only testing | Real-service integration check |
+| Golden output review | Golden artifact decision |
+| Oracle-free invariant testing | Metamorphic/property test decision |
+| Agent-friendly CLI review | CLI agent ergonomics |
+| Diagnose-and-repair workflows | Doctor/self-healing candidate |
+| Profile before optimizing | Performance profiling |
+
 Do a quick new-functionality check before QA. If the diff adds a surface the
 project did not previously have, such as a first web UI, public CLI, API route,
 database migration path, auth/billing boundary, background job, or runtime
