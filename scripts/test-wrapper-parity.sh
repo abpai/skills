@@ -231,6 +231,34 @@ test_codex_exec_continue_contract() {
   pass "codex-exec wrapper preserves prompt transport, artifacts, monitor, and session continuation"
 }
 
+test_codex_run_dir_file_contract() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-run-dir-file"
+  local output="$TMP_DIR/codex-run-dir-file-output.txt"
+  local run_dir_file="$TMP_DIR/codex-run-dir-pointer/run-dir.txt"
+
+  setup_workspace "$workspace"
+
+  PATH="$fakebin:$PATH" bash "$CODEX_RUN" exec \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/codex-run-dir-file-runs" \
+    --run-dir-file "$run_dir_file" \
+    --prompt "record run dir for background launch" \
+    --dry-run \
+    > "$output" 2>&1
+
+  assert_private_file "$run_dir_file"
+  local run_dir
+  run_dir="$(cat "$run_dir_file")"
+  [[ -d "$run_dir" ]] || fail "run-dir-file pointed at missing directory: $run_dir"
+  assert_contains "$output" "run_dir_file="
+  assert_contains "$run_dir/status.env" "run_dir_file=$run_dir_file"
+  assert_contains "$run_dir/run.env" "RUN_DIR_FILE=$run_dir_file"
+  assert_contains "$run_dir/status.env" "state=dry-run"
+
+  pass "codex-exec writes --run-dir-file for exact MonitorTool handoff"
+}
+
 test_codex_continue_env_is_not_sourced() {
   local fakebin="$TMP_DIR/fakebin"
   local workspace="$TMP_DIR/workspace-codex-malicious"
@@ -523,6 +551,7 @@ main() {
   export FAKE_TMUX_LOG="$TMP_DIR/fake-tmux.log"
 
   test_codex_exec_continue_contract
+  test_codex_run_dir_file_contract
   test_codex_continue_env_is_not_sourced
   test_codex_monitor_status_is_not_sourced
   test_codex_review_stderr_fallback_populates_final

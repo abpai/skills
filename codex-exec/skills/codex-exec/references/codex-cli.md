@@ -48,6 +48,7 @@ run and then monitors it. It wraps `codex exec`, `codex exec review`, and
 - captured session id in `run.env` / `status.env`
 - `continue.sh` for follow-ups against the same Codex session
 - stable `[codex-exec] event=...` lifecycle and heartbeat lines
+- optional `--run-dir-file PATH` for exact background-run handoff
 - `status.env`, `monitor.sh`, `stdout.log`, `stderr.log`, `events.jsonl`,
   `command.txt`, `prompt.txt`, `run.env`, `continue.sh`, and `preflight.log` in
   a printed run directory
@@ -55,9 +56,19 @@ run and then monitors it. It wraps `codex exec`, `codex exec review`, and
 When Claude starts the wrapper in the background, the follow-up MonitorTool
 command can be `bash "$run_dir/monitor.sh"`. The generated monitor emits
 periodic wait lines and exits with the Codex run's exit code.
-Capture `run_dir` from the printed `event=paths` line. Avoid rediscovering
-"latest" with `ls -t`; concurrent runs from other workspaces can be newer. If
-the path was lost, narrow by workspace:
+Capture `run_dir` from the printed `event=paths` line. For background launches,
+prefer `--run-dir-file "$run_dir_file"` and read that file once the launcher has
+started:
+
+```bash
+run_dir="$(cat "$run_dir_file")"
+bash "$run_dir/monitor.sh"
+```
+
+Do not pipe the wrapper launch through `tail` or `head`; that can hide
+`event=paths` and lead to racy "latest" lookups. Avoid rediscovering "latest"
+with `ls -t`; concurrent runs from other workspaces can be newer. If the path
+was lost, narrow by workspace:
 
 ```bash
 grep -l "workspace=$(pwd -P)" \

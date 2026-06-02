@@ -19,11 +19,13 @@ multi-model consensus.
 skills/codex-exec/scripts/codex-run.sh exec --workspace "$PWD" --prompt-file prompt.txt
 
 # Monitor-friendly code review with heartbeats and final.md capture
+run_dir_file="$(mktemp -t codex-exec-run-dir.XXXXXX)"
 skills/codex-exec/scripts/codex-run.sh review --workspace "$PWD" --heartbeat 15 \
+  --run-dir-file "$run_dir_file" \
   --prompt "Focus on bugs and regressions. Findings first."
 
-# In Claude MonitorTool, wait on the run_dir printed by event=paths
-run_dir="/path/from/event-paths"
+# In Claude MonitorTool, wait on the exact run_dir
+run_dir="$(cat "$run_dir_file")" # or the run_dir printed by event=paths
 bash "$run_dir/monitor.sh"
 
 # Follow up in the same Codex session with fresh artifacts
@@ -50,7 +52,9 @@ codex exec --sandbox read-only --output-schema schema.json "Review the diff"
 - Monitoring: prefer `skills/codex-exec/scripts/codex-run.sh` when Claude starts the run and tracks it with MonitorTool
 - Run artifacts: wrapper logs live under `${CODEX_EXEC_RUNS_DIR:-${CODEX_HOME:-~/.codex}/codex-exec-runs}` and include `run.env`, `status.env`, `monitor.sh`, `continue.sh`, `stdout.log`, `stderr.log`, `final.md`, `prompt.txt`, and `command.txt`
 - Run discovery: capture the printed `event=paths run_dir=...`; avoid `ls -t`
-  "latest" lookups because another workspace may have a newer run
+  "latest" lookups because another workspace may have a newer run; for
+  background launches, pass `--run-dir-file` and read that file instead of
+  scraping truncated output
 - Final capture: `final.md` is populated from `--output-last-message`; when
   Codex exits 0 but leaves it empty, check `status.env`'s `final_source`, then
   `stdout.log` and `stderr.log`; `final_source=empty-json-stdout` means raw

@@ -8,7 +8,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.5.3"
+  version: "1.5.4"
 ---
 
 # Codex CLI
@@ -93,7 +93,7 @@ The wrapper prints stable lifecycle lines:
 
 ```text
 [codex-exec] event=start ...
-[codex-exec] event=paths run_dir=... status=... run_env=... monitor=... continue=... stdout=... stderr=... final=...
+[codex-exec] event=paths run_dir=... run_dir_file=... status=... run_env=... monitor=... continue=... stdout=... stderr=... final=...
 [codex-exec] event=spawn pid=...
 [codex-exec] event=progress elapsed=...
 [codex-exec] event=finish exit_code=... session_id=... final_source=... continue=...
@@ -129,8 +129,10 @@ scripts/codex-run.sh exec \
 Example code review with MonitorTool-friendly heartbeats:
 
 ```bash
+run_dir_file="$(mktemp -t codex-exec-run-dir.XXXXXX)"
 scripts/codex-run.sh review \
   --workspace "$PWD" \
+  --run-dir-file "$run_dir_file" \
   --heartbeat 15 \
   --prompt "Focus on bugs, regressions, and missing tests. Findings first."
 ```
@@ -138,9 +140,20 @@ scripts/codex-run.sh review \
 When Claude starts the wrapper as a background task, point MonitorTool at the
 printed `monitor.sh` path or run `bash "$run_dir/monitor.sh"`. That avoids
 fragile sleeps, raw task-output polling, and repeated `tail` loops.
-Capture `run_dir` from the printed `event=paths` line. Do not rediscover the
-"latest" run with `ls -t`; concurrent Codex runs from other workspaces can win
-that race. If you lost the path, narrow by workspace:
+Capture `run_dir` from the printed `event=paths` line or, for background
+launches, pass `--run-dir-file "$run_dir_file"` and read that file after the
+launcher starts:
+
+```bash
+run_dir="$(cat "$run_dir_file")"
+bash "$run_dir/monitor.sh"
+```
+
+Do not pipe the wrapper launch through `tail`, `head`, or a similar truncating
+filter; that can hide the early `event=paths` line and push Claude back toward
+racy "latest" discovery. Do not rediscover the "latest" run with `ls -t`;
+concurrent Codex runs from other workspaces can win that race. If you lost the
+path, narrow by workspace:
 
 ```bash
 grep -l "workspace=$(pwd -P)" \
