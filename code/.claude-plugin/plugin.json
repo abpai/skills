@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "1.6.1",
-  "description": "Grouped code workflows exposed as /code:* commands, with targeted QA, optional HTML artifacts, Karpathy-style guardrails, and handoff prompts.",
+  "version": "1.8.0",
+  "description": "Grouped code workflows exposed as /code:* commands. prepare-pr is full PR readiness, review-and-commit is quick local review plus commit, and finish-lane runs internally from PR prep after code is working.",
   "author": {
     "name": "Andy Pai"
   },
