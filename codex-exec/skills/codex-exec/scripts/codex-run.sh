@@ -14,6 +14,7 @@ Common options:
   --workspace PATH       Workspace passed to codex with --cd (default: current directory).
   --run-root PATH        Directory for run logs (default: $CODEX_HOME/codex-exec-runs).
   --run-dir PATH         Exact run directory to use.
+  --run-dir-file PATH    Write the exact run directory path to this file immediately.
   --continue-run PATH    Reuse session/workspace defaults from a prior wrapper run.
   --heartbeat SECONDS    Monitor heartbeat interval (default: 15).
   --timeout SECONDS      Kill the run after this many seconds if timeout/gtimeout exists.
@@ -63,6 +64,7 @@ PROMPT_FILE=""
 WORKSPACE="$PWD"
 RUN_ROOT="${CODEX_EXEC_RUNS_DIR:-${CODEX_HOME:-$HOME/.codex}/codex-exec-runs}"
 RUN_DIR=""
+RUN_DIR_FILE=""
 CONTINUE_RUN_DIR=""
 HEARTBEAT_SECONDS="${CODEX_EXEC_HEARTBEAT_SECONDS:-15}"
 TIMEOUT_SECONDS="${CODEX_EXEC_TIMEOUT_SECONDS:-0}"
@@ -132,6 +134,11 @@ while [[ $# -gt 0 ]]; do
     --run-dir)
       RUN_DIR="${2:-}"
       require_value "$1" "$RUN_DIR"
+      shift 2
+      ;;
+    --run-dir-file)
+      RUN_DIR_FILE="${2:-}"
+      require_value "$1" "$RUN_DIR_FILE"
       shift 2
       ;;
     --continue-run)
@@ -483,6 +490,12 @@ else
 fi
 mkdir -p "$RUN_DIR"
 
+if [[ -n "$RUN_DIR_FILE" ]]; then
+  RUN_DIR_FILE="$(absolute_path "$RUN_DIR_FILE")"
+  mkdir -p "$(dirname "$RUN_DIR_FILE")"
+  printf '%s\n' "$RUN_DIR" > "$RUN_DIR_FILE"
+fi
+
 PROMPT_RUN_FILE="$RUN_DIR/prompt.txt"
 STDOUT_LOG="$RUN_DIR/stdout.log"
 STDERR_LOG="$RUN_DIR/stderr.log"
@@ -816,6 +829,7 @@ write_run_env() {
     printf 'WORKSPACE=%q\n' "$WORKSPACE"
     printf 'RUN_ROOT=%q\n' "$RUN_ROOT"
     printf 'RUN_DIR=%q\n' "$RUN_DIR"
+    printf 'RUN_DIR_FILE=%q\n' "$RUN_DIR_FILE"
     printf 'RUN_ENV_FILE=%q\n' "$RUN_ENV_FILE"
     printf 'STATUS_FILE=%q\n' "$STATUS_FILE"
     printf 'MONITOR_SCRIPT=%q\n' "$MONITOR_SCRIPT"
@@ -854,6 +868,7 @@ write_status() {
     printf 'session_id=%q\n' "$SESSION_ID"
     printf 'workspace=%q\n' "$WORKSPACE"
     printf 'run_dir=%q\n' "$RUN_DIR"
+    printf 'run_dir_file=%q\n' "$RUN_DIR_FILE"
     printf 'run_env=%q\n' "$RUN_ENV_FILE"
     printf 'stdout_log=%q\n' "$STDOUT_LOG"
     printf 'stderr_log=%q\n' "$STDERR_LOG"
@@ -997,8 +1012,8 @@ heartbeat_loop() {
 write_run_env
 write_status "planned" "" 0
 printf '[codex-exec] event=start run_id=%s mode=%s workspace=%q\n' "$RUN_ID" "$MODE" "$WORKSPACE"
-printf '[codex-exec] event=paths run_dir=%q status=%q run_env=%q monitor=%q continue=%q stdout=%q stderr=%q final=%q command=%q preflight=%q\n' \
-  "$RUN_DIR" "$STATUS_FILE" "$RUN_ENV_FILE" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT" "$STDOUT_LOG" "$STDERR_LOG" "$FINAL_MESSAGE" "$COMMAND_FILE" "$PREFLIGHT_LOG"
+printf '[codex-exec] event=paths run_dir=%q run_dir_file=%q status=%q run_env=%q monitor=%q continue=%q stdout=%q stderr=%q final=%q command=%q preflight=%q\n' \
+  "$RUN_DIR" "$RUN_DIR_FILE" "$STATUS_FILE" "$RUN_ENV_FILE" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT" "$STDOUT_LOG" "$STDERR_LOG" "$FINAL_MESSAGE" "$COMMAND_FILE" "$PREFLIGHT_LOG"
 
 if [[ "$JSON_OUTPUT" == "true" ]]; then
   printf '[codex-exec] event=json events=%q\n' "$EVENTS_LOG"
