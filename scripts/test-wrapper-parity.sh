@@ -251,10 +251,34 @@ test_codex_run_dir_file_contract() {
   local run_dir
   run_dir="$(cat "$run_dir_file")"
   [[ -d "$run_dir" ]] || fail "run-dir-file pointed at missing directory: $run_dir"
-  assert_contains "$output" "run_dir_file="
-  assert_contains "$run_dir/status.env" "run_dir_file=$run_dir_file"
-  assert_contains "$run_dir/run.env" "RUN_DIR_FILE=$run_dir_file"
+  # status.env/run.env and event=paths store paths %q-quoted; match that form so
+  # the assertions hold even when TMPDIR contains shell-special characters.
+  local quoted_run_dir_file
+  quoted_run_dir_file="$(printf '%q' "$run_dir_file")"
+  assert_contains "$output" "run_dir_file=$quoted_run_dir_file"
+  assert_contains "$run_dir/status.env" "run_dir_file=$quoted_run_dir_file"
+  assert_contains "$run_dir/run.env" "RUN_DIR_FILE=$quoted_run_dir_file"
   assert_contains "$run_dir/status.env" "state=dry-run"
+
+  # A relative --run-dir-file must resolve against the caller's cwd, not the
+  # run root, so exercise the absolute_path branch from inside the workspace.
+  local rel_output="$TMP_DIR/codex-run-dir-file-rel-output.txt"
+  (
+    cd "$workspace" || exit 1
+    PATH="$fakebin:$PATH" bash "$CODEX_RUN" exec \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-run-dir-file-rel-runs" \
+      --run-dir-file "rel-run-dir.txt" \
+      --prompt "record run dir via relative pointer" \
+      --dry-run \
+      > "$rel_output" 2>&1
+  )
+  local rel_pointer="$workspace/rel-run-dir.txt"
+  assert_private_file "$rel_pointer"
+  local rel_run_dir
+  rel_run_dir="$(cat "$rel_pointer")"
+  [[ -d "$rel_run_dir" ]] || fail "relative run-dir-file pointed at missing directory: $rel_run_dir"
+  assert_contains "$rel_output" "run_dir_file=$(printf '%q' "$rel_pointer")"
 
   pass "codex-exec writes --run-dir-file for exact MonitorTool handoff"
 }

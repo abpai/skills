@@ -141,11 +141,15 @@ When Claude starts the wrapper as a background task, point MonitorTool at the
 printed `monitor.sh` path or run `bash "$run_dir/monitor.sh"`. That avoids
 fragile sleeps, raw task-output polling, and repeated `tail` loops.
 Capture `run_dir` from the printed `event=paths` line or, for background
-launches, pass `--run-dir-file "$run_dir_file"` and read that file after the
-launcher starts:
+launches, pass `--run-dir-file "$run_dir_file"` and read that file once it is
+non-empty. The wrapper writes it before any slow preflight, so poll instead of
+reading blindly — an immediate `cat` can otherwise race the write and leave
+`run_dir` empty:
 
 ```bash
+until [[ -s "$run_dir_file" ]]; do sleep 0.1; done
 run_dir="$(cat "$run_dir_file")"
+[[ -n "$run_dir" ]] || { echo "run_dir_file is empty" >&2; exit 1; }
 bash "$run_dir/monitor.sh"
 ```
 

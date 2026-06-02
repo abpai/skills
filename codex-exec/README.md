@@ -24,8 +24,12 @@ skills/codex-exec/scripts/codex-run.sh review --workspace "$PWD" --heartbeat 15 
   --run-dir-file "$run_dir_file" \
   --prompt "Focus on bugs and regressions. Findings first."
 
-# In Claude MonitorTool, wait on the exact run_dir
+# In Claude MonitorTool, wait for the wrapper to record the exact run_dir,
+# then monitor it. The launcher writes run_dir_file before any slow preflight,
+# so poll until it is non-empty rather than reading it blindly.
+until [[ -s "$run_dir_file" ]]; do sleep 0.1; done
 run_dir="$(cat "$run_dir_file")" # or the run_dir printed by event=paths
+[[ -n "$run_dir" ]] || { echo "run_dir_file is empty" >&2; exit 1; }
 bash "$run_dir/monitor.sh"
 
 # Follow up in the same Codex session with fresh artifacts

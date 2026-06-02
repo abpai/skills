@@ -57,11 +57,14 @@ When Claude starts the wrapper in the background, the follow-up MonitorTool
 command can be `bash "$run_dir/monitor.sh"`. The generated monitor emits
 periodic wait lines and exits with the Codex run's exit code.
 Capture `run_dir` from the printed `event=paths` line. For background launches,
-prefer `--run-dir-file "$run_dir_file"` and read that file once the launcher has
-started:
+prefer `--run-dir-file "$run_dir_file"` and read that file once it is non-empty.
+The wrapper writes it before any slow preflight, so poll instead of reading
+blindly — an immediate `cat` can race the write and leave `run_dir` empty:
 
 ```bash
+until [[ -s "$run_dir_file" ]]; do sleep 0.1; done
 run_dir="$(cat "$run_dir_file")"
+[[ -n "$run_dir" ]] || { echo "run_dir_file is empty" >&2; exit 1; }
 bash "$run_dir/monitor.sh"
 ```
 
