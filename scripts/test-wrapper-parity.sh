@@ -307,6 +307,7 @@ test_codex_review_stderr_fallback_populates_final() {
   local run_dir
   run_dir="$(extract_run_dir "$output")"
   assert_contains "$run_dir/final.md" "fake review verdict from stderr"
+  assert_not_contains "$run_dir/final.md" "session id: fake-session-123"
   assert_contains "$run_dir/status.env" "final_source=stderr.log"
   assert_contains "$output" "event=final-fallback source=stderr.log"
 

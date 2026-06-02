@@ -937,7 +937,12 @@ populate_final_message_fallback() {
   fi
 
   if [[ "$MODE" == "review" && -s "$STDERR_LOG" ]]; then
-    cp "$STDERR_LOG" "$FINAL_MESSAGE"
+    # Some review builds stream the verdict to stderr. Drop the trailing
+    # `session id:` marker the CLI always emits there so it does not pollute
+    # the captured verdict; fall back to the raw copy if filtering empties it.
+    if ! grep -v '^session id: ' "$STDERR_LOG" > "$FINAL_MESSAGE" || [[ ! -s "$FINAL_MESSAGE" ]]; then
+      cp "$STDERR_LOG" "$FINAL_MESSAGE"
+    fi
     FINAL_SOURCE="stderr.log"
     printf '[codex-exec] event=final-fallback source=%q reason=empty_final_review_stderr\n' "$FINAL_SOURCE"
     return 0
