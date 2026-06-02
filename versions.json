@@ -2,10 +2,10 @@
   "schema_version": 1,
   "skills": {
     "bun-expert": "1.4",
-    "claude": "1.6",
+    "claude": "1.6.1",
     "cli-design-expert": "1.2.0",
     "code": "1.7.0",
-    "codex-exec": "1.5.1",
+    "codex-exec": "1.5.2",
     "composer": "1.0.0",
     "distill": "1.1",
     "engineering": "1.5.0",

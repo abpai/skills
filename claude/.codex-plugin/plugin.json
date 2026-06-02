@@ -1,6 +1,6 @@
 {
   "name": "claude",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Run Claude Code CLI with tmux-backed TUI delegation, session continuation, manual takeover, and non-interactive fallback.",
   "author": {
     "name": "Andy Pai"

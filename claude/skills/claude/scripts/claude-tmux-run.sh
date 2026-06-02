@@ -278,42 +278,78 @@ if [[ -n "$SESSION_ID" && -n "$RESUME_SESSION_ID" ]]; then
   exit 2
 fi
 
+# python3 parses env files and transcripts. Fail loudly here (after --help is
+# handled) instead of letting a missing interpreter silently empty parsed values
+# inside process substitution.
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "[FAIL] python3 is required but was not found on PATH" >&2
+  exit 127
+fi
+
+read_env_values() {
+  local env_file="$1"
+  shift
+  if [[ ! -f "$env_file" ]] || (( $# == 0 )); then
+    return 0
+  fi
+  python3 - "$env_file" "$@" <<'PY'
+import shlex
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+targets = sys.argv[2:]
+try:
+    lines = path.read_text(encoding="utf-8").splitlines()
+except FileNotFoundError:
+    sys.exit(0)
+
+found = {}
+for line in reversed(lines):
+    if "=" not in line or line.lstrip().startswith("#"):
+        continue
+    key, value = line.split("=", 1)
+    if key not in targets or key in found:
+        continue
+    try:
+        parts = shlex.split(value)
+    except ValueError:
+        found[key] = value
+    else:
+        found[key] = parts[0] if parts else ""
+
+for key in targets:
+    if key in found:
+        sys.stdout.write("%s\t%s\n" % (key, found[key]))
+PY
+}
+
 if [[ -n "$CONTINUE_RUN_DIR" ]]; then
   if [[ ! -f "$CONTINUE_RUN_DIR/run.env" ]]; then
     echo "[FAIL] missing prior run env: $CONTINUE_RUN_DIR/run.env" >&2
     exit 2
   fi
-  current_workspace="$WORKSPACE"
-  current_run_root="$RUN_ROOT"
-  current_tmux_session="$TMUX_SESSION"
-  current_session_id="$SESSION_ID"
-  current_resume_session_id="$RESUME_SESSION_ID"
-  current_run_dir="$RUN_DIR"
-  current_startup_wait_seconds="$STARTUP_WAIT_SECONDS"
-  current_heartbeat_seconds="$HEARTBEAT_SECONDS"
-  current_timeout_seconds="$TIMEOUT_SECONDS"
-  current_paste_settle_seconds="$PASTE_SETTLE_SECONDS"
-  current_submit_key="$SUBMIT_KEY"
-  # shellcheck disable=SC1091
-  source "$CONTINUE_RUN_DIR/run.env"
-  prior_workspace="${WORKSPACE:-}"
-  prior_run_root="${RUN_ROOT:-}"
-  prior_tmux_session="${TMUX_SESSION:-}"
-  prior_session_id="${SESSION_ID:-}"
-  prior_startup_wait_seconds="${STARTUP_WAIT_SECONDS:-}"
-  prior_paste_settle_seconds="${PASTE_SETTLE_SECONDS:-}"
-  prior_submit_key="${SUBMIT_KEY:-}"
-  WORKSPACE="$current_workspace"
-  RUN_ROOT="$current_run_root"
-  TMUX_SESSION="$current_tmux_session"
-  SESSION_ID="$current_session_id"
-  RESUME_SESSION_ID="$current_resume_session_id"
-  RUN_DIR="$current_run_dir"
-  STARTUP_WAIT_SECONDS="$current_startup_wait_seconds"
-  HEARTBEAT_SECONDS="$current_heartbeat_seconds"
-  TIMEOUT_SECONDS="$current_timeout_seconds"
-  PASTE_SETTLE_SECONDS="$current_paste_settle_seconds"
-  SUBMIT_KEY="$current_submit_key"
+  prior_workspace=""
+  prior_run_root=""
+  prior_tmux_session=""
+  prior_session_id=""
+  prior_startup_wait_seconds=""
+  prior_paste_settle_seconds=""
+  prior_submit_key=""
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      WORKSPACE) prior_workspace="$value" ;;
+      RUN_ROOT) prior_run_root="$value" ;;
+      TMUX_SESSION) prior_tmux_session="$value" ;;
+      SESSION_ID) prior_session_id="$value" ;;
+      STARTUP_WAIT_SECONDS) prior_startup_wait_seconds="$value" ;;
+      PASTE_SETTLE_SECONDS) prior_paste_settle_seconds="$value" ;;
+      SUBMIT_KEY) prior_submit_key="$value" ;;
+    esac
+  done < <(read_env_values "$CONTINUE_RUN_DIR/run.env" \
+    WORKSPACE RUN_ROOT TMUX_SESSION SESSION_ID STARTUP_WAIT_SECONDS PASTE_SETTLE_SECONDS SUBMIT_KEY)
+  # CLI/env-provided globals are left untouched above (the parser only writes
+  # prior_* locals), so prior values apply only where the caller did not set one.
   if [[ "$WORKSPACE_SET" == "false" && -n "$prior_workspace" ]]; then
     WORKSPACE="$prior_workspace"
   fi
@@ -391,8 +427,41 @@ load_run_env() {
     echo "[FAIL] missing run env: $RUN_DIR/run.env" >&2
     exit 2
   fi
-  # shellcheck disable=SC1091
-  source "$RUN_DIR/run.env"
+  local key value
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      RUN_ID) RUN_ID="$value" ;;
+      SESSION_ID) SESSION_ID="$value" ;;
+      RESUME_SESSION_ID) RESUME_SESSION_ID="$value" ;;
+      TMUX_SESSION) TMUX_SESSION="$value" ;;
+      WORKSPACE) WORKSPACE="$value" ;;
+      RUN_ROOT) RUN_ROOT="$value" ;;
+      RUN_DIR) RUN_DIR="$value" ;;
+      RUN_ENV_FILE) RUN_ENV_FILE="$value" ;;
+      PROMPT_PATH) PROMPT_PATH="$value" ;;
+      PROMPT_TO_SEND) PROMPT_TO_SEND="$value" ;;
+      FINAL_FILE) FINAL_FILE="$value" ;;
+      COMMAND_FILE) COMMAND_FILE="$value" ;;
+      PREFLIGHT_FILE) PREFLIGHT_FILE="$value" ;;
+      PANE_FILE) PANE_FILE="$value" ;;
+      STATUS_FILE) STATUS_FILE="$value" ;;
+      CONTINUE_SCRIPT) CONTINUE_SCRIPT="$value" ;;
+      SUBMIT_SCRIPT) SUBMIT_SCRIPT="$value" ;;
+      RESEND_SCRIPT) RESEND_SCRIPT="$value" ;;
+      TRANSCRIPT_FILE) TRANSCRIPT_FILE="$value" ;;
+      BASE_TRANSCRIPT_LINES) BASE_TRANSCRIPT_LINES="$value" ;;
+      STARTUP_WAIT_SECONDS) STARTUP_WAIT_SECONDS="$value" ;;
+      HEARTBEAT_SECONDS) HEARTBEAT_SECONDS="$value" ;;
+      TIMEOUT_SECONDS) TIMEOUT_SECONDS="$value" ;;
+      PASTE_SETTLE_SECONDS) PASTE_SETTLE_SECONDS="$value" ;;
+      SUBMIT_KEY) SUBMIT_KEY="$value" ;;
+    esac
+  done < <(read_env_values "$RUN_DIR/run.env" \
+    RUN_ID SESSION_ID RESUME_SESSION_ID TMUX_SESSION WORKSPACE RUN_ROOT RUN_DIR \
+    RUN_ENV_FILE PROMPT_PATH PROMPT_TO_SEND FINAL_FILE COMMAND_FILE PREFLIGHT_FILE \
+    PANE_FILE STATUS_FILE CONTINUE_SCRIPT SUBMIT_SCRIPT RESEND_SCRIPT TRANSCRIPT_FILE \
+    BASE_TRANSCRIPT_LINES STARTUP_WAIT_SECONDS HEARTBEAT_SECONDS TIMEOUT_SECONDS \
+    PASTE_SETTLE_SECONDS SUBMIT_KEY)
 }
 
 write_status() {
@@ -551,8 +620,12 @@ monitor_loop() {
   if [[ -f "$STATUS_FILE" ]]; then
     state=""
     exit_code=""
-    # shellcheck disable=SC1090
-    source "$STATUS_FILE"
+    while IFS=$'\t' read -r key value; do
+      case "$key" in
+        state) state="$value" ;;
+        exit_code) exit_code="$value" ;;
+      esac
+    done < <(read_env_values "$STATUS_FILE" state exit_code)
     if [[ "${state:-}" == "dry-run" ]]; then
       echo "[claude-tmux] event=finish state=dry-run exit_code=${exit_code:-0} final=$FINAL_FILE attach=\"tmux attach -t $TMUX_SESSION\""
       return "${exit_code:-0}"
@@ -639,13 +712,22 @@ if [[ "$MODE" == "list" ]]; then
   if [[ -d "$RUN_ROOT" ]]; then
     find "$RUN_ROOT" -maxdepth 2 -name run.env -print 2>/dev/null | sort | tail -30 | while read -r env_file; do
       RUN_ID=""; SESSION_ID=""; TMUX_SESSION=""; WORKSPACE=""; RUN_DIR="$(dirname "$env_file")"
-      # shellcheck disable=SC1090
-      source "$env_file"
+      while IFS=$'\t' read -r key value; do
+        case "$key" in
+          RUN_ID) RUN_ID="$value" ;;
+          SESSION_ID) SESSION_ID="$value" ;;
+          TMUX_SESSION) TMUX_SESSION="$value" ;;
+          WORKSPACE) WORKSPACE="$value" ;;
+          RUN_DIR) RUN_DIR="$value" ;;
+        esac
+      done < <(read_env_values "$env_file" RUN_ID SESSION_ID TMUX_SESSION WORKSPACE RUN_DIR)
       state="unknown"
       if [[ -f "$RUN_DIR/status.env" ]]; then
-        # shellcheck disable=SC1091
-        # shellcheck disable=SC1090
-        source "$RUN_DIR/status.env"
+        while IFS=$'\t' read -r key value; do
+          case "$key" in
+            state) state="$value" ;;
+          esac
+        done < <(read_env_values "$RUN_DIR/status.env" state)
       fi
       printf '%s\tstate=%s\ttmux=%s\tsession=%s\tworkspace=%s\n' "$RUN_DIR" "${state:-unknown}" "$TMUX_SESSION" "$SESSION_ID" "$WORKSPACE"
     done
