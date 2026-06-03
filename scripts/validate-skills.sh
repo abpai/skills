@@ -213,6 +213,26 @@ for key in ('hooks', 'mcpServers', 'lspServers'):
       echo "[FAIL] $skill_file: description is ${#desc_text} chars (max 1024)"
       failed=1
     fi
+
+    # Guardrail: a user-only per-command wrapper (disable-model-invocation: true)
+    # must also set metadata.internal: true, so flat-list installers that surface
+    # every SKILL.md as a separate item — notably the `npx skills` CLI that Codex
+    # uses — hide the wrapper and show only the umbrella pack instead of a
+    # sprawling list. Claude Code ignores metadata.internal, so /<plugin>:<name>
+    # is unaffected. See CLAUDE.md "Grouped workflow pack pattern".
+    wrapper_flags="$(awk '
+      /^---$/ { fence++; if (fence == 2) exit; next }
+      fence != 1 { next }
+      /^disable-model-invocation:[[:space:]]*true[[:space:]]*$/ { disable = 1 }
+      /^metadata:[[:space:]]*$/ { inmeta = 1; next }
+      inmeta && /^[^[:space:]]/ { inmeta = 0 }
+      inmeta && /^[[:space:]]+internal:[[:space:]]*true[[:space:]]*$/ { internal = 1 }
+      END { print (disable + 0) " " (internal + 0) }
+    ' "$skill_file")"
+    if [[ "${wrapper_flags% *}" == "1" && "${wrapper_flags#* }" != "1" ]]; then
+      echo "[FAIL] $skill_file: 'disable-model-invocation: true' requires 'metadata.internal: true' (user-only wrappers must be hidden from flat-list installers like npx skills/Codex; add a metadata block with 'internal: true')"
+      failed=1
+    fi
   done
 
   # Validate each command markdown file
