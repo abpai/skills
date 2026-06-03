@@ -1,6 +1,8 @@
 ---
 name: try
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Evaluate a new library, tool, package, or repo before adopting it.
 argument-hint: "[library, package, or repo]"
 ---

@@ -26,9 +26,26 @@ into `skills/<name>/SKILL.md`. Don't reintroduce `commands/`.
   to `/<plugin>` and routes to bundled workflow modules
   (`skills/<plugin>/*.md`, loose support files, not skills).
 - `skills/<workflow>/SKILL.md` — one **per-command** skill per workflow,
-  surfacing `/<plugin>:<workflow>`. Set `disable-model-invocation: true` on
-  these so only the user triggers them directly while the model auto-routes
-  through the umbrella skill.
+  surfacing `/<plugin>:<workflow>`. Set `disable-model-invocation: true` **and**
+  `metadata.internal: true` on these. `disable-model-invocation` keeps the model
+  routing through the umbrella while the user can still call `/<plugin>:<workflow>`
+  directly in Claude. `metadata.internal: true` hides the wrapper from agents that
+  flatten every `SKILL.md` into one selectable list — notably the `npx skills`
+  installer Codex uses — so they surface only the umbrella pack instead of a
+  sprawling list of per-command wrappers. Claude Code ignores `metadata.internal`,
+  so the `/<plugin>:<workflow>` command is unaffected. (Power users can still pull
+  the wrappers into a flat-list agent with `INSTALL_INTERNAL_SKILLS=1`.)
+- Give each umbrella a **subcommand router** so the pack still works where the
+  `:` namespace does not exist (e.g. Codex): accept `<plugin> <workflow> …` and
+  `<plugin> --<workflow> …`, strip a leading `--`, match the first token against
+  the workflow names, and load `skills/<plugin>/<workflow>.md`. Add a matching
+  `argument-hint` to the umbrella frontmatter. (A Claude-only pack like `pi`
+  needs no Codex router, but its user-only wrappers still set
+  `metadata.internal: true` so they stay out of flat-list installers.)
+- `scripts/validate-skills.sh` **enforces** the invariant
+  `disable-model-invocation: true` ⟹ `metadata.internal: true` and fails CI (via
+  `validate-pr.yml`) if a wrapper omits it, so the Codex-sprawl regression cannot
+  silently recur.
 
 ## Other conventions
 

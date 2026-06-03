@@ -1,9 +1,10 @@
 ---
 name: composer
 description: Use when the user asks for /composer:setup, /composer:generate, /composer:review, Cursor Composer delegation, Composer 2.5 implementation subagents, Cursor-agent setup checks, Cursor API key validation, or a thin planner/executor workflow that uses Cursor without the Pi harness.
+argument-hint: "[subcommand] [args] — e.g. generate <brief>, --review <PR>, setup --smoke"
 license: MIT
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Composer Workflow Pack
@@ -13,6 +14,27 @@ from a planner-led session. The goal is the useful part of the Pi pattern
 without adopting the Pi harness: a strong planner writes the brief, Composer
 executes or reviews in a bounded workspace, and the parent agent inspects the
 result before shipping.
+
+Each public workflow also ships as its own `composer/skills/<name>/SKILL.md` so
+it surfaces as a namespaced `/composer:<name>` command; those per-command skills
+set `disable-model-invocation: true` and `metadata.internal: true`, so agents
+that flatten every `SKILL.md` into one list — e.g. the `npx skills` installer
+used by Codex — hide the per-command wrappers and surface only this pack.
+
+## Subcommand invocation
+
+On surfaces without `/composer:<name>` namespacing (e.g. Codex), invoke a
+workflow by passing its name as the first argument. Both forms are equivalent
+and supported:
+
+- `composer <subcommand> <args>` — e.g. `composer generate <brief>`
+- `composer --<subcommand> <args>` — e.g. `composer --review <PR>`
+
+Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and
+match it (case-insensitive) against `setup`, `generate`, or `review`. On a
+match, load `skills/composer/<subcommand>.md` and treat the remaining tokens as
+that workflow's input. If the first token is not a known subcommand, treat the
+whole input as a natural-language request and route by intent.
 
 ## Routing
 

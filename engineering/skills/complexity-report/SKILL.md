@@ -1,6 +1,8 @@
 ---
 name: complexity-report
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Produce a read-only, evidence-ranked complexity and performance report.
 argument-hint: "[repo path, area, or performance question]"
 ---

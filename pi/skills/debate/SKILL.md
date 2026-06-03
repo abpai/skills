@@ -1,6 +1,8 @@
 ---
 name: debate
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Run a structured architecture, product, or UI layout debate with an independent Codex critique and final ADR.
 argument-hint: "[question or decision]"
 allowed-tools: >

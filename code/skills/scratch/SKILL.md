@@ -1,6 +1,8 @@
 ---
 name: scratch
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Explore an existing codebase with runnable .scratch/ scripts.
 argument-hint: "[question, module, or script topic]"
 ---

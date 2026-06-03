@@ -1,6 +1,8 @@
 ---
 name: walkthrough
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Teach the owner a system to verified mastery, one quiz at a time.
 argument-hint: "[codebase area, change, or question]"
 ---

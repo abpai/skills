@@ -1,6 +1,8 @@
 ---
 name: explain
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Write dense, progressive-disclosure technical explanations.
 argument-hint: "[topic, draft, or concept]"
 ---

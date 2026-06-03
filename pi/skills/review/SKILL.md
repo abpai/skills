@@ -1,6 +1,8 @@
 ---
 name: review
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Run final Pi review. Executes the full verification suite, performs holistic evaluation, and presents the scorecard with any remaining repair guidance.
 argument-hint: "[optional task id or filter]"
 allowed-tools: >

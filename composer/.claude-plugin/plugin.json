@@ -1,6 +1,6 @@
 {
   "name": "composer",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Run Cursor Composer from agent workflows for implementation, strict review, and setup checks without the Pi harness.",
   "author": {
     "name": "Andy Pai"

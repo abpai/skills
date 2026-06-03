@@ -1,7 +1,7 @@
 {
   "name": "pi",
   "description": "Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and structured debate.",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "author": {
     "name": "Andy Pai"
   },

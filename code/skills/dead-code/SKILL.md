@@ -1,6 +1,8 @@
 ---
 name: dead-code
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Audit a codebase for dead code and produce a safe removal plan.
 argument-hint: "[scope or codebase area]"
 ---

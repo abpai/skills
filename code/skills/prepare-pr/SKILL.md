@@ -1,6 +1,8 @@
 ---
 name: prepare-pr
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Prepare working-tree changes for a PR with finish-lane QA, cleanup, validation, visual status, PR text, and optional commits.
 argument-hint: "[scope or message hint]"
 allowed-tools: >

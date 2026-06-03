@@ -1,6 +1,8 @@
 ---
 name: setup
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Verify Cursor Composer and OpenAI Codex CLI auth for planner/executor workflows.
 argument-hint: "[--smoke or env-file hint]"
 allowed-tools: >

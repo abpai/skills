@@ -1,6 +1,8 @@
 ---
 name: handoff
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Create a focused continuation prompt for a fresh coding session.
 argument-hint: "[next goal, follow-up task, or empty to continue current work]"
 ---
