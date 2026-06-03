@@ -1,0 +1,10 @@
+{
+  "name": "capture-feedback",
+  "version": "1.0.0",
+  "description": "Capture concise agent-behavior feedback notes locally for later trace review and skill or rule improvement.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT"
+}
