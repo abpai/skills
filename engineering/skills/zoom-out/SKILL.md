@@ -1,6 +1,8 @@
 ---
 name: zoom-out
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Map an unfamiliar code area at a higher level before diving into details.
 argument-hint: "[code area or question]"
 ---

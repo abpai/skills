@@ -1,6 +1,8 @@
 ---
 name: defined-terms
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Build a DDD-style ubiquitous-language glossary from this conversation, flag ambiguities, and save it to DEFINED_TERMS.md.
 argument-hint: "[optional focus area or empty to use the whole conversation]"
 ---

@@ -1,6 +1,8 @@
 ---
 name: generate
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Delegate a bounded implementation task to Cursor Composer from a planner-written brief.
 argument-hint: "[implementation brief, branch/worktree, model, or PR instruction]"
 allowed-tools: >

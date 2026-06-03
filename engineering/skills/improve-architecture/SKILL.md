@@ -1,6 +1,8 @@
 ---
 name: improve-architecture
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Find deepening opportunities that improve locality, leverage, testability, and AI navigability.
 argument-hint: "[codebase area or goal]"
 ---

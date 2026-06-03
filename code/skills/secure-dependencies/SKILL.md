@@ -1,6 +1,8 @@
 ---
 name: secure-dependencies
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Harden dependency resolution and supply-chain policy in the current repository.
 argument-hint: "[repo path or hardening request]"
 ---

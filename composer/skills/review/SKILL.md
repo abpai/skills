@@ -1,6 +1,8 @@
 ---
 name: review
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Run strict read-only Cursor Composer review on a diff or PR.
 argument-hint: "[diff scope, PR URL/number, or model hint]"
 allowed-tools: >

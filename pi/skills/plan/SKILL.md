@@ -1,6 +1,8 @@
 ---
 name: plan
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Turn a project request into a brief, rubric, and ordered task slices. Interactive planner phase for long-running engineering work.
 argument-hint: "[project goal]"
 allowed-tools: >

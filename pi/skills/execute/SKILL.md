@@ -1,6 +1,8 @@
 ---
 name: execute
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Execute the approved Pi brief. Runs the generator loop, optional simplification, evaluation, and focused repair passes until the build clears the bar or repair budget is exhausted.
 argument-hint: "[optional task id or filter]"
 allowed-tools: >

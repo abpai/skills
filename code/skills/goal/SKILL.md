@@ -1,6 +1,8 @@
 ---
 name: goal
 disable-model-invocation: true
+metadata:
+  internal: true
 description: Define or audit a coding goal so it is specific, bounded, and verifiable.
 argument-hint: "[goal, ticket, task, plan, or empty to use conversation context]"
 ---

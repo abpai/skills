@@ -1,13 +1,23 @@
 ---
 name: code
 description: Grouped coding workflow pack. Use /code:prepare-pr for full PR readiness, /code:review-and-commit for quick local review plus commit, and the internal finish-lane helper only from prepare-pr after code is working. Also use for /code:goal, /code:explain, /code:try, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:secure-dependencies, and /code:handoff.
+argument-hint: "[subcommand] [args] — e.g. understand src/api, --prepare-pr, review-and-commit"
 metadata:
-  version: "1.9.0"
+  version: "1.10.0"
 ---
 
 # Code Workflow Pack
 
-This umbrella skill is the model-invocable entry point for the pack. Each public workflow also ships as its own `code/skills/<name>/SKILL.md` so it surfaces as a namespaced `/code:<name>` command (those per-command skills set `disable-model-invocation: true`, so only the user invokes them directly while the model routes through this umbrella). The workflow modules referenced below live beside this `SKILL.md` as flat support files.
+This umbrella skill is the model-invocable entry point for the pack. Each public workflow also ships as its own `code/skills/<name>/SKILL.md` so it surfaces as a namespaced `/code:<name>` command (those per-command skills set `disable-model-invocation: true` and `metadata.internal: true`, so only the user invokes them directly while the model routes through this umbrella, and agents that flatten every `SKILL.md` into one list — e.g. the `npx skills` installer used by Codex — hide the per-command wrappers and surface only this pack). The workflow modules referenced below live beside this `SKILL.md` as flat support files.
+
+## Subcommand invocation
+
+On surfaces without `/code:<name>` namespacing (e.g. Codex), invoke a workflow by passing its name as the first argument. Both forms are equivalent and supported:
+
+- `code <subcommand> <args>` — e.g. `code understand src/api`
+- `code --<subcommand> <args>` — e.g. `code --understand src/api`
+
+Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load `skills/code/<subcommand>.md` and treat the remaining tokens as that workflow's input. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `prepare-pr`, `review-and-commit`, `goal`, `explain`, `try`, `walkthrough`, `understand`, `dead-code`, `scratch`, `secure-dependencies`, `handoff`.
 
 ## Routing
 
