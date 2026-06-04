@@ -16,12 +16,33 @@ git branch --show-current 2>/dev/null
 git status --short 2>/dev/null | head -40
 git diff --stat 2>/dev/null | head -20
 git diff --cached --stat 2>/dev/null | head -20
+# PR scope = the whole branch, not just uncommitted work. Detect the base and
+# show commits + diffstat already committed ahead of it.
+BASE=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+BASE=${BASE:-main}
+git log --oneline "${BASE}..HEAD" 2>/dev/null | head -20
+git diff --stat "${BASE}...HEAD" 2>/dev/null | tail -1
 git log --oneline -n 5 2>/dev/null
 ```
 
 Run the block above before preparing the PR. Treat it as ground truth for the
 initial "Inspect Current Change Scope" step. Defer full `git diff` bodies to
 explicit Read/Bash calls where you need more than the stat summary.
+
+**A clean working tree does not mean there is nothing to finish.** On an
+already-committed feature branch, `git status` and `git diff` are empty but the
+PR scope is the full branch diff `<base>...HEAD`. The finish lane and quality
+gates below run against that PR scope, not just uncommitted changes. Never read
+"working tree clean" as "skip the finish lane."
+
+**Gates and validation come before any push or PR creation.** The finish lane,
+quality gates, fixes, and validation (steps 2–8) must complete _before_ you
+`git push`, `gh pr create`, or `gh pr edit` a live PR. Pushing first and gating
+afterward turns every finding into a post-hoc follow-up commit on an already-open
+PR — the gate exists to catch issues _before_ a reviewer (or CI) sees them. An
+already-committed branch is no exception: run the gates against `<base>...HEAD`,
+fix, validate, and only then push. Treat push/PR-create as the terminal action
+of this workflow, gated on green, not an early "share it then polish" step.
 
 ## Workflow
 
@@ -46,11 +67,15 @@ commit discipline.
 
 ## 1) Inspect Current Change Scope
 
-Run:
+Change scope is the union of committed and uncommitted work on this branch, not
+whichever half happens to be uncommitted. Run:
 
 - `git status --short`
 - `git diff` (unstaged)
 - `git diff --staged` (if relevant)
+- `git diff <base>...HEAD --stat` (commits already on the branch — the bulk of a
+  PR scope when the branch is committed-but-unpushed; `<base>` is the preflight
+  `BASE`, usually `main`)
 
 Map changes by concern (feature, fix, refactor, tests, docs) before suggesting commit boundaries.
 
@@ -58,8 +83,12 @@ Enumerate untracked files explicitly. Flag anything large, data-shaped, or secre
 
 ## 2) Run The Finish Lane
 
-Run the bundled helper before deep review unless the change is trivially
-docs-only:
+Run the bundled helper before deep review for any non-trivial PR. This step is
+**not** gated on a dirty working tree: run it whenever you are preparing a PR,
+including on an already-committed branch with a clean tree. The script scopes to
+the full PR diff (`<base>...HEAD` unioned with any uncommitted and untracked
+changes) and auto-detects `<base>`, so it has real work to do even when nothing
+is uncommitted. The only skip is a trivially docs-only change.
 
 ```bash
 # inside the abpai/skills checkout itself
@@ -74,6 +103,13 @@ bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --fix
 
 Pick the path that exists. If none of those resolve, locate this module's skill
 directory and run `scripts/finish-lane.ts` relative to it.
+
+Pass `--base <ref>` when the auto-detected base is wrong (for example a PR
+targeting a non-default branch): `... finish-lane.ts --fix --base origin/main`.
+Do not hand-roll the gates from a `git diff <base>...HEAD` instead of running the
+script — the script generates the gate manifest, applicability ledger, and PR
+artifacts the rest of this workflow consumes. If the script genuinely cannot run,
+say so and work through the same phases manually against the PR diff scope.
 
 Open `.workflow/finish-lane/<timestamp>/workflow-status.html` first to see the
 browser-friendly phase map, artifact links, validation status, gate filters, and

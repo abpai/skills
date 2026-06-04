@@ -41,6 +41,14 @@ bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --fix
 Pick the path that exists. If none of those resolve, locate this module's skill
 directory and run `scripts/finish-lane.ts` relative to it.
 
+The lane scopes to the full PR diff: it unions `<base>...HEAD` (commits already
+on the branch) with uncommitted and untracked changes, and auto-detects `<base>`
+(`origin/HEAD`, then `origin/main`, then `main`, then `HEAD`). So a
+committed-but-unpushed branch with a clean working tree is a normal, supported
+case — there is real changed-file scope to analyze, and "working tree clean" is
+never a reason to skip the lane. Pass `--base <ref>` to override detection (for
+example a PR onto a non-default branch).
+
 For an audit-only pass that writes artifacts but makes no mechanical cleanup
 changes:
 
