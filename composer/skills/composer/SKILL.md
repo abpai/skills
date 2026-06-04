@@ -4,7 +4,7 @@ description: Use when the user asks for /composer:setup, /composer:generate, /co
 argument-hint: "[subcommand] [args] — e.g. generate <brief>, --review <PR>, setup --smoke"
 license: MIT
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Composer Workflow Pack
@@ -15,17 +15,21 @@ without adopting the Pi harness: a strong planner writes the brief, Composer
 executes or reviews in a bounded workspace, and the parent agent inspects the
 result before shipping.
 
-Each public workflow also ships as its own `composer/skills/<name>/SKILL.md` so
-it surfaces as a namespaced `/composer:<name>` command; those per-command skills
-set `disable-model-invocation: true` and `metadata.internal: true`, so agents
-that flatten every `SKILL.md` into one list — e.g. the `npx skills` installer
-used by Codex — hide the per-command wrappers and surface only this pack.
+This umbrella is the single scoped `/composer` command users see in the `/`
+menu. Each workflow also ships as its own `composer/skills/<name>/SKILL.md`, but
+those per-command skills set `disable-model-invocation: true`,
+`user-invocable: false`, and `metadata.internal: true`, so they stay out of the
+model's auto-invocation, out of the `/` menu (no unscoped `/<name>` duplicates
+of the umbrella), and out of flat-list installers like the `npx skills`
+installer used by Codex. Reach any workflow through this umbrella — the
+subcommand router below maps `/composer <name>` to the matching module.
 
 ## Subcommand invocation
 
-On surfaces without `/composer:<name>` namespacing (e.g. Codex), invoke a
-workflow by passing its name as the first argument. Both forms are equivalent
-and supported:
+Invoke a workflow by passing its name as the first argument to this umbrella —
+this is the access path on every surface: the Claude `/` menu shows only
+`/composer` (the per-command wrappers are hidden), and Codex has no `:`
+namespace. Both forms are equivalent and supported:
 
 - `composer <subcommand> <args>` — e.g. `composer generate <brief>`
 - `composer --<subcommand> <args>` — e.g. `composer --review <PR>`

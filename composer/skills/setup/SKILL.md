@@ -1,6 +1,7 @@
 ---
 name: setup
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Verify Cursor Composer and OpenAI Codex CLI auth for planner/executor workflows.

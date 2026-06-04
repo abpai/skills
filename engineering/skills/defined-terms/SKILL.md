@@ -1,6 +1,7 @@
 ---
 name: defined-terms
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Build a DDD-style ubiquitous-language glossary from this conversation, flag ambiguities, and save it to DEFINED_TERMS.md.

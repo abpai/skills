@@ -3,16 +3,16 @@ name: code
 description: Grouped coding workflow pack. Use /code:prepare-pr for full PR readiness, /code:review-and-commit for quick local review plus commit, and the internal finish-lane helper only from prepare-pr after code is working. Also use for /code:explain, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:secure-dependencies, and /code:handoff.
 argument-hint: "[subcommand] [args] — e.g. understand src/api, --prepare-pr, review-and-commit"
 metadata:
-  version: "1.11.0"
+  version: "1.12.0"
 ---
 
 # Code Workflow Pack
 
-This umbrella skill is the model-invocable entry point for the pack. Each public workflow also ships as its own `code/skills/<name>/SKILL.md` so it surfaces as a namespaced `/code:<name>` command (those per-command skills set `disable-model-invocation: true` and `metadata.internal: true`, so only the user invokes them directly while the model routes through this umbrella, and agents that flatten every `SKILL.md` into one list — e.g. the `npx skills` installer used by Codex — hide the per-command wrappers and surface only this pack). The workflow modules referenced below live beside this `SKILL.md` as flat support files.
+This umbrella skill is the model-invocable entry point for the pack and the single scoped `/code` command users see in the `/` menu. Each workflow also ships as its own `code/skills/<name>/SKILL.md`, but those per-command skills set `disable-model-invocation: true`, `user-invocable: false`, and `metadata.internal: true`, so they stay out of the model's auto-invocation, out of the `/` menu (no unscoped `/<name>` duplicates of the umbrella), and out of flat-list installers like the `npx skills` installer used by Codex. Reach any workflow through this umbrella — the subcommand router below maps `/code <name>` to the matching module. The workflow modules referenced below live beside this `SKILL.md` as flat support files.
 
 ## Subcommand invocation
 
-On surfaces without `/code:<name>` namespacing (e.g. Codex), invoke a workflow by passing its name as the first argument. Both forms are equivalent and supported:
+Invoke a workflow by passing its name as the first argument to this umbrella — this is the access path on every surface: the Claude `/` menu shows only `/code` (the per-command wrappers are hidden), and Codex has no `:` namespace. Both forms are equivalent and supported:
 
 - `code <subcommand> <args>` — e.g. `code understand src/api`
 - `code --<subcommand> <args>` — e.g. `code --understand src/api`

@@ -1,6 +1,7 @@
 ---
 name: generate
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Delegate a bounded implementation task to Cursor Composer from a planner-written brief.

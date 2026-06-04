@@ -1,6 +1,7 @@
 ---
 name: walkthrough
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Teach the owner a system to verified mastery, one quiz at a time.

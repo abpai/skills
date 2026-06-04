@@ -1,6 +1,7 @@
 ---
 name: review-and-commit
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Quickly review local changes, run targeted checks, and create an approved commit without the full PR-prep lane.

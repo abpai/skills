@@ -1,6 +1,7 @@
 ---
 name: review
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Run strict read-only Cursor Composer review on a diff or PR.

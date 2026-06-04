@@ -1,6 +1,7 @@
 ---
 name: secure-dependencies
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Harden dependency resolution and supply-chain policy in the current repository.

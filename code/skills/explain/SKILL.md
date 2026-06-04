@@ -1,6 +1,7 @@
 ---
 name: explain
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Write dense, progressive-disclosure technical explanations.

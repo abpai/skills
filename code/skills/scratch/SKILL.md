@@ -1,6 +1,7 @@
 ---
 name: scratch
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Explore an existing codebase with runnable .scratch/ scripts.

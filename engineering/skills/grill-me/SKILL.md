@@ -1,6 +1,7 @@
 ---
 name: grill-me
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Stress-test a plan or design by walking the decision tree one question at a time.

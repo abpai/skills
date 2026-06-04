@@ -1,6 +1,7 @@
 ---
 name: zoom-out
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Map an unfamiliar code area at a higher level before diving into details.
