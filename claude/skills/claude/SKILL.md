@@ -87,14 +87,18 @@ Detach without stopping Claude with `Ctrl-b d`.
 
 ### Analysis
 
-Use `--permission-mode auto` for unattended read-only review, critique,
-summarization, and planning. Use `plan` instead when you specifically want
-Claude Code's plan-mode UI and can handle any Bash permission prompts:
+Use `--permission-mode auto` for unattended review, critique, summarization, and
+planning so the run keeps moving without permission prompts. `auto` is not itself
+read-only — it lets Claude run tools through the safety classifier — so add
+`--disallowed-tools Edit` when you need a hard guarantee that the run cannot
+modify files. Use `plan` instead when you specifically want Claude Code's
+plan-mode UI and can handle any Bash permission prompts:
 
 ```bash
 scripts/claude-tmux-run.sh run \
   --workspace "$PWD" \
   --permission-mode auto \
+  --disallowed-tools Edit \
   --effort medium \
   --prompt "Summarize the uncommitted changes and call out risks."
 ```
