@@ -24,6 +24,7 @@ This repository now ships metadata for both runtimes:
 /plugin install code@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install composer@abpai-skills
+/plugin install capture-feedback@abpai-skills
 /plugin install pi@abpai-skills
 ```
 
@@ -81,6 +82,7 @@ research and review. The debate workflow now lives inside `pi` as
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
+| **capture-feedback** | Capture concise agent-behavior corrections into a local shared inbox for later trace review and skill or rule improvements |
 | **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and return the decisions |
 
 ### Tools

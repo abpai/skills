@@ -65,6 +65,18 @@
       "category": "Productivity"
     },
     {
+      "name": "capture-feedback",
+      "source": {
+        "source": "local",
+        "path": "./capture-feedback"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
       "name": "engineering",
       "source": {
         "source": "local",
