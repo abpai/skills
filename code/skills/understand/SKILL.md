@@ -1,6 +1,7 @@
 ---
 name: understand
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Trace a real code path into a browser-readable HTML module map and scratch skeleton.

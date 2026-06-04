@@ -1,6 +1,7 @@
 ---
 name: complexity-report
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Produce a read-only, evidence-ranked complexity and performance report.

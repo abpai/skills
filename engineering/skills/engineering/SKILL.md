@@ -3,16 +3,16 @@ name: engineering
 description: Engineering-practice workflow pack. Use when the user asks for /engineering:grill-me, /engineering:tdd, /engineering:zoom-out, /engineering:improve-architecture, /engineering:defined-terms, /engineering:complexity-report, or wants to stress-test a plan, use TDD, zoom out on code, improve codebase architecture, build a DDD ubiquitous-language glossary, or produce a read-only complexity/performance report with stable finding IDs.
 argument-hint: "[subcommand] [args] — e.g. tdd add retries, --grill-me, complexity-report src/"
 metadata:
-  version: "1.7.0"
+  version: "1.8.0"
 ---
 
 # Engineering Workflow Pack
 
-This umbrella skill is the model-invocable entry point for a family of engineering-practice workflows (inspired by Matt Pocock). Each public workflow also ships as its own `engineering/skills/<name>/SKILL.md` so it surfaces as a namespaced `/engineering:<name>` command (those per-command skills set `disable-model-invocation: true` and `metadata.internal: true`, so only the user invokes them directly while the model routes through this umbrella, and agents that flatten every `SKILL.md` into one list — e.g. the `npx skills` installer used by Codex — hide the per-command wrappers and surface only this pack). The workflow modules referenced below live beside this `SKILL.md` (with shared docs under `references/`) as flat support files.
+This umbrella skill is the model-invocable entry point for a family of engineering-practice workflows (inspired by Matt Pocock), and the single scoped `/engineering` command users see in the `/` menu. Each workflow also ships as its own `engineering/skills/<name>/SKILL.md`, but those per-command skills set `disable-model-invocation: true`, `user-invocable: false`, and `metadata.internal: true`, so they stay out of the model's auto-invocation, out of the `/` menu (no unscoped `/<name>` duplicates of the umbrella), and out of flat-list installers like the `npx skills` installer used by Codex. Reach any workflow through this umbrella — the subcommand router below maps `/engineering <name>` to the matching module. The workflow modules referenced below live beside this `SKILL.md` (with shared docs under `references/`) as flat support files.
 
 ## Subcommand invocation
 
-On surfaces without `/engineering:<name>` namespacing (e.g. Codex), invoke a workflow by passing its name as the first argument. Both forms are equivalent and supported:
+Invoke a workflow by passing its name as the first argument to this umbrella — this is the access path on every surface: the Claude `/` menu shows only `/engineering` (the per-command wrappers are hidden), and Codex has no `:` namespace. Both forms are equivalent and supported:
 
 - `engineering <subcommand> <args>` — e.g. `engineering tdd add retries`
 - `engineering --<subcommand> <args>` — e.g. `engineering --tdd add retries`

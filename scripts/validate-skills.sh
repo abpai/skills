@@ -215,23 +215,42 @@ for key in ('hooks', 'mcpServers', 'lspServers'):
     fi
 
     # Guardrail: a user-only per-command wrapper (disable-model-invocation: true)
-    # must also set metadata.internal: true, so flat-list installers that surface
-    # every SKILL.md as a separate item — notably the `npx skills` CLI that Codex
-    # uses — hide the wrapper and show only the umbrella pack instead of a
-    # sprawling list. Claude Code ignores metadata.internal, so /<plugin>:<name>
-    # is unaffected. See CLAUDE.md "Grouped workflow pack pattern".
+    # must be hidden everywhere except its umbrella. It must set:
+    #   - metadata.internal: true  — so flat-list installers that surface every
+    #     SKILL.md as a separate item (notably the `npx skills` CLI that Codex
+    #     uses) hide the wrapper and show only the umbrella pack.
+    #   - user-invocable: false    — so Claude Code keeps the wrapper out of the
+    #     `/` menu, leaving the umbrella as the single scoped entry instead of an
+    #     unscoped `/<name>` duplicate.
+    # Both flags leave the umbrella's `/<plugin> <name>` router as the access
+    # path. See CLAUDE.md "Grouped workflow pack pattern".
     wrapper_flags="$(awk '
       /^---$/ { fence++; if (fence == 2) exit; next }
       fence != 1 { next }
       /^disable-model-invocation:[[:space:]]*true[[:space:]]*$/ { disable = 1 }
+      /^user-invocable:[[:space:]]*false[[:space:]]*$/ { uinv = 1 }
       /^metadata:[[:space:]]*$/ { inmeta = 1; next }
       inmeta && /^[^[:space:]]/ { inmeta = 0 }
       inmeta && /^[[:space:]]+internal:[[:space:]]*true[[:space:]]*$/ { internal = 1 }
-      END { print (disable + 0) " " (internal + 0) }
+      END { print (disable + 0) " " (internal + 0) " " (uinv + 0) }
     ' "$skill_file")"
-    if [[ "${wrapper_flags% *}" == "1" && "${wrapper_flags#* }" != "1" ]]; then
-      echo "[FAIL] $skill_file: 'disable-model-invocation: true' requires 'metadata.internal: true' (user-only wrappers must be hidden from flat-list installers like npx skills/Codex; add a metadata block with 'internal: true')"
-      failed=1
+    read -r wf_disable wf_internal wf_uinv <<< "$wrapper_flags"
+    if [[ "$wf_disable" == "1" ]]; then
+      if [[ "$wf_internal" != "1" ]]; then
+        echo "[FAIL] $skill_file: 'disable-model-invocation: true' requires 'metadata.internal: true' (user-only wrappers must be hidden from flat-list installers like npx skills/Codex; add a metadata block with 'internal: true')"
+        failed=1
+      fi
+      # The user-invocable:false requirement applies only to a wrapper that belongs
+      # to an umbrella pack (a sibling skills/<plugin>/SKILL.md). Such a wrapper is
+      # redundant with the umbrella, so hiding it from the `/` menu leaves the
+      # umbrella as the only scoped entry and its `/<plugin> <name>` router as the
+      # access path. A pack with no umbrella (e.g. pi) has no fallback route, so its
+      # per-command skills are the primary interface and stay user-invocable.
+      skill_plugin="${skill_file#./}"; skill_plugin="${skill_plugin%%/*}"
+      if [[ -f "$skill_plugin/skills/$skill_plugin/SKILL.md" && "$wf_uinv" != "1" ]]; then
+        echo "[FAIL] $skill_file: 'disable-model-invocation: true' in an umbrella pack requires 'user-invocable: false' (per-command wrappers must stay out of the Claude Code / menu so the umbrella is the only scoped entry; add 'user-invocable: false')"
+        failed=1
+      fi
     fi
   done
 

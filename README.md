@@ -75,7 +75,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **engineering** | Groups engineering-practice workflows as one self-contained skill, with Claude commands at `/engineering:grill-me`, `/engineering:tdd`, `/engineering:zoom-out`, `/engineering:improve-architecture`, `/engineering:defined-terms`, and `/engineering:complexity-report` |
+| **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, or `/engineering complexity-report` |
 
 ### Developer Productivity
 
@@ -167,12 +167,21 @@ material that should be bundled without becoming separate skills.
 The pattern for a grouped workflow pack:
 
 - `skills/<plugin>/SKILL.md` — the model-invocable **umbrella** skill that
-  collapses to `/<plugin>` and routes to the bundled workflow modules
-  (`skills/<plugin>/*.md`, which are loose support files, not skills).
-- `skills/<workflow>/SKILL.md` — one **per-command** skill that surfaces
-  `/<plugin>:<workflow>` in the menu. These carry
-  `disable-model-invocation: true` so only the user triggers them directly,
-  while the model continues to auto-route through the single umbrella skill.
+  collapses to `/<plugin>` (the single scoped entry in the `/` menu) and routes
+  `/<plugin> <workflow>` to the bundled workflow modules (`skills/<plugin>/*.md`,
+  which are loose support files, not skills).
+- `skills/<workflow>/SKILL.md` — one **per-command** skill per workflow, carrying
+  `disable-model-invocation: true`, `user-invocable: false`, and
+  `metadata.internal: true`. Together these keep the wrapper out of the model's
+  auto-routing, out of the Claude Code `/` menu, and out of flat-list installers,
+  leaving the umbrella as the only menu entry — reach a workflow via
+  `/<plugin> <workflow>`. The `user-invocable: false` flag matters because Claude
+  Code lists each `skills/<workflow>/SKILL.md` in the `/` menu under its **bare
+  leaf name** (`/<workflow>`) even though the command itself is namespaced;
+  leaving wrappers user-invocable sprawls those leaf-name entries across the menu
+  where they collide with each other and with built-ins (e.g. a pack's `/review`
+  next to the built-in `/review`). (A pack with no umbrella, like `pi`, keeps its
+  phase commands user-invocable since there is no router to fall back to.)
 
 If you reintroduce a `commands/` directory, the namespaced commands disappear.
 Keep new workflows as `skills/<name>/SKILL.md`.
