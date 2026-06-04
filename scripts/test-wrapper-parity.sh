@@ -499,6 +499,7 @@ test_claude_dry_run_continue_contract() {
   assert_contains "$run_dir/status.env" "state=dry-run"
   assert_contains "$run_dir/run.env" "SESSION_ID=claude-session-123"
   assert_contains "$run_dir/run.env" "TMUX_SESSION=claude-test"
+  assert_contains "$run_dir/command.txt" "--permission-mode auto"
   assert_not_contains "$run_dir/command.txt" "claude prompt secret"
   assert_contains "$run_dir/prompt-to-send.txt" "claude prompt secret"
 
@@ -514,6 +515,7 @@ test_claude_dry_run_continue_contract() {
   continue_dir="$(extract_run_dir "$continue_output")"
   assert_contains "$continue_dir/run.env" "SESSION_ID=claude-session-123"
   assert_contains "$continue_dir/run.env" "TMUX_SESSION=claude-test"
+  assert_contains "$continue_dir/command.txt" "--permission-mode auto"
   assert_contains "$continue_dir/prompt-to-send.txt" "continue in same fake Claude session"
 
   pass "Claude tmux wrapper preserves prompt transport, artifacts, monitor, and session continuation"
