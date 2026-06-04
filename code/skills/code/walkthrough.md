@@ -6,8 +6,8 @@ the deliverable is the human's verified understanding, not a tour.
 
 This is a **persistent goal**. The session is not done when you finish
 explaining — it is done when the human has answered for every item on the
-mastery checklist. Hold that bar the way `goal.md` holds a verifier: if you
-cannot show the human understands, you are not finished.
+mastery checklist. Hold that bar clearly: if you cannot show the human
+understands, you are not finished.
 
 ## Use When
 
