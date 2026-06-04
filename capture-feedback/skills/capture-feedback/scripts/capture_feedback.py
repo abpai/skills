@@ -29,6 +29,13 @@ def make_id(now: datetime) -> str:
     return f"cf_{stamp}_{secrets.token_hex(2)}"
 
 
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return parsed
+
+
 def normalize_text(parts: list[str]) -> str:
     if parts and parts[0] == "--":
         parts = parts[1:]
@@ -54,22 +61,35 @@ def cmd_capture(args: argparse.Namespace) -> int:
         return 2
 
     now = utc_now()
-    note_id = make_id(now)
-    marker = f"capture-feedback:{note_id}"
-    payload = {
-        "schema_version": SCHEMA_VERSION,
-        "id": note_id,
-        "created_at": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
-        "marker": marker,
-        "cwd": os.getcwd(),
-        "user_words": user_words,
-    }
+    created_at = now.isoformat(timespec="seconds").replace("+00:00", "Z")
 
-    note_path = feedback_root() / "inbox" / f"{note_id}.json"
-    write_json_secure(note_path, payload)
-    print(f"Captured {marker}")
-    print(note_path)
-    return 0
+    # Retry on the rare chance that two captures land in the same second with
+    # the same random token: O_EXCL would otherwise raise an uncaught
+    # FileExistsError. Each attempt draws a fresh token from make_id.
+    last_error: OSError | None = None
+    for _ in range(8):
+        note_id = make_id(now)
+        marker = f"capture-feedback:{note_id}"
+        payload = {
+            "schema_version": SCHEMA_VERSION,
+            "id": note_id,
+            "created_at": created_at,
+            "marker": marker,
+            "cwd": os.getcwd(),
+            "user_words": user_words,
+        }
+        note_path = feedback_root() / "inbox" / f"{note_id}.json"
+        try:
+            write_json_secure(note_path, payload)
+        except FileExistsError as error:
+            last_error = error
+            continue
+        print(f"Captured {marker}")
+        print(note_path)
+        return 0
+
+    print(f"error: could not allocate a unique note id: {last_error}", file=sys.stderr)
+    return 1
 
 
 def load_notes() -> list[dict]:
@@ -125,7 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
     capture.set_defaults(func=cmd_capture)
 
     list_cmd = subparsers.add_parser("list", help="list recent feedback notes")
-    list_cmd.add_argument("--limit", type=int, default=20)
+    list_cmd.add_argument("--limit", type=positive_int, default=20)
     list_cmd.set_defaults(func=cmd_list)
 
     show = subparsers.add_parser("show", help="show a feedback note as JSON")
