@@ -68,7 +68,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is full PR readiness, `review-and-commit` is quick local review plus commit, and the finish-lane helper runs internally from PR prep after code is working. Also includes explain, walkthrough (teach a system to verified mastery), understand, dead-code, scratch, secure-dependencies, and handoff |
+| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, optional commits) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes explain, walkthrough (teach a system to verified mastery), understand, dead-code, scratch, secure-dependencies, and handoff |
 | **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
 
 ### Engineering Practices
@@ -121,11 +121,16 @@ abpai/skills/
 │       ├── SKILL.md
 │       └── references/        (if any)
 ├── code/                      ← grouped coding workflows
+│   ├── hooks/                 ← always-registered gate-before-push PreToolUse(Bash) hook
+│   │   ├── hooks.json
+│   │   └── gate-before-push.sh
 │   └── skills/
 │       ├── code/              ← umbrella skill (/code) + flat workflow modules
-│       │   ├── *.md
+│       │   ├── *.md           ← prepare-pr.md, review-and-commit.md, ...
 │       │   ├── references/
-│       │   └── scripts/       ← bundled helpers (e.g. finish-lane.ts)
+│       │   ├── review-patterns/        ← per-gate lenses
+│       │   │   └── scripts/   ← ported executable review assets
+│       │   └── scripts/       ← bundled helpers (e.g. finish-lane.ts preflight)
 │       ├── review-and-commit/ ← /code:review-and-commit (one SKILL.md per command)
 │       ├── prepare-pr/        ← /code:prepare-pr
 │       └── <workflow>/        ← one namespaced skill per workflow
@@ -346,16 +351,6 @@ bash scripts/validate-skills.sh
 ```
 
 The script is also run automatically as a pre-commit hook.
-
-## Security Scanning
-
-This repository is configured with [Cisco Skill Scanner](https://github.com/cisco-ai-defense/skill-scanner)
-via pre-commit.
-
-1. Install pre-commit: `uv tool install pre-commit`
-2. Install hooks: `uvx pre-commit install`
-3. (Optional) copy `.env.example` to `.env` and customize scanner settings
-4. Run manually: `uvx pre-commit run --all-files`
 
 ## License
 

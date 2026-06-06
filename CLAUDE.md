@@ -70,6 +70,14 @@ into `skills/<name>/SKILL.md`. Don't reintroduce `commands/`.
 - Only `plugin.json` lives in `.claude-plugin/` (and `.codex-plugin/`). All
   runtime dirs (`skills/`, `agents/`, `hooks/`, `internal/`) sit at the plugin
   root.
+- A plugin may ship an always-registered hook via `hooks/hooks.json` (or an
+  inline `hooks` key in `plugin.json`). The `code` plugin registers a
+  `PreToolUse(Bash)` gate (`code/hooks/gate-before-push.sh`) that is **inert by
+  default** — it NO-OPs unless `prepare-pr` has armed the per-repo marker, and
+  only then blocks `git push` / `gh pr create` / PR-body edits until the branch
+  is sealed. Codex has no Claude-hook system, so the gate is Claude-only; keep
+  the Codex manifest at version/description parity but do not declare the hook
+  there.
 - Paths referenced from a skill must stay **inside the owning plugin** —
   installed plugins are copied into a runtime cache.
 - Bump the plugin `version` in `.claude-plugin/plugin.json`,
