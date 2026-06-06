@@ -1,35 +1,40 @@
-# Review Pattern Playbooks
+# Review Pattern Lenses
 
-These playbooks are the detailed prompt layer behind `/code:prepare-pr`
-quality gates. They internalize the useful review ideas directly inside the
-`code` skill so published installs do not depend on any external skill archive.
+These lenses are the detailed prompt layer behind `/code:prepare-pr` quality
+gates. Each one ports the non-obvious gotchas and named techniques of a source
+review skill directly into the `code` plugin, so published installs do not depend
+on any external skill archive. The high-value executable assets live in
+`scripts/`, referenced from the lens that uses them.
 
 ## Loading Rule
 
-Load playbooks progressively:
+Load lenses progressively — never bulk-load all of them:
 
-1. Run `scripts/finish-lane.ts`.
-2. Open the generated `gate-decisions.md` and `review-patterns.md`.
-3. Select, skip, override, or add gates from the actual diff and project intent.
-4. Read only the playbooks for selected gates.
-5. Record evidence or a concrete skip rationale.
+1. Run `scripts/finish-lane.ts`. It prints a flat **suggested lenses** list,
+   inferred from the changed-file surfaces (ui/api/cli/docs/perf/test/golden).
+2. Accept, skip, override, or add lenses from the actual diff and project intent.
+3. Read only the lens files you selected.
+4. Run each lens's quick pass; escalate to its deep pass only when diff risk
+   justifies it.
+5. Record findings + evidence (or a concrete skip rationale) in your review notes
+   and the PR text.
 
-Do not bulk-load every file for every PR. The value is in explicit gate
-selection, not in maximum ceremony.
+The value is in explicit, surface-driven gate selection, not in maximum ceremony.
 
-## Prompt Shape
+## Lens Shape
 
-The playbooks follow an outcome-first structure:
+Each lens is gotchas-first — the highest-signal content lives at the top:
 
-- role and goal
-- when to use the gate
-- success criteria
-- constraints
+- one-line role
+- when this gate applies
+- **Gotchas** — the non-obvious failure modes and tells (the heart of the lens)
+- Technique — the named methods (matrices, taxonomies, rules, scrub catalogs)
 - quick pass
-- deep escalation
-- evidence
-- skip/stop rules
-- output shape
+- deep pass
+- false positives
+- evidence to record
+- skip / stop rules
+- provenance pointer to the source skill
 
-This keeps them detailed enough to guide an agent while avoiding long,
-process-heavy prompt stacks.
+This keeps each lens dense enough to push the agent off its default behavior while
+staying short enough to load on demand.
