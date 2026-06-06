@@ -1,9 +1,9 @@
 ---
 name: code
-description: Grouped coding workflow pack. Use /code:prepare-pr for full PR readiness — full PR diff (committed and uncommitted), deterministic preflight, quality gates, source-grounded QA, validation, PR text, optional commits, gate-before-push. Use /code:review-and-commit for quick local review plus commit. Also use for /code:explain, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:secure-dependencies, and /code:handoff.
+description: Grouped coding workflow pack. Use /code:prepare-pr for full PR readiness — full PR diff (committed and uncommitted), deterministic preflight, quality gates, source-grounded QA, validation, PR text, commits, push/PR update, gate-before-push. Use /code:review-and-commit for quick local review plus commit. Also use for /code:explain, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:secure-dependencies, and /code:handoff.
 argument-hint: "[subcommand] [args] — e.g. understand src/api, --prepare-pr, review-and-commit"
 metadata:
-  version: "2.0.0"
+  version: "2.0.1"
 ---
 
 # Code Workflow Pack
@@ -21,7 +21,7 @@ Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and m
 
 ## Routing
 
-- Use `prepare-pr.md` for full PR readiness: a single self-contained workflow that runs a deterministic preflight (scope union of `<base>...HEAD` + uncommitted + untracked, discovered fix/validation commands, mechanical scans, suggested-lens tagger), selects and runs quality gates from `review-patterns/`, performs source-grounded QA and verification, runs independent review, drafts PR text, then seals and gates before push. There is no separate finish-lane command — the preflight is a phase inside `prepare-pr`.
+- Use `prepare-pr.md` for full PR readiness: a single self-contained workflow that runs a deterministic preflight (scope union of `<base>...HEAD` + uncommitted + untracked, discovered fix/validation commands, mechanical scans, suggested-lens tagger), selects and runs quality gates from `review-patterns/`, performs source-grounded QA and verification, runs independent review, drafts PR text, commits the unambiguous intended scope, then seals and gates before push/PR update. There is no separate finish-lane command — the preflight is a phase inside `prepare-pr`.
 - Use `review-and-commit.md` for quick local review plus commit: inspect scope, fix real issues, run targeted checks, plan a commit, ask approval, then commit.
 - Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
 - Use `explain.md` for dense technical explanations, tutorials, walkthrough prose, README guidance, or onboarding docs.
