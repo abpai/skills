@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 
@@ -258,13 +258,14 @@ function mechanicalScans(rootDir: string, files: string[]): Scan {
   return scan
 }
 
-function ubsScan(rootDir: string, files: string[]): { available: boolean; findings: number; output: string } {
-  if (!commandExists("ubs")) return { available: false, findings: 0, output: "" }
-  const code = files.filter(isCodeFile)
-  if (code.length === 0) return { available: true, findings: 0, output: "" }
+function ubsScan(rootDir: string, files: string[]): { available: boolean; output: string; outputLines: number; status: number | null } {
+  if (!commandExists("ubs")) return { available: false, output: "", outputLines: 0, status: null }
+  const code = files.filter((file) => isCodeFile(file) && existsSync(path.join(rootDir, file)))
+  if (code.length === 0) return { available: true, output: "", outputLines: 0, status: 0 }
   const result = run(`ubs ${code.map(shellQuote).join(" ")} 2>&1`, rootDir)
-  const findings = result.output.split(/\r?\n/).filter((line) => line.trim()).length
-  return { available: true, findings, output: result.output.trim() }
+  const output = result.output.trim()
+  const outputLines = output ? output.split(/\r?\n/).filter((line) => line.trim()).length : 0
+  return { available: true, output, outputLines, status: result.status }
 }
 
 // --- Surface tagger ------------------------------------------------------
@@ -306,8 +307,42 @@ function runCommands(rootDir: string, pm: PackageManager, scripts: Record<string
   return results
 }
 
+function repoValidationCommands(rootDir: string): string[] {
+  const scriptsDir = path.join(rootDir, "scripts")
+  if (!existsSync(scriptsDir)) return []
+
+  let entries: string[]
+  try {
+    entries = readdirSync(scriptsDir)
+  } catch {
+    return []
+  }
+
+  const commands: string[] = []
+  for (const entry of entries.sort()) {
+    if (!/^(check|test|validate)[A-Za-z0-9_.-]*\.(sh|bash|zsh)$/.test(entry)) continue
+
+    const absolute = path.join(scriptsDir, entry)
+    try {
+      if (!statSync(absolute).isFile()) continue
+    } catch {
+      continue
+    }
+
+    commands.push(`bash scripts/${entry}`)
+  }
+  return commands
+}
+
 function runValidation(rootDir: string, pm: PackageManager, scripts: Record<string, string>): CmdResult[] {
   const results = runCommands(rootDir, pm, scripts, ["validate", "check", "lint", "typecheck", "test", "build"])
+  const seen = new Set(results.map((result) => result.cmd))
+
+  for (const cmd of repoValidationCommands(rootDir)) {
+    if (seen.has(cmd)) continue
+    results.push({ cmd, status: run(cmd, rootDir).status === 0 ? "ok" : "fail" })
+    seen.add(cmd)
+  }
 
   if ((existsSync(path.join(rootDir, "pyproject.toml")) || existsSync(path.join(rootDir, "pytest.ini")) || existsSync(path.join(rootDir, "tests"))) && commandExists("pytest")) {
     results.push({ cmd: "pytest", status: run("pytest", rootDir).status === 0 ? "ok" : "fail" })
@@ -417,9 +452,17 @@ function main(): void {
   out.push("mechanical scans:")
   out.push(`  slop hits: ${scan.slop}`)
   out.push(`  placeholder hits: ${scan.placeholder}`)
-  out.push(`  ubs: ${ubs.available ? `${ubs.findings} findings` : "not installed"}`)
+  out.push(
+    `  ubs: ${
+      ubs.available
+        ? `exit ${ubs.status ?? "?"}, ${ubs.outputLines} output line${ubs.outputLines === 1 ? "" : "s"}`
+        : "not installed"
+    }`,
+  )
   for (const hit of scan.hits) out.push(`    ${hit}`)
-  if (ubs.available && ubs.output) for (const line of ubs.output.split(/\r?\n/).slice(0, 40)) out.push(`    ubs: ${line}`)
+  if (ubs.available && ubs.status !== 0 && ubs.output) {
+    for (const line of ubs.output.split(/\r?\n/).slice(-40)) out.push(`    ubs: ${line}`)
+  }
 
   out.push("suggested lenses:")
   if (lenses.length === 0) out.push("  (none matched changed-file globs)")
