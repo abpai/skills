@@ -72,14 +72,15 @@ suggested-lens list.
 
 The single `FINISH_LANE` stdout block reports: base + branch + scope counts,
 the `changed-files.txt` path, fix-command and validation/test results
-(ok/fail/skip), mechanical-scan counts (slop, placeholder, `ubs`), and a flat
-suggested-lens list. Read it as the shared state for the rest of the workflow.
+(ok/fail/skip), mechanical-scan counts (slop, placeholder), structured UBS
+status/severity/actionable-source summary, and a flat suggested-lens list. Read
+it as the shared state for the rest of the workflow.
 
 **Arm the gate.** The `--arm` flag writes the arm marker
 `${CLAUDE_PLUGIN_DATA}/prepare-pr/armed/<repo-id>.armed` (the script computes
 `<repo-id>` exactly as the hook does, so do not hand-build the path). The
 always-on hook now blocks push/PR-create/PR-body-edit for this repo until the
-branch is sealed (Phase 4); it is disarmed only in Phase 5 after a successful
+branch is sealed (Phase 5); it is disarmed only in Phase 5 after a successful
 push. The look-for `ARMED <path>` line in the summary confirms it. (Outside the
 installed plugin runtime there is no `CLAUDE_PLUGIN_DATA`; arming is a no-op and
 the gate stays inert — expected in a bare checkout.)
@@ -134,9 +135,10 @@ fix just introduced. Fold findings into `Review Findings` and triage them — do
 Draft or rewrite PR text from the actual diff + evidence: what now happens that
 did not before, why it matters, how it works (only as much as a reviewer needs),
 exact validation commands + live QA evidence, and residual manual QA or known
-risk. For a live PR, use `gh pr edit --body-file` only after comparing the draft
-against the current diff. (Optional: a self-contained HTML explainer for complex
-diffs — opt-in, not mandatory.)
+risk. Draft and compare the text against the current diff here, but **apply it to
+a live PR with `gh pr edit --body-file` only in Phase 5, after the seal** — the
+gate blocks PR-body edits until the branch is sealed. (Optional: a self-contained
+HTML explainer for complex diffs — opt-in, not mandatory.)
 
 ## Phase 5 — Commit, seal, push & disarm
 
