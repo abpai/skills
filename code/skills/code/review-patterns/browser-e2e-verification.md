@@ -1,76 +1,83 @@
 # Browser E2E Verification
 
-Role: Prove changed UI behavior through real user paths and rendered output,
-catching code that compiles but breaks or renders wrong at runtime.
+Drive changed UI through real user paths and prove it renders and behaves correctly at runtime — catching code that compiles and passes unit/type checks yet throws, renders broken, or no longer does what the diff claims.
 
-## Goal
+## When this gate applies
 
-Confirm that each changed route, component, or state renders correctly and
-responds to real user input in a browser, with a screenshot or trace as proof
-and every untested path named as a residual gap. This gate catches UI that
-passes type and unit checks yet throws at runtime, renders broken, or no longer
-does what the diff claims. Functional behavior and visual rendering are checked
-separately.
+- Diff touches routes, components, UI state, forms, layout, frontend assets, or user-visible copy.
+- A diff signal of runtime/render risk: new client state, SSR/hydration surface, responsive layout, theming, or a new public web UI.
+- Auth-gated, multi-page, or payment/order flows (escalate to Deep pass).
+- Skip only diffs with **no** UI surface.
 
-## Use When
+## Gotchas
 
-Diff touches routes, components, UI state, browser behavior, frontend assets,
-forms, layout, or user-visible copy. Escalate to Deep when the change involves
-auth, multi-page journeys, responsive layout, or visual-regression risk.
+1. **The `evaluate()` trap — the most dangerous trap for agent QA.** Driving the UI via `page.evaluate()` / direct DOM manipulation bypasses the actionability checks (visible, stable, enabled, **not-obscured**, receives-events, editable) that Playwright's action methods (`.click()`, `.fill()`, `.check()`, `.press()`, `.selectOption()`) run on every interaction. A button completely hidden behind a modal overlay "works" via `evaluate()` but is **untouchable by a real user**. Rule: if you're reaching for `evaluate()` to trigger an interaction, ask "could a human do this?" — if yes, use the action method. `evaluate()` is for reading state and staging conditions only, **never** as signoff proof.
 
-## Success Criteria
+2. **When `.click()` fails, that IS the bug — do not switch to `evaluate()` to make it pass.** The Playwright error names the underlying UI defect: "element is behind `<div class=modal-overlay>`", "element is disabled", "element is outside of the viewport". Treat the failure as the finding, not an obstacle to route around. The same defects are findable programmatically: `findObscuredInteractives()` (elementFromPoint overlap) and `findPointerEventsDisabled()` (`pointer-events:none`) in `scripts/dom-health-check.js`.
 
-- Every requirement, changed behavior, and sign-off claim maps to a QA item in
-  `qa-plan.md`.
-- Functional checks drive real controls (click, fill, press, submit, navigate),
-  never simulated state.
-- Visual checks cover initial viewport, each changed state, mobile and desktop
-  widths, clipping, overflow, contrast, layering, and dynamic stability.
-- Console and network are inspected; no new errors or failed requests on the
-  tested paths.
-- Each item ends with a screenshot path, trace path, or a named blocker.
+3. **Don't build the whole page before looking — the #1 failure mode.** Errors compound, and you can't tell which change caused which problem. Use the **Edit-Reload-Verify micro-loop** with one focused change per cycle and a deliberate three-layer ordering: change → reload → **layout snapshot diff** (structural) → **DOM health check** (mechanical) → screenshot (**aesthetic only**) → next. Each "after" snapshot becomes the next "before" so unintended changes are caught incrementally.
 
-## Constraints
+4. **Run programmatic diagnostics FIRST, screenshot SECOND.** Agents don't need to "see" every bug. `domHealthCheck()` (one `page.evaluate()`) returns severity-ranked JSON for 10 mechanical bug classes vision misses: page horizontal scroll (critical), element beyond viewport (major), clipped overflow w/o ellipsis, 0×0 elements with text, sub-44px touch targets, images without dimensions (CLS), missing alt, text-color==bg (major), overlapping interactives >30% area (major), unwanted scroll containers. Fix mechanical issues before spending vision on aesthetics.
 
-- `page.evaluate`, direct DB writes, and forced client state are diagnostics
-  only; never cite them as sign-off proof.
-- Do not claim a visual result without a rendered screenshot.
-- Keep setup notes out of the evidence; record outcomes, not scaffolding.
+5. **Structural vs aesthetic split — the diff catches what vision reliably misses.** `captureLayoutSnapshot()` + `diffLayoutSnapshots()` deterministically flag, at 100% reliability: element moved 5px, z-index changed, element disappeared, sibling shifted from a margin change, opacity 1→0.8, rogue appeared element — all things "agents almost never notice." Declare a **render intent** `{ expect: [...], noChange: [...] }`; any change to a `noChange` element is flagged **CRITICAL/unexpected**. This is the strongest device for catching peripheral damage.
 
-## Quick Pass
+6. **Peripheral vision check — a local fix commonly breaks a neighbor.** After fixing component A (width change → sibling reflow, margin → sibling shift, z-index → new overlap), also snapshot/screenshot adjacent components and compare to the pre-fix state. Simplest form: full-page before/after screenshots compared by the agent's vision. The layout-snapshot diff (gotcha 5) automates this.
 
-1. Build `qa-plan.md` from the request, the diff, and the claims to sign off.
-2. For each item, write route/state, user action, expected visible result, and
-   intended evidence before testing.
-3. Start or reuse the app with repo-native tooling.
-4. Drive the real path with Browser, Chrome, or Playwright tools.
-5. Inspect console and network for new errors.
-6. Capture a screenshot or trace, or record the exact blocker.
-7. Log results to `verification-timeline.md` and the verdict to
-   `gate-decisions.md`.
+7. **State Matrix Sweep — agents test only `desktop + happy-path + light + logged-in`.** The high-value combinations that catch the most bugs with the fewest tests: `mobile+empty`, `mobile+overflow`, `desktop+empty`, `dark+error`, `tablet+many-items`, and `mobile+dark+logged-out` (**the least-tested combination; often completely broken**). Pair with a breakpoint sweep (320→1920) running `domHealthCheck()` at each width.
 
-## Deep Escalation
+8. **Failure injection is a SEPARATE pass, run AFTER the happy path is confirmed.** "Testing error handling on broken code just generates noise." Minimum-viable 30-second pass (`resilienceSmokeTest()`): (1) block all `**/api/**` (abort) and check for a blank page; (2) wipe storage and reload and check for a crash. Network modes: `abort`/`timeout`/`status`(500/503/401/429)/`empty`/`malformed`/`slow`/`partial`. State-corruption modes: `expire-auth`/`wipe-storage`/`corrupt-storage`/`expire-token-header`/`stale-version`(426). Judge graceful degradation per failure: blank page / raw `TypeError` / crash = **critical (fix now)**; error message + retry with data preserved = **acceptable**. Grade A–F.
 
-When Use When flags risk, run persistent Playwright sessions with trace/video,
-auth test users for protected routes, failure injection and input stress for
-forms, and full cross-page journeys for multi-step flows. Match the technique to
-the risk that triggered escalation.
+9. **Double-submit test — frequently-broken duplicate-order bug.** Click submit 5× at ~50ms intervals; count mutating (POST/PUT/PATCH) requests. `>1` mutating request = **CRITICAL** duplicate submission. Exactly 1 request but the button is **not disabled after the first click** = warning (will duplicate on slow networks). Fix double-submit specifically for payment/order flows. (`rapidInteractionTest()`.)
 
-## Evidence
+10. **Input stress — XSS payloads must be DISPLAYED, not EXECUTED.** Vectors: paste bomb (A×50000), maxLength (A×10000), RTL override `‮`, zalgo, CJK, null byte, and injection payloads (`<script>`, `<img onerror>`, `' OR '1'='1`, `${process.env.SECRET}`). Detection: page-level horizontal scroll, parent overflow (paste-bomb layout explosion), and **actual XSS execution** (an injected `img[src=x]` or an extra non-app `<script>` = critical, input is not sanitized). (`inputStressTest()`.)
 
-Per QA item: route, viewport, account/browser state, user action, expected vs.
-actual result, screenshot or trace path, console/network notes, and any residual
-manual QA. Surface failures and gaps before passes.
+11. **Console catches invisible bugs that pass all assertions — hydration is the most serious.** Categorize: **hydration** (CRITICAL — "Text content does not match", SSR/client mismatch from dates/random/`window`) > runtime (`TypeError`/`ReferenceError`) > network (`net::ERR`/CORS) > react warnings > security (CSP). Filter a known-safe allowlist (react devtools, fast refresh, ResizeObserver loop, analytics, sentry) so console checks are signal, not noise. (`ConsoleMonitor.getUnexpectedErrors()`, `.hasHydrationErrors()`.)
 
-## Skip Or Stop Rules
+12. **Scroll metrics lie — `getBoundingClientRect()`, not document bounds.** Fixed-height shells can clip a required region while page-level scroll metrics look clean. For a fixed-shell interface, having to scroll to reach the primary surface is a failure even if scroll metrics look fine. Screenshots are **primary** evidence for fit; numeric checks support but never overrule.
 
-Skip diffs with no UI surface. Mark blocked (not skipped) when the app will not
-start, auth is unavailable, seed data is missing, or a required service is
-unreachable; name the obstacle.
+13. **Pixel-diff misses what matters — the agent IS the vision model.** Pixel diff false-positives on font rendering and 2px moves but **MISSES** truncated text, wrong icon, poor contrast, and broken mobile layout. The agent's built-in vision answers "does this look right?" (zero cost, in-context, no API key) — that's the default. Reserve `toHaveScreenshot()` pixel regression for agent-less CI only.
 
-## Output
+14. **Stabilize before ANY screenshot comparison, or get false positives.** Inject CSS to zero all animation/transition durations + `caret-color: transparent`, wait `document.fonts.ready`, wait all images, `networkidle`, and `aria-busy` clear. **Retina caveat:** in native-window/Electron mode on macOS Retina, `scale:"css"` can still return device-pixel size — downscale via a canvas resize before comparing. (`stabilizeForScreenshot()`.)
 
-Return a `run`, `skip`, `deep`, `override`, or `blocked` decision per the verb
-set in `gate-decisions.md`, with a pass/fail per QA item, linked artifacts, and residual
-risk. Write the decision to `gate-decisions.md` and feed surviving risk into
-`pr-body-draft.md`.
+15. **Auth: Google OAuth cannot be automated** (CAPTCHA, headless detection). Bypass via Supabase email/password test users injecting `sb-access-token`/`sb-refresh-token` cookies — same app, different auth method. Use the IANA-reserved **`.test` TLD** so test emails can never reach real inboxes; mark users `is_test_user: true`. Test-user tiers map to coverage: `primary`(pro), `free`(paywall/limits), `premium`(all features), `fresh`(onboarding/empty-states), `admin`(admin panel).
+
+16. **Two pre-signoff questions force a final honest look:** "What visible part have I not yet inspected closely?" and "What visible defect would most likely embarrass this result?" Then require explicit **negative confirmation** of the defect classes checked-and-not-found (e.g. "No clipping, overflow, contrast, or layering issues found"). These are the anti-success-theater devices — functional and visual signoff are independent passes; one does not imply the other.
+
+## Quick pass
+
+1. Build a QA inventory from **three sources**: requested requirements, what you actually built, and the claims you're signing off — every item maps to a check. Add ≥2 off-happy-path scenarios.
+2. Start or reuse the app with repo-native tooling; drive **real controls only** (`.click()`/`.fill()`/`.press()`) for signoff.
+3. Per change, run the Edit-Reload-Verify micro-loop: reload → `diffLayoutSnapshots` → `domHealthCheck` → screenshot.
+4. Attach a `ConsoleMonitor`; check console (hydration first) and network — no new errors or failed requests on tested paths.
+5. Capture a screenshot or trace per item, or record the exact blocker.
+
+## Deep pass
+
+Risk-gated escalation when the gate triggers flag auth, multi-page journeys, responsive/visual-regression risk, or payment/order flows:
+
+- **State Matrix Sweep + breakpoint sweep** (gotcha 7) — run `domHealthCheck` at the high-value combinations and at widths 320→1920; review failing combos first.
+- **Failure-injection pass** (gotcha 8) — `resilienceSmokeTest` first, then per-endpoint network modes and state-corruption modes; grade A–F.
+- **Double-submit + input stress** (gotchas 9, 10) on forms — `rapidInteractionTest`, `inputStressTest`.
+- **Auth test users** (gotcha 15) for protected routes; persistent Playwright sessions with trace/video for multi-step flows.
+- **Stabilize** (gotcha 14) before any before/after comparison.
+
+## Scripts
+
+- [`scripts/dom-health-check.js`](scripts/dom-health-check.js) — `domHealthCheck(page)` (10 mechanical checks), `captureLayoutSnapshot`/`diffLayoutSnapshots(before, after, {intent})` (structural diff + render intent), `findObscuredInteractives`/`findPointerEventsDisabled`, `stabilizeForScreenshot(page)`, plus `BREAKPOINTS` and `STATE_MATRIX_HIGH_VALUE`.
+- [`scripts/failure-injection.js`](scripts/failure-injection.js) — `resilienceSmokeTest(page, url)` (30-sec smoke), `injectNetworkFailure(page, urlPattern, mode, opts)`, `corruptSessionState(page, mode)`, `rapidInteractionTest(page, selector, {count, intervalMs})` (double-submit), `inputStressTest(page, selector)` + `INPUT_STRESS_VECTORS`.
+- [`scripts/console-monitor.js`](scripts/console-monitor.js) — `new ConsoleMonitor(page)`, `.getUnexpectedErrors()` (allowlist-filtered), `.hasHydrationErrors()`, `.getSummary()`.
+
+Invoke from a persistent Playwright session, e.g. `const { domHealthCheck } = require('./scripts/dom-health-check.js'); const h = await domHealthCheck(page);`.
+
+## False positives
+
+- **`evaluate()` "pass."** A green result obtained via `page.evaluate()`, forced client state, or a direct DB write is a diagnostic, never proof — never cite it for signoff (gotcha 1). A `.click()` that fails is a finding, not a false positive to route around (gotcha 2).
+- **Known-safe console noise.** Suppress only the allowlist (react devtools, fast refresh, ResizeObserver loop, analytics, sentry); do not extend the allowlist to silence a real `hydration`/`runtime` error (gotcha 11).
+- **Pixel-diff noise.** Font-rendering and ≤2px-move pixel diffs are not findings; trust agent vision over pixel equality (gotcha 13). Subpixel layout-snapshot moves ≤3px are filtered by threshold.
+- **Server-side dedup.** Multiple POSTs that the server deduplicates is still a client warning — the button should prevent the dupe (gotcha 9).
+- **"Scroll metrics look clean."** Not a pass when a required region is clipped per `getBoundingClientRect()` (gotcha 12).
+- **Unstabilized comparison.** Diffs from animations/fonts/loading are false positives — stabilize first (gotcha 14), don't report them as defects.
+
+## Evidence to record
+
+Per QA item: route, viewport, account/browser state, user action, expected-vs-actual, screenshot/trace path, console + network notes, and any residual manual QA. Record functional and visual as **independent** passes (one does not imply the other), plus the failure-resilience grade if the Deep pass ran. End with explicit **negative confirmation** of the defect classes checked and not found, and the two pre-signoff answers (gotcha 16). Cite any `evaluate()`, forced state, or DB write strictly as a diagnostic. When skipping: record "no UI surface." When **blocked** (not skipped) — app won't start, auth unavailable, seed data missing, required service unreachable — name the obstacle, the smallest diagnostic attempted, the closest proof reached, and the residual human QA.

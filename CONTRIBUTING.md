@@ -117,4 +117,3 @@ uvx pre-commit install
 Then commits will run:
 
 - `scripts/validate-skills.sh` (structural checks)
-- `skill-scanner` via `scripts/run_skill_scanner.py` (security scanning)

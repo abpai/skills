@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "1.12.0",
-  "description": "Grouped code workflows for /code:* commands. prepare-pr is full PR readiness, review-and-commit is quick local review plus commit, and finish-lane runs internally from PR prep after code is working.",
+  "version": "2.0.0",
+  "description": "Grouped code workflows for /code:* commands. prepare-pr is full PR readiness (deterministic preflight, quality gates, source-grounded QA, validation, PR text, optional commits), and review-and-commit is quick local review plus commit.",
   "author": {
     "name": "Andy Pai"
   },

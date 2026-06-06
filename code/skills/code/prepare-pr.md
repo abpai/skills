@@ -1,356 +1,207 @@
 # Prepare PR
 
-Prepare working-tree changes for a pull request: run the finish lane, review
-the diff, verify changed behavior with targeted QA, clean up meaningful issues,
-draft reviewer-facing PR text, and only then build an optional commit plan.
+Finish working-tree changes for a pull request: scope the full PR diff (committed
+and uncommitted), run finish-lane QA and cleanup, apply quality gates, validate,
+draft reviewer-facing PR text, seal, then build optional commits — gated so push
+and PR creation only happen on green.
 
-Source basis: evolved from the earlier `review-and-commit.md` workflow plus a
-deterministic finish-lane helper.
+This is the single self-contained PR-prep workflow. The deterministic core is
+`scripts/finish-lane.ts`; everything else (findings, fixes, QA narrative, PR
+text, commit discipline) is judgment this module owns.
 
-## Working tree (preflight)
+## Two bright-line rules (read before any phase)
 
-```!
-echo "PREPARE_PR_PREFLIGHT_$(date +%s%N)"
-git rev-parse --show-toplevel 2>/dev/null || echo "not a git repo"
-git branch --show-current 2>/dev/null
-git status --short 2>/dev/null | head -40
-git diff --stat 2>/dev/null | head -20
-git diff --cached --stat 2>/dev/null | head -20
-git log --oneline -n 5 2>/dev/null
-```
+**BRIGHT LINE 1 — Gate before push.** Quality gates, source-grounded QA, and
+independent review run and the branch is **sealed** _before_ `git push`,
+`gh pr create`, or `gh pr edit --body`. Push/PR-create is the terminal,
+gated-on-green action — never an early "share it then polish" step. Pushing first
+turns every finding into a post-hoc follow-up commit a reviewer already saw. An
+always-on plugin hook (`gate-before-push.sh`) enforces this while prepare-pr is
+**armed**: it blocks push/PR-create/PR-body-edit unless a fresh seal sentinel
+exists for the current branch.
 
-Run the block above before preparing the PR. Treat it as ground truth for the
-initial "Inspect Current Change Scope" step. Defer full `git diff` bodies to
-explicit Read/Bash calls where you need more than the stat summary.
+**BRIGHT LINE 2 — Source-grounded verification.** Write the expected behavior
+into the verification log _before_ each action, grounded in source, docs, route,
+command, or contract. A pass written after the fact is a probe, not proof.
+"Working tree clean" does **not** mean "nothing to finish" — PR scope is
+`<base>...HEAD` unioned with uncommitted + staged + untracked. A green suite
+whose fixtures encode the code's own assumption proves nothing: at a parse/trust
+boundary, confirm fixtures match a sanitized real sample, not an invented shape;
+for any value crossing a boundary (HTTP header, env var, API field, cache key),
+find the consumer and confirm it accepts that shape.
 
-## Workflow
+**Light ambition check.** Do not force every gate on every diff. Trivial
+docs-only or metadata-only changes skip the heavy lane with a one-line rationale.
+You may override any script recommendation with a concrete reason, or add a
+one-off local gate for a new surface. The goal is explicit applicability and
+visible skip rationale, not ceremony.
 
-1. Inspect current change scope.
-1. Run the deterministic finish lane.
-1. Enter source-grounded test mode.
-1. Run the built-in quality gates that apply to the diff.
-1. Review for correctness and maintainability issues.
-1. Apply necessary fixes.
-1. Build and run the exact targeted QA plan.
-1. Validate updated changes.
-1. Run an independent review when the diff is correctness-sensitive.
-1. Draft or update PR text from the actual diff and evidence.
-1. Build an optional commit plan.
-1. Ask for approval before creating commits.
-1. Execute commits in order only when the user asked for commits.
+`.workflow/` is throwaway, per-repo, gitignored. The scope file and seal sentinel
+live there and never travel into a commit.
 
-`finish-lane.md` is the advanced method's deterministic core. Its script gives
-you durable artifacts for QA, cleanup, validation, and PR prep; this module
-still owns findings, judgment, fixes, PR narrative, approval, staging, and
-commit discipline.
+## Phase 1 — Scope & Arm
 
-## 1) Inspect Current Change Scope
-
-Run:
-
-- `git status --short`
-- `git diff` (unstaged)
-- `git diff --staged` (if relevant)
-
-Map changes by concern (feature, fix, refactor, tests, docs) before suggesting commit boundaries.
-
-Enumerate untracked files explicitly. Flag anything large, data-shaped, or secret-looking (dumps, exports, `.env`, tokens) as commit-excluded by default — do not let it ride along into a commit.
-
-## 2) Run The Finish Lane
-
-Run the bundled helper before deep review unless the change is trivially
-docs-only:
+Run the slim deterministic preflight (writes `changed-files.txt`, prints one
+stdout summary):
 
 ```bash
-# inside the abpai/skills checkout itself
-bun code/skills/code/scripts/finish-lane.ts --fix
-
+# inside the skills checkout itself
+bun code/skills/code/scripts/finish-lane.ts --fix --arm
 # installed via project-local skills
-bun .agents/skills/code/scripts/finish-lane.ts --fix
-
+bun .agents/skills/code/scripts/finish-lane.ts --fix --arm
 # loaded as a Claude Code plugin
-bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --fix
+bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --fix --arm
 ```
 
-Pick the path that exists. If none of those resolve, locate this module's skill
-directory and run `scripts/finish-lane.ts` relative to it.
+Pick the path that exists. Pass `--base <ref>` when the auto-detected base is
+wrong (PR onto a non-default branch). The script scopes to the union of
+`<base>...HEAD` + uncommitted + staged + untracked and auto-detects `<base>`, so
+a committed-but-unpushed branch with a clean working tree has real work to do —
+never skip on "clean." Do not hand-roll this from a `git diff <base>...HEAD`
+loop; the script owns base detection, scope union, mechanical scans, and the
+suggested-lens list.
 
-Open `.workflow/finish-lane/<timestamp>/workflow-status.html` first to see the
-browser-friendly phase map, artifact links, validation status, gate filters, and
-current next action. Use `workflow-status.md` as the Markdown fallback. Then read
-`report.md`, `qa-plan.md`, `secret-risk.md`, failed logs, and `pr-body-draft.md`.
-Treat those artifacts as the shared state for the rest of the workflow.
+The single `FINISH_LANE` stdout block reports: base + branch + scope counts,
+the `changed-files.txt` path, fix-command and validation/test results
+(ok/fail/skip), mechanical-scan counts (slop, placeholder, `ubs`), and a flat
+suggested-lens list. Read it as the shared state for the rest of the workflow.
 
-Independent agent review is project opt-in. A normal run uses the saved
-`.workflow/finish-lane/preferences.json` reviewer when present; otherwise it
-skips the agent pass. To save the opposite reviewer after verifying it exists on
-PATH, run the helper once with `--agent peer`. Use `--agent codex` or
-`--agent claude` only when you want that explicit reviewer saved for this
-checkout.
+**Arm the gate.** The `--arm` flag writes the arm marker
+`${CLAUDE_PLUGIN_DATA}/prepare-pr/armed/<repo-id>.armed` (the script computes
+`<repo-id>` exactly as the hook does, so do not hand-build the path). The
+always-on hook now blocks push/PR-create/PR-body-edit for this repo until the
+branch is sealed (Phase 4); it is disarmed only in Phase 5 after a successful
+push. The look-for `ARMED <path>` line in the summary confirms it. (Outside the
+installed plugin runtime there is no `CLAUDE_PLUGIN_DATA`; arming is a no-op and
+the gate stays inert — expected in a bare checkout.)
 
-If the helper cannot run, continue manually through the same phases and explain
-the blocker.
+**Enumerate untracked files.** Flag anything large, data-shaped, or
+secret-looking (dumps, exports, `.env`, tokens) as commit-excluded by default.
 
-## 3) Source-Grounded Test Mode
+## Phase 2 — Stabilize & gate-select
 
-Before driving the app, API, or CLI, write named tests into the finish-lane
-artifacts:
+From the script's flat suggested-lens list and `changed-files.txt`, decide gates
+(anti-railroad): accept the suggestion, override with a concrete reason, or add a
+gate the defaults missed. For each selected gate, load **only** that
+`review-patterns/<lens>.md` (progressive disclosure — never read all lenses up
+front), run its quick pass, escalate to the deep pass only when diff risk
+justifies it, and record evidence or a skip rationale in context.
 
-- `qa-plan.md` must cite the source, docs, route, command, or user-visible
-  contract that makes the expected behavior real.
-- `verification-timeline.md` must record the expected behavior before each
-  action, then mark it `passed`, `failed`, or `untested`.
-- `evidence/` should hold screenshots, recordings, traces, logs, response
-  snippets, or command output for important assertions.
+**New-surface check.** If the diff adds a surface the project did not have before
+— first web UI, public CLI, API route, database migration, auth/billing
+boundary, or background job — add a local gate and capture evidence for it.
 
-This is the "don't let the agent rationalize a pass after the fact" rule. If
-the expected behavior was not written before the action, treat the result as a
-probe, not proof.
+## Phase 3 — Source-grounded QA & verification
 
-Prefer real user-path testing for UI changes. Browser JavaScript, direct DB
-writes, request mocking, or forced client state can be useful diagnostics, but
-label them as lower-level probes and do not present them as user-path proof.
+Write named tests grounded in source/docs/route/contract **before** acting.
+Record the expected behavior before each action, then mark it `passed`, `failed`,
+or `untested`. For each check name: surface (UI route / CLI command / API
+endpoint / worker path / migration / docs), inputs (URL, command, fixture,
+token, payload, browser state), expected result (exact output, status, header,
+persisted state, absence of regression), tooling, and evidence.
 
-If setup is slow or repeatedly discovered the hard way, inspect
-`setup-scripts.txt`, fill `setup-blueprint-template.yml`, and propose a
-repo-owned setup script, fixture, or testing skill for the next run.
+Prefer real user-path testing for UI. Browser JS, direct DB writes, request
+mocking, or forced client state are useful diagnostics but are lower-level probes
+— label them as such, never present them as user-path proof.
 
-## 4) Run Quality Gates
+If a live QA path is blocked, isolate the smallest diagnostic that distinguishes
+client/server/network/auth/fixture/sandbox failure, then report: what was
+attempted, where it blocked, whether that blocker is a code defect, the closest
+proof you ran instead, and the exact residual manual QA for the human. Do not
+invent a code fix for an environment limitation.
 
-Open `review-patterns.md`, `quality-gates.md`, and `gate-decisions.md` together.
-The script makes a cheap recommendation from bounded path, diff, and text
-signals, but the active agent makes the final applicability call. Accept the
-recommendation, override it with a concrete reason, or add a one-off local gate
-when the change introduces a new surface or risk the defaults missed. For each
-selected gate, read only the bundled playbook named in `review-patterns.md`, run
-the quick pass, and record evidence. Mark skipped gates with a concrete reason.
-Use the deep pass only when the diff risk justifies it.
+Run validation (lint / test / typecheck / build) via the commands the script
+reported. State any skips and why. Keep the parse/trust-boundary and
+cross-boundary-consumer checks here — they catch what a green suite hides.
 
-The default gate set internalizes the useful review patterns directly in this
-workflow. The underlying prompts live in `review-patterns/` beside this module
-so the plugin can be published independently:
+## Phase 4 — Independent review & PR text, then SEAL
 
-- `review-patterns/prose-quality-pr-copy.md` - public docs, handoffs, and PR body text should be
-  specific, human, and low-hype.
-- `review-patterns/config-contract-check.md` - manifests, versions, command
-  names, and plugin metadata should describe the same public surface.
-- `review-patterns/mock-stub-placeholder-sweep.md` - changed code should not leave fake implementations,
-  placeholder data, TODO traps, or overly broad mocks.
-- `review-patterns/multi-pass-bug-hunting.md` - do a correctness/security pass, fix findings,
-  then do a fresh-eyes pass over the resulting diff.
-- `review-patterns/ubs-static-risk-scanner.md` - run `ubs` when available on changed code and triage
-  findings instead of treating scanner output as automatically correct.
-- `review-patterns/isomorphic-simplification.md` - remove accidental complexity only when
-  behavior is protected by tests, goldens, or explicit invariants.
-- `review-patterns/browser-e2e-verification.md` - UI changes need real route/component exercise,
-  console/network checks, and screenshot/trace evidence when practical.
-- `review-patterns/ux-accessibility-audit.md` - changed UI should pass a focused
-  usability, keyboard, responsive, state, and accessibility check.
-- `review-patterns/real-service-integration-check.md` - auth, billing, webhooks, data deletion, migrations, and
-  cache/proxy behavior should prefer real service paths over mocks when safe.
-- `review-patterns/golden-artifact-decision.md` - complex stable outputs should be frozen and reviewed
-  by diff when exact field assertions would be weaker.
-- `review-patterns/metamorphic-property-test-decision.md` - when exact expected output is hard, test
-  invariant relationships instead of guessing a weak oracle.
-- `review-patterns/cli-agent-ergonomics.md` - CLI/script changes should check help, exit codes,
-  non-TTY behavior, JSON/robot output, and actionable errors.
-- `review-patterns/doctor-self-healing-candidate.md` - recurring setup or repair
-  pain should become a safe check/doctor/setup workflow only when justified.
-- `review-patterns/performance-profiling.md` - performance claims require a baseline, profile, one lever per
-  change, and behavior proof.
+For correctness-sensitive or behavior-affecting diffs, run an independent review:
+`codex review --uncommitted`, or a fresh no-context sub-agent under a read-only
+sandbox, reads the current diff. Self-review reliably misses regressions your own
+fix just introduced. Fold findings into `Review Findings` and triage them — do
+**not** auto-apply. Skip with a rationale only for trivial docs/metadata diffs.
 
-For clarity: these are Jeffery-skills-inspired ideas plus local repo metadata
-checks, but they are now bundled as local `prepare-pr` / `finish-lane`
-playbooks rather than imported as external skill dependencies. The generated
-`review-patterns.md` repeats the selected mapping with absolute paths for the
-current install.
+Draft or rewrite PR text from the actual diff + evidence: what now happens that
+did not before, why it matters, how it works (only as much as a reviewer needs),
+exact validation commands + live QA evidence, and residual manual QA or known
+risk. For a live PR, use `gh pr edit --body-file` only after comparing the draft
+against the current diff. (Optional: a self-contained HTML explainer for complex
+diffs — opt-in, not mandatory.)
 
-Do a quick new-functionality check before QA. If the diff adds a surface the
-project did not previously have, such as a first web UI, public CLI, API route,
-database migration path, auth/billing boundary, background job, or runtime
-target, add a local gate in `gate-decisions.md` and capture evidence for it.
+**Seal** only after gates + QA + independent review pass:
 
-Before handing work back, summarize intentionally skipped gates in
-`gate-decisions.md` and in the final response or PR draft. Do not force every
-gate on every diff. The important behavior is explicit applicability, evidence,
-and visible skip rationale, not ceremony.
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --seal
+```
 
-## 5) Review Priorities
+This writes the per-branch sentinel
+`.workflow/finish-lane/seal/<branch-slug>.sealed` stamped with the current HEAD
+sha + scope hash + timestamp. The hook treats it as fresh only if HEAD and the
+scope hash still match — any new commit, staged change, unstaged edit, or new
+untracked file invalidates the seal and re-blocks push. `--seal` **refuses to
+write the sentinel (exit 2) if any discovered validation command is failing**, so
+the mechanical gate can never be sealed red — fix the failure and re-seal. (No
+validation command discovered is not a failure; for a docs-only diff your skip
+rationale is the gate.) `--seal` does **not** disarm; disarm is the explicit
+Phase 5 step after push.
 
-Prioritize in this order:
+## Phase 5 — Commit plan, approval, push & disarm
 
-1. Correctness and regressions.
-1. Security and secret leakage risks.
-1. Broken architecture or project-pattern violations.
-1. Missing tests or missing QA coverage for behavior changes.
-1. Readability and maintainability improvements.
+Build atomic commits that revert independently. For each: type
+(`feat`/`fix`/`refactor`/`test`/`docs`/`chore`) + summary, exact files to stage,
+why the grouping is coherent, and the final message (imperative mood, subject
+<= 50 chars, body only when it explains _why_, wrapped near 72 chars).
 
-Review for:
+Present the full plan and **get approval before any `git add` / `git commit`**.
+If the user asks for changes, revise and re-present. Then:
 
-- Logic bugs and unhandled edge cases.
-- Missing error handling or validation.
-- Performance pitfalls in changed code paths.
-- Type accuracy and docstring quality; favor concise, useful docs.
-- Low-value comments that restate obvious code behavior.
-- Resource-lifecycle problems (cleanup, context management).
-- Violations of repository conventions from project docs.
-- User-visible behavior that automated checks do not cover.
-- Parse/trust boundaries: when code decodes external data (JWT, API payload, header, cookie), confirm the test fixtures match a sanitized real sample or shape-only example, not an invented shape. A green suite whose fixtures encode the code's own assumption proves nothing.
-- Cross-boundary values: when a change emits a value that crosses a boundary (HTTP header, env var, API field, cache-key dimension), find the consumer and confirm it accepts that shape/value. Flag logic duplicated across modules or services that must agree — it drifts.
+1. Stage only planned paths **by name** — never `git add -A` or `git add .`.
+2. Create the commit; confirm with hash + summary. Repeat per commit.
+3. Push / open the PR — now allowed because the seal is fresh.
+4. **Disarm immediately** so the gate goes inert again:
 
-## 6) Apply Fixes
+   ```bash
+   bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --disarm
+   ```
 
-When findings are actionable and safe, implement fixes directly.
-
-- Keep scope tight to the requested work.
-- Avoid unrelated refactors unless necessary for correctness.
-- Re-check diffs after each meaningful fix.
-
-## 7) Build and Run a Targeted QA Plan
-
-For every review, generate the manual QA you would ask a human to perform for the changed behavior, then do as much of it as the current environment allows before proposing commits.
-
-The QA plan must name:
-
-- **Surface** - UI route, CLI command, API endpoint, worker/proxy path, background job, database migration, or docs-only behavior.
-- **Inputs** - URL, command, fixture, token, account, payload, browser state, or seed data.
-- **Expected result** - exact visible output, status code, header, console/network behavior, persisted state, or absence of a regression.
-- **Tooling** - browser, Chrome DevTools MCP, in-app Browser, Playwright, curl, app CLI, test harness, logs, database query, or another repo-native probe.
-- **Evidence to capture** - screenshot, console/network notes, command output, response snippet, log line, or test name.
-
-Choose the tool that best exercises the actual changed surface:
-
-- UI/browser changes: start or reuse the dev server when practical, then use Browser, Chrome DevTools MCP, Playwright, or the available browser tool. Check visible render, key interaction, console errors, and relevant network/request behavior.
-- API/edge/proxy changes: use curl or repo tests for status codes, headers, auth, cache behavior, and representative payloads. Use real tokens/fixtures when available, but report only sanitized or shape-only evidence and never commit secrets.
-- CLI/dev-tooling changes: run the command a user would run, verify stdout/stderr, exit code, and generated side effects.
-- Data/backend changes: verify through the narrowest useful test plus a direct query/log/probe when the behavior is observable only outside unit tests.
-- Docs-only changes: QA the instructions by checking commands, paths, and expected outputs against the live repo.
-
-If a live QA path is blocked, do not skip it silently and do not invent a code fix for an environment limitation. Isolate the blocker with the smallest diagnostic that distinguishes client, server, network, auth, fixture, or sandbox failure. Then report:
-
-- what manual QA was attempted
-- where it blocked
-- why that blocker is or is not a code defect
-- the closest automated or lower-level proof you ran instead
-- the exact residual manual QA for the human to run
-
-Example: if a browser cannot get past a server-side outbound fetch hang, prove whether the inbound route works with a no-outbound request before concluding that Chrome/DevTools cannot route around it.
-
-## 8) Validate
-
-Run relevant quality checks when available (for example lint, tests, type checks).
-
-If checks cannot run, explicitly state what was skipped and why.
-
-## 9) Independent Review
-
-Before the commit plan, run an independent review for correctness-sensitive or behavior-affecting diffs: `codex review --uncommitted`, or a fresh sub-agent with no prior context, should read the current working-tree diff. For trivial docs-only or metadata-only changes, state the skip rationale instead of forcing ceremony.
-
-Self-review reliably misses regressions your own fix just introduced (for example, a corrected parser that now emits a value the consumer rejects). Fold independent findings into `Review Findings` and triage them; do not auto-apply.
-
-## 10) Draft Or Update PR Text
-
-Use `pr-body-draft.md` only as raw material. Rewrite it against the actual diff,
-artifact evidence, and user-visible behavior.
-
-Good PR text starts with the job-to-be-done:
-
-- what now happens that did not happen before
-- why it matters for the user, operator, reviewer, or future agent
-- how it works, only as much as a reviewer needs
-- exact validation commands and live QA evidence
-- residual manual QA or known risk
-
-For a live PR update, use `gh pr edit --body-file` only after comparing the
-draft against the current diff and latest commits.
-
-## Optional HTML PR Explainer
-
-For complex diffs, risky PRs, unfamiliar code paths, or review handoffs, create a self-contained HTML explainer before or alongside the commit plan. Do not make this mandatory for small commits.
-
-Good HTML PR explainers include:
-
-- annotated diff snippets with severity-colored margin notes
-- before/after flow diagrams for changed behavior
-- file-by-file tour focused on why each file changed
-- reviewer focus areas and validation status
-- links or copied file:line refs for the exact hot spots
-
-Use Markdown for the commit plan and final chat summary. Use HTML when the reviewer needs spatial context they will not get from a terminal diff.
-
-## 11) Build Commit Plan
-
-Group changes into atomic commits that can be reverted independently.
-
-For each proposed commit include:
-
-- Commit type and summary (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`).
-- Exact files to stage.
-- Why this grouping is coherent.
-- Final commit message draft.
-
-Commit message rules:
-
-- Use imperative mood.
-- Keep subject concise (target <= 50 chars).
-- Add body only when needed, explaining why.
-- Wrap body lines near 72 chars.
-
-## 12) Approval Gate
-
-Before running `git add` or `git commit`, present the full commit plan and request approval.
-
-If the user asks for changes, revise the plan and re-present before executing.
-
-## 13) Execute and Report
-
-After approval:
-
-1. Stage only planned files for the current commit. Stage planned paths by name; never `git add -A` or `git add .`.
-1. Create the commit.
-1. Confirm success with commit hash and summary.
-1. Repeat for remaining commits.
-
-End with a concise recap:
-
-- Commits created (hash + subject).
-- Files included per commit.
-- Any remaining unstaged/uncommitted changes.
+If you commit after sealing, the seal is stale — re-seal (Phase 4) before push.
 
 ## Output Format
 
-Use this structure:
-
-1. `Review Findings` grouped by severity (`Critical`, `Important`, `Suggestion`).
-1. `Applied Fixes` with file-level summary.
-1. `Quality Gates` (applicable built-in passes run, evidence, and skip rationales).
-1. `QA Plan` (manual/user-path checks with inputs and expected results).
-1. `Verification Timeline` (named tests, expected-before-action assertions, pass/fail/untested status, and evidence paths).
-1. `QA Results` (what was run, evidence, blockers, and residual human checks).
-1. `Validation Results` (automated commands run and outcomes).
-1. `Independent Review Results` (findings, or skip rationale for trivial diffs).
-1. `Reusable Setup` (new deterministic setup scripts/skills to create, or "none").
-1. `Proposed Commit Plan` (numbered commits with file list + message).
-1. `Execution Results` after approval.
+1. `Review Findings` by severity (`Critical`, `Important`, `Suggestion`).
+2. `Applied Fixes` (file-level summary).
+3. `Quality Gates` (passes run, evidence, skip rationales).
+4. `QA Plan` (surface, inputs, expected per check).
+5. `Verification Timeline` (expected-before-action assertions, pass/fail/untested,
+   evidence).
+6. `QA Results` (what ran, evidence, blockers, residual human QA).
+7. `Validation Results` (commands run and outcomes).
+8. `Independent Review` (findings or skip rationale).
+9. `Reusable Setup` (new deterministic setup scripts/skills to create, or "none").
+10. `Commit Plan` (numbered commits with files + message).
+11. `Execution Results` after approval.
 
 ## Decision Rules
 
-- Prefer correctness over style.
-- Favor project conventions over personal preference.
-- Surface trade-offs when multiple valid approaches exist.
-- Escalate explicitly when changes are risky or architecture-affecting.
-- When review or QA surfaces a bug outside the current change's scope, propose it as a separate commit or stacked PR rather than bundling it into unrelated work.
+- Prefer correctness over style; project conventions over personal preference.
+- Surface trade-offs when multiple valid approaches exist; escalate risky or
+  architecture-affecting changes explicitly.
+- Treat a failed check as evidence, not an automatic code defect: classify it as
+  current-change bug, pre-existing issue, or environment blocker.
+- When review or QA surfaces a bug outside this change's scope, propose it as a
+  separate commit or stacked PR rather than bundling it in.
 
 ## Update Check
 
 On first use in a session, silently check for a newer version:
 
 1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
-2. Compare the version for `code` against `code/skills/code/SKILL.md`.
+2. Compare the version for `code` against `code/skills/code/SKILL.md`
+   `metadata.version`.
 3. If the remote version is newer, pause before the main task and ask:
    > **code** update available (local {X.Y} → remote {A.B}).
    > Would you like me to update it for you first?
    > I can run `npx skills update code` for you.
-4. If the user says yes, run the update before continuing.
-5. If the user says no, continue with the current local version.
-6. If the fetch fails or web access is unavailable, skip silently.
+4. If yes, run the update before continuing. If no, continue with the local
+   version. If the fetch fails or web access is unavailable, skip silently.

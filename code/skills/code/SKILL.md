@@ -1,9 +1,9 @@
 ---
 name: code
-description: Grouped coding workflow pack. Use /code:prepare-pr for full PR readiness, /code:review-and-commit for quick local review plus commit, and the internal finish-lane helper only from prepare-pr after code is working. Also use for /code:explain, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:secure-dependencies, and /code:handoff.
+description: Grouped coding workflow pack. Use /code:prepare-pr for full PR readiness — full PR diff (committed and uncommitted), deterministic preflight, quality gates, source-grounded QA, validation, PR text, optional commits, gate-before-push. Use /code:review-and-commit for quick local review plus commit. Also use for /code:explain, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:secure-dependencies, and /code:handoff.
 argument-hint: "[subcommand] [args] — e.g. understand src/api, --prepare-pr, review-and-commit"
 metadata:
-  version: "1.12.0"
+  version: "2.0.0"
 ---
 
 # Code Workflow Pack
@@ -21,10 +21,9 @@ Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and m
 
 ## Routing
 
-- Use `prepare-pr.md` for full PR readiness: finish-lane artifacts, quality gates, targeted QA, evidence, and PR narrative.
+- Use `prepare-pr.md` for full PR readiness: a single self-contained workflow that runs a deterministic preflight (scope union of `<base>...HEAD` + uncommitted + untracked, discovered fix/validation commands, mechanical scans, suggested-lens tagger), selects and runs quality gates from `review-patterns/`, performs source-grounded QA and verification, runs independent review, drafts PR text, then seals and gates before push. There is no separate finish-lane command — the preflight is a phase inside `prepare-pr`.
 - Use `review-and-commit.md` for quick local review plus commit: inspect scope, fix real issues, run targeted checks, plan a commit, ask approval, then commit.
-- Treat `finish-lane.md` as an internal helper used by `prepare-pr.md`, not as a public command route.
-- Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. Load only the playbooks selected by the generated `review-patterns.md` index.
+- Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
 - Use `explain.md` for dense technical explanations, tutorials, walkthrough prose, README guidance, or onboarding docs.
 - Use `walkthrough.md` to teach the owner a system or change to verified mastery: ground a checklist, then quiz one scenario at a time until every item has an unaided correct answer. It is a persistent comprehension goal, not a tour.
 - Use `understand.md` for tracing a specific code path into a `.understand/<topic>.html` artifact with call graph, concrete values, side effects, and scratch skeleton imports.

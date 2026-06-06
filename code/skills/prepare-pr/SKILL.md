@@ -4,7 +4,7 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: Prepare working-tree changes for a PR with finish-lane QA, cleanup, validation, visual status, PR text, and optional commits.
+description: Prepare a branch's full PR diff (committed and uncommitted) for a PR with finish-lane QA, cleanup, validation, visual status, PR text, and optional commits.
 argument-hint: "[scope or message hint]"
 allowed-tools: >
   Bash(git status *) Bash(git diff *) Bash(git log *)
@@ -22,8 +22,8 @@ allowed-tools: >
 Use the `prepare-pr` module.
 
 1. Read `skills/code/prepare-pr.md`.
-2. Run the finish-lane helper to create QA, cleanup, validation, gate-decision, HTML visual status, and PR-prep artifacts.
-3. Review the current working-tree changes for correctness, security, architecture, tests, manual QA coverage, and maintainability.
+2. Run the finish-lane helper to create QA, cleanup, validation, gate-decision, HTML visual status, and PR-prep artifacts. Run it even when the working tree is clean — it scopes to the full branch diff `<base>...HEAD`, so an already-committed branch is in scope, not a reason to skip.
+3. Review the full PR diff (`<base>...HEAD` plus any uncommitted changes) for correctness, security, architecture, tests, manual QA coverage, and maintainability.
 4. Accept, override, or add quality gates in the gate-decision ledger; load only the selected bundled review-pattern playbooks.
 5. Apply safe fixes, run exact targeted QA, and draft or update PR text from evidence.
 6. Ask for approval before staging, committing, pushing, or editing a live PR.
