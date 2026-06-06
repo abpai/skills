@@ -2,8 +2,8 @@
 
 Finish working-tree changes for a pull request: scope the full PR diff (committed
 and uncommitted), run finish-lane QA and cleanup, apply quality gates, validate,
-draft reviewer-facing PR text, seal, then build optional commits — gated so push
-and PR creation only happen on green.
+draft reviewer-facing PR text, commit the intended scope, seal, then push/update
+the PR — gated so remote review only happens on green.
 
 This is the single self-contained PR-prep workflow. The deterministic core is
 `scripts/finish-lane.ts`; everything else (findings, fixes, QA narrative, PR
@@ -36,6 +36,15 @@ You may override any script recommendation with a concrete reason, or add a
 one-off local gate for a new surface. The goal is explicit applicability and
 visible skip rationale, not ceremony.
 
+**Autonomous finish contract.** `prepare-pr` is allowed and expected to stage
+the intended scope, create coherent commits, push the branch, and create or
+update the PR without stopping for routine approval. Ask the user only when the
+commit scope is ambiguous, includes unrelated/user-owned work, contains
+secret-looking or generated files that cannot be safely excluded, requires a
+destructive operation, or changes public/production state outside git. The
+default terminal state is a remote branch ready for human review, not a local
+plan waiting for permission.
+
 `.workflow/` is throwaway, per-repo, gitignored. The scope file and seal sentinel
 live there and never travel into a commit.
 
@@ -63,14 +72,15 @@ suggested-lens list.
 
 The single `FINISH_LANE` stdout block reports: base + branch + scope counts,
 the `changed-files.txt` path, fix-command and validation/test results
-(ok/fail/skip), mechanical-scan counts (slop, placeholder, `ubs`), and a flat
-suggested-lens list. Read it as the shared state for the rest of the workflow.
+(ok/fail/skip), mechanical-scan counts (slop, placeholder), structured UBS
+status/severity/actionable-source summary, and a flat suggested-lens list. Read
+it as the shared state for the rest of the workflow.
 
 **Arm the gate.** The `--arm` flag writes the arm marker
 `${CLAUDE_PLUGIN_DATA}/prepare-pr/armed/<repo-id>.armed` (the script computes
 `<repo-id>` exactly as the hook does, so do not hand-build the path). The
 always-on hook now blocks push/PR-create/PR-body-edit for this repo until the
-branch is sealed (Phase 4); it is disarmed only in Phase 5 after a successful
+branch is sealed (Phase 5); it is disarmed only in Phase 5 after a successful
 push. The look-for `ARMED <path>` line in the summary confirms it. (Outside the
 installed plugin runtime there is no `CLAUDE_PLUGIN_DATA`; arming is a no-op and
 the gate stays inert — expected in a bare checkout.)
@@ -114,7 +124,7 @@ Run validation (lint / test / typecheck / build) via the commands the script
 reported. State any skips and why. Keep the parse/trust-boundary and
 cross-boundary-consumer checks here — they catch what a green suite hides.
 
-## Phase 4 — Independent review & PR text, then SEAL
+## Phase 4 — Independent review & PR text
 
 For correctness-sensitive or behavior-affecting diffs, run an independent review:
 `codex review --uncommitted`, or a fresh no-context sub-agent under a read-only
@@ -125,11 +135,33 @@ fix just introduced. Fold findings into `Review Findings` and triage them — do
 Draft or rewrite PR text from the actual diff + evidence: what now happens that
 did not before, why it matters, how it works (only as much as a reviewer needs),
 exact validation commands + live QA evidence, and residual manual QA or known
-risk. For a live PR, use `gh pr edit --body-file` only after comparing the draft
-against the current diff. (Optional: a self-contained HTML explainer for complex
-diffs — opt-in, not mandatory.)
+risk. Draft and compare the text against the current diff here, but **apply it to
+a live PR with `gh pr edit --body-file` only in Phase 5, after the seal** — the
+gate blocks PR-body edits until the branch is sealed. (Optional: a self-contained
+HTML explainer for complex diffs — opt-in, not mandatory.)
 
-**Seal** only after gates + QA + independent review pass:
+## Phase 5 — Commit, seal, push & disarm
+
+Build atomic commits that revert independently. For each: type
+(`feat`/`fix`/`refactor`/`test`/`docs`/`chore`) + summary, exact files to stage,
+why the grouping is coherent, and the final message (imperative mood, subject
+<= 50 chars, body only when it explains _why_, wrapped near 72 chars).
+
+The commit plan is an execution checklist, not an approval checkpoint. Proceed
+without asking when the scope is unambiguous:
+
+1. Stage only planned paths **by name** — never `git add -A` or `git add .`.
+2. Create the commit; confirm with hash + summary. Repeat per commit.
+3. Re-run any targeted validation that is invalidated by the committed changes.
+
+Pause and ask before staging only if a planned path is ambiguous, unrelated to
+the PR, user-owned local work, secret-like, or unsafe to decide automatically.
+If excluded untracked files remain and the seal would treat them as in-scope,
+resolve that explicitly (move, ignore, or ask) before sealing; do not push a PR
+whose local scope cannot be represented by the committed branch.
+
+**Seal** only after gates + QA + independent review pass and after all intended
+commits have been created:
 
 ```bash
 bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --seal
@@ -143,29 +175,18 @@ untracked file invalidates the seal and re-blocks push. `--seal` **refuses to
 write the sentinel (exit 2) if any discovered validation command is failing**, so
 the mechanical gate can never be sealed red — fix the failure and re-seal. (No
 validation command discovered is not a failure; for a docs-only diff your skip
-rationale is the gate.) `--seal` does **not** disarm; disarm is the explicit
-Phase 5 step after push.
+rationale is the gate.) `--seal` does **not** disarm.
 
-## Phase 5 — Commit plan, approval, push & disarm
+Push / open or update the PR once the seal is fresh. Then **disarm immediately**
+so the gate goes inert again:
 
-Build atomic commits that revert independently. For each: type
-(`feat`/`fix`/`refactor`/`test`/`docs`/`chore`) + summary, exact files to stage,
-why the grouping is coherent, and the final message (imperative mood, subject
-<= 50 chars, body only when it explains _why_, wrapped near 72 chars).
+```bash
+bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --disarm
+```
 
-Present the full plan and **get approval before any `git add` / `git commit`**.
-If the user asks for changes, revise and re-present. Then:
-
-1. Stage only planned paths **by name** — never `git add -A` or `git add .`.
-2. Create the commit; confirm with hash + summary. Repeat per commit.
-3. Push / open the PR — now allowed because the seal is fresh.
-4. **Disarm immediately** so the gate goes inert again:
-
-   ```bash
-   bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --disarm
-   ```
-
-If you commit after sealing, the seal is stale — re-seal (Phase 4) before push.
+If any commit or file change happens after sealing, the seal is stale — re-seal
+before push. If push or PR editing fails after a successful seal, report the
+exact blocker and leave the branch locally review-ready.
 
 ## Output Format
 
@@ -180,7 +201,7 @@ If you commit after sealing, the seal is stale — re-seal (Phase 4) before push
 8. `Independent Review` (findings or skip rationale).
 9. `Reusable Setup` (new deterministic setup scripts/skills to create, or "none").
 10. `Commit Plan` (numbered commits with files + message).
-11. `Execution Results` after approval.
+11. `Execution Results` (commit hashes, push/PR URL, disarm status, blockers).
 
 ## Decision Rules
 

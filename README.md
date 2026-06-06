@@ -68,7 +68,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, optional commits) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes explain, walkthrough (teach a system to verified mastery), understand, dead-code, scratch, secure-dependencies, and handoff |
+| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, commits, push, and PR update) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes explain, walkthrough (teach a system to verified mastery), understand, dead-code, scratch, secure-dependencies, and handoff |
 | **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
 
 ### Engineering Practices

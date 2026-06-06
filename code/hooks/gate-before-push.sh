@@ -13,7 +13,7 @@
 #              keyed by repo (repo-id = sha256(toplevel abs path)[:16]). While
 #              this marker exists, the gate is active for that repo only.
 #
-#   2. SEAL  — prepare-pr Phase 4 runs `finish-lane.ts --seal` AFTER quality
+#   2. SEAL  — prepare-pr Phase 5 runs `finish-lane.ts --seal` AFTER quality
 #              gates + source-grounded QA + independent review pass. --seal
 #              writes the per-branch sentinel
 #                .workflow/finish-lane/seal/<branch-slug>.sealed

@@ -15,7 +15,7 @@ source-grounded QA + independent review must run, and the branch must be
    that repo **only** while this marker exists. With no marker the hook is a
    complete NO-OP.
 
-2. **Seal** — `/code:prepare-pr` Phase 4 runs `finish-lane.ts --seal` _after_
+2. **Seal** — `/code:prepare-pr` Phase 5 runs `finish-lane.ts --seal` _after_
    gates/QA/review pass. It writes the per-branch sentinel
    `.workflow/finish-lane/seal/<branch-slug>.sealed` stamped with the current
    HEAD sha + `scope_hash`. The seal is **fresh** only while

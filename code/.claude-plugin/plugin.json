@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "2.0.0",
-  "description": "Grouped code workflows exposed as /code:* commands. prepare-pr is full PR readiness (deterministic preflight, quality gates, source-grounded QA, validation, PR text, optional commits, gate-before-push), and review-and-commit is quick local review plus commit.",
+  "version": "2.0.1",
+  "description": "Grouped code workflows exposed as /code:* commands. prepare-pr is full PR readiness (deterministic preflight, quality gates, source-grounded QA, validation, PR text, commits, push/PR update, gate-before-push), and review-and-commit is quick local review plus commit.",
   "author": {
     "name": "Andy Pai"
   },
