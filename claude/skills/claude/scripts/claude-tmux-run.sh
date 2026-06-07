@@ -553,10 +553,6 @@ file_mtime() {
   stat -c '%Y' "$1" 2>/dev/null || stat -f '%m' "$1" 2>/dev/null || echo 0
 }
 
-file_checksum() {
-  cksum "$1" 2>/dev/null | awk '{ print $1 ":" $2 }' || echo 0
-}
-
 analyze_turn() {
   local transcript="$1"
   python3 - "$transcript" "$FINAL_FILE" "${BASE_TRANSCRIPT_LINES:-0}" <<'PY'
@@ -657,6 +653,7 @@ try:
     lines = Path(transcript_path).read_text(encoding="utf-8").splitlines()
     transcript_lines = len(lines)
 except FileNotFoundError:
+    last_event = "missing-transcript"
     emit("waiting", "missing-transcript", "waiting-transcript")
     sys.exit(1)
 
@@ -672,11 +669,13 @@ for line in lines[base_lines:]:
         result_ids = tool_result_ids(content)
         if result_ids:
             saw_tool_result = True
+            # Only clear a pending tool we can match by id. A tool_result with no
+            # id used to pop an ARBITRARY pending id, which could mark a tool that
+            # is still running as complete and flip the phase off tool-running;
+            # leaving unmatched ids pending is the safe, deterministic choice.
             for result_id in result_ids:
                 if result_id:
                     pending_tool_ids.discard(result_id)
-                elif pending_tool_ids:
-                    pending_tool_ids.pop()
             last_event = "tool_result"
         else:
             last_event = "user"
@@ -789,16 +788,18 @@ monitor_loop() {
       ASSISTANT_TEXT_SEEN="false"
     fi
 
-    local transcript_mtime pane_fingerprint fingerprint
+    # Stall detection tracks transcript PROGRESS only. The tmux pane is still
+    # captured (for inspection and the missing-pane check below) but is
+    # deliberately excluded from the fingerprint: Claude Code's TUI animates a
+    # live "esc to interrupt - Ns" counter every second, so a pane checksum
+    # would change on every heartbeat and pin stalled_for_seconds near zero even
+    # during a genuine hang -- defeating the very signal the operator relies on.
+    local transcript_mtime fingerprint
     transcript_mtime="0"
     if [[ -n "${TRANSCRIPT_FILE:-}" && -f "$TRANSCRIPT_FILE" ]]; then
       transcript_mtime="$(file_mtime "$TRANSCRIPT_FILE")"
     fi
-    pane_fingerprint="missing-pane"
-    if [[ -f "$PANE_FILE" ]]; then
-      pane_fingerprint="$(file_checksum "$PANE_FILE")"
-    fi
-    fingerprint="${TRANSCRIPT_FILE:-unknown}:${LAST_TRANSCRIPT_LINES:-0}:$transcript_mtime:$pane_fingerprint"
+    fingerprint="${TRANSCRIPT_FILE:-unknown}:${LAST_TRANSCRIPT_LINES:-0}:$transcript_mtime"
 
     if [[ -n "$TMUX_SESSION" ]] && ! tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
       write_status "failed" "1" "tmux session ended before monitored turn completed"

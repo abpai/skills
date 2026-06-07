@@ -57,10 +57,16 @@ The generated `session_id` and transcript path are the liveness contract. The
 monitor records `phase`, `stalled_for_seconds`, `transcript_lines`,
 `last_event`, `last_tool`, and `assistant_text_seen` in `status.env` and prints
 the same phase summary in progress lines. Treat `phase=tool-running`,
-`phase=thinking`, and `phase=responding` as active work unless
-`stalled_for_seconds` shows the transcript and pane have stopped changing.
-Do not add magic stop words to prompts; Claude Code's structured transcript and
-`turn_duration` event are the completion signal.
+`phase=thinking`, and `phase=responding` as active work. `stalled_for_seconds`
+measures how long the **transcript** has gone without growing (the tmux pane is
+not part of this signal, because Claude Code's TUI animates a per-second counter
+that would otherwise mask every stall). Read it together with `phase`: a rising
+`stalled_for_seconds` under `phase=tool-running` usually means a long-running
+tool — attach to the pane to see whether it is still producing output before
+deciding it hung; under `phase=thinking` or `phase=responding` a large
+`stalled_for_seconds` is a stronger sign of a genuine stall. Do not add magic
+stop words to prompts; Claude Code's structured transcript and `turn_duration`
+event are the completion signal.
 
 Use `--permission-mode auto` for tmux runs that should keep moving without
 interactive permission prompts. Claude Code's auto mode runs tool calls through
@@ -271,9 +277,11 @@ The tmux-backed run is still active but the transcript is not complete.
 
 Next action: inspect `phase`, `stalled_for_seconds`, `last_event`, and
 `pane.txt`. Do not interrupt or kill the session just because the monitor says
-`waiting-assistant`. If transcript lines or pane content are changing, or the
-phase is `tool-running`, `thinking`, or `responding` with a recent
-`stalled_for_seconds`, Claude is working.
+`waiting-assistant`. If `transcript_lines` is still climbing, or the phase is
+`tool-running`, `thinking`, or `responding` with a low `stalled_for_seconds`,
+Claude is working. Eyeballing `pane.txt` is useful, but its animated counter
+keeps moving even when nothing is progressing, so do not treat pane motion alone
+as proof of liveness.
 
 Only send `C-c` or manual keys when the pane visibly shows a prompt that needs
 human input, or when `stalled_for_seconds` is large enough for the task and the
