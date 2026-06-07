@@ -705,6 +705,20 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
     return scan
   }
 
+  if (exitCode === 2) {
+    writeUbsRawLog(artifacts, stdout, stderr, "ubs exited 2 (tool failure)")
+    const scan: UbsScan = {
+      ...base,
+      status: "tool-failure",
+      available: true,
+      exitCode,
+      parseable: false,
+      note: "ubs exited 2; run ubs doctor --fix, then rescan",
+    }
+    writeUbsSummary(rootDir, scan)
+    return scan
+  }
+
   const { records, parseable } = readUbsRecords(artifacts)
   const findings = records.map((record) => findingFromRecord(rootDir, record)).filter((finding): finding is UbsFinding => finding !== null)
   const counts = findTotals(records) ?? summarizeCountsFromFindings(findings, records)

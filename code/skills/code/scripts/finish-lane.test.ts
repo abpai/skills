@@ -163,6 +163,44 @@ exit 2
   expect(rawLog).toContain("engine missing")
 })
 
+test("treats exit 2 as tool failure even when ubs writes structured artifacts", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/app.ts", "export const value = maybe.missing\n")
+  const fakeBin = makeFakeUbs(
+    repo,
+    `
+beads=""
+report=""
+for arg in "$@"; do
+  case "$arg" in
+    --beads-jsonl=*) beads="\${arg#*=}" ;;
+    --report-json=*) report="\${arg#*=}" ;;
+  esac
+done
+cat > "$beads" <<'JSONL'
+{"type":"totals","critical":1,"warning":0,"info":0,"good":0}
+{"file":"src/app.ts","line":1,"severity":"critical","category":"1","message":"possible null access"}
+JSONL
+cat > "$report" <<'JSON'
+{"totals":{"critical":1,"warning":0,"info":0,"good":0}}
+JSON
+echo "doctor needed" >&2
+exit 2
+`,
+  )
+
+  const result = runFinishLane(repo, { PATH: `${fakeBin}:${systemPath}` })
+  const summary = readFileSync(path.join(repo, ".workflow/finish-lane/ubs-summary.md"), "utf8")
+  const rawLog = readFileSync(path.join(repo, ".workflow/finish-lane/ubs-raw.log"), "utf8")
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("status: tool-failure")
+  expect(result.stdout).toContain("exit_code: 2")
+  expect(result.stdout).not.toContain("status: advisory-findings")
+  expect(summary).toContain("run ubs doctor --fix")
+  expect(rawLog).toContain("doctor needed")
+})
+
 test("times out ubs without hanging finish-lane", () => {
   const repo = makeRepo()
   writeRepoFile(repo, "src/app.ts", "export const value = 1\n")
