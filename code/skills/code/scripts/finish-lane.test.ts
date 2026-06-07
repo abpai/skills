@@ -278,7 +278,10 @@ test("times out ubs without hanging finish-lane", () => {
   expect(result.stdout).toContain("ubs timed out after 100ms")
 })
 
-test("ubs advisory findings do not block seal creation", () => {
+// UBS is advisory by design: even a source-level critical is surfaced for the
+// agent to triage, never an automatic seal block. Only red validation commands
+// gate the seal (see the "gated on green" comment in finish-lane.ts).
+test("ubs source-critical findings are advisory and do not block seal creation", () => {
   const repo = makeRepo()
   writeRepoFile(repo, "src/app.ts", "export const value = maybe.missing\n")
   const fakeBin = makeFakeUbs(

@@ -1038,6 +1038,12 @@ function main(): void {
   // hook would wave through a push the gate exists to stop. No validation
   // discovered (length 0) is not a failure — the agent's judgment is the gate
   // for docs-only / no-command repos.
+  //
+  // UBS findings are intentionally NOT part of this gate, even source-level
+  // criticals. UBS is high-false-positive ("cries wolf often"), so auto-blocking
+  // the seal on it would gate real pushes on tool noise. Instead finish-lane
+  // surfaces classified, capped actionable source findings for the agent to
+  // triage; only validation commands that actually ran red refuse the seal.
   let sealRefused = false
   if (options.seal) {
     const failed = validationResults.filter((r) => r.status === "fail")

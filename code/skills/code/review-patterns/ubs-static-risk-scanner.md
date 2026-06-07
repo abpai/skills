@@ -8,6 +8,8 @@ Use the finish-lane UBS artifacts first, then triage the actionable source findi
 - Diff is AI-generated/AI-edited (this gate runs in an AI PR pipeline scanning AI-written code).
 - `ubs` is on PATH (`command -v ubs`); if absent, finish-lane records `status: skipped` and you fall back to manual review against the risk categories below.
 
+UBS is **advisory, not a hard gate**: because it cries wolf often, even a source-level critical never refuses `--seal`. Only failed validation commands (tests/lint/typecheck that actually ran red) close the push gate. UBS findings are surfaced for you to triage — fix or justify them — but the seal decision is the agent's, not the scanner's.
+
 ## Gotchas
 
 1. **Finish-lane is the source of truth for PR prep.** Read `.workflow/finish-lane/ubs-summary.md` before running ad hoc commands. The helper scans supported changed source files only, skips tests/fixtures/generated/unsupported files, and writes raw scanner artifacts under `.workflow/finish-lane/`.
