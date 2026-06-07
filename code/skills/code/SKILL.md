@@ -3,7 +3,7 @@ name: code
 description: Grouped coding workflow pack. Use /code:prepare-pr for full PR readiness — full PR diff (committed and uncommitted), deterministic preflight, quality gates, source-grounded QA, validation, PR text, commits, push/PR update, gate-before-push. Use /code:review-and-commit for quick local review plus commit. Also use for /code:explain, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:secure-dependencies, and /code:handoff.
 argument-hint: "[subcommand] [args] — e.g. understand src/api, --prepare-pr, review-and-commit"
 metadata:
-  version: "2.0.1"
+  version: "2.0.2"
 ---
 
 # Code Workflow Pack
