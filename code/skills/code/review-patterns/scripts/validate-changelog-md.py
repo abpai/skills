@@ -134,8 +134,13 @@ def validate_with_options(
     if not re.search(r"https://github\.com/[^)\s]+/(releases/tag|tree)/", content):
         report.warn("No GitHub release/tag URLs found in the version timeline")
 
-    if "Closed workstreams" not in content and "Completed workstreams" not in content:
-        report.warn("No workstream section found; tracker intent may be missing")
+    if (
+        "Completed workstreams" not in content
+        and "Delivered capability" not in content
+    ):
+        report.warn(
+            "No delivered-capability/workstream synthesis section found; changelog may be a commit dump"
+        )
 
     lowered = content.lower()
     for phrase in GENERIC_PHRASES:

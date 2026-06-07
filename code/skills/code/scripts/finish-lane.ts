@@ -306,7 +306,7 @@ type UbsSelection = {
 }
 
 type UbsArtifacts = {
-  beads: string
+  findings: string
   report: string
   summary: string
   rawLog: string
@@ -364,7 +364,7 @@ function normalizePath(rootDir: string, file: string): string {
 
 function ubsArtifacts(outDir: string): UbsArtifacts {
   return {
-    beads: path.join(outDir, "ubs-findings.jsonl"),
+    findings: path.join(outDir, "ubs-findings.jsonl"),
     report: path.join(outDir, "ubs-report.json"),
     summary: path.join(outDir, "ubs-summary.md"),
     rawLog: path.join(outDir, "ubs-raw.log"),
@@ -562,9 +562,9 @@ function uniqueRecords(records: Record<string, unknown>[]): Record<string, unkno
 function readUbsRecords(artifacts: UbsArtifacts, stdout = ""): { records: Record<string, unknown>[]; parseable: boolean } {
   const records: Record<string, unknown>[] = []
 
-  const beadsRecords = existsSync(artifacts.beads) ? jsonlRecords(readFileSync(artifacts.beads, "utf8")) : []
-  records.push(...beadsRecords)
-  if (beadsRecords.length === 0 && stdout.trim()) records.push(...jsonlRecords(stdout))
+  const findingRecords = existsSync(artifacts.findings) ? jsonlRecords(readFileSync(artifacts.findings, "utf8")) : []
+  records.push(...findingRecords)
+  if (findingRecords.length === 0 && stdout.trim()) records.push(...jsonlRecords(stdout))
 
   if (existsSync(artifacts.report)) {
     try {
@@ -683,13 +683,13 @@ function writeUbsSummary(rootDir: string, scan: UbsScan): void {
       lines.push(`- ${formatUbsFinding(finding)}`)
     }
     if (scan.actionable.length > ubsActionableLimit) {
-      lines.push(`- ... ${scan.actionable.length - ubsActionableLimit} more finding(s) in ${relativeArtifact(rootDir, scan.artifacts.beads)}`)
+      lines.push(`- ... ${scan.actionable.length - ubsActionableLimit} more finding(s) in ${relativeArtifact(rootDir, scan.artifacts.findings)}`)
     }
   }
   lines.push("")
   lines.push("## Artifacts")
   lines.push("")
-  lines.push(`- findings: ${relativeArtifact(rootDir, scan.artifacts.beads)}`)
+  lines.push(`- findings: ${relativeArtifact(rootDir, scan.artifacts.findings)}`)
   lines.push(`- report: ${relativeArtifact(rootDir, scan.artifacts.report)}`)
   if (existsSync(scan.artifacts.rawLog)) lines.push(`- raw fallback log: ${relativeArtifact(rootDir, scan.artifacts.rawLog)}`)
   writeFileSync(scan.artifacts.summary, `${lines.join("\n")}\n`, "utf8")
@@ -702,7 +702,7 @@ function writeUbsRawLog(artifacts: UbsArtifacts, stdout: string, stderr: string,
 
 function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
   const artifacts = ubsArtifacts(outDir)
-  for (const file of [artifacts.beads, artifacts.report, artifacts.summary, artifacts.rawLog]) rmSync(file, { force: true })
+  for (const file of [artifacts.findings, artifacts.report, artifacts.summary, artifacts.rawLog]) rmSync(file, { force: true })
 
   const selection = selectUbsFiles(rootDir, files)
   const base: Omit<UbsScan, "status" | "available" | "exitCode" | "parseable" | "note"> = {
@@ -742,7 +742,7 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
   const args = [
     "--ci",
     "--format=jsonl",
-    `--beads-jsonl=${artifacts.beads}`,
+    `--beads-jsonl=${artifacts.findings}`,
     `--report-json=${artifacts.report}`,
     ...selection.files,
   ]
@@ -852,20 +852,31 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
 
 // --- Surface tagger ------------------------------------------------------
 
+// Shared source-code extension set. Widened beyond the original multi-pass list to cover
+// compiled languages; reused by the simplification, metamorphic, and doctor routing rules.
+const CODE_EXT = "ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|c|cc|cpp|cxx|h|hpp|cs|scala|php|m|mm|dart|ex|exs"
+const codeFileTest = new RegExp(`\\.(${CODE_EXT})$`, "i")
+
 const lensRules: { lens: string; test: RegExp }[] = [
   { lens: "browser-e2e-verification.md", test: /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|html|css|scss|sass)$/i },
-  { lens: "ux-accessibility-audit.md", test: /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|html)$/i },
-  { lens: "real-service-integration-check.md", test: /(^|\/)(api|server|workers?|db|database|migrations?|webhooks?)(\/|$)/i },
+  { lens: "ux-accessibility-audit.md", test: /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|vue|svelte|html|css|scss|sass)$/i },
+  { lens: "real-service-integration-check.md", test: /(^|\/)(api|server|workers?|db|database|migrations?|webhooks?|auth|billing|payments?|checkout|subscriptions?|stripe|paypal|integration|e2e|factories?)(\/|$)|(^|\/)[^/]*(factory|harness)[^/]*\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$|(^|\/)[^/]*test[^/]*db[^/]*/i },
   { lens: "cli-agent-ergonomics.md", test: /(^|\/)(commands|bin|scripts|cli)(\/|$)|\.(sh|bash|zsh)$/i },
-  { lens: "prose-quality-pr-copy.md", test: /(^|\/)README(\.[^/]+)?$|(^|\/)docs\/|\.md$/i },
-  { lens: "config-contract-check.md", test: /(^|\/)(package|tsconfig|plugin|marketplace|versions)\.(json|jsonc)$|\.(ya?ml|toml)$/i },
+  { lens: "prose-quality-pr-copy.md", test: /(^|\/)README(\.[^/]+)?$|(^|\/)(CHANGELOG|CHANGES|HISTORY)(\.[^/]+)?$|(^|\/)docs\/|\.md$/i },
+  { lens: "config-contract-check.md", test: /(^|\/)(package|tsconfig|plugin|marketplace|versions)\.(json|jsonc)$|\.(ya?ml|toml)$|(^|\/)SKILL\.md$|(^|\/)\.c(laude|odex)-plugin\/plugin\.json$|(^|\/)commands\/.+\.md$/i },
   { lens: "performance-profiling.md", test: /(^|\/)(benchmarks?|perf|performance|profiles|profiling)(\/|$)|\.(bench|benchmark)\./i },
-  { lens: "golden-artifact-decision.md", test: /(^|\/)(goldens?|snapshots?|__snapshots__|approvals?)(\/|$)|\.(snap|golden)(\.[^/]*)?$/i },
+  { lens: "golden-artifact-decision.md", test: /(^|\/)(goldens?|snapshots?|__snapshots__|approvals?|goldenfiles?)(\/|$)|\.(snap|golden|approved|received|actual|ambr)(\.[^/]*)?$/i },
   { lens: "mock-stub-placeholder-sweep.md", test: testFilePattern },
-  { lens: "multi-pass-bug-hunting.md", test: /\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift)$/i },
+  { lens: "mock-stub-placeholder-sweep.md", test: /(^|\/)(api|server|workers?|routes|jobs)\/.+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$/i },
+  { lens: "multi-pass-bug-hunting.md", test: codeFileTest },
+  { lens: "isomorphic-simplification.md", test: codeFileTest },
+  { lens: "doctor-self-healing-candidate.md", test: new RegExp(`(^|/)(doctor|fixers?|repair|healers?)/|(^|/)(doctor|repair|heal|fixer|setup|bootstrap|provision)[^/]*\\.(sh|bash|zsh|${CODE_EXT})$|(^|/)migrations?/`, "i") },
+  { lens: "metamorphic-property-test-decision.md", test: new RegExp(`(^|/)(parser|serializ|deserial|codec|compiler|interpreter|ranking|scoring|optimizer|transform)[^/]*\\.(${CODE_EXT})$|(^|/)(parse|serialize|encode|decode)[^/]*\\.(${CODE_EXT})$`, "i") },
+  // ubs-static-risk-scanner.md is intentionally NOT routed here: runUbsScan runs it unconditionally as an
+  // advisory step (see below), so a lensRules entry would double-surface the same scanner.
 ]
 
-function suggestLenses(files: string[]): string[] {
+export function suggestLenses(files: string[]): string[] {
   const selected = new Set<string>()
   for (const file of files) {
     for (const rule of lensRules) {
@@ -1100,4 +1111,4 @@ function main(): void {
   if (sealRefused) process.exit(2)
 }
 
-main()
+if (import.meta.main) main()

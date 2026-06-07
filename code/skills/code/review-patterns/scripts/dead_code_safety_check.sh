@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dead_code_safety_check.sh — run the 12-step gauntlet from DEAD-CODE-SAFETY.md.
+# dead_code_safety_check.sh — run the 12-step dead-code safety gauntlet.
 #
 # Before declaring any file/symbol/module dead, run this. Every step must pass.
 #
@@ -17,7 +17,7 @@ if [[ $# -lt 1 ]]; then
   cat <<EOF
 Usage: $0 <path> [symbol]
 
-Runs the 12-step dead-code safety gauntlet from DEAD-CODE-SAFETY.md.
+Runs the 12-step dead-code safety gauntlet.
 All 12 checks must pass before proposing deletion.
 
 Example:
@@ -221,7 +221,7 @@ FAIL_COUNT=$((FAIL_COUNT + 1))
     printf "3. Wait for explicit written approval before any hard delete.\n\n"
   else
     printf '## Verdict: DO NOT DELETE — %d check(s) failed or pending\n\n' "$FAIL_COUNT"
-    printf 'Per [DEAD-CODE-SAFETY.md](references/DEAD-CODE-SAFETY.md), any fail is blocking.\n\n'
+    printf 'Any fail is blocking.\n\n'
     printf 'Read the failures above. For each:\n'
     printf '- If real usage: leave the file alone.\n'
     printf '- If false positive: document why in the ledger and still do not delete (AGENTS.md Rule 1).\n\n'

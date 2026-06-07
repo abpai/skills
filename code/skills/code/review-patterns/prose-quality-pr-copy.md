@@ -19,15 +19,15 @@ Skeptical technical-editor lens for changed user-facing prose and generated PR c
 
 4. **Thoroughness is NOT slop — do not gut structure, depth, or code.** de-slopify "What NOT to Fix": technical accuracy, necessary structure (headers/lists are fine), clear explanations ("being thorough isn't slop"), and code examples ("focus on prose, not code"). Edit prose; leave correct structure, complete explanations, and code blocks intact. Do not expand a small docs edit into a full rewrite.
 
-5. **A changelog is a research artifact — if the history work is weak, the prose is fake.** changelog-md-workmanship core rule: "Never draft a serious changelog from memory." Research exhaustively (git, tags, releases, tracker, existing docs) before writing. Evidence hierarchy on conflict: **git history > tags/release metadata > issue tracker > existing changelog/release notes > README/docs. If sources disagree, history wins.**
+5. **A changelog is a research artifact — if the history work is weak, the prose is fake.** changelog-md-workmanship core rule: "Never draft a serious changelog from memory." Research exhaustively (git, tags, releases, existing docs) before writing. Evidence hierarchy on conflict: **git history > tags/release metadata > existing changelog/release notes > README/docs. If sources disagree, history wins.**
 
 6. **Release ≠ tag — the highest-frequency changelog link trap.** "If a GitHub Release does not exist, do not pretend it does." Link `releases/tag/<version>` ONLY when a real Release exists; otherwise link `tree/<version>` or the tag page. If a release is a draft, say so explicitly. Never fabricate release pages for tag-only versions. Verify with `gh release list` / `gh release view <tag>` before linking.
 
-7. **Live links, scoped links, representative links.** Use full commit URLs (`github.com/owner/repo/commit/<sha>`), never naked hashes. Scope tracker links tightly to the real record (e.g. `.beads/issues.jsonl`) instead of broad repo search. Pick REPRESENTATIVE commits — architecture landings, major features, correctness fixes, performance turning points, reliability hardening — rather than flooding with every commit.
+7. **Live links, representative links.** Use full commit URLs (`github.com/owner/repo/commit/<sha>`), never naked hashes. Link claims to repo evidence — commits, tags, release/tag pages, and changed files — not to external trackers. Pick REPRESENTATIVE commits — architecture landings, major features, correctness fixes, performance turning points, reliability hardening — rather than flooding with every commit.
 
 8. **Concrete dates only.** Changelogs and release prose use absolute dates (`2026-03-21` / `March 21, 2026`), never relative phrasing ("last week", "recently", "today"). Relative dates are a named weakness signal and rot immediately.
 
-9. **Do not flatten into a commit dump, and do not write a marketing page.** This is orientation infrastructure. Strong section shape: short narrative paragraph + `Delivered capability` + `Closed workstreams` + `Representative commits`, organized by capability waves above a visible version timeline. Failure signals: vague summaries ("many improvements", "various fixes"), sections that could apply to any repo, no explanation of WHY a wave mattered.
+9. **Do not flatten into a commit dump, and do not write a marketing page.** This is orientation infrastructure. Strong section shape: short narrative paragraph + `Delivered capability` + `Completed workstreams` (synthesized from commits/diff, not a tracker) + `Representative commits`, organized by capability waves above a visible version timeline. Failure signals: vague summaries ("many improvements", "various fixes"), sections that could apply to any repo, no explanation of WHY a wave mattered.
 
 10. **Long histories breed slop under context pressure.** If the changed window is large: create the changelog skeleton + a `CHANGELOG_RESEARCH.md` memo EARLY, research in bounded chunks (one tag range / one sprint / 50–150 non-merge commits / one epic), distill each chunk into the live doc immediately, and keep a coverage ledger (chunk, range, status, themes, open questions). "If you delay writing until all research is done, you will lose detail and create slop."
 
@@ -45,8 +45,8 @@ Skeptical technical-editor lens for changed user-facing prose and generated PR c
 
 Escalate for public READMEs, release notes, changelogs, setup docs users follow, or high-visibility PRs.
 
-- **Changelog / release history**: run the version-spine + history-clustering + tracker scripts (below) to get ground truth, then audit the draft. Apply gotchas 5–10: research-first, release-vs-tag, live/scoped/representative links, absolute dates, capability-wave structure over a version spine, chunked coverage for large windows.
-- **Fresh-eyes draft-auditor pass**: return severity-tagged FINDINGS, not a rewrite, against this fixed priority list — (1) missing/weak scope framing, (2) incorrect release-vs-tag treatment, (3) bare hashes instead of live links, (4) weak capability synthesis / commit dump, (5) missing tracker intent, (6) coverage gaps. Prefer precise findings over generic praise.
+- **Changelog / release history**: run the version-spine + history-clustering scripts (below) to get ground truth, then audit the draft. Apply gotchas 5–10: research-first, release-vs-tag, live repo links + representative commits, absolute dates, capability-wave structure over a version spine, chunked coverage for large windows.
+- **Fresh-eyes draft-auditor pass**: return severity-tagged FINDINGS, not a rewrite, against this fixed priority list — (1) missing/weak scope framing, (2) incorrect release-vs-tag treatment, (3) bare hashes instead of live links, (4) weak capability synthesis / commit dump, (5) coverage gaps. Prefer precise findings over generic praise.
 - **README deep pass**: run or trace each example command where practical; confirm install paths, badges, and comparison claims; flag the anti-patterns in gotcha 11.
 - Keep a before/after prose diff for every rewritten passage.
 
@@ -57,7 +57,6 @@ Ported from changelog-md-workmanship; run directly (shebangs present), prose wor
 - [`scripts/validate-changelog-md.py`](scripts/validate-changelog-md.py) — audit a finished `CHANGELOG.md` for structural/evidence problems (enforces release-vs-tag, live-link, concrete-date, generic-phrase gotchas). Invoke: `scripts/validate-changelog-md.py <path/to/CHANGELOG.md>`; network link-check: `scripts/validate-changelog-md.py --verify-links <path>`.
 - [`scripts/build-version-spine.py`](scripts/build-version-spine.py) — generate a version-timeline skeleton from local git tags + GitHub releases, correctly distinguishing Releases from plain tags (ground truth to verify version/date/link claims). Invoke: `scripts/build-version-spine.py --repo . --format markdown`.
 - [`scripts/cluster-history.py`](scripts/cluster-history.py) — group commits into candidate capability waves for the synthesis-not-dump check. Invoke: `scripts/cluster-history.py --repo . --format markdown`.
-- [`scripts/extract-tracker-workstreams.py`](scripts/extract-tracker-workstreams.py) — normalize beads / GitHub Issues / Linear / Jira / milestone evidence into scoped workstreams (the scoped-tracker-link source). Invoke: `scripts/extract-tracker-workstreams.py --repo . --format markdown`.
 
 ## False positives
 

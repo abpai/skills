@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # ai_slop_detector.sh — scan for vibe-coded pathologies P1-P40.
-# See references/VIBE-CODED-PATHOLOGIES.md.
 #
 # Usage: ai_slop_detector.sh [src-dir] [run-id]
 # Writes: refactor/artifacts/<run-id>/slop_scan.md
@@ -29,7 +28,6 @@ fi
   printf '# AI slop scan — %s\n\n' "$RUN_ID"
   printf 'Generated %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf 'Scope: `%s`\n\n' "$SRC"
-  printf '(See references/VIBE-CODED-PATHOLOGIES.md for P1-P40 catalog.)\n\n'
 } > "$OUT"
 
 section() { printf '\n## %s\n\n' "$*" >> "$OUT"; }
@@ -227,12 +225,9 @@ capture "P40 await/then in nearby non-async contexts (manual audit)" \
   printf '\n---\n'
   printf '\n## Next steps\n\n'
   printf '1. Review each section; confirm which hits are real vs. false positives.\n'
-  printf '2. File beads for accepted patterns (one per pathology class).\n'
-  printf '3. Proceed to `./scripts/dup_scan.sh` for structural duplication.\n'
-  printf '4. Score candidates via `./scripts/score_candidates.py`.\n'
-  printf '5. For each accepted candidate: fill isomorphism card, edit, verify, ledger.\n'
-  printf '\nFull P1-P40 pathology catalog: `references/VIBE-CODED-PATHOLOGIES.md`.\n'
-  printf 'Attack order (cheap wins first): the "AI-slop refactor playbook" in that file.\n'
+  printf '2. File an issue/ticket for each accepted pattern (one per pathology class).\n'
+  printf '3. Score candidates via `./scripts/score_candidates.py`.\n'
+  printf '4. For each accepted candidate: fill isomorphism card, edit, verify, ledger.\n'
 } >> "$OUT"
 
 log "wrote $OUT"

@@ -9,6 +9,8 @@ Catch fake or unwired behavior that makes a PR read as complete while the code p
 - Multi-agent or long-lived-branch diffs where stubs accumulate silently.
 - The same concept appears in two files (a consumer + a producer) — a divergent-path risk.
 
+_Auto-suggest fires on test files and on service/job production paths (api/server/workers/routes/jobs). The branch-age and cross-file-divergence cues above are not path-detectable — add this gate manually when they apply._
+
 ## Gotchas
 
 1. **Grep locates suspects; it does not prove them.** A keyword match is a lead, not a finding. Read the code and trace the caller before flagging anything. Findings cite caller/consumer impact, not bare matches.

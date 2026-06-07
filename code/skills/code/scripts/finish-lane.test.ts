@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
+import { suggestLenses } from "./finish-lane.ts"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -80,15 +81,15 @@ test("summarizes actionable source findings and keeps raw ubs noise out of stdou
   const fakeBin = makeFakeUbs(
     repo,
     `
-beads=""
+findings=""
 report=""
 for arg in "$@"; do
   case "$arg" in
-    --beads-jsonl=*) beads="\${arg#*=}" ;;
+    --beads-jsonl=*) findings="\${arg#*=}" ;;
     --report-json=*) report="\${arg#*=}" ;;
   esac
 done
-cat > "$beads" <<'JSONL'
+cat > "$findings" <<'JSONL'
 {"type":"totals","critical":2,"warning":2,"info":57,"good":513}
 {"file":"src/app.ts","line":2,"severity":"critical","category":"1","message":"possible null access"}
 {"file":"src/app.ts","line":9,"severity":"warning","category":"8","message":"swallowed error"}
@@ -124,15 +125,15 @@ test("handles real ubs jsonl finding counts and report sample paths", () => {
   const fakeBin = makeFakeUbs(
     repo,
     `
-beads=""
+findings=""
 report=""
 for arg in "$@"; do
   case "$arg" in
-    --beads-jsonl=*) beads="\${arg#*=}" ;;
+    --beads-jsonl=*) findings="\${arg#*=}" ;;
     --report-json=*) report="\${arg#*=}" ;;
   esac
 done
-cat > "$beads" <<'JSONL'
+cat > "$findings" <<'JSONL'
 {"type":"finding","project":"/tmp/project","language":"js","severity":"warning","count":1,"title":"fetch() without AbortSignal cancellation","description":"Pass a signal from AbortSignal.timeout()"}
 {"type":"finding","project":"/tmp/project","language":"js","severity":"info","count":1,"title":"Deep property access detected","description":""}
 {"type":"scanner","project":"/tmp/project","language":"js","files":1,"critical":0,"warning":2,"info":1,"timestamp":"2026-06-07T00:00:00Z"}
@@ -186,11 +187,11 @@ test("treats test-only findings as clean in the primary status", () => {
   const fakeBin = makeFakeUbs(
     repo,
     `
-beads=""
+findings=""
 for arg in "$@"; do
-  case "$arg" in --beads-jsonl=*) beads="\${arg#*=}" ;; esac
+  case "$arg" in --beads-jsonl=*) findings="\${arg#*=}" ;; esac
 done
-cat > "$beads" <<'JSONL'
+cat > "$findings" <<'JSONL'
 {"type":"totals","critical":1,"warning":0,"info":0,"good":0}
 {"file":"tests/app.test.ts","line":4,"severity":"critical","category":"1","message":"test-only finding"}
 JSONL
@@ -231,15 +232,15 @@ test("treats exit 2 as tool failure even when ubs writes structured artifacts", 
   const fakeBin = makeFakeUbs(
     repo,
     `
-beads=""
+findings=""
 report=""
 for arg in "$@"; do
   case "$arg" in
-    --beads-jsonl=*) beads="\${arg#*=}" ;;
+    --beads-jsonl=*) findings="\${arg#*=}" ;;
     --report-json=*) report="\${arg#*=}" ;;
   esac
 done
-cat > "$beads" <<'JSONL'
+cat > "$findings" <<'JSONL'
 {"type":"totals","critical":1,"warning":0,"info":0,"good":0}
 {"file":"src/app.ts","line":1,"severity":"critical","category":"1","message":"possible null access"}
 JSONL
@@ -266,18 +267,18 @@ exit 2
 test("treats a maxBuffer/stdout-flood failure as tool-failure, not a parsed clean run", () => {
   const repo = makeRepo()
   writeRepoFile(repo, "src/app.ts", "export const value = maybe.missing\n")
-  // ubs writes a fully-parseable critical finding to the beads artifact, then
+  // ubs writes a fully-parseable critical finding to the findings artifact, then
   // floods stdout past the (lowered) maxBuffer so spawnSync kills it with
   // ENOBUFS. Without the non-timeout error guard, the surviving artifact would
   // be parsed and reported as advisory-findings instead of a tool failure.
   const fakeBin = makeFakeUbs(
     repo,
     `
-beads=""
+findings=""
 for arg in "$@"; do
-  case "$arg" in --beads-jsonl=*) beads="\${arg#*=}" ;; esac
+  case "$arg" in --beads-jsonl=*) findings="\${arg#*=}" ;; esac
 done
-cat > "$beads" <<'JSONL'
+cat > "$findings" <<'JSONL'
 {"type":"totals","critical":1,"warning":0,"info":0,"good":0}
 {"file":"src/app.ts","line":1,"severity":"critical","category":"1","message":"possible null access"}
 JSONL
@@ -322,11 +323,11 @@ test("ubs source-critical findings are advisory and do not block seal creation",
   const fakeBin = makeFakeUbs(
     repo,
     `
-beads=""
+findings=""
 for arg in "$@"; do
-  case "$arg" in --beads-jsonl=*) beads="\${arg#*=}" ;; esac
+  case "$arg" in --beads-jsonl=*) findings="\${arg#*=}" ;; esac
 done
-cat > "$beads" <<'JSONL'
+cat > "$findings" <<'JSONL'
 {"type":"totals","critical":1,"warning":0,"info":0,"good":0}
 {"file":"src/app.ts","line":1,"severity":"critical","category":"1","message":"possible null access"}
 JSONL
@@ -343,4 +344,57 @@ exit 1
   expect(result.status).toBe(0)
   expect(result.stdout).toContain("status: advisory-findings")
   expect(result.stdout).toContain("SEALED")
+})
+
+// --- suggestLenses routing (lensRules coverage) ---------------------------
+
+test("suggestLenses: a plain code file routes bug-hunting + simplification", () => {
+  expect(suggestLenses(["src/foo.ts"])).toEqual([
+    "isomorphic-simplification.md",
+    "multi-pass-bug-hunting.md",
+  ])
+  // compiled languages now covered too
+  expect(suggestLenses(["src/main.cpp"])).toContain("multi-pass-bug-hunting.md")
+})
+
+test("suggestLenses: doc prose never routes code-only lenses", () => {
+  const setupDoc = suggestLenses(["docs/setup-guide.md"])
+  expect(setupDoc).toContain("prose-quality-pr-copy.md")
+  expect(setupDoc).not.toContain("doctor-self-healing-candidate.md")
+
+  const parserDoc = suggestLenses(["docs/parser-guide.md"])
+  expect(parserDoc).toContain("prose-quality-pr-copy.md")
+  expect(parserDoc).not.toContain("metamorphic-property-test-decision.md")
+})
+
+test("suggestLenses: service & test-harness surfaces route real-service integration", () => {
+  expect(suggestLenses(["tests/factories/user.ts"])).toEqual(
+    expect.arrayContaining([
+      "real-service-integration-check.md",
+      "mock-stub-placeholder-sweep.md",
+      "multi-pass-bug-hunting.md",
+      "isomorphic-simplification.md",
+    ]),
+  )
+  expect(suggestLenses(["src/harness.ts"])).toContain("real-service-integration-check.md")
+  expect(suggestLenses(["lib/billing/cancel.ts"])).toContain("real-service-integration-check.md")
+})
+
+test("suggestLenses: doctor & metamorphic route on code surfaces, not prose", () => {
+  expect(suggestLenses(["scripts/bootstrap.sh"])).toContain("doctor-self-healing-candidate.md")
+  expect(suggestLenses(["src/parser.ts"])).toContain("metamorphic-property-test-decision.md")
+})
+
+test("suggestLenses: config surfaces route the contract lens", () => {
+  expect(suggestLenses(["code/skills/code/SKILL.md"])).toContain("config-contract-check.md")
+})
+
+test("suggestLenses: golden residue extensions route the golden lens", () => {
+  expect(suggestLenses(["build/foo.actual"])).toContain("golden-artifact-decision.md")
+  expect(suggestLenses(["__snapshots__/x.received"])).toContain("golden-artifact-decision.md")
+})
+
+test("suggestLenses: an extensionless CHANGELOG routes prose-quality", () => {
+  expect(suggestLenses(["CHANGELOG"])).toContain("prose-quality-pr-copy.md")
+  expect(suggestLenses(["docs/HISTORY"])).toContain("prose-quality-pr-copy.md")
 })
