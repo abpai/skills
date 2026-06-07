@@ -525,59 +525,50 @@ function reportSampleRecords(value: unknown): Record<string, unknown>[] {
   return records
 }
 
-function addJsonlRecords(text: string, records: Record<string, unknown>[], seen: Set<string>): boolean {
-  let sawParseable = false
-  const lines = text
+function jsonlRecords(text: string): Record<string, unknown>[] {
+  const records: Record<string, unknown>[] = []
+  for (const line of text
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean)
-  for (const line of lines) {
+    .filter(Boolean)) {
     try {
-      const parsed = JSON.parse(line)
-      const record = asRecord(parsed)
-      if (record) {
-        const key = JSON.stringify(record)
-        if (!seen.has(key)) {
-          records.push(record)
-          seen.add(key)
-        }
-        sawParseable = true
-      }
+      const record = asRecord(JSON.parse(line))
+      if (record) records.push(record)
     } catch {
       // Keep parsing later lines; malformed JSONL means fallback if nothing useful is found.
     }
   }
-  return sawParseable
+  return records
+}
+
+function uniqueRecords(records: Record<string, unknown>[]): Record<string, unknown>[] {
+  const seen = new Set<string>()
+  return records.filter((record) => {
+    const key = JSON.stringify(record)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 function readUbsRecords(artifacts: UbsArtifacts, stdout = ""): { records: Record<string, unknown>[]; parseable: boolean } {
   const records: Record<string, unknown>[] = []
-  const seen = new Set<string>()
-  let sawParseable = false
 
-  if (existsSync(artifacts.beads)) sawParseable = addJsonlRecords(readFileSync(artifacts.beads, "utf8"), records, seen) || sawParseable
-  if (stdout.trim()) sawParseable = addJsonlRecords(stdout, records, seen) || sawParseable
+  const beadsRecords = existsSync(artifacts.beads) ? jsonlRecords(readFileSync(artifacts.beads, "utf8")) : []
+  records.push(...beadsRecords)
+  if (beadsRecords.length === 0 && stdout.trim()) records.push(...jsonlRecords(stdout))
 
   if (existsSync(artifacts.report)) {
     try {
       const report = JSON.parse(readFileSync(artifacts.report, "utf8"))
-      const reportRecords = [...flattenReportRecords(report), ...reportSampleRecords(report)]
-      if (reportRecords.length > 0) {
-        for (const record of reportRecords) {
-          const key = JSON.stringify(record)
-          if (!seen.has(key)) {
-            records.push(record)
-            seen.add(key)
-          }
-        }
-        sawParseable = true
-      }
+      records.push(...flattenReportRecords(report), ...reportSampleRecords(report))
     } catch {
       // The raw fallback log records that UBS produced no usable structured output.
     }
   }
 
-  return { records, parseable: sawParseable }
+  const unique = uniqueRecords(records)
+  return { records: unique, parseable: unique.length > 0 }
 }
 
 function classifyFindingFile(file: string): UbsFindingKind {
@@ -590,15 +581,20 @@ function classifyFindingFile(file: string): UbsFindingKind {
 
 function findingFromRecord(rootDir: string, record: Record<string, unknown>): UbsFinding | null {
   const type = stringValue(record, ["type", "kind", "name"]).toLowerCase()
+  const isFindingRecord = type === "finding" || type === "issue" || type === "result" || type === "sample"
   const file = normalizePath(rootDir, stringValue(record, ["file", "path", "filename", "uri", "source"]))
   const line = numberValue(record, ["line", "start_line", "startLine", "lineNumber", "row"])
   const title = stringValue(record, ["message", "title", "check", "rule"])
   const description = stringValue(record, ["description", "text", "summary"])
   const message = title && description && title !== description ? `${title}: ${description}` : title || description
-  const category = stringValue(record, ["category", "category_id", "categoryId", "rule", "rule_id", "ruleId", "id", "language"])
+  const category = stringValue(
+    record,
+    isFindingRecord
+      ? ["category", "category_id", "categoryId", "rule", "rule_id", "ruleId", "id", "language"]
+      : ["category", "category_id", "categoryId", "rule", "rule_id", "ruleId", "id"],
+  )
   const count = numberValue(record, ["count", "total"])
-  const isFindingRecord = type === "finding" || type === "issue" || type === "result" || type === "sample"
-  if (!file && count !== null && !isFindingRecord) return null
+  if (!file && !isFindingRecord) return null
   if (!file && count !== null && count <= 0) return null
   if (!file && !message && !category) return null
 
