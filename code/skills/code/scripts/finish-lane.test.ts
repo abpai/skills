@@ -263,6 +263,41 @@ exit 2
   expect(rawLog).toContain("doctor needed")
 })
 
+test("treats a maxBuffer/stdout-flood failure as tool-failure, not a parsed clean run", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/app.ts", "export const value = maybe.missing\n")
+  // ubs writes a fully-parseable critical finding to the beads artifact, then
+  // floods stdout past the (lowered) maxBuffer so spawnSync kills it with
+  // ENOBUFS. Without the non-timeout error guard, the surviving artifact would
+  // be parsed and reported as advisory-findings instead of a tool failure.
+  const fakeBin = makeFakeUbs(
+    repo,
+    `
+beads=""
+for arg in "$@"; do
+  case "$arg" in --beads-jsonl=*) beads="\${arg#*=}" ;; esac
+done
+cat > "$beads" <<'JSONL'
+{"type":"totals","critical":1,"warning":0,"info":0,"good":0}
+{"file":"src/app.ts","line":1,"severity":"critical","category":"1","message":"possible null access"}
+JSONL
+head -c 5000 /dev/zero | tr '\\0' x
+echo
+`,
+  )
+
+  const result = runFinishLane(repo, {
+    PATH: `${fakeBin}:${systemPath}`,
+    FINISH_LANE_UBS_MAX_BUFFER: "1024",
+  })
+  const rawLog = readFileSync(path.join(repo, ".workflow/finish-lane/ubs-raw.log"), "utf8")
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("status: tool-failure")
+  expect(result.stdout).not.toContain("status: advisory-findings")
+  expect(rawLog).toContain("ubs failed to run")
+})
+
 test("times out ubs without hanging finish-lane", () => {
   const repo = makeRepo()
   writeRepoFile(repo, "src/app.ts", "export const value = 1\n")

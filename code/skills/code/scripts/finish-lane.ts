@@ -220,6 +220,7 @@ const ubsSupportedFilePattern =
 const ubsTimeoutMs = 60_000
 const ubsRawLogLimit = 20_000
 const ubsActionableLimit = 12
+const ubsMaxBufferBytes = 10 * 1024 * 1024
 
 function isTestFile(file: string): boolean {
   return testFilePattern.test(file)
@@ -333,6 +334,13 @@ function configuredUbsTimeoutMs(): number {
   if (!raw) return ubsTimeoutMs
   const parsed = Number(raw)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : ubsTimeoutMs
+}
+
+function configuredUbsMaxBufferBytes(): number {
+  const raw = process.env.FINISH_LANE_UBS_MAX_BUFFER
+  if (!raw) return ubsMaxBufferBytes
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : ubsMaxBufferBytes
 }
 
 function capText(text: string, maxChars: number): string {
@@ -743,7 +751,7 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
     encoding: "utf8",
     shell: false,
     timeout: configuredUbsTimeoutMs(),
-    maxBuffer: 10 * 1024 * 1024,
+    maxBuffer: configuredUbsMaxBufferBytes(),
   })
   const stdout = result.stdout ?? ""
   const stderr = result.stderr ?? ""
@@ -760,6 +768,26 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
       exitCode,
       parseable: false,
       note: `ubs timed out after ${configuredUbsTimeoutMs()}ms`,
+    }
+    writeUbsSummary(rootDir, scan)
+    return scan
+  }
+
+  // Any other spawn-level failure (e.g. ENOBUFS when ubs floods past maxBuffer,
+  // EACCES, a killed process) means ubs was interrupted. Treat it as a tool
+  // failure instead of parsing whatever partial artifact survived — otherwise a
+  // truncated run could be reported clean/advisory, breaking "tool failure is
+  // never clean".
+  if (error) {
+    const code = error.code ?? error.message
+    writeUbsRawLog(artifacts, stdout, stderr, `ubs failed to run: ${code}`)
+    const scan: UbsScan = {
+      ...base,
+      status: "tool-failure",
+      available: true,
+      exitCode,
+      parseable: false,
+      note: `ubs failed to run (${code}); run ubs doctor --fix, then rescan`,
     }
     writeUbsSummary(rootDir, scan)
     return scan
