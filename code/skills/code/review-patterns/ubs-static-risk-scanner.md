@@ -12,13 +12,13 @@ Use the finish-lane UBS artifacts first, then triage the actionable source findi
 
 1. **Finish-lane is the source of truth for PR prep.** Read `.workflow/finish-lane/ubs-summary.md` before running ad hoc commands. The helper scans supported changed source files only, skips tests/fixtures/generated/unsupported files, and writes raw scanner artifacts under `.workflow/finish-lane/`.
 
-2. **Do not narrate raw output counts.** `ubs` can emit one JSONL record per check, including zero-count `good`/`info` records. Treat `exit 1, N output lines` as implementation noise. Use finish-lane's severity totals and actionable source findings instead.
+2. **Do not narrate raw output counts.** `ubs --format=jsonl` can emit one JSONL record per check, including zero-count `good`/`info` records. Treat `exit N, M output lines` as implementation noise. Use finish-lane's severity totals and actionable source findings instead.
 
-3. **Finish-lane runs deterministic artifacts.** The helper invokes `ubs --ci --beads-jsonl=<path> --report-json=<path> <source files>`, captures stdout/stderr separately, and caps raw fallback logs. Do not add unsupported/no-op flags such as `--profile=loose` or `--skip=11,12`.
+3. **Finish-lane runs deterministic artifacts.** The helper invokes `ubs --ci --format=jsonl --beads-jsonl=<path> --report-json=<path> <source files>`, captures stdout/stderr separately, and caps raw fallback logs. Do not add unsupported/no-op flags such as `--profile=loose` or `--skip=11,12`.
 
-4. **Exit `2` or timeout is a TOOL FAILURE, never clean.** Run `ubs doctor --fix` if available — usually a missing AST/scanner engine, and JS/TS semantic analysis can silently degrade without it. Never treat exit 2 or `status: timeout` as a pass. (`0` clean, `1` advisory findings, `2` doctor/tool failure.)
+4. **Exit `2` or timeout is a TOOL FAILURE, never clean.** Run `ubs doctor --fix` if available — usually a missing AST/scanner engine, and JS/TS semantic analysis can silently degrade without it. Never treat exit 2 or `status: timeout` as a pass. The helper does not rely on exit `1` for findings: real `ubs` can return `0` while reporting warnings unless `--fail-on-warning` is used, so finish-lane derives advisory status from parsed JSONL/report severity data.
 
-5. **Category numbers are advisory metadata, not the primary filter.** The finish-lane helper filters after parsing so tests, fixtures, generated files, and known noise categories stay out of the primary action prompt while raw artifacts remain available:
+5. **Category numbers are advisory metadata, not the primary filter.** Real UBS JSONL may expose finding titles/descriptions instead of numeric categories, and severity totals may omit `good`. The finish-lane helper filters after parsing so tests, fixtures, generated files, and known noise categories stay out of the primary action prompt while raw artifacts remain available:
    - **Block commit (1-5):** null safety · security · async/await · resource/memory leak · type coercion.
    - **Block merge (6-10):** division-by-zero · resource lifecycle · error swallowing · unhandled promise · array mutation.
    - **Discuss only (11-14):** debug code · TODO/FIXME/HACK/XXX · `any` · deep nesting (>4).

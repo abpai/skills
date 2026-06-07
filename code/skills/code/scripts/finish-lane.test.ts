@@ -118,6 +118,68 @@ exit 1
   expect(summary).not.toContain("tests/app.test.ts")
 })
 
+test("handles real ubs jsonl finding counts and report sample paths", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/app.ts", "export async function demo(url: string) {\n  fetch(url)\n  return open(url)\n}\n")
+  const fakeBin = makeFakeUbs(
+    repo,
+    `
+beads=""
+report=""
+for arg in "$@"; do
+  case "$arg" in
+    --beads-jsonl=*) beads="\${arg#*=}" ;;
+    --report-json=*) report="\${arg#*=}" ;;
+  esac
+done
+cat > "$beads" <<'JSONL'
+{"type":"finding","project":"/tmp/project","language":"js","severity":"warning","count":1,"title":"fetch() without AbortSignal cancellation","description":"Pass a signal from AbortSignal.timeout()"}
+{"type":"finding","project":"/tmp/project","language":"js","severity":"info","count":1,"title":"Deep property access detected","description":""}
+{"type":"scanner","project":"/tmp/project","language":"js","files":1,"critical":0,"warning":2,"info":1,"timestamp":"2026-06-07T00:00:00Z"}
+{"type":"totals","project":"/tmp/project","files":1,"critical":0,"warning":2,"info":1,"timestamp":"2026-06-07T00:00:00Z"}
+JSONL
+cat > "$report" <<'JSON'
+{
+  "project": "/tmp/project",
+  "scanners": [
+    {
+      "language": "js",
+      "files": 1,
+      "critical": 0,
+      "warning": 2,
+      "info": 1,
+      "extras": {
+        "resource_lifecycle": {
+          "severity": "warning",
+          "samples": [
+            {
+              "file": "/private/var/folders/example/files_scan/src/app.ts",
+              "line": 3,
+              "code": "return open(url)"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "totals": { "critical": 0, "warning": 2, "info": 1, "files": 1 }
+}
+JSON
+exit 0
+`,
+  )
+
+  const result = runFinishLane(repo, { PATH: `${fakeBin}:${systemPath}` })
+  const summary = readFileSync(path.join(repo, ".workflow/finish-lane/ubs-summary.md"), "utf8")
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("status: advisory-findings")
+  expect(result.stdout).toContain("severity totals: critical=0 warning=2 info=1 good=0")
+  expect(result.stdout).toContain("actionable source findings: critical=0 warning=2")
+  expect(summary).toContain("warning source scan [js] fetch() without AbortSignal cancellation: Pass a signal from AbortSignal.timeout()")
+  expect(summary).toContain("warning src/app.ts:3 [resource_lifecycle] return open(url)")
+})
+
 test("treats test-only findings as clean in the primary status", () => {
   const repo = makeRepo()
   writeRepoFile(repo, "src/app.ts", "export const value = 1\n")

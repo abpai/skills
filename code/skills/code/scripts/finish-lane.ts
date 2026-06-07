@@ -209,7 +209,7 @@ function isDocFile(file: string): boolean {
 }
 
 function isCodeFile(file: string): boolean {
-  return /\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|sh)$/i.test(file)
+  return /\.(ts|tsx|js|jsx|mjs|cjs|py|c|h|cpp|cc|cxx|hpp|go|rs|rb|java|kt|swift|sh|cs|ex|exs)$/i.test(file)
 }
 
 const testFilePattern = /(^|\/)(__tests__|tests?|spec|fixtures?|mocks?)(\/|$)|\.(test|spec)\./i
@@ -291,6 +291,7 @@ type UbsFinding = {
   category: string
   message: string
   kind: UbsFindingKind
+  count: number
 }
 
 type UbsSelection = {
@@ -345,7 +346,10 @@ function relativeArtifact(rootDir: string, file: string): string {
 
 function normalizePath(rootDir: string, file: string): string {
   if (!file) return ""
-  const cleaned = file.replace(/^file:\/\//, "")
+  const cleaned = file.replace(/^file:\/\//, "").replace(/\\/g, "/")
+  const filesScanMarker = "/files_scan/"
+  const scratchIndex = cleaned.lastIndexOf(filesScanMarker)
+  if (scratchIndex >= 0) return cleaned.slice(scratchIndex + filesScanMarker.length)
   const absolute = path.isAbsolute(cleaned) ? cleaned : path.join(rootDir, cleaned)
   return path.relative(rootDir, absolute).replace(/\\/g, "/")
 }
@@ -484,40 +488,88 @@ function flattenReportRecords(value: unknown): Record<string, unknown>[] {
   const record = asRecord(value)
   if (!record) return []
   const records: Record<string, unknown>[] = [record]
-  for (const key of ["findings", "issues", "results", "records", "items", "data"]) {
+  for (const key of ["findings", "issues", "results", "records", "items", "data", "scanners"]) {
     if (Array.isArray(record[key])) records.push(...flattenReportRecords(record[key]))
   }
   return records
 }
 
-function readUbsRecords(artifacts: UbsArtifacts): { records: Record<string, unknown>[]; parseable: boolean } {
+function reportSampleRecords(value: unknown): Record<string, unknown>[] {
+  const report = asRecord(value)
+  const scanners = Array.isArray(report?.scanners) ? report.scanners : []
   const records: Record<string, unknown>[] = []
-  let sawParseable = false
 
-  if (existsSync(artifacts.beads)) {
-    const lines = readFileSync(artifacts.beads, "utf8")
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-    for (const line of lines) {
-      try {
-        const record = asRecord(JSON.parse(line))
-        if (record) {
-          records.push(record)
-          sawParseable = true
-        }
-      } catch {
-        // Keep parsing later lines; malformed JSONL means fallback if nothing useful is found.
+  for (const scannerValue of scanners) {
+    const scanner = asRecord(scannerValue)
+    const extras = asRecord(scanner?.extras)
+    if (!scanner || !extras) continue
+    const language = typeof scanner.language === "string" ? scanner.language : ""
+    for (const [analyzer, extraValue] of Object.entries(extras)) {
+      const extra = asRecord(extraValue)
+      const samples = Array.isArray(extra?.samples) ? extra.samples : []
+      for (const sampleValue of samples) {
+        const sample = asRecord(sampleValue)
+        if (!sample) continue
+        records.push({
+          ...sample,
+          type: "sample",
+          category: analyzer,
+          language,
+          severity: normalizeSeverity(extra?.severity ?? scanner.severity),
+          message: typeof sample.code === "string" ? sample.code : analyzer,
+        })
       }
     }
   }
 
+  return records
+}
+
+function addJsonlRecords(text: string, records: Record<string, unknown>[], seen: Set<string>): boolean {
+  let sawParseable = false
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+  for (const line of lines) {
+    try {
+      const parsed = JSON.parse(line)
+      const record = asRecord(parsed)
+      if (record) {
+        const key = JSON.stringify(record)
+        if (!seen.has(key)) {
+          records.push(record)
+          seen.add(key)
+        }
+        sawParseable = true
+      }
+    } catch {
+      // Keep parsing later lines; malformed JSONL means fallback if nothing useful is found.
+    }
+  }
+  return sawParseable
+}
+
+function readUbsRecords(artifacts: UbsArtifacts, stdout = ""): { records: Record<string, unknown>[]; parseable: boolean } {
+  const records: Record<string, unknown>[] = []
+  const seen = new Set<string>()
+  let sawParseable = false
+
+  if (existsSync(artifacts.beads)) sawParseable = addJsonlRecords(readFileSync(artifacts.beads, "utf8"), records, seen) || sawParseable
+  if (stdout.trim()) sawParseable = addJsonlRecords(stdout, records, seen) || sawParseable
+
   if (existsSync(artifacts.report)) {
     try {
       const report = JSON.parse(readFileSync(artifacts.report, "utf8"))
-      const reportRecords = flattenReportRecords(report)
+      const reportRecords = [...flattenReportRecords(report), ...reportSampleRecords(report)]
       if (reportRecords.length > 0) {
-        records.push(...reportRecords)
+        for (const record of reportRecords) {
+          const key = JSON.stringify(record)
+          if (!seen.has(key)) {
+            records.push(record)
+            seen.add(key)
+          }
+        }
         sawParseable = true
       }
     } catch {
@@ -537,12 +589,17 @@ function classifyFindingFile(file: string): UbsFindingKind {
 }
 
 function findingFromRecord(rootDir: string, record: Record<string, unknown>): UbsFinding | null {
+  const type = stringValue(record, ["type", "kind", "name"]).toLowerCase()
   const file = normalizePath(rootDir, stringValue(record, ["file", "path", "filename", "uri", "source"]))
   const line = numberValue(record, ["line", "start_line", "startLine", "lineNumber", "row"])
-  const message = stringValue(record, ["message", "title", "description", "text", "summary", "check", "rule"])
-  const category = stringValue(record, ["category", "category_id", "categoryId", "rule", "rule_id", "ruleId", "id", "check"])
+  const title = stringValue(record, ["message", "title", "check", "rule"])
+  const description = stringValue(record, ["description", "text", "summary"])
+  const message = title && description && title !== description ? `${title}: ${description}` : title || description
+  const category = stringValue(record, ["category", "category_id", "categoryId", "rule", "rule_id", "ruleId", "id", "language"])
   const count = numberValue(record, ["count", "total"])
-  if (!file && count !== null) return null
+  const isFindingRecord = type === "finding" || type === "issue" || type === "result" || type === "sample"
+  if (!file && count !== null && !isFindingRecord) return null
+  if (!file && count !== null && count <= 0) return null
   if (!file && !message && !category) return null
 
   return {
@@ -551,7 +608,8 @@ function findingFromRecord(rootDir: string, record: Record<string, unknown>): Ub
     line,
     category,
     message,
-    kind: classifyFindingFile(file),
+    kind: file ? classifyFindingFile(file) : "source",
+    count: count && count > 0 ? count : 1,
   }
 }
 
@@ -583,11 +641,16 @@ function actionableUbsFindings(findings: UbsFinding[]): UbsFinding[] {
     .filter((finding) => !isNoiseFinding(finding))
 }
 
+function ubsFindingCount(findings: UbsFinding[], severity: UbsSeverity): number {
+  return findings.filter((finding) => finding.severity === severity).reduce((sum, finding) => sum + finding.count, 0)
+}
+
 function formatUbsFinding(finding: UbsFinding): string {
-  const location = finding.file ? `${finding.file}${finding.line ? `:${finding.line}` : ""}` : "(unknown location)"
+  const location = finding.file ? `${finding.file}${finding.line ? `:${finding.line}` : ""}` : "source scan"
   const category = finding.category ? ` [${finding.category}]` : ""
   const message = finding.message ? ` ${finding.message}` : ""
-  return `${finding.severity} ${location}${category}${message}`.trim()
+  const count = finding.count > 1 ? ` (${finding.count} occurrences)` : ""
+  return `${finding.severity} ${location}${category}${message}${count}`.trim()
 }
 
 function writeUbsSummary(rootDir: string, scan: UbsScan): void {
@@ -674,6 +737,7 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
 
   const args = [
     "--ci",
+    "--format=jsonl",
     `--beads-jsonl=${artifacts.beads}`,
     `--report-json=${artifacts.report}`,
     ...selection.files,
@@ -719,7 +783,7 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
     return scan
   }
 
-  const { records, parseable } = readUbsRecords(artifacts)
+  const { records, parseable } = readUbsRecords(artifacts, stdout)
   const findings = records.map((record) => findingFromRecord(rootDir, record)).filter((finding): finding is UbsFinding => finding !== null)
   const counts = findTotals(records) ?? summarizeCountsFromFindings(findings, records)
   const actionable = actionableUbsFindings(findings)
@@ -738,8 +802,9 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
     return scan
   }
 
-  const status: UbsStatus = actionable.length > 0 ? "advisory-findings" : "clean"
   const highSeverityTotals = counts.critical > 0 || counts.warning > 0
+  const highSeverityFindings = findings.filter((finding) => finding.severity === "critical" || finding.severity === "warning")
+  const status: UbsStatus = actionable.length > 0 || (highSeverityTotals && highSeverityFindings.length === 0) ? "advisory-findings" : "clean"
   const scan: UbsScan = {
     ...base,
     status,
@@ -750,7 +815,9 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
     actionable,
     note:
       status === "advisory-findings"
-        ? "UBS findings are advisory; they do not seal-block this patch."
+        ? actionable.length > 0
+          ? "UBS findings are advisory; they do not seal-block this patch."
+          : "UBS reported warning/critical totals without source-actionable detail; inspect the artifacts."
         : highSeverityTotals
           ? "UBS reported warning/critical totals but no source-actionable finding records."
           : "",
@@ -955,9 +1022,7 @@ function main(): void {
     `    severity totals: critical=${ubs.counts.critical} warning=${ubs.counts.warning} info=${ubs.counts.info} good=${ubs.counts.good}`,
   )
   out.push(
-    `    actionable source findings: critical=${ubs.actionable.filter((finding) => finding.severity === "critical").length} warning=${
-      ubs.actionable.filter((finding) => finding.severity === "warning").length
-    }`,
+    `    actionable source findings: critical=${ubsFindingCount(ubs.actionable, "critical")} warning=${ubsFindingCount(ubs.actionable, "warning")}`,
   )
   if (ubs.note) out.push(`    note: ${ubs.note}`)
   out.push(`    summary artifact: ${relativeArtifact(rootDir, ubs.artifacts.summary)}`)
