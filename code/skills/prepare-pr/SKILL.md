@@ -6,15 +6,9 @@ metadata:
   internal: true
 description: Prepare a branch's full PR diff (committed and uncommitted) for human review with finish-lane QA, cleanup, validation, PR text, commits, push, and PR update.
 argument-hint: "[scope or message hint]"
-allowed-tools: >
-  Bash(git status *) Bash(git diff *) Bash(git log *)
-  Bash(git add *) Bash(git commit *) Bash(git branch *)
-  Bash(git push *) Bash(git rev-parse *) Bash(git restore --staged *)
-  Bash(codex *) Bash(curl *) Bash(npm *) Bash(yarn *)
-  Bash(pnpm *) Bash(bun *) Bash(npx *) Bash(pytest *)
-  Bash(go test *) Bash(cargo test *) Bash(gh *)
-  mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
-  Read Write Edit Grep Glob
+# No allowed-tools here: this wrapper is disable-model-invocation +
+# user-invocable: false, so it is never the active skill and its allowed-tools
+# would be dead config. The allowlist lives on the umbrella code/skills/code/SKILL.md.
 ---
 
 # /code:prepare-pr

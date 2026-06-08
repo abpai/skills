@@ -20,7 +20,8 @@
 #              stamping the current HEAD sha + scope_hash. The seal is FRESH
 #              only while head == current HEAD AND scope_hash == freshly
 #              recomputed scope hash. Any new commit, staged change, unstaged
-#              edit, or new untracked file flips scope_hash and re-blocks push.
+#              edit, new untracked file, or content edit to an existing
+#              untracked file flips scope_hash and re-blocks push.
 #
 #   3. DISARM — prepare-pr Phase 5 deletes the arm marker after a successful
 #              push / PR-create. The gate goes inert again.
@@ -177,7 +178,9 @@ if [ -f "$SENTINEL" ]; then
   #   sha256( <base>...HEAD committed diff
   #           + uncommitted (unstaged) diff
   #           + staged diff
-  #           + sorted untracked file list )
+  #           + for each sorted untracked path: "<path> <git hash-object>\n" )
+  # The per-path `git hash-object` folds in untracked CONTENT, so editing an
+  # already-untracked file (not just adding a new one) flips the hash too.
   # The base ref is read from the sentinel (the base used at seal time); if the
   # sentinel lacks one we fall back to HEAD (diff portion empty, but the
   # uncommitted/staged/untracked portions still detect changes).
@@ -196,7 +199,11 @@ if [ -f "$SENTINEL" ]; then
       git -C "$TOPLEVEL" diff 2>/dev/null
       git -C "$TOPLEVEL" diff --cached 2>/dev/null
       git -C "$TOPLEVEL" ls-files --others --exclude-standard 2>/dev/null \
-        | grep -v '^\.workflow/' | LC_ALL=C sort
+        | grep -v '^\.workflow/' | LC_ALL=C sort \
+        | while IFS= read -r untracked_path; do
+            printf '%s %s\n' "$untracked_path" \
+              "$(git -C "$TOPLEVEL" hash-object -- "$untracked_path" 2>/dev/null)"
+          done
     } | sha256_stdin
   )
 

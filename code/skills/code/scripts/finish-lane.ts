@@ -175,18 +175,26 @@ function scopeFiles(rootDir: string, baseRef: string): {
 }
 
 // Hash everything that changes the PR scope so the gate seal invalidates on any
-// new commit, staged/unstaged edit, or new untracked file.
+// new commit, staged/unstaged edit, new untracked file, OR an edit to an
+// existing untracked file's contents.
 //
 // This MUST stay byte-identical to the recompute in code/hooks/gate-before-push.sh
 // or a correctly sealed branch never opens the gate. The hook hashes the stream:
 //   git diff <base>...HEAD   (committed diff, ordered)
 //   git diff                 (unstaged diff, ordered)
 //   git diff --cached        (staged diff, ordered)
-//   git ls-files --others --exclude-standard | grep -v '^\.workflow/' | LC_ALL=C sort
-// concatenated with NO separator, each untracked path newline-terminated. The
-// .workflow/ tree (seal sentinel + changed-files.txt) is ephemeral workflow
-// state, so it is excluded here exactly as the hook excludes it — otherwise
-// writing the sentinel would change the hash and self-invalidate the seal.
+//   for each untracked path (LC_ALL=C-sorted, .workflow/ excluded):
+//     "<path> <git hash-object of path>\n"
+// concatenated with NO separator. Tracked changes already ride in the three
+// diffs; untracked files are NOT in any diff, so we fold in each one's
+// `git hash-object` content id alongside its path — that detects both a new
+// untracked file (path appears) AND a content edit to an existing one (its
+// object id changes), without streaming file bytes (git hashes large/binary
+// files itself). A missing/unreadable path yields an empty id on both sides, so
+// parity holds. The .workflow/ tree (seal sentinel + changed-files.txt) is
+// ephemeral workflow state, so it is excluded here exactly as the hook excludes
+// it — otherwise writing the sentinel would change the hash and self-invalidate
+// the seal.
 function scopeHash(rootDir: string, baseRef: string): string {
   const diffCommitted = run(`git diff ${shellQuote(baseRef)}...HEAD 2>/dev/null`, rootDir).output
   const diffUnstaged = run("git diff 2>/dev/null", rootDir).output
@@ -195,7 +203,9 @@ function scopeHash(rootDir: string, baseRef: string): string {
     .output.split("\n")
     .filter((line) => line.length > 0 && !line.startsWith(".workflow/"))
     .sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b))) // LC_ALL=C byte order
-  const untrackedStream = untracked.map((line) => `${line}\n`).join("")
+  const untrackedStream = untracked
+    .map((p) => `${p} ${run(`git hash-object -- ${shellQuote(p)} 2>/dev/null`, rootDir).output.trim()}\n`)
+    .join("")
   return createHash("sha256").update(diffCommitted + diffUnstaged + diffStaged + untrackedStream).digest("hex")
 }
 
@@ -382,6 +392,10 @@ function ubsArtifacts(outDir: string): UbsArtifacts {
     summary: path.join(outDir, "ubs-summary.md"),
     rawLog: path.join(outDir, "ubs-raw.log"),
   }
+}
+
+function ubsPathArg(file: string): string {
+  return file.startsWith("-") ? `./${file}` : file
 }
 
 function selectUbsFiles(rootDir: string, files: string[]): UbsSelection {
@@ -769,10 +783,9 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
     "--format=jsonl",
     `--beads-jsonl=${artifacts.findings}`,
     `--report-json=${artifacts.report}`,
-    // End-of-options marker: a changed file named like `--report-json=x` or
-    // `--help.ts` must be treated as a path, not parsed as a ubs flag.
-    "--",
-    ...selection.files,
+    // UBS v5.3.2 treats a POSIX `--` end-of-options marker as a literal file
+    // path, so protect dash-leading changed files by prefixing them with `./`.
+    ...selection.files.map(ubsPathArg),
   ]
   const result = spawnSync("ubs", args, {
     cwd: rootDir,
