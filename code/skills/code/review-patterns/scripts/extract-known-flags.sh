@@ -25,8 +25,7 @@ Output:
 
 Exit codes:
   0  Success.
-  1  Missing arguments (usage printed).
-  2  Target dir not found.
+  2  Input error (missing arguments, or target dir not found).
 
 Example:
   scripts/extract-known-flags.sh ~/code/mytool > /tmp/known_flags.txt
@@ -35,7 +34,7 @@ EOF
 
 case "${1:-}" in
   -h|--help) usage; exit 0 ;;
-  "")        usage >&2; exit 1 ;;
+  "")        usage >&2; exit 2 ;;
 esac
 
 TARGET="$1"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 variance_envelope.py — Check whether a set of repeated same-host runs
-satisfies the variance envelope from BUDGETS.md (≤ 10% drift on p95).
+satisfies the variance envelope (≤ 10% drift on p95).
 
 Usage:
     variance_envelope.py run1.json run2.json run3.json [...]

@@ -9,7 +9,7 @@
 #       [--candidate-fingerprint candidate/fingerprint.json]
 #       [--allow-fingerprint-mismatch]
 #
-# Intended to be wired into CI as the final gate (see references/CI-REGRESSION-GATES.md).
+# Intended to be wired into CI as the final gate.
 
 set -euo pipefail
 

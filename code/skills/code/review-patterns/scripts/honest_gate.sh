@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# honest_gate.sh — Walk the 14 questions in references/HONEST-GATE-CHECKLIST.md
+# honest_gate.sh — Walk the 14 honest-benchmarking gate questions
 # and emit a JSON attestation paired with the bench result.
 #
 # Usage:

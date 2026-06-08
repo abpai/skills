@@ -22,8 +22,7 @@ Output:
 
 Exit codes:
   0  Success.
-  1  Missing arguments (usage printed).
-  2  Target dir not found, or no README found in target.
+  2  Input error (missing arguments, target dir not found, or no README in target).
 
 Example:
   scripts/audit-readme-vs-help.sh ~/code/mytool ~/code/mytool/target/release/mytool
@@ -32,12 +31,12 @@ EOF
 
 case "${1:-}" in
   -h|--help) usage; exit 0 ;;
-  "")        usage >&2; exit 1 ;;
+  "")        usage >&2; exit 2 ;;
 esac
 
 if [ -z "${2:-}" ]; then
   usage >&2
-  exit 1
+  exit 2
 fi
 
 TARGET="$1"

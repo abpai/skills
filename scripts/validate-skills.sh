@@ -688,6 +688,19 @@ if [[ -f "$finish_lane_script" ]]; then
     rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
     failed=1
   fi
+
+  finish_lane_test="code/skills/code/scripts/finish-lane.test.ts"
+  if [[ -f "$finish_lane_test" ]]; then
+    if bun test "$finish_lane_test" >/tmp/skills-validate-finish-lane-test.log 2>&1; then
+      echo "  [OK] $finish_lane_test (bun test)"
+      rm -f /tmp/skills-validate-finish-lane-test.log
+    else
+      echo "[FAIL] $finish_lane_test: bun test failed"
+      cat /tmp/skills-validate-finish-lane-test.log
+      rm -f /tmp/skills-validate-finish-lane-test.log
+      failed=1
+    fi
+  fi
 fi
 
 if [[ $failed -ne 0 ]]; then

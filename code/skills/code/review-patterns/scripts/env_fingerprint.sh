@@ -4,7 +4,7 @@
 #
 # Usage: ./env_fingerprint.sh [--run-id <id>] [--build-profile <name>] > fingerprint.json
 #
-# Mirrors the fingerprint.json template in references/ARTIFACTS.md.
+# Emits a fingerprint.json capturing the benchmark environment.
 
 set -euo pipefail
 

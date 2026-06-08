@@ -9,6 +9,8 @@ Review performance claims and optimizations — block any "faster/lighter/lower-
 - A diff adds or changes a benchmark, a "% faster" number, a flamegraph, or a before/after table.
 - A migration/rewrite is justified by performance ("we replaced X because it was slow").
 
+_Auto-suggest is path-triggered (benchmark/profile/perf-named files). The PR-text-claim and perf-justified-rewrite cases above are not detectable from file paths — add this gate manually in prepare-pr Phase 2 when they apply._
+
 ## Gotchas
 
 The heart of this lens. Each is a non-obvious way a perf claim lies; check the named failure, apply the exact fix/threshold.

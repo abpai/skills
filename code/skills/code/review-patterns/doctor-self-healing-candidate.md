@@ -68,7 +68,7 @@ Ported from `world-class-doctor-mode-for-cli-tools`. Run from the target repo (s
 - [`scripts/verify-crash-recovery.sh`](scripts/verify-crash-recovery.sh) — SIGKILLs mid-fix and asserts clean recovery / no orphan temps. `scripts/verify-crash-recovery.sh <fm_id> <tool> [fixture_root]`.
 - [`scripts/verify-concurrency.sh`](scripts/verify-concurrency.sh) — two concurrent `--fix`, asserts one exits 5. `scripts/verify-concurrency.sh <fm_id> <tool> [fixture_root]`.
 - [`scripts/verify-metamorphic.sh`](scripts/verify-metamorphic.sh) — detector repeatability probe. `scripts/verify-metamorphic.sh <fm_id> <tool> [fixture_root]`.
-- [`scripts/compute-fm-id.py`](scripts/compute-fm-id.py) — deterministic content-derived failure-mode id. `scripts/compute-fm-id.py --subsystem <name> --symptom <slug>` (also the model for the deterministic run-id rule).
+- [`scripts/compute-fm-id.py`](scripts/compute-fm-id.py) — deterministic content-derived failure-mode id (the `subsystem + symptom` slug from gotcha 12; it does not compute the sha256 run-id). `scripts/compute-fm-id.py --subsystem <name> --symptom <slug>`.
 
 ## False positives
 

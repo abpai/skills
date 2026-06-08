@@ -45,7 +45,16 @@ scan_changed() {
   local files="$1"
   if have ubs; then
     echo "+ ubs (changed files)"
-    if [ "$STAGED" -eq 1 ]; then ubs --staged; else ubs . --comparison=baseline.json 2>/dev/null || ubs .; fi
+    if [ "$STAGED" -eq 1 ]; then
+      ubs --staged
+    elif [ -n "$files" ]; then
+      # scope the scan to the changed files passed in (not the whole tree).
+      # NUL-delimit so paths with spaces/quotes survive, and pass `--` so a path
+      # beginning with `-` is not parsed as a ubs flag.
+      printf '%s\n' "$files" | tr '\n' '\0' | xargs -0 ubs --
+    else
+      ubs .
+    fi
     return $?
   fi
   # clippy::unwrap_used/expect_used catch panics; eslint no-floating-promises

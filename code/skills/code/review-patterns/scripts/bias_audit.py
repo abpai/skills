@@ -5,7 +5,7 @@ bias_audit.py — Static scan for known benchmark bias patterns.
 Reads a hyperfine/criterion JSON output AND optionally one or more bench source
 files (Rust .rs / Python .py / shell .sh / Go _test.go), and emits a markdown
 report flagging suspicious patterns. Modeled after the FrankenSQLite benchmark
-truthfulness audit — see references/UNBIASED-BENCHMARKING.md.
+truthfulness audit.
 
 Usage:
     bias_audit.py [--json bench.json] [--source path ...] [--out report.md]
@@ -147,9 +147,8 @@ def render_report(json_flags: list[dict], src_flags: list[dict]) -> str:
     section("Bench source", src_flags)
 
     if not json_flags and not src_flags:
-        out.append("\n*No flags raised. Bench appears clean by static rules — still walk the HONEST-GATE-CHECKLIST.*\n")
+        out.append("\n*No flags raised. Bench appears clean by static rules — still confirm the run was honest (real workload, warm caches, pinned environment) before trusting it.*\n")
 
-    out.append("\n---\nSee `references/HONEST-GATE-CHECKLIST.md` for the runtime gate to pair with this static scan.\n")
     return "".join(out)
 
 
