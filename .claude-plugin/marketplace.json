@@ -69,7 +69,7 @@
       "description": "Grouped coding workflows under /code:* commands. prepare-pr is full PR readiness through commit, push, and PR update; review-and-commit is quick local review plus commit.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "prepare-pr", "review", "commit", "qa", "manual-qa", "pr-prep", "browser", "explain", "walkthrough", "understand", "dead-code", "scratch", "dependency-security", "html", "handoff", "continuation"]
+      "keywords": ["code", "prepare-pr", "review", "commit", "qa", "manual-qa", "pr-prep", "browser", "walkthrough", "understand", "dead-code", "dependency-security", "html", "handoff", "continuation"]
     },
     {
       "name": "decision-worksheet",

@@ -40,7 +40,7 @@ Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and m
 - Use `review-and-commit.md` for quick local review plus commit: inspect scope, fix real issues, run targeted checks, plan a commit, ask approval, then commit.
 - Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
 - Use `walkthrough.md` to teach the owner a system or change to verified mastery: establish mission and prior knowledge, ground a checklist, then quiz one scenario at a time until every item has an unaided correct answer. It is a persistent comprehension goal, not a tour.
-- Use `understand.md` for tracing a specific code path into a `.understand/<topic>.html` artifact with call graph, concrete values, side effects, and scratch skeleton imports.
+- Use `understand.md` for tracing a specific code path into a `.understand/<topic>.html` artifact with call graph, concrete values, side effects, and import skeleton.
 - Use `dead-code.md` for conservative dead-code reachability audits and safe removal plans.
 - Use `secure-dependencies.md` for dependency resolution and supply-chain hardening in code repositories.
 - Use `handoff.md` for creating a focused continuation prompt that lets a new coding session resume with live repo state, file refs, decisions, next steps, and verification.

@@ -2,11 +2,11 @@
 
 > You can outsource thinking, but not your understanding.
 
-Build a mental model of a real code path. The output is a self-contained HTML artifact that makes the hot path spatial: entry points, call graph, concrete values, side effects, branches, and a scratch skeleton all visible in one browser page.
+Build a mental model of a real code path. The output is a self-contained HTML artifact that makes the hot path spatial: entry points, call graph, concrete values, side effects, branches, and an import skeleton all visible in one browser page.
 
 Use when the user asks to understand a specific symbol, feature, behavior, file, or module in an existing codebase, especially when the shape of the code matters more than a prose explanation.
 
-Do not use this for general concept explanations; use `explain` for that. Do not use this for extracting general primitives; use `distill` for that. Do not use this to auto-generate runnable scripts; use `scratch` for that.
+Do not use this for hands-on tutorials; use `/tutorial` for that. Do not use this for extracting general primitives; use `distill` for that. Do not use this to generate runnable exploration scripts; write a one-off script only when the current task requires it.
 
 ## Input forms
 
@@ -62,9 +62,9 @@ While tracing, note realistic values flowing through. Prefer values from real fi
 
 Tag every DB write, cache mutation, event emission, file write, network call, or external state change with `side effect:` at the relevant line in both the call graph and worked example.
 
-### 6. Collect scratch skeleton imports
+### 6. Collect import skeleton
 
-For each module touched on the happy path, record the real import path and the symbols needed. These go into the HTML artifact's scratch skeleton panel. No placeholders, no `TODO: figure out import`.
+For each module touched on the happy path, record the real import path and the symbols needed. These go into the HTML artifact's import skeleton panel. No placeholders, no `TODO: figure out import`.
 
 ### 7. Write the HTML artifact - do NOT render it in chat
 
@@ -83,7 +83,7 @@ Use this structure:
 3. **Call stack table** - function, input shape, output shape, file:line, side effect.
 4. **Worked example** - concrete values flowing top-to-bottom with file:line refs in comments.
 5. **Branches noted** - collapsible one-line branch notes. Keep them shallow.
-6. **Scratch skeleton** - code block with real imports and TODOs for manual wiring.
+6. **Import skeleton** - code block with real imports and TODOs for manual wiring.
 7. **Pointers** - entry, core logic, boundaries, fixtures/tests.
 
 For the visual style, prefer the same editorial card language as `visualize`: ivory background, serif headings, clay accent, restrained borders, spatial diagrams over ASCII.
@@ -106,7 +106,7 @@ req.body = { text: "buy milk" }
 validateBody(req.body) -> { text: "buy milk" }
 saveTodo({ text: "buy milk", createdAt: <now> }) -> { id: "t_01H..." }
 
-Scratch imports:
+Import skeleton:
 import { addTodo } from "../src/todos/service"
 import { sanitize } from "../src/todos/sanitize"
 import { saveTodo } from "../src/todos/repo"
@@ -130,12 +130,12 @@ import { notify } from "../src/events"
 - Tracing branches when the user asked for happy path
 - Recursing into third-party libraries or obvious helpers
 - Vague refs like "in the service file"; always use `file:line`
-- Auto-completing the scratch script; logic should stay as TODOs
+- Auto-completing the import skeleton; logic should stay as TODOs
 - Skipping disambiguation when there are multiple candidates
 - Inventing function names or paths. If you cannot find it, say so.
 
 ## What this is NOT
 
-- Not `explain`: no tutorial framing, no analogies, no progressive disclosure for newcomers. The reader already owns the code.
+- Not `/tutorial`: no tutorial framing, no analogies, no progressive disclosure for newcomers. The reader already owns the code.
 - Not `distill`: not extracting general primitives. Trace one specific real path.
-- Not `scratch`: not producing a runnable script. The TODOs are the point.
+- Not a runnable exploration script. The TODOs are the point.

@@ -4,7 +4,7 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: Trace a real code path into a browser-readable HTML module map and scratch skeleton.
+description: Trace a real code path into a browser-readable HTML module map and import skeleton.
 argument-hint: "[symbol, feature, or file/module path]"
 ---
 

@@ -68,7 +68,7 @@ Cards may link, expand, or reveal details, but the default state should already 
 | Artifact | Layout |
 |---|---|
 | PR explainer | annotated diff cards plus severity labels and reviewer-focus list |
-| Code understanding | module map, hot path, side-effect badges, scratch skeleton panel |
+| Code understanding | module map, hot path, side-effect badges, import skeleton panel |
 | Implementation plan | timeline, data-flow diagram, risk table, validation checklist |
 | Comparison | option cards side by side with tradeoffs and copyable recommendation |
 | Prompt tuner | editable prompt panel, live examples, counters, copy button |
