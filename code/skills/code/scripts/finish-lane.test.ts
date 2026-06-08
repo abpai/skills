@@ -574,6 +574,28 @@ test("editing an untracked file's contents changes scope_hash", () => {
   expect(after).not.toBe(before)
 })
 
+test("editing a dash-leading untracked file's contents changes scope_hash", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "--help", "first\n") // proves git hash-object gets its own -- separator
+
+  const seal = (): string => {
+    const r = spawnSync(process.execPath, [finishLaneScript, "--base", "HEAD", "--seal"], {
+      cwd: repo,
+      encoding: "utf8",
+      env: { ...process.env, PATH: systemPath },
+    })
+    const match = `${r.stdout ?? ""}`.match(/scope_hash=([0-9a-f]{64})/)
+    if (!match) throw new Error(`no scope_hash in output:\n${r.stdout}\n${r.stderr}`)
+    return match[1]
+  }
+
+  const before = seal()
+  writeRepoFile(repo, "--help", "second\n")
+  const after = seal()
+
+  expect(after).not.toBe(before)
+})
+
 // --- suggestLenses routing (lensRules coverage) ---------------------------
 
 test("suggestLenses: a plain code file routes bug-hunting + simplification", () => {

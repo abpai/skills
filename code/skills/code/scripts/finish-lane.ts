@@ -204,7 +204,7 @@ function scopeHash(rootDir: string, baseRef: string): string {
     .filter((line) => line.length > 0 && !line.startsWith(".workflow/"))
     .sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b))) // LC_ALL=C byte order
   const untrackedStream = untracked
-    .map((p) => `${p} ${run(`git hash-object ${shellQuote(p)} 2>/dev/null`, rootDir).output.trim()}\n`)
+    .map((p) => `${p} ${run(`git hash-object -- ${shellQuote(p)} 2>/dev/null`, rootDir).output.trim()}\n`)
     .join("")
   return createHash("sha256").update(diffCommitted + diffUnstaged + diffStaged + untrackedStream).digest("hex")
 }

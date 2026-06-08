@@ -202,7 +202,7 @@ if [ -f "$SENTINEL" ]; then
         | grep -v '^\.workflow/' | LC_ALL=C sort \
         | while IFS= read -r untracked_path; do
             printf '%s %s\n' "$untracked_path" \
-              "$(git -C "$TOPLEVEL" hash-object "$untracked_path" 2>/dev/null)"
+              "$(git -C "$TOPLEVEL" hash-object -- "$untracked_path" 2>/dev/null)"
           done
     } | sha256_stdin
   )
