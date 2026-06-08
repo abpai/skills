@@ -445,6 +445,16 @@ def validate_manifest(
     return True
 
 
+def run_guarded(rep: Reporter, label: str, fn) -> None:
+    """Run one validation unit, turning an unexpected crash into a [FAIL] instead
+    of aborting siblings — matching the original, where every unit ran as its own
+    python3 subprocess."""
+    try:
+        fn()
+    except Exception as exc:  # noqa: BLE001 - isolate per-unit crashes
+        rep.fail(f"{label}: unexpected validation error: {exc}")
+
+
 def validate_plugin(plugin_dir: Path, rep: Reporter) -> None:
     plugin_name = plugin_dir.name
     manifest = plugin_dir / ".claude-plugin" / "plugin.json"
@@ -471,31 +481,45 @@ def validate_plugin(plugin_dir: Path, rep: Reporter) -> None:
 
     has_umbrella = (plugin_dir / "skills" / plugin_name / "SKILL.md").is_file()
 
+    # Each sub-check is isolated (like the original's per-unit subprocesses): a
+    # crash in one skill/agent does not abort the rest of the plugin, and the
+    # plugin [OK] still prints.
     for skill_file in skill_files:
-        validate_skill_md(
-            skill_file, skill_file.parent.name, plugin_name, has_umbrella, rep
+        run_guarded(
+            rep,
+            str(skill_file),
+            lambda f=skill_file: validate_skill_md(
+                f, f.parent.name, plugin_name, has_umbrella, rep
+            ),
         )
 
     for agent_file in agent_files:
-        validate_agent(agent_file, agent_file.stem, rep)
+        run_guarded(
+            rep,
+            str(agent_file),
+            lambda f=agent_file: validate_agent(f, f.stem, rep),
+        )
 
     hooks_file = plugin_dir / "hooks" / "hooks.json"
     if hooks_file.is_file():
-        validate_hooks(hooks_file, rep)
+        run_guarded(rep, str(hooks_file), lambda: validate_hooks(hooks_file, rep))
 
     codex_manifest = plugin_dir / ".codex-plugin" / "plugin.json"
     if codex_manifest.is_file():
-        claude_data = load_json(manifest, rep)
-        validate_manifest(
-            codex_manifest,
-            plugin_name,
-            rep,
-            flavor=".codex-plugin",
-            path_keys=("skills", "apps"),
-            object_keys=("mcpServers",),
-            forbid_commands=False,
-            cross_check=claude_data or {},
-        )
+        def _codex() -> None:
+            claude_data = load_json(manifest, rep)
+            validate_manifest(
+                codex_manifest,
+                plugin_name,
+                rep,
+                flavor=".codex-plugin",
+                path_keys=("skills", "apps"),
+                object_keys=("mcpServers",),
+                forbid_commands=False,
+                cross_check=claude_data or {},
+            )
+
+        run_guarded(rep, str(codex_manifest), _codex)
 
     # NOTE: printed even when a skill/agent/hooks/codex sub-check failed above —
     # only a malformed .claude-plugin manifest skips it (via the early return).
@@ -795,29 +819,23 @@ def main(argv: list[str]) -> int:
         print("No plugins found (no .claude-plugin/plugin.json files).")
         return 1
 
-    # Each section is isolated: an unexpected exception in one (e.g. a malformed
-    # marketplace entry that isn't a dict) is reported as a failure but does not
-    # abort the remaining sections — matching the original, where each block ran
-    # as its own python3 subprocess.
-    def section(label: str, fn) -> None:
-        try:
-            fn()
-        except Exception as exc:  # noqa: BLE001 - isolate per-section crashes
-            rep.fail(f"{label}: unexpected validation error: {exc}")
-
+    # Each section is isolated too (an unexpected exception in one does not abort
+    # the rest) — matching the original, where each block ran as its own python3
+    # subprocess.
     print(f"Found {len(plugin_dirs)} plugins.")
     for plugin_dir in plugin_dirs:
-        section(str(plugin_dir), lambda d=plugin_dir: validate_plugin(d, rep))
+        run_guarded(rep, str(plugin_dir), lambda d=plugin_dir: validate_plugin(d, rep))
 
     marketplace = Path(".claude-plugin/marketplace.json")
     if marketplace.is_file():
-        section(str(marketplace), lambda: validate_marketplace(marketplace, rep))
+        run_guarded(rep, str(marketplace), lambda: validate_marketplace(marketplace, rep))
     else:
         rep.warn("No .claude-plugin/marketplace.json found")
 
     codex_marketplace = Path(".agents/plugins/marketplace.json")
     if codex_marketplace.is_file():
-        section(
+        run_guarded(
+            rep,
             str(codex_marketplace),
             lambda: validate_codex_marketplace(codex_marketplace, rep),
         )
@@ -828,7 +846,7 @@ def main(argv: list[str]) -> int:
     if skip_versions:
         print("  [SKIP] versions.json (--skip-versions)")
     elif versions_file.is_file():
-        section(str(versions_file), lambda: validate_versions(versions_file, rep))
+        run_guarded(rep, str(versions_file), lambda: validate_versions(versions_file, rep))
     else:
         rep.fail(f"{versions_file}: missing file")
 
