@@ -17,7 +17,8 @@ allowed-tools: >
 
 Use the `setup` module.
 
-1. Read `skills/composer/setup.md`.
+1. Read the setup module: `../composer/setup.md` when installed as this command
+   wrapper, or `composer/skills/composer/setup.md` in the repo.
 2. Run the setup doctor, using `CURSOR_ENV_FILE` when the key lives outside the current worktree.
 3. Report Cursor, Composer model, and Codex readiness without printing secrets.
 

@@ -4,7 +4,7 @@ description: Grouped Cursor Composer workflow pack. Invoke with a subcommand arg
 argument-hint: "[subcommand] [args] — e.g. generate <brief>, --review <PR>, setup --smoke"
 license: MIT
 metadata:
-  version: "1.3.2"
+  version: "1.4.0"
 ---
 
 # Composer Workflow Pack
@@ -52,15 +52,30 @@ whole input as a natural-language request and route by intent.
 ## Defaults
 
 - Prefer the Cursor CLI (`cursor-agent`) over the TypeScript SDK for this skill.
-  The CLI reuses the user's Cursor setup, supports `CURSOR_API_KEY`, and is
-  easier to smoke-test from arbitrary repos.
+  The headless CLI is the scripting path for one-off repo generate/review work:
+  it supports `--print`, `--workspace`, `--worktree`, `--model`,
+  `--output-format`, browser login, and `CURSOR_API_KEY`.
+- Use the TypeScript SDK only when building a reusable orchestrator that needs
+  local/cloud agent selection, hooks/tool gates, durable agents, artifacts, or
+  parallel cloud workers. Do not switch ordinary `/composer:generate` or
+  `/composer:review` runs to the SDK.
 - Default implementation model: `composer-2.5-fast`.
 - Use `composer-2.5` when the user asks for the slower path or when the change
   is correctness-sensitive enough to justify it.
+- Run review in Cursor `ask` mode, not `plan` mode. `ask` is read-only and
+  returns a review answer; `plan` can turn the run into planning UI behavior and
+  hide useful findings in progress/thinking events.
 - Do not print, commit, or include secrets from `.env`. Report only whether
   `CURSOR_API_KEY` is present and whether the Cursor auth/model check passed.
+- Browser login is valid Cursor auth only after
+  `cursor-agent-doctor.sh --auth login --smoke` passes. For unattended
+  workflows, prefer `CURSOR_API_KEY`; `status` and `models` are not enough proof
+  that headless `--print` prompts can run.
 - Keep Composer as an executor/reviewer. The parent agent still owns scope,
   PR quality, final validation, and user-facing judgment.
+- For machine-readable output, prefer `--output-format json` and read the final
+  `result` field. Use `stream-json` only when you need progress events, and do
+  not treat `thinking` events as user-facing review findings.
 
 ## Scripts
 

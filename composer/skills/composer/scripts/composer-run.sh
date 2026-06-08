@@ -11,6 +11,8 @@ Options:
   --workspace PATH        Workspace directory (default: current directory).
   --model MODEL           Cursor model (generate default: composer-2.5-fast; review default: composer-2.5).
   --output-format FORMAT  text, json, or stream-json (default: text).
+  --mode MODE             Cursor read-only mode for this run: ask or plan (review default: ask).
+  --auth MODE             auto, api-key, or login (default: auto).
   --env-file PATH         Load CURSOR_API_KEY from this dotenv file.
   --timeout SECONDS       Timeout for the run (default: 1800).
   --worktree NAME         Let Cursor Agent create/use an isolated worktree.
@@ -33,7 +35,10 @@ PROMPT_FILE=""
 WORKSPACE="$PWD"
 MODEL=""
 OUTPUT_FORMAT="text"
+RUN_MODE=""
+AUTH_MODE="auto"
 ENV_FILE="${CURSOR_ENV_FILE:-}"
+ENV_FILE_EXPLICIT="false"
 TIMEOUT_SECONDS="1800"
 WORKTREE_NAME=""
 WORKTREE_BASE=""
@@ -58,8 +63,17 @@ while [[ $# -gt 0 ]]; do
       OUTPUT_FORMAT="${2:?missing value for --output-format}"
       shift 2
       ;;
+    --mode)
+      RUN_MODE="${2:?missing value for --mode}"
+      shift 2
+      ;;
+    --auth)
+      AUTH_MODE="${2:?missing value for --auth}"
+      shift 2
+      ;;
     --env-file)
       ENV_FILE="${2:?missing value for --env-file}"
+      ENV_FILE_EXPLICIT="true"
       shift 2
       ;;
     --timeout)
@@ -88,6 +102,30 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+case "$OUTPUT_FORMAT" in
+  text|json|stream-json) ;;
+  *)
+    echo "[FAIL] --output-format must be text, json, or stream-json" >&2
+    exit 2
+    ;;
+esac
+
+case "$RUN_MODE" in
+  ""|ask|plan) ;;
+  *)
+    echo "[FAIL] --mode must be ask or plan" >&2
+    exit 2
+    ;;
+esac
+
+case "$AUTH_MODE" in
+  auto|api-key|login) ;;
+  *)
+    echo "[FAIL] --auth must be auto, api-key, or login" >&2
+    exit 2
+    ;;
+esac
 
 if [[ -z "$PROMPT_FILE" || ! -f "$PROMPT_FILE" ]]; then
   echo "[FAIL] --prompt-file is required and must exist" >&2
@@ -128,12 +166,23 @@ load_env_file() {
   return 1
 }
 
-if [[ -n "$ENV_FILE" ]]; then
+if [[ "$AUTH_MODE" == "login" ]]; then
+  # Login means "do not use a key". Only an explicit --env-file conflicts; an
+  # ambient CURSOR_ENV_FILE is ignored so login stays usable when the key file
+  # is exported for other runs.
+  if [[ "$ENV_FILE_EXPLICIT" == "true" ]]; then
+    echo "[FAIL] --env-file cannot be combined with --auth login" >&2
+    exit 2
+  fi
+  CURSOR_KEY_VALUE=""
+elif [[ -n "$ENV_FILE" ]]; then
   load_env_file "$ENV_FILE" || {
     echo "[FAIL] explicit env file did not contain CURSOR_API_KEY: $ENV_FILE" >&2
     exit 1
   }
-elif [[ -z "${CURSOR_API_KEY:-}" ]]; then
+elif [[ -n "${CURSOR_API_KEY:-}" ]]; then
+  CURSOR_KEY_VALUE="$CURSOR_API_KEY"
+else
   # Search ancestor .env files starting from the workspace. Canonicalize to an
   # absolute path first so a relative --workspace (e.g. '.') can't make
   # `dirname` spin forever, and guard the loop against a fixed point regardless.
@@ -148,20 +197,21 @@ elif [[ -z "${CURSOR_API_KEY:-}" ]]; then
     [[ "$next" == "$dir" ]] && break
     dir="$next"
   done
-  if [[ "$loaded" != "true" ]]; then
-    echo "[FAIL] CURSOR_API_KEY not found; set it or pass CURSOR_ENV_FILE/--env-file" >&2
+  if [[ "$loaded" != "true" && "$AUTH_MODE" == "api-key" ]]; then
+    echo "[FAIL] CURSOR_API_KEY not found; set it, pass CURSOR_ENV_FILE/--env-file, or use --auth login" >&2
     exit 1
   fi
-else
-  CURSOR_KEY_VALUE="$CURSOR_API_KEY"
 fi
 
 prompt="$(<"$PROMPT_FILE")"
 cmd=(cursor-agent -p --trust --output-format "$OUTPUT_FORMAT" --model "$MODEL")
 
 if [[ "$MODE" == "review" ]]; then
-  cmd+=(--mode plan)
+  cmd+=(--mode "${RUN_MODE:-ask}")
 else
+  if [[ -n "$RUN_MODE" ]]; then
+    cmd+=(--mode "$RUN_MODE")
+  fi
   if [[ "$FORCE_GENERATE" == "true" ]]; then
     cmd+=(--force)
   fi
@@ -176,22 +226,18 @@ else
   cmd+=(--workspace "$WORKSPACE")
 fi
 
+run_with_auth() {
+  if [[ -n "$CURSOR_KEY_VALUE" ]]; then
+    CURSOR_API_KEY="$CURSOR_KEY_VALUE" "$@"
+  else
+    (unset CURSOR_API_KEY; "$@")
+  fi
+}
+
 if command -v timeout >/dev/null 2>&1; then
-  if [[ -n "$CURSOR_KEY_VALUE" ]]; then
-    CURSOR_API_KEY="$CURSOR_KEY_VALUE" timeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
-  else
-    timeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
-  fi
+  run_with_auth timeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
 elif command -v gtimeout >/dev/null 2>&1; then
-  if [[ -n "$CURSOR_KEY_VALUE" ]]; then
-    CURSOR_API_KEY="$CURSOR_KEY_VALUE" gtimeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
-  else
-    gtimeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
-  fi
+  run_with_auth gtimeout "$TIMEOUT_SECONDS" "${cmd[@]}" "$prompt"
 else
-  if [[ -n "$CURSOR_KEY_VALUE" ]]; then
-    CURSOR_API_KEY="$CURSOR_KEY_VALUE" "${cmd[@]}" "$prompt"
-  else
-    "${cmd[@]}" "$prompt"
-  fi
+  run_with_auth "${cmd[@]}" "$prompt"
 fi

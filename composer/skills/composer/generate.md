@@ -26,6 +26,10 @@ Use `--model composer-2.5` for slower/careful execution. Use `--worktree NAME`
 and `--worktree-base REF` only when you want Cursor Agent to create its own
 worktree under `~/.cursor/worktrees`.
 
+The wrapper uses Cursor's headless CLI, not the TypeScript SDK. Use
+`--auth login` only after `cursor-agent-doctor.sh --auth login --smoke` passes;
+for unattended automation, prefer `CURSOR_API_KEY`.
+
 6. Inspect Composer's changes yourself in the workspace Composer actually used:
    `git status`, `git diff`, tests, and the repo's existing validation gates.
    If you used `--worktree NAME`, do not inspect only the original checkout;
