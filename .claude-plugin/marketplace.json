@@ -114,6 +114,13 @@
       "keywords": ["planning", "debate", "generator", "evaluator", "workflow", "ui", "layout", "review", "codex"]
     },
     {
+      "name": "tutorial",
+      "description": "Write hands-on, code-first tutorials where every step ends in a runnable action and the reader finishes able to do the thing.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "tutorial" },
+      "category": "writing",
+      "keywords": ["tutorial", "teaching", "step-by-step", "guide", "documentation"]
+    },
+    {
       "name": "visualize",
       "description": "Generate a self-contained HTML visualization in an ivory/clay editorial gallery style for systems, plans, code flows, and concepts.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "visualize" },
