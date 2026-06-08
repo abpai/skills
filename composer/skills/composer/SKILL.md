@@ -1,10 +1,10 @@
 ---
 name: composer
-description: Grouped Cursor Composer workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'setup' (verify Cursor Agent/API key), 'generate' (delegate implementation to Composer), 'review' (strict read-only Composer review of a diff or PR).
+description: "Grouped Cursor Composer workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'setup' (verify Cursor Agent/API key), 'generate' (delegate implementation to Composer), 'review' (strict read-only Composer review of a diff or PR)."
 argument-hint: "[subcommand] [args] — e.g. generate <brief>, --review <PR>, setup --smoke"
 license: MIT
 metadata:
-  version: "1.4.0"
+  version: "1.4.1"
 ---
 
 # Composer Workflow Pack

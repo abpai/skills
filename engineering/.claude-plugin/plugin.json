@@ -1,6 +1,6 @@
 {
   "name": "engineering",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "Engineering-practice workflow pack with /engineering:* commands, including read-only complexity reports.",
   "author": {
     "name": "Andy Pai"
