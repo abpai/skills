@@ -1,10 +1,10 @@
 ---
 name: composer
-description: Use when the user asks for /composer:setup, /composer:generate, /composer:review, Cursor Composer delegation, Composer 2.5 implementation subagents, Cursor-agent setup checks, Cursor API key validation, or a thin planner/executor workflow that uses Cursor without the Pi harness.
+description: "Grouped Cursor Composer workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'setup' (verify Cursor Agent/API key), 'generate' (delegate implementation to Composer), 'review' (strict read-only Composer review of a diff or PR)."
 argument-hint: "[subcommand] [args] — e.g. generate <brief>, --review <PR>, setup --smoke"
 license: MIT
 metadata:
-  version: "1.2.0"
+  version: "1.4.1"
 ---
 
 # Composer Workflow Pack
@@ -15,17 +15,21 @@ without adopting the Pi harness: a strong planner writes the brief, Composer
 executes or reviews in a bounded workspace, and the parent agent inspects the
 result before shipping.
 
-Each public workflow also ships as its own `composer/skills/<name>/SKILL.md` so
-it surfaces as a namespaced `/composer:<name>` command; those per-command skills
-set `disable-model-invocation: true` and `metadata.internal: true`, so agents
-that flatten every `SKILL.md` into one list — e.g. the `npx skills` installer
-used by Codex — hide the per-command wrappers and surface only this pack.
+This umbrella is the single scoped `/composer` command users see in the `/`
+menu. Each workflow also ships as its own `composer/skills/<name>/SKILL.md`, but
+those per-command skills set `disable-model-invocation: true`,
+`user-invocable: false`, and `metadata.internal: true`, so they stay out of the
+model's auto-invocation, out of the `/` menu (no unscoped `/<name>` duplicates
+of the umbrella), and out of flat-list installers like the `npx skills`
+installer used by Codex. Reach any workflow through this umbrella — the
+subcommand router below maps `/composer <name>` to the matching module.
 
 ## Subcommand invocation
 
-On surfaces without `/composer:<name>` namespacing (e.g. Codex), invoke a
-workflow by passing its name as the first argument. Both forms are equivalent
-and supported:
+Invoke a workflow by passing its name as the first argument to this umbrella —
+this is the access path on every surface: the Claude `/` menu shows only
+`/composer` (the per-command wrappers are hidden), and Codex has no `:`
+namespace. Both forms are equivalent and supported:
 
 - `composer <subcommand> <args>` — e.g. `composer generate <brief>`
 - `composer --<subcommand> <args>` — e.g. `composer --review <PR>`
@@ -48,15 +52,30 @@ whole input as a natural-language request and route by intent.
 ## Defaults
 
 - Prefer the Cursor CLI (`cursor-agent`) over the TypeScript SDK for this skill.
-  The CLI reuses the user's Cursor setup, supports `CURSOR_API_KEY`, and is
-  easier to smoke-test from arbitrary repos.
+  The headless CLI is the scripting path for one-off repo generate/review work:
+  it supports `--print`, `--workspace`, `--worktree`, `--model`,
+  `--output-format`, browser login, and `CURSOR_API_KEY`.
+- Use the TypeScript SDK only when building a reusable orchestrator that needs
+  local/cloud agent selection, hooks/tool gates, durable agents, artifacts, or
+  parallel cloud workers. Do not switch ordinary `/composer:generate` or
+  `/composer:review` runs to the SDK.
 - Default implementation model: `composer-2.5-fast`.
 - Use `composer-2.5` when the user asks for the slower path or when the change
   is correctness-sensitive enough to justify it.
+- Run review in Cursor `ask` mode, not `plan` mode. `ask` is read-only and
+  returns a review answer; `plan` can turn the run into planning UI behavior and
+  hide useful findings in progress/thinking events.
 - Do not print, commit, or include secrets from `.env`. Report only whether
   `CURSOR_API_KEY` is present and whether the Cursor auth/model check passed.
+- Browser login is valid Cursor auth only after
+  `cursor-agent-doctor.sh --auth login --smoke` passes. For unattended
+  workflows, prefer `CURSOR_API_KEY`; `status` and `models` are not enough proof
+  that headless `--print` prompts can run.
 - Keep Composer as an executor/reviewer. The parent agent still owns scope,
   PR quality, final validation, and user-facing judgment.
+- For machine-readable output, prefer `--output-format json` and read the final
+  `result` field. Use `stream-json` only when you need progress events, and do
+  not treat `thinking` events as user-facing review findings.
 
 ## Scripts
 

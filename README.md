@@ -13,6 +13,8 @@ This repository now ships metadata for both runtimes:
 
 ### Claude Code
 
+Run these slash commands **inside a Claude Code session**:
+
 ```bash
 # Add the marketplace (once)
 /plugin marketplace add abpai/skills
@@ -25,6 +27,7 @@ This repository now ships metadata for both runtimes:
 /plugin install code@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install composer@abpai-skills
+/plugin install capture-feedback@abpai-skills
 /plugin install pi@abpai-skills
 ```
 
@@ -68,20 +71,21 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is full PR readiness, `review-and-commit` is quick local review plus commit, and the finish-lane helper runs internally from PR prep after code is working. Also includes goal, explain, try, walkthrough (teach a system to verified mastery), understand, dead-code, scratch, secure-dependencies, and handoff |
+| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, commits, push, and PR update) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes explain, walkthrough (teach a system to verified mastery), understand, dead-code, scratch, secure-dependencies, handoff, and thermo-nuclear (strict baseline-to-PR structural audit) |
 | **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
 
 ### Engineering Practices
 
 | Plugin | What it does |
 |--------|-------------|
-| **engineering** | Groups engineering-practice workflows as one self-contained skill, with Claude commands at `/engineering:grill-me`, `/engineering:tdd`, `/engineering:zoom-out`, `/engineering:improve-architecture`, `/engineering:defined-terms`, and `/engineering:complexity-report` |
+| **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, or `/engineering complexity-report` |
 
 ### Developer Productivity
 
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
+| **capture-feedback** | Capture concise agent-behavior corrections into a local shared inbox for later trace review and skill or rule improvements |
 | **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and return the decisions |
 | **harness** | Groups agent-harness workflows under `/harness:*`: `/harness:docs` creates progressive-disclosure repo docs and `/harness:doctor` audits docs, `AGENTS.md`, glossary/todo specs, domain maps, validation routes, and Harness Doctor findings |
 
@@ -121,13 +125,19 @@ abpai/skills/
 │       ├── SKILL.md
 │       └── references/        (if any)
 ├── code/                      ← grouped coding workflows
+│   ├── hooks/                 ← always-registered gate-before-push PreToolUse(Bash) hook
+│   │   ├── hooks.json
+│   │   └── gate-before-push.sh
 │   └── skills/
 │       ├── code/              ← umbrella skill (/code) + flat workflow modules
-│       │   ├── *.md
+│       │   ├── *.md           ← prepare-pr.md, review-and-commit.md, thermo-nuclear.md, ...
 │       │   ├── references/
-│       │   └── scripts/       ← bundled helpers (e.g. finish-lane.ts)
+│       │   ├── review-patterns/        ← per-gate lenses
+│       │   │   └── scripts/   ← ported executable review assets
+│       │   └── scripts/       ← bundled helpers (e.g. finish-lane.ts preflight)
 │       ├── review-and-commit/ ← /code:review-and-commit (one SKILL.md per command)
 │       ├── prepare-pr/        ← /code:prepare-pr
+│       ├── thermo-nuclear/    ← /code:thermo-nuclear
 │       └── <workflow>/        ← one namespaced skill per workflow
 ├── engineering/               ← grouped engineering-practice workflows
 │   └── skills/
@@ -174,12 +184,21 @@ material that should be bundled without becoming separate skills.
 The pattern for a grouped workflow pack:
 
 - `skills/<plugin>/SKILL.md` — the model-invocable **umbrella** skill that
-  collapses to `/<plugin>` and routes to the bundled workflow modules
-  (`skills/<plugin>/*.md`, which are loose support files, not skills).
-- `skills/<workflow>/SKILL.md` — one **per-command** skill that surfaces
-  `/<plugin>:<workflow>` in the menu. These carry
-  `disable-model-invocation: true` so only the user triggers them directly,
-  while the model continues to auto-route through the single umbrella skill.
+  collapses to `/<plugin>` (the single scoped entry in the `/` menu) and routes
+  `/<plugin> <workflow>` to the bundled workflow modules (`skills/<plugin>/*.md`,
+  which are loose support files, not skills).
+- `skills/<workflow>/SKILL.md` — one **per-command** skill per workflow, carrying
+  `disable-model-invocation: true`, `user-invocable: false`, and
+  `metadata.internal: true`. Together these keep the wrapper out of the model's
+  auto-routing, out of the Claude Code `/` menu, and out of flat-list installers,
+  leaving the umbrella as the only menu entry — reach a workflow via
+  `/<plugin> <workflow>`. The `user-invocable: false` flag matters because Claude
+  Code lists each `skills/<workflow>/SKILL.md` in the `/` menu under its **bare
+  leaf name** (`/<workflow>`) even though the command itself is namespaced;
+  leaving wrappers user-invocable sprawls those leaf-name entries across the menu
+  where they collide with each other and with built-ins (e.g. a pack's `/review`
+  next to the built-in `/review`). (A pack with no umbrella, like `pi`, keeps its
+  phase commands user-invocable since there is no router to fall back to.)
 
 If you reintroduce a `commands/` directory, the namespaced commands disappear.
 Keep new workflows as `skills/<name>/SKILL.md`.
@@ -213,14 +232,18 @@ and [Claude Code plugin docs](https://code.claude.com/docs/en/plugins):
 
 #### From the marketplace
 
+Lines starting with `/plugin` are slash commands you run **inside a Claude Code
+session**; lines starting with `claude plugin` are run **from your terminal /
+CLI**.
+
 ```bash
-# Add the marketplace (once)
+# Inside a session: add the marketplace (once)
 /plugin marketplace add abpai/skills
 
-# Browse available plugins
+# Inside a session: browse available plugins
 /plugin
 
-# Install a plugin (user scope, default)
+# From your terminal: install a plugin (user scope, default)
 claude plugin install distill@abpai-skills
 
 # Install to project scope (shared with team via .claude/settings.json)
@@ -261,8 +284,9 @@ cd skills
 codex
 ```
 
-Open the plugin directory with `codex /plugins` — all Codex-compatible
-plugins appear automatically from the repo marketplace.
+Open the plugin directory with `codex /plugins` — the repo marketplace appears
+there, and you install the Codex-compatible plugins from it (it is not a fully
+automatic install).
 
 `pi` stays Claude-only in this repo and therefore does not appear in the Codex
 marketplace list. The grouped workflow packs, including `engineering` and
@@ -343,16 +367,6 @@ bash scripts/validate-skills.sh
 ```
 
 The script is also run automatically as a pre-commit hook.
-
-## Security Scanning
-
-This repository is configured with [Cisco Skill Scanner](https://github.com/cisco-ai-defense/skill-scanner)
-via pre-commit.
-
-1. Install pre-commit: `uv tool install pre-commit`
-2. Install hooks: `uvx pre-commit install`
-3. (Optional) copy `.env.example` to `.env` and customize scanner settings
-4. Run manually: `uvx pre-commit run --all-files`
 
 ## License
 

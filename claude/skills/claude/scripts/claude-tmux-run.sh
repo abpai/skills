@@ -87,7 +87,7 @@ NO_WAIT="false"
 DRY_RUN="false"
 MODEL=""
 EFFORT=""
-PERMISSION_MODE=""
+PERMISSION_MODE="${CLAUDE_TMUX_PERMISSION_MODE:-auto}"
 AGENT_NAME=""
 ALLOWED_TOOLS=""
 DISALLOWED_TOOLS=""
@@ -479,6 +479,12 @@ write_status() {
     env_line run_dir "${RUN_DIR:-}"
     env_line transcript_file "${TRANSCRIPT_FILE:-}"
     env_line base_transcript_lines "${BASE_TRANSCRIPT_LINES:-0}"
+    env_line phase "${LAST_PHASE:-unknown}"
+    env_line stalled_for_seconds "${STALLED_FOR_SECONDS:-0}"
+    env_line transcript_lines "${LAST_TRANSCRIPT_LINES:-0}"
+    env_line last_event "${LAST_EVENT:-unknown}"
+    env_line last_tool "${LAST_TOOL:-}"
+    env_line assistant_text_seen "${ASSISTANT_TEXT_SEEN:-false}"
     env_line final_file "${FINAL_FILE:-}"
     env_line continue_command "${RUN_DIR:-}/continue.sh --prompt '<follow-up>'"
     env_line submit_command "${RUN_DIR:-}/submit.sh"
@@ -543,7 +549,11 @@ capture_pane() {
   fi
 }
 
-parse_turn() {
+file_mtime() {
+  stat -c '%Y' "$1" 2>/dev/null || stat -f '%m' "$1" 2>/dev/null || echo 0
+}
+
+analyze_turn() {
   local transcript="$1"
   python3 - "$transcript" "$FINAL_FILE" "${BASE_TRANSCRIPT_LINES:-0}" <<'PY'
 import json
@@ -556,9 +566,72 @@ try:
 except ValueError:
     base_lines = 0
 
-last_text = ""
-turn_done = False
 saw_new_user = False
+saw_tool_use = False
+saw_tool_result = False
+assistant_text_seen = False
+pending_tool_ids = set()
+turn_done = False
+last_text = ""
+last_event = "none"
+last_tool = ""
+transcript_lines = 0
+
+def emit(result, detail, phase):
+    values = [
+        ("result", result),
+        ("detail", detail),
+        ("phase", phase),
+        ("transcript_lines", str(transcript_lines)),
+        ("last_event", last_event),
+        ("last_tool", last_tool),
+        ("assistant_text_seen", "true" if assistant_text_seen else "false"),
+        ("saw_tool_use", "true" if saw_tool_use else "false"),
+        ("saw_tool_result", "true" if saw_tool_result else "false"),
+    ]
+    for key, value in values:
+        print(f"{key}\t{value}")
+
+def iter_content(content):
+    if isinstance(content, list):
+        yield from content
+    elif isinstance(content, dict):
+        yield content
+
+def tool_result_ids(content):
+    ids = []
+    for item in iter_content(content):
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "tool_result":
+            ids.append(str(item.get("tool_use_id") or item.get("id") or ""))
+        nested = item.get("content")
+        if nested is not content:
+            ids.extend(tool_result_ids(nested))
+    return ids
+
+def tool_uses(content):
+    uses = []
+    for item in iter_content(content):
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") == "tool_use":
+            uses.append((str(item.get("id") or ""), str(item.get("name") or "tool")))
+        nested = item.get("content")
+        if nested is not content:
+            uses.extend(tool_uses(nested))
+    return uses
+
+def phase_for_waiting():
+    if pending_tool_ids:
+        return "tool-running"
+    if saw_tool_result and not assistant_text_seen:
+        return "thinking"
+    if assistant_text_seen:
+        return "responding"
+    if saw_new_user:
+        return "thinking"
+    return "waiting-user"
 
 def content_to_text(content):
     if isinstance(content, str):
@@ -578,8 +651,10 @@ def content_to_text(content):
 
 try:
     lines = Path(transcript_path).read_text(encoding="utf-8").splitlines()
+    transcript_lines = len(lines)
 except FileNotFoundError:
-    print("missing-transcript")
+    last_event = "missing-transcript"
+    emit("waiting", "missing-transcript", "waiting-transcript")
     sys.exit(1)
 
 for line in lines[base_lines:]:
@@ -587,29 +662,72 @@ for line in lines[base_lines:]:
         event = json.loads(line)
     except json.JSONDecodeError:
         continue
-    if event.get("type") == "user":
+    event_type = event.get("type")
+    if event_type == "user":
         saw_new_user = True
+        content = event.get("message", {}).get("content", event.get("content", ""))
+        result_ids = tool_result_ids(content)
+        if result_ids:
+            saw_tool_result = True
+            # Only clear a pending tool we can match by id. A tool_result with no
+            # id used to pop an ARBITRARY pending id, which could mark a tool that
+            # is still running as complete and flip the phase off tool-running;
+            # leaving unmatched ids pending is the safe, deterministic choice.
+            for result_id in result_ids:
+                if result_id:
+                    pending_tool_ids.discard(result_id)
+            last_event = "tool_result"
+        else:
+            last_event = "user"
+        assistant_text_seen = False
         last_text = ""
         turn_done = False
         continue
-    if event.get("type") == "assistant":
+    if event_type == "assistant":
         content = event.get("message", {}).get("content", [])
+        uses = tool_uses(content)
+        if uses:
+            saw_tool_use = True
+            for tool_id, _tool_name in uses:
+                if tool_id:
+                    pending_tool_ids.add(tool_id)
+            last_tool = uses[-1][1]
+            last_event = "tool_use"
         text = content_to_text(content).strip()
         if text:
+            assistant_text_seen = True
             last_text = text
-    elif event.get("type") == "system" and event.get("subtype") == "turn_duration":
+            if not uses:
+                last_event = "assistant_text"
+    elif event_type == "system" and event.get("subtype") == "turn_duration":
+        last_event = "turn_duration"
         turn_done = bool(last_text)
 
 if turn_done:
     Path(final_path).write_text(last_text + "\n", encoding="utf-8")
-    print("done")
+    emit("done", "turn-complete", "done")
     sys.exit(0)
 if saw_new_user:
-    print("waiting-assistant")
+    emit("waiting", "waiting-assistant", phase_for_waiting())
     sys.exit(1)
-print("waiting-user")
+emit("waiting", "waiting-user", phase_for_waiting())
 sys.exit(1)
 PY
+}
+
+read_analysis_fields() {
+  local analysis_file="$1"
+  local key value
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      detail) last_detail="$value" ;;
+      phase) LAST_PHASE="$value" ;;
+      transcript_lines) LAST_TRANSCRIPT_LINES="$value" ;;
+      last_event) LAST_EVENT="$value" ;;
+      last_tool) LAST_TOOL="$value" ;;
+      assistant_text_seen) ASSISTANT_TEXT_SEEN="$value" ;;
+    esac
+  done < "$analysis_file"
 }
 
 monitor_loop() {
@@ -635,6 +753,14 @@ monitor_loop() {
   local started
   started="$(date +%s)"
   local last_detail="waiting"
+  LAST_PHASE="starting"
+  STALLED_FOR_SECONDS="0"
+  LAST_TRANSCRIPT_LINES="0"
+  LAST_EVENT="unknown"
+  LAST_TOOL=""
+  ASSISTANT_TEXT_SEEN="false"
+  local last_progress_at="$started"
+  local last_fingerprint=""
 
   while true; do
     capture_pane
@@ -643,18 +769,37 @@ monitor_loop() {
     if [[ -n "$transcript" && -f "$transcript" ]]; then
       TRANSCRIPT_FILE="$transcript"
       write_run_env
-      if parse_turn "$transcript" >/tmp/claude-tmux-parse.$$ 2>/tmp/claude-tmux-parse-err.$$; then
+      if analyze_turn "$transcript" >/tmp/claude-tmux-parse.$$ 2>/tmp/claude-tmux-parse-err.$$; then
+        read_analysis_fields /tmp/claude-tmux-parse.$$
         write_status "done" "0" "turn complete"
         rm -f /tmp/claude-tmux-parse.$$ /tmp/claude-tmux-parse-err.$$
-        echo "[claude-tmux] event=finish state=done exit_code=0 final=$FINAL_FILE attach=\"tmux attach -t $TMUX_SESSION\""
+        echo "[claude-tmux] event=finish state=done exit_code=0 phase=$LAST_PHASE transcript_lines=$LAST_TRANSCRIPT_LINES final=$FINAL_FILE attach=\"tmux attach -t $TMUX_SESSION\""
         return 0
       else
-        last_detail="$(cat /tmp/claude-tmux-parse.$$ 2>/dev/null || true)"
+        read_analysis_fields /tmp/claude-tmux-parse.$$
         rm -f /tmp/claude-tmux-parse.$$ /tmp/claude-tmux-parse-err.$$
       fi
     else
       last_detail="waiting-transcript"
+      LAST_PHASE="waiting-transcript"
+      LAST_TRANSCRIPT_LINES="0"
+      LAST_EVENT="missing-transcript"
+      LAST_TOOL=""
+      ASSISTANT_TEXT_SEEN="false"
     fi
+
+    # Stall detection tracks transcript PROGRESS only. The tmux pane is still
+    # captured (for inspection and the missing-pane check below) but is
+    # deliberately excluded from the fingerprint: Claude Code's TUI animates a
+    # live "esc to interrupt - Ns" counter every second, so a pane checksum
+    # would change on every heartbeat and pin stalled_for_seconds near zero even
+    # during a genuine hang -- defeating the very signal the operator relies on.
+    local transcript_mtime fingerprint
+    transcript_mtime="0"
+    if [[ -n "${TRANSCRIPT_FILE:-}" && -f "$TRANSCRIPT_FILE" ]]; then
+      transcript_mtime="$(file_mtime "$TRANSCRIPT_FILE")"
+    fi
+    fingerprint="${TRANSCRIPT_FILE:-unknown}:${LAST_TRANSCRIPT_LINES:-0}:$transcript_mtime"
 
     if [[ -n "$TMUX_SESSION" ]] && ! tmux has-session -t "$TMUX_SESSION" 2>/dev/null; then
       write_status "failed" "1" "tmux session ended before monitored turn completed"
@@ -664,15 +809,20 @@ monitor_loop() {
 
     local now elapsed
     now="$(date +%s)"
+    if [[ "$fingerprint" != "$last_fingerprint" ]]; then
+      last_fingerprint="$fingerprint"
+      last_progress_at="$now"
+    fi
+    STALLED_FOR_SECONDS=$((now - last_progress_at))
     elapsed=$((now - started))
     if (( TIMEOUT_SECONDS > 0 && elapsed >= TIMEOUT_SECONDS )); then
       write_status "timeout" "124" "$last_detail"
-      echo "[claude-tmux] event=timeout elapsed=${elapsed}s detail=$last_detail attach=\"tmux attach -t $TMUX_SESSION\""
+      echo "[claude-tmux] event=timeout elapsed=${elapsed}s detail=$last_detail phase=$LAST_PHASE stalled_for=${STALLED_FOR_SECONDS}s transcript_lines=$LAST_TRANSCRIPT_LINES last_event=$LAST_EVENT last_tool=$LAST_TOOL attach=\"tmux attach -t $TMUX_SESSION\""
       return 124
     fi
 
     write_status "running" "" "$last_detail"
-    echo "[claude-tmux] event=progress elapsed=${elapsed}s detail=$last_detail transcript=${TRANSCRIPT_FILE:-unknown} attach=\"tmux attach -t $TMUX_SESSION\""
+    echo "[claude-tmux] event=progress elapsed=${elapsed}s detail=$last_detail phase=$LAST_PHASE stalled_for=${STALLED_FOR_SECONDS}s transcript_lines=$LAST_TRANSCRIPT_LINES last_event=$LAST_EVENT last_tool=$LAST_TOOL transcript=${TRANSCRIPT_FILE:-unknown} attach=\"tmux attach -t $TMUX_SESSION\""
     sleep "$HEARTBEAT_SECONDS"
   done
 }
@@ -871,7 +1021,10 @@ chmod u=rwx,go= "$MONITOR_SCRIPT"
 cat > "$CONTINUE_SCRIPT" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-exec $(shell_quote "$SCRIPT_PATH") run --continue-run $(shell_quote "$RUN_DIR") "\$@"
+if command -v tmux >/dev/null 2>&1 && tmux has-session -t $(shell_quote "$TMUX_SESSION") 2>/dev/null; then
+  exec $(shell_quote "$SCRIPT_PATH") run --continue-run $(shell_quote "$RUN_DIR") "\$@"
+fi
+exec $(shell_quote "$SCRIPT_PATH") run --continue-run $(shell_quote "$RUN_DIR") --resume-session $(shell_quote "$SESSION_ID") "\$@"
 EOF
 chmod u=rwx,go= "$CONTINUE_SCRIPT"
 

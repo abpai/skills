@@ -1,7 +1,8 @@
 # Composer Setup
 
-Verify that this machine can use both Cursor Composer and OpenAI Codex from
-headless agent workflows.
+Verify that this machine can use Cursor Composer from headless agent workflows.
+OpenAI Codex login is optional and only matters when the workflow will also use
+Codex for review.
 
 ## Preflight
 
@@ -24,10 +25,17 @@ For an end-to-end smoke:
 CURSOR_ENV_FILE=/path/to/.env composer/skills/composer/scripts/cursor-agent-doctor.sh --smoke
 ```
 
+Use browser login only when the smoke proves it can run headless prompts:
+
+```bash
+composer/skills/composer/scripts/cursor-agent-doctor.sh --auth login --smoke
+```
+
 ## What Good Looks Like
 
 - `cursor-agent` is installed.
-- `CURSOR_API_KEY` is present in the environment or loaded from `.env`.
+- Cursor auth works through `CURSOR_API_KEY`, or through browser login after the
+  login smoke passes.
 - `cursor-agent models` succeeds and includes `composer-2.5` or
   `composer-2.5-fast`.
 - `codex login status` succeeds when OpenAI/Codex review is part of the loop.
@@ -36,6 +44,8 @@ CURSOR_ENV_FILE=/path/to/.env composer/skills/composer/scripts/cursor-agent-doct
 ## Setup Guidance
 
 - Cursor auth can use `CURSOR_API_KEY` or `cursor-agent login`.
+- `cursor-agent status` and `cursor-agent models` can be advisory only; trust
+  the smoke test when deciding whether login auth is ready for automation.
 - Codex auth can use `codex login`, `codex login --device-auth`,
   `codex login --with-api-key`, or existing cached login.
 - Do not paste secrets into chat. Ask the user to place them in `.env`,

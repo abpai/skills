@@ -8,7 +8,7 @@ Create a focused continuation prompt for a fresh coding session. This adapts the
 
 Use this when the user wants to pause, continue elsewhere, transfer work to another agent, create a reviewer/operator handoff, or turn the current coding thread into a prompt that works cold.
 
-Do not use this for defining a new autonomous goal from scratch; use `goal.md` when the work is still underspecified. Do not use this for explaining code; use `explain.md` or `understand.md`.
+Do not use this for defining a new autonomous goal from scratch; clarify the goal first when the work is still underspecified. Do not use this for explaining code; use `explain.md` or `understand.md`.
 
 ## Core Rule
 

@@ -8,6 +8,7 @@
 node_modules/
 .env
 .workflow/
+.understand/
 __pycache__
 .claude/
 .agents/work/current.json

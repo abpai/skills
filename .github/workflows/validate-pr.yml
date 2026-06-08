@@ -13,12 +13,33 @@ jobs:
         with:
           python-version: "3.12"
       - uses: oven-sh/setup-bun@v2
+      - name: Install PyYAML (strict frontmatter parse, matches npx skills)
+        run: pip install pyyaml
       - name: Sync plugin versions and regenerate versions.json
         run: |
           scripts/sync-plugin-versions.sh
           scripts/generate-versions.sh
+      - name: Verify generated version surfaces are committed
+        run: |
+          if ! git diff --exit-code -- \
+            versions.json \
+            '*/.claude-plugin/plugin.json' \
+            '*/.codex-plugin/plugin.json'; then
+            echo "::error::Generated version surfaces are out of date. Run scripts/sync-plugin-versions.sh && scripts/generate-versions.sh and commit the result."
+            exit 1
+          fi
       - name: Run skill validation
         run: scripts/validate-skills.sh
+
+  npx-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate skills are installable via the real npx skills installer
+        run: scripts/validate-npx-install.sh
 
   wrapper-parity:
     runs-on: ubuntu-latest
@@ -29,6 +50,8 @@ jobs:
           python-version: "3.12"
       - name: Run wrapper parity tests
         run: scripts/test-wrapper-parity.sh
+      - name: Run push-gate tests
+        run: scripts/test-gate-before-push.sh
 
   check-version-bump:
     runs-on: ubuntu-latest

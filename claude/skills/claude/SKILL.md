@@ -8,7 +8,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.6.1"
+  version: "1.6.3"
 ---
 
 # Claude Code CLI
@@ -40,7 +40,7 @@ Use the bundled wrapper for ordinary delegation. Resolve
 ```bash
 scripts/claude-tmux-run.sh run \
   --workspace "$PWD" \
-  --permission-mode plan \
+  --permission-mode auto \
   --effort high \
   --prompt "Review the current changes. Findings first."
 ```
@@ -52,6 +52,36 @@ baseline instead of adding marker text to Claude's conversation. It writes
 `run.env`, `status.env`, `monitor.sh`, `prompt.txt`, `prompt-to-send.txt`,
 `final.md`, `command.txt`, `preflight.log`, `pane.txt`, `continue.sh`,
 `submit.sh`, and `resend.sh`.
+
+The generated `session_id` and transcript path are the liveness contract. The
+monitor records `phase`, `stalled_for_seconds`, `transcript_lines`,
+`last_event`, `last_tool`, and `assistant_text_seen` in `status.env` and prints
+the same phase summary in progress lines. Treat `phase=tool-running`,
+`phase=thinking`, and `phase=responding` as active work. `stalled_for_seconds`
+measures how long the **transcript** has gone without growing (the tmux pane is
+not part of this signal, because Claude Code's TUI animates a per-second counter
+that would otherwise mask every stall). Read it together with `phase`: a rising
+`stalled_for_seconds` under `phase=tool-running` usually means a long-running
+tool — attach to the pane to see whether it is still producing output before
+deciding it hung; under `phase=thinking` or `phase=responding` a large
+`stalled_for_seconds` is a stronger sign of a genuine stall. Do not add magic
+stop words to prompts; Claude Code's structured transcript and `turn_duration`
+event are the completion signal.
+
+Use `--permission-mode auto` for tmux runs that should keep moving without
+interactive permission prompts. Claude Code's auto mode runs tool calls through
+its safety classifier instead of asking in the TUI. Use `--permission-mode plan`
+only when you want a manual planning mode and can tolerate Bash prompts for
+commands outside Claude Code's built-in read-only allowlist.
+
+For narrow preapproval, pass explicit tool rules such as `--allowed-tools Bash`
+or `--allowed-tools "Bash(git status)"`. A bare `Bash` allows all shell
+commands for that session, so prefer auto mode for ordinary delegated work and
+reserve broad Bash preapproval for trusted, bounded environments.
+
+Use `--permission-mode bypassPermissions` or `--dangerously-skip-permissions`
+only inside an isolated sandbox or VM. It skips permission prompts rather than
+classifying them.
 
 The monitor has a finite default timeout so schema drift or TUI state cannot
 hang Codex forever. Pass `--timeout 0` only for an intentionally unattended
@@ -72,13 +102,18 @@ Detach without stopping Claude with `Ctrl-b d`.
 
 ### Analysis
 
-Use `--permission-mode plan` for read-only review, critique, summarization, and
-planning:
+Use `--permission-mode auto` for unattended review, critique, summarization, and
+planning so the run keeps moving without permission prompts. `auto` is not itself
+read-only — it lets Claude run tools through the safety classifier — so add
+`--disallowed-tools Edit` when you need a hard guarantee that the run cannot
+modify files. Use `plan` instead when you specifically want Claude Code's
+plan-mode UI and can handle any Bash permission prompts:
 
 ```bash
 scripts/claude-tmux-run.sh run \
   --workspace "$PWD" \
-  --permission-mode plan \
+  --permission-mode auto \
+  --disallowed-tools Edit \
   --effort medium \
   --prompt "Summarize the uncommitted changes and call out risks."
 ```
@@ -111,8 +146,10 @@ Claude Code tmux session, prefer the generated continuation helper:
 
 This loads the prior `tmux_session`, `session_id`, and `workspace`, while
 writing fresh artifacts for the follow-up run. It also preserves the prior
-run-root, startup wait, and prompt-submit settings unless you override them. If
-you need to reconstruct the call manually, use
+run-root, startup wait, and prompt-submit settings unless you override them. The
+helper reuses the old tmux pane when it is still alive; if it is gone, it starts
+a fresh tmux pane and resumes the Claude Code conversation by session id. If you
+need to reconstruct the call manually, use
 `scripts/claude-tmux-run.sh run --continue-run <run-dir>`.
 
 If the tmux pane is gone, resume the Claude Code conversation into a new tmux
@@ -149,7 +186,7 @@ Use repo-native review for ordinary local-change review:
 scripts/claude-tmux-run.sh run \
   --workspace "$PWD" \
   --effort medium \
-  --permission-mode plan \
+  --permission-mode auto \
   --prompt "Review the current uncommitted changes in this repo. Focus on concrete bugs, regressions, misleading docs, packaging issues, and risky assumptions. Output sections in this exact order: Findings, Open questions, Residual risks. Findings should come first with file references. If there are no findings, say 'No findings'."
 ```
 
@@ -159,7 +196,7 @@ For long prompts, write a prompt file and use `--prompt-file`:
 scripts/claude-tmux-run.sh run \
   --workspace "$PWD" \
   --effort medium \
-  --permission-mode plan \
+  --permission-mode auto \
   --prompt-file /tmp/claude_prompt.txt
 ```
 
@@ -185,7 +222,7 @@ cat /tmp/review.diff >> /tmp/claude-review.md
 
 scripts/claude-tmux-run.sh run \
   --workspace "$PWD" \
-  --permission-mode plan \
+  --permission-mode auto \
   --effort medium \
   --prompt-file /tmp/claude-review.md
 ```
@@ -238,20 +275,31 @@ shape.
 
 The tmux-backed run is still active but the transcript is not complete.
 
-Next action: inspect `pane.txt` or attach with `tmux attach -t <session>`. Do
-not kill the session just because the monitor is still waiting.
+Next action: inspect `phase`, `stalled_for_seconds`, `last_event`, and
+`pane.txt`. Do not interrupt or kill the session just because the monitor says
+`waiting-assistant`. If `transcript_lines` is still climbing, or the phase is
+`tool-running`, `thinking`, or `responding` with a low `stalled_for_seconds`,
+Claude is working. Eyeballing `pane.txt` is useful, but its animated counter
+keeps moving even when nothing is progressing, so do not treat pane motion alone
+as proof of liveness.
 
-If `pane.txt` shows a trust prompt, permission prompt, or the pasted prompt
-still sitting in Claude's input box, attach or run `<run-dir>/submit.sh` in the
-existing tmux session. If the prompt is absent, run `<run-dir>/resend.sh`. Do
-not restart the run unless the session is unrecoverable.
+Only send `C-c` or manual keys when the pane visibly shows a prompt that needs
+human input, or when `stalled_for_seconds` is large enough for the task and the
+pane/transcript evidence points to a genuinely hung command. Prefer attaching
+to inspect before interrupting.
+
+If `pane.txt` shows a permission or trust prompt, the launch mode or permissions
+were too restrictive for the delegated run. Attach manually only if you need to
+save the current turn; otherwise restart with `--permission-mode auto` or a
+suitable `--allowed-tools` / sandbox configuration. Do not repeatedly answer
+prompts in tmux by sending raw keys.
 
 ### Slow but still running
 
 The command is still running and has not failed.
 
-Next action: wait once. If it remains too slow for the task, attach or narrow
-scope.
+Next action: wait while `transcript_lines`, pane content, or phase keeps
+changing. If it remains too slow after a real stall, attach or narrow scope.
 
 ### Empty stdout
 

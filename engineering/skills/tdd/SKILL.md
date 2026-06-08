@@ -1,6 +1,7 @@
 ---
 name: tdd
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Use a vertical red-green-refactor loop with behavior-focused tests.

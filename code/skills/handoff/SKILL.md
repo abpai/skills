@@ -1,6 +1,7 @@
 ---
 name: handoff
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Create a focused continuation prompt for a fresh coding session.

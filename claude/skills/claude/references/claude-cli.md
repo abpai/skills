@@ -15,7 +15,7 @@ interactive Claude Code, so the user can attach and take over:
 scripts/claude-tmux-run.sh run \
   --workspace "$PWD" \
   --tmux-session claude-review \
-  --permission-mode plan \
+  --permission-mode auto \
   --prompt "Review the current diff"
 ```
 
@@ -50,6 +50,11 @@ rerun with `--submit-key C-j` or another tmux key name. If the prompt never
 appears after starting a new Claude pane, use `<run-dir>/resend.sh` in the same
 tmux session.
 
+If `pane.txt` shows an interactive trust or permission prompt, attach manually
+only when the current turn must be saved. Otherwise restart with
+`--permission-mode auto`, a specific `--allowed-tools` rule, or a sandboxed
+permission mode that fits the task.
+
 The wrapper records the transcript line count before paste and monitors only
 events after that point, so the prompt sent to Claude stays unchanged.
 
@@ -79,7 +84,7 @@ default for ordinary harness runs.
 ```bash
 claude -p \
   --disallowedTools "Edit" \
-  --permission-mode plan \
+  --permission-mode auto \
   --no-session-persistence \
   "Review this repo for risky shell scripts"
 ```

@@ -1,71 +1,89 @@
 # UBS Static Risk Scanner
 
-Role: Run `ubs` (or a comparable static-risk tool) as a changed-file scanner,
-then triage each finding into a real bug, a justified false positive, or a
-tooling blocker.
+Use the finish-lane UBS artifacts first, then triage the actionable source findings into real bug, justified false positive, or tool blocker. UBS catches what compiles but crashes, and it cries wolf often, so structured source-only triage is the whole job.
 
-## Goal
+## When this gate applies
 
-Find paths that compile but fault at runtime — null/None dereferences,
-unhandled errors, unvalidated input at trust boundaries, leaked resources,
-unawaited async — in the changed files, and resolve each one before the diff
-ships. The gate produces a triaged finding list, not a behavior guarantee.
+- Changed code-like files in the diff: implementation, scripts, CLI/API, parsing, trust boundaries, async, resource lifecycle, error handling.
+- Diff is AI-generated/AI-edited (this gate runs in an AI PR pipeline scanning AI-written code).
+- `ubs` is on PATH (`command -v ubs`); if absent, finish-lane records `status: skipped` and you fall back to manual review against the risk categories below.
 
-## Use When
+UBS is **advisory, not a hard gate**: because it cries wolf often, even a source-level critical never refuses `--seal`. Only failed validation commands (tests/lint/typecheck that actually ran red) close the push gate. UBS findings are surfaced for you to triage — fix or justify them — but the seal decision is the agent's, not the scanner's.
 
-Changed code-like files (implementation, tests, fixtures, scripts, CLI/API,
-parsing, trust boundaries, async or resource lifecycle, error handling) are in
-the diff and `ubs` is available.
+## Gotchas
 
-## Success Criteria
+1. **Finish-lane is the source of truth for PR prep.** Read `.workflow/finish-lane/ubs-summary.md` before running ad hoc commands. The helper scans supported changed source files only, skips tests/fixtures/generated/unsupported files, and writes raw scanner artifacts under `.workflow/finish-lane/`.
 
-- Scanner ran on the changed files, or a concrete skip reason is recorded.
-- Exit code is captured and interpreted.
-- Each finding is fixed at root cause and rescanned, or marked a false positive
-  with a one-line local reason.
-- Command, exit code, finding outcomes, and fix file:line refs are in
-  gate-decisions.md.
+2. **Do not narrate raw output counts.** `ubs --format=jsonl` can emit one JSONL record per check, including zero-count `good`/`info` records. Treat `exit N, M output lines` as implementation noise. Use finish-lane's severity totals and actionable source findings instead.
 
-## Constraints
+3. **Finish-lane runs deterministic artifacts.** The helper invokes `ubs --ci --format=jsonl --beads-jsonl=<path> --report-json=<path> <source files>`, captures stdout/stderr separately, and caps raw fallback logs. Do not add unsupported/no-op flags such as `--profile=loose` or `--skip=11,12`.
 
-- Scan changed files, not the whole repo, by default.
-- Suppress only with a local safety reason at the suppression site.
-- Treat exit code `2` as a tool failure, never as clean.
-- Do not present scanner output as proof that behavior works.
+4. **Exit `2` or timeout is a TOOL FAILURE, never clean.** Run `ubs doctor --fix` if available — usually a missing AST/scanner engine, and JS/TS semantic analysis can silently degrade without it. Never treat exit 2 or `status: timeout` as a pass. The helper does not rely on exit `1` for findings: real `ubs` can return `0` while reporting warnings unless `--fail-on-warning` is used, so finish-lane derives advisory status from parsed JSONL/report severity data.
 
-## Quick Pass
+5. **Category numbers are advisory metadata, not the primary filter.** Real UBS JSONL may expose finding titles/descriptions instead of numeric categories, and severity totals may omit `good`. The finish-lane helper filters after parsing so tests, fixtures, generated files, and known noise categories stay out of the primary action prompt while raw artifacts remain available:
+   - **Block commit (1-5):** null safety · security · async/await · resource/memory leak · type coercion.
+   - **Block merge (6-10):** division-by-zero · resource lifecycle · error swallowing · unhandled promise · array mutation.
+   - **Discuss only (11-14):** debug code · TODO/FIXME/HACK/XXX · `any` · deep nesting (>4).
 
-1. List changed code-like files from `changed-files.txt`, the staged diff, or
-   the PR diff.
-2. Run `ubs --staged` for commit prep; run `ubs --diff` or `ubs <files>` for PR
-   prep.
-3. Read the exit code: `0` clean, `1` findings to triage, `2` tool/setup issue.
-4. For each finding, decide: is the path reachable, guarded, validated
-   elsewhere, or on a trust boundary?
-5. Fix real bugs, record false-positive reasons, and rerun the same scan.
+6. **The four signature AI-code bugs** (expect these before scanning AI diffs): `obj.a.b` no null check (cat **1**) · `fetch(url)` missing await (cat **3**) · `open(file)` never closed (cat **4**) · `catch(e){}` swallowed (cat **8**). Pre-empt them; then rescan with the same finish-lane/ad hoc command.
 
-## Deep Escalation
+7. **Severity x Confidence triage matrix** (not flat reachability):
+   - High-sev / High-conf -> fix immediately, **never suppress**.
+   - High-sev / Low-conf -> investigate first, then fix or justify.
+   - Low-sev / High-conf -> fix if easy, defer if complex.
+   - Low-sev / Low-conf -> document and defer to future cleanup.
 
-When the diff touches a trust boundary or `ubs` reports a real bug, trace the
-callers and tests around each finding, fix at root cause, then rerun the scanner
-plus the targeted behavior tests that exercise the fixed path.
+8. **FP decision tree — three FP exits, one real-bug exit:**
+   - Code path never executes -> **FP (dead code)** — remove it.
+   - Guard clause / `?.` / `??` exists upstream -> **FP (`ubs:ignore`)**.
+   - Validated elsewhere (caller / API / schema, cross-file) -> **FP (cross-file)**.
+   - Else -> **REAL BUG**, fix at root cause (not the symptom).
 
-## Evidence
+9. **Rationalization blacklist — these phrases mean the finding is REAL, not an FP:** "it works in practice" (luck isn't safety) · "always been this way" (tech debt) · "data is always valid" (data changes) · "users won't do that" (users do everything). **Golden rule:** if you must think hard about whether it's an FP, treat it as real and add the guard — a redundant check costs ~nothing, a missed bug costs a lot.
 
-In gate-decisions.md, record the exact command, exit code, the finding list,
-each triage outcome, file:line refs for every fix or suppression, and the rerun
-exit code. For tool errors, attach `ubs doctor` output. For skips, record the
-skip reason.
+10. **Per-category legit suppression reason** (a suppression that doesn't match its category's one valid pattern is itself a red flag):
+   - null (1) = validated by caller/API/schema · async (3) = intentional fire-and-forget (logging/analytics) · leak (4) = app-lifetime global singleton · coercion (5) = `== null` to catch both null and undefined · error-swallow (8) = cleanup that mustn't fail the main op.
 
-## Skip Or Stop Rules
+11. **Suppression token is `ubs:ignore — reason`, with the right comment prefix or the scanner ignores it** and the finding stays open: `//` (JS/TS/Go/Rust/Java) · `#` (Python/Ruby/Shell) · `--` (SQL). Wrong prefix = silently unresolved.
 
-Skip docs-only, generated/vendor/lockfile-only, and no-code diffs. If `ubs` is
-absent, record the `command -v ubs` failure and fall back to manual review.
+12. **Never suppress just to make the scan pass.** Forbidden when: you're not sure it's safe · you don't understand the code · you only want exit 0. Suppress ONLY when ALL true: verified safe + UBS structurally can't see the guarantee (cross-file / runtime / API contract) + comment says WHY.
 
-## Output
+13. **Per-language known FPs UBS reliably cries wolf on:**
+    - **JS/TS:** `?.`/`??` ARE the guard · `const [a,b] = await Promise.all([...])` destructure · `analytics.track()` fire-and-forget · `useState<T|null>(null)` then render needs a loading guard.
+    - **Python:** `raise` re-raise is not swallowed · binary `open(...,'rb')` needs no `encoding=` · `eval('2+2')` literal vs input (prefer `literal_eval`) · context-manager wrappers.
+    - **Go:** interface-nil vs concrete-nil · `defer` in loop (wrap in `func(){...}()`) · best-effort `_ = w.Flush()` · goroutine bounded by `main()`.
+    - **Rust:** `unwrap()` in tests/CLI-`main` (panic-with-backtrace IS the UX) · safe `unsafe{}` FFI wrappers · `tokio::spawn` fire-and-forget cleanup.
+    - **Java:** `@Autowired` / Spring-managed resources · wrap-and-rethrow as `RuntimeException` (not swallowed) · `AutoCloseable` returned to caller (caller closes).
 
-Write one decision to gate-decisions.md: `run` (scanned, findings resolved),
-`deep` (escalated to caller/test review), `skip` (`ubs` absent and manual review
-done, or out of scope, with reason), `override` (recommendation changed for this
-diff), or `blocked` (exit `2` with unresolved high-risk findings), each with the
-evidence above.
+## Quick pass
+
+1. Read `.workflow/finish-lane/ubs-summary.md`.
+2. If `status: skipped`, record the skip reason and do the manual risk review.
+3. If `status: tool-failure` or `status: timeout`, inspect `.workflow/finish-lane/ubs-raw.log`, run `ubs doctor --fix` if available, then rescan.
+4. If `status: advisory-findings`, triage only the listed actionable source findings first: run the FP decision tree (gotcha 8), then the severity x confidence matrix (gotcha 7).
+5. Fix real bugs at root cause; add `ubs:ignore — <category-legit-reason>` (gotcha 10) with the correct comment prefix for genuine FPs.
+6. Rerun finish-lane or the same structured UBS command and document the new summary status.
+
+## Deep pass
+
+- **Big/legacy diff drowning in findings:** baseline/regression mode — `ubs . --report-json=baseline.json` on base, then `ubs . --comparison=baseline.json` on the branch surfaces only NEW issues.
+- **Trust boundary or confirmed real bug:** trace callers and tests around each finding, fix at root cause, then rerun the scanner plus the targeted behavior tests that exercise the fixed path.
+- **Triage by priority on a flood:** parse the JSONL/report artifacts and inspect `critical` first, then `warning`, then security, then async.
+
+## Scripts
+
+None ported. The source skill's `validate.py` only checks the original multi-file skill's folder layout (frontmatter, line budgets, referenced docs), which this single-file lens does not use — no executable asset is worth porting.
+
+## False positives
+
+- **Three FP buckets** (the only legit exits): dead code · guard-clause/`?.`/`??` upstream · cross-file validation (caller/API/schema). See gotcha 13 for the per-language catalog of where UBS predictably mis-fires.
+- **Rationalization blacklist** (gotcha 8): "works in practice" / "always been this way" / "data is always valid" / "users won't do that" all mean REAL.
+- **Suppression discipline** (gotcha 12): never to make the scan pass; only verified-safe + UBS-structurally-blind + WHY-comment, written with the right per-language `ubs:ignore` prefix (gotcha 11) and matching the category's one legit reason (gotcha 10).
+
+## Evidence to record
+
+In the finish-lane gate notes: the UBS summary status, severity totals, actionable source finding list, each triage outcome (real / FP-reason / blocked), file:line for every fix and suppression, and the rerun summary status. For tool failures/timeouts, attach the raw fallback log path and `ubs doctor` output if run. For skips, record the reason (`ubs` absent, no supported source files, or generated/vendor/test-only scope).
+
+## Skip when
+
+Docs-only, generated/vendor/lockfile-only, or no-code diffs. If `ubs` is absent, record the `command -v ubs` failure and fall back to manual review against the 14 categories above.

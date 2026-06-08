@@ -75,12 +75,6 @@ CI enforces that changed plugins have bumped versions. On merge, plugin manifest
 
 ## Validation
 
-Install the official validator (recommended):
-
-```bash
-uv tool install "git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref"
-```
-
 Run:
 
 ```bash
@@ -93,12 +87,13 @@ For wrapper changes that affect `codex-exec` or `claude`, also run:
 scripts/test-wrapper-parity.sh
 ```
 
-If `skills-ref` is installed, the script runs official validation and still enforces the local version/manifest checks. Otherwise it falls back to local structural checks plus the version/manifest checks.
-
-The local validator also checks Claude plugin command frontmatter, plugin agent
-frontmatter, plugin-manifest path safety, and `hooks/hooks.json` structure so
-plugin-only workflows like `pi` stay aligned with current Claude plugin
-conventions.
+`validate-skills.sh` performs local structural validation: it checks skill
+names and `SKILL.md` structure against the `agentskills.io` spec (e.g. the
+≤ 500-line and ≤ 1024-char description guidelines), enforces the version and
+manifest checks, and also validates Claude plugin command frontmatter, plugin
+agent frontmatter, plugin-manifest path safety, and `hooks/hooks.json`
+structure so plugin-only workflows like `pi` stay aligned with current Claude
+plugin conventions. It does not call any external validator.
 
 The wrapper parity test uses fake `codex`, `claude`, and `tmux` binaries to
 verify prompt transport, private run artifacts, generated monitor/continue
@@ -117,4 +112,3 @@ uvx pre-commit install
 Then commits will run:
 
 - `scripts/validate-skills.sh` (structural checks)
-- `skill-scanner` via `scripts/run_skill_scanner.py` (security scanning)

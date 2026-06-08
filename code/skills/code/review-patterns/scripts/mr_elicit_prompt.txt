@@ -1,0 +1,28 @@
+METAMORPHIC RELATION ELICITATION PROMPT
+=======================================
+Ported verbatim-in-spirit from jeffery-skills/testing-metamorphic SKILL.md
+("The Elicitation Prompt"). Paste this when you're stuck finding relations for
+an unfamiliar domain. Fill the [BRACKETS], then make the model enumerate.
+
+----------------------------------------------------------------------
+I have a [SYSTEM TYPE] that takes [INPUT TYPE] and produces [OUTPUT TYPE].
+I cannot compute expected outputs for arbitrary inputs (oracle problem).
+
+List ALL metamorphic relations that MUST hold for a correct implementation.
+For each MR:
+  1. Category (equivalence / additive / multiplicative / permutative /
+     inclusive-exclusive / invertive)
+  2. The exact transformation T(x)
+  3. The exact relation R between f(x) and f(T(x))
+  4. What bug class it catches
+  5. Confidence: would a violation ALWAYS indicate a bug, or only sometimes?
+
+Prioritize by fault sensitivity x independence. I want a DIVERSE set that
+covers different aspects of correctness, not 10 variations of the same property.
+----------------------------------------------------------------------
+
+After the model answers, score each candidate on the Strength Matrix
+(Fault Sensitivity 1-5 x Independence 1-5 / Cost) and implement only Score >= 2.0.
+Drop correlated relations: if two candidates would catch the same mutation set,
+keep only the stronger one. Aim for >=5 independent relations across >=3 of the
+six categories.

@@ -1,6 +1,7 @@
 ---
 name: generate
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Delegate a bounded implementation task to Cursor Composer from a planner-written brief.
@@ -20,7 +21,8 @@ allowed-tools: >
 
 Use the `generate` module.
 
-1. Read `skills/composer/generate.md`.
+1. Read the implementation module: `../composer/generate.md` when installed as
+   this command wrapper, or `composer/skills/composer/generate.md` in the repo.
 2. Turn the planner brief into a bounded Composer prompt.
 3. Run Composer in the requested branch/worktree.
 4. Inspect the diff, validate it, and open a draft PR when requested.

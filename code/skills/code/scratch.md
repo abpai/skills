@@ -7,7 +7,8 @@ reading.
 
 This is for understanding something you already have — building a mental model
 by touching real code in a safe, exploratory way. If the user wants to evaluate
-something new for adoption, use the `try` module instead.
+something new for adoption, keep that exploration isolated from the production
+repo rather than using this module.
 
 ## Invocation Patterns
 

@@ -1,6 +1,7 @@
 ---
 name: dead-code
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Audit a codebase for dead code and produce a safe removal plan.

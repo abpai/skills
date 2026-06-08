@@ -66,10 +66,10 @@
     },
     {
       "name": "code",
-      "description": "Grouped coding workflows under /code:* commands. prepare-pr is full PR readiness, review-and-commit is quick local review plus commit, and finish-lane runs internally from PR prep after code is working.",
+      "description": "Grouped coding workflows under /code:* commands. prepare-pr is full PR readiness through commit, push, and PR update; review-and-commit is quick local review plus commit.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "goal", "prepare-pr", "review", "commit", "qa", "manual-qa", "pr-prep", "browser", "explain", "try", "walkthrough", "understand", "dead-code", "scratch", "dependency-security", "html", "handoff", "continuation"]
+      "keywords": ["code", "prepare-pr", "review", "commit", "qa", "manual-qa", "pr-prep", "browser", "explain", "walkthrough", "understand", "dead-code", "scratch", "dependency-security", "html", "handoff", "continuation"]
     },
     {
       "name": "harness",
@@ -84,6 +84,13 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "decision-worksheet" },
       "category": "productivity",
       "keywords": ["decision", "review", "worksheet", "html", "triage", "ratify-override"]
+    },
+    {
+      "name": "capture-feedback",
+      "description": "Capture concise user corrections about agent behavior into a local shared inbox for later trace review and skill or rule improvements.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "capture-feedback" },
+      "category": "productivity",
+      "keywords": ["feedback", "traces", "agent-behavior", "retrospective", "skills", "rules"]
     },
     {
       "name": "hexagon-audit",

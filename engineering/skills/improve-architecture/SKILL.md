@@ -1,6 +1,7 @@
 ---
 name: improve-architecture
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
 description: Find deepening opportunities that improve locality, leverage, testability, and AI navigability.

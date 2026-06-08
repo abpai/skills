@@ -1,144 +1,64 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 
-type AgentMode = "none" | "claude" | "codex" | "auto" | "peer"
-type ConcreteAgent = "none" | "claude" | "codex"
-type Invoker = "claude" | "codex" | "unknown"
 type PackageManager = "bun" | "pnpm" | "yarn" | "npm" | ""
+type CmdResult = { cmd: string; status: "ok" | "fail" | "skip" }
 
 type Options = {
-  agent: AgentMode
-  agentExplicit: boolean
   baseRef: string
-  outDir: string
-  runChecks: boolean
   runFixes: boolean
+  seal: boolean
+  arm: boolean
+  disarm: boolean
 }
-
-type Step = {
-  logFile: string
-  name: string
-  status: number
-}
-
-type QualityGate = {
-  applies: boolean
-  appliesWhen: string
-  deepPass: string
-  evidence: string
-  gate: string
-  pattern: string
-  playbook: string
-  quickPass: string
-  signal: string
-}
-
-type ClassificationKey =
-  | "api"
-  | "cli"
-  | "code"
-  | "config"
-  | "doc"
-  | "golden"
-  | "oracle"
-  | "perf"
-  | "test"
-  | "ui"
-
-type Classification = {
-  flags: Record<ClassificationKey, boolean>
-  reasons: Record<ClassificationKey, string[]>
-  surfaces: Record<string, { reason: string; surface: string }>
-}
-
-type FileSignal = {
-  file: string
-  sample: string
-}
-
-type AgentPreference = {
-  reviewAgent: ConcreteAgent
-  updatedAt: string
-}
-
-const classificationKeys: ClassificationKey[] = [
-  "api",
-  "cli",
-  "code",
-  "config",
-  "doc",
-  "golden",
-  "oracle",
-  "perf",
-  "test",
-  "ui",
-]
-
-const maxSignalFiles = 80
-const maxPerFileSignalChars = 14000
-const maxTotalSignalChars = 120000
 
 const usage = `Usage: finish-lane.ts [options]
 
-Run a deterministic post-implementation finishing lane for a git checkout:
-scope audit, mechanical cleanup, targeted QA plan, validation commands, and PR
-prep artifacts.
+Deterministic preflight for PR prep. Computes the PR scope union, runs
+discovered fix/validation commands, does fast mechanical scans over changed
+files, and suggests review-pattern lenses. One compact stdout summary plus
+.workflow/finish-lane/changed-files.txt. Never stages, commits, pushes, or PRs.
 
 Options:
-  --base REF        Compare changes against REF when producing summaries.
-                    Defaults to the upstream default branch when discoverable,
-                    then origin/main, then main, then HEAD.
-  --out DIR         Artifact directory. Defaults to
-                    .workflow/finish-lane/<timestamp>.
-  --fix             Run safe mechanical cleanup commands when present
-                    (format, fmt, lint:fix, fix).
-  --agent NAME      Also run a read-only non-interactive review/prep pass.
-                    Supported: auto, none, peer, claude, codex.
-                    Default: auto, which uses the saved project preference or
-                    skips the agent pass when no preference exists.
-                    peer means the opposite of the detected invoker.
-  --no-checks       Skip discovered validation commands.
-  --help            Show this help.
+  --base REF   Override base detection (default: origin/HEAD -> origin/main ->
+               main -> HEAD).
+  --fix        Also run discovered fix/format commands.
+  --arm        Arm the push gate for this repo (prepare-pr Phase 1). Writes the
+               arm marker the gate-before-push hook checks. Needs CLAUDE_PLUGIN_DATA.
+  --seal       Write the per-branch seal sentinel after gates/QA/review pass.
+               Refuses (exit 2, no sentinel) if any discovered validation
+               command is failing, so the gate is never sealed red.
+  --disarm     Disarm the push gate for this repo (prepare-pr Phase 5, after push).
+  --help       Show this help.`
 
-The script never stages, commits, pushes, or creates a PR. It writes artifacts
-that the current agent can inspect before doing those higher-risk steps.`
+function fail(message: string, code = 1): never {
+  console.error(message)
+  process.exit(code)
+}
 
 function parseArgs(args: string[]): Options {
-  const options: Options = {
-    agent: "auto",
-    agentExplicit: false,
-    baseRef: "",
-    outDir: "",
-    runChecks: true,
-    runFixes: false,
-  }
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index]
+  const options: Options = { baseRef: "", runFixes: false, seal: false, arm: false, disarm: false }
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i]
     switch (arg) {
       case "--base":
-        options.baseRef = requiredValue(args, ++index, "--base")
-        break
-      case "--out":
-        options.outDir = requiredValue(args, ++index, "--out")
+        options.baseRef = args[++i] ?? fail("--base requires a value", 2)
         break
       case "--fix":
         options.runFixes = true
         break
-      case "--agent": {
-        const agent = requiredValue(args, ++index, "--agent")
-        if (!["none", "claude", "codex", "auto", "peer"].includes(agent)) {
-          fail("--agent must be one of: auto, none, peer, claude, codex", 2)
-        }
-        options.agent = agent as AgentMode
-        options.agentExplicit = true
+      case "--arm":
+        options.arm = true
         break
-      }
-      case "--no-checks":
-        options.runChecks = false
+      case "--disarm":
+        options.disarm = true
+        break
+      case "--seal":
+        options.seal = true
         break
       case "--help":
       case "-h":
@@ -148,30 +68,15 @@ function parseArgs(args: string[]): Options {
         fail(`Unknown option: ${arg}\n\n${usage}`, 2)
     }
   }
-
   return options
 }
 
-function requiredValue(args: string[], index: number, flag: string): string {
-  const value = args[index]
-  if (!value) {
-    fail(`${flag} requires a value`, 2)
-  }
-  return value
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`
 }
 
-function fail(message: string, code = 1): never {
-  console.error(message)
-  process.exit(code)
-}
-
-function runCapture(command: string, cwd = process.cwd()): { output: string; status: number } {
-  const result = spawnSync(command, {
-    cwd,
-    encoding: "utf8",
-    shell: "/bin/bash",
-  })
-
+function run(command: string, cwd = process.cwd()): { output: string; status: number } {
+  const result = spawnSync(command, { cwd, encoding: "utf8", shell: "/bin/bash" })
   return {
     output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
     status: typeof result.status === "number" ? result.status : 1,
@@ -179,2237 +84,1104 @@ function runCapture(command: string, cwd = process.cwd()): { output: string; sta
 }
 
 function commandExists(command: string): boolean {
-  return runCapture(`command -v ${shellQuote(command)} >/dev/null 2>&1`).status === 0
-}
-
-function preferencePath(rootDir: string): string {
-  return path.join(rootDir, ".workflow", "finish-lane", "preferences.json")
-}
-
-function readAgentPreference(rootDir: string): AgentPreference | null {
-  const file = preferencePath(rootDir)
-  if (!existsSync(file)) {
-    return null
-  }
-
-  try {
-    const parsed = JSON.parse(readFileSync(file, "utf8")) as Partial<AgentPreference>
-    if (parsed.reviewAgent && ["none", "claude", "codex"].includes(parsed.reviewAgent)) {
-      return {
-        reviewAgent: parsed.reviewAgent as ConcreteAgent,
-        updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : "",
-      }
-    }
-  } catch {
-    return null
-  }
-  return null
-}
-
-function writeAgentPreference(rootDir: string, reviewAgent: ConcreteAgent): void {
-  const file = preferencePath(rootDir)
-  mkdirSync(path.dirname(file), { recursive: true })
-  writeFileSync(
-    file,
-    `${JSON.stringify(
-      {
-        reviewAgent,
-        updatedAt: new Date().toISOString(),
-      } satisfies AgentPreference,
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  )
-}
-
-function envValue(name: string): string {
-  return (process.env[name] ?? "").toLowerCase()
-}
-
-function detectInvoker(): Invoker {
-  const explicit = envValue("FINISH_LANE_INVOKER") || envValue("AGENT_INVOKER")
-  if (explicit === "claude" || explicit === "codex") {
-    return explicit
-  }
-
-  if (process.env.CLAUDECODE || process.env.CLAUDE_CODE || process.env.CLAUDE_PLUGIN_ROOT) {
-    return "claude"
-  }
-  if (process.env.CODEX_THREAD_ID || process.env.CODEX_SHELL || process.env.CODEX_HOME || process.env.CODEX_CI) {
-    return "codex"
-  }
-  return "unknown"
-}
-
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`
-}
-
-function markdownEscape(value: string): string {
-  return value.replace(/\|/g, "\\|").replace(/\n/g, " ")
-}
-
-function jsonForHtml(value: unknown): string {
-  return JSON.stringify(value, null, 2)
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026")
-    .replace(/\u2028/g, "\\u2028")
-    .replace(/\u2029/g, "\\u2029")
-}
-
-function bundledReviewPatternDir(): string {
-  return path.resolve(import.meta.dir, "..", "review-patterns")
-}
-
-function playbookPath(gate: QualityGate): string {
-  return path.join(bundledReviewPatternDir(), path.basename(gate.playbook))
-}
-
-function timestamp(): string {
-  return new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")
-}
-
-function log(message: string): void {
-  console.log(`[finish-lane] ${message}`)
+  return run(`command -v ${shellQuote(command)} >/dev/null 2>&1`).status === 0
 }
 
 function gitRefExists(ref: string): boolean {
-  return runCapture(`git rev-parse --verify --quiet ${shellQuote(ref)} >/dev/null`).status === 0
+  return run(`git rev-parse --verify --quiet ${shellQuote(ref)} >/dev/null`).status === 0
 }
 
-function detectBaseRef(requested: string): string {
+// Resolve an explicit --base to a commit. The scope diffs run with `2>/dev/null`,
+// so an unresolvable base (e.g. the typo `orgin/main`) would otherwise silently
+// yield an EMPTY committed diff and the workflow could seal an incomplete scope.
+// Fail fast here, before any scope computation, sentinel, or changed-files write.
+function detectBase(requested: string): string {
   if (requested) {
+    if (!gitRefExists(`${requested}^{commit}`)) {
+      fail(
+        `--base ${requested} does not resolve to a commit. Check for a typo (e.g. 'orgin/main') ` +
+          `or fetch the ref first; refusing to compute scope against an invalid base.`,
+        2,
+      )
+    }
     return requested
   }
-
-  const upstream = runCapture("git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||'").output.trim()
-  if (upstream && gitRefExists(`origin/${upstream}`)) {
-    return `origin/${upstream}`
-  }
-
+  const head = run("git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||'").output.trim()
+  if (head && gitRefExists(`origin/${head}`)) return `origin/${head}`
   for (const candidate of ["origin/main", "origin/master", "main", "master", "HEAD"]) {
-    if (gitRefExists(candidate)) {
-      return candidate
-    }
+    if (gitRefExists(candidate)) return candidate
   }
-
   return "HEAD"
 }
 
 function packageManager(rootDir: string): PackageManager {
-  if (existsSync(path.join(rootDir, "bun.lockb")) || existsSync(path.join(rootDir, "bun.lock"))) {
-    return "bun"
-  }
-  if (existsSync(path.join(rootDir, "pnpm-lock.yaml"))) {
-    return "pnpm"
-  }
-  if (existsSync(path.join(rootDir, "yarn.lock"))) {
-    return "yarn"
-  }
-  if (existsSync(path.join(rootDir, "package-lock.json")) || existsSync(path.join(rootDir, "package.json"))) {
-    return "npm"
-  }
+  if (existsSync(path.join(rootDir, "bun.lockb")) || existsSync(path.join(rootDir, "bun.lock"))) return "bun"
+  if (existsSync(path.join(rootDir, "pnpm-lock.yaml"))) return "pnpm"
+  if (existsSync(path.join(rootDir, "yarn.lock"))) return "yarn"
+  if (existsSync(path.join(rootDir, "package-lock.json")) || existsSync(path.join(rootDir, "package.json"))) return "npm"
   return ""
 }
 
 function packageScripts(rootDir: string): Record<string, string> {
-  const packagePath = path.join(rootDir, "package.json")
-  if (!existsSync(packagePath)) {
-    return {}
-  }
-
+  const file = path.join(rootDir, "package.json")
+  if (!existsSync(file)) return {}
   try {
-    const parsed = JSON.parse(readFileSync(packagePath, "utf8")) as { scripts?: Record<string, string> }
-    return parsed.scripts ?? {}
+    return (JSON.parse(readFileSync(file, "utf8")) as { scripts?: Record<string, string> }).scripts ?? {}
   } catch {
     return {}
   }
 }
 
-function packageScriptCommand(pm: PackageManager, scriptName: string): string {
-  switch (pm) {
-    case "bun":
-      return `bun run ${scriptName}`
-    case "pnpm":
-      return `pnpm run ${scriptName}`
-    case "yarn":
-      return `yarn ${scriptName}`
-    case "npm":
-      return `npm run ${scriptName}`
-    default:
-      return ""
-  }
+function scriptCommand(pm: PackageManager, name: string): string {
+  if (pm === "bun") return `bun run ${name}`
+  if (pm === "pnpm") return `pnpm run ${name}`
+  if (pm === "yarn") return `yarn ${name}`
+  if (pm === "npm") return `npm run ${name}`
+  return ""
 }
 
-function runStep(name: string, command: string, rootDir: string, logDir: string, steps: Step[]): void {
-  const logFile = path.join(logDir, `${name}.log`)
-  log(`running ${name}`)
-  const result = runCapture(command, rootDir)
-  writeFileSync(logFile, `$ ${command}\n\n${result.output}`, "utf8")
-  steps.push({ logFile, name, status: result.status })
+// --- Scope union ---------------------------------------------------------
 
-  if (result.status === 0) {
-    log(`ok ${name}`)
-  } else {
-    log(`failed ${name} (exit ${result.status})`)
-  }
-}
+function scopeFiles(rootDir: string, baseRef: string): {
+  committed: string[]
+  uncommitted: string[]
+  untracked: string[]
+  all: string[]
+} {
+  const lines = (cmd: string) =>
+    run(cmd, rootDir)
+      .output.split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
 
-function writeSteps(outDir: string, steps: Step[]): void {
-  writeFileSync(
-    path.join(outDir, "steps.tsv"),
-    steps.map((step) => `${step.name}\t${step.status}\t${step.logFile}`).join("\n") + (steps.length ? "\n" : ""),
-    "utf8",
-  )
-}
-
-function writeChangedFiles(rootDir: string, outDir: string, outRel: string, baseRef: string): string[] {
-  const sections = [
-    "# tracked",
-    ...runCapture(`git diff --name-only ${shellQuote(baseRef)}...HEAD 2>/dev/null`, rootDir).output.split(/\r?\n/),
-    ...runCapture("git diff --name-only 2>/dev/null", rootDir).output.split(/\r?\n/),
-    ...runCapture("git diff --cached --name-only 2>/dev/null", rootDir).output.split(/\r?\n/),
-    "# untracked",
-    ...runCapture("git ls-files --others --exclude-standard 2>/dev/null", rootDir).output.split(/\r?\n/),
+  const committed = lines(`git diff --name-only ${shellQuote(baseRef)}...HEAD 2>/dev/null`)
+  const uncommitted = [
+    ...lines("git diff --name-only 2>/dev/null"),
+    ...lines("git diff --cached --name-only 2>/dev/null"),
   ]
+  const untracked = lines("git ls-files --others --exclude-standard 2>/dev/null")
 
+  const ignore = (file: string) => file === ".workflow" || file.startsWith(".workflow/")
   const seen = new Set<string>()
-  const files: string[] = []
-  for (const raw of sections) {
-    const file = raw.trim()
-    if (!file || seen.has(file)) {
-      continue
-    }
-    if (file === ".workflow" || file.startsWith(".workflow/")) {
-      continue
-    }
-    if (outRel && (file === outRel || file.startsWith(`${outRel}/`))) {
-      continue
-    }
+  const all: string[] = []
+  for (const file of [...committed, ...uncommitted, ...untracked]) {
+    if (ignore(file) || seen.has(file)) continue
     seen.add(file)
-    files.push(file)
+    all.push(file)
   }
 
-  writeFileSync(path.join(outDir, "changed-files.txt"), `${files.join("\n")}\n`, "utf8")
-  return files.filter((file) => !file.startsWith("#"))
+  const dedupe = (files: string[]) => Array.from(new Set(files.filter((file) => !ignore(file))))
+  return { committed: dedupe(committed), uncommitted: dedupe(uncommitted), untracked: dedupe(untracked), all }
 }
 
-function writeSecretRiskReport(outDir: string, changedFiles: string[]): void {
-  const pattern = /(^|\/)\.env($|[.\/])|secret|token|credential|private[_-]?key|service-account|dump|export|backup|\.pem$|\.p12$|\.key$|\.sqlite$|\.db$/i
-  const matches = changedFiles.filter((file) => pattern.test(file))
-
-  writeFileSync(
-    path.join(outDir, "secret-risk.md"),
-    [
-      "# Secret / bulky-file filename risk scan",
-      "",
-      "This is a filename-only scan. Inspect matches before staging.",
-      "",
-      ...matches.map((file) => `- ${file}`),
-      "",
-    ].join("\n"),
-    "utf8",
-  )
+// Hash everything that changes the PR scope so the gate seal invalidates on any
+// new commit, staged/unstaged edit, new untracked file, OR an edit to an
+// existing untracked file's contents.
+//
+// This MUST stay byte-identical to the recompute in code/hooks/gate-before-push.sh
+// or a correctly sealed branch never opens the gate. The hook hashes the stream:
+//   git diff <base>...HEAD   (committed diff, ordered)
+//   git diff                 (unstaged diff, ordered)
+//   git diff --cached        (staged diff, ordered)
+//   for each untracked path (LC_ALL=C-sorted, .workflow/ excluded):
+//     "<path> <git hash-object of path>\n"
+// concatenated with NO separator. Tracked changes already ride in the three
+// diffs; untracked files are NOT in any diff, so we fold in each one's
+// `git hash-object` content id alongside its path — that detects both a new
+// untracked file (path appears) AND a content edit to an existing one (its
+// object id changes), without streaming file bytes (git hashes large/binary
+// files itself). A missing/unreadable path yields an empty id on both sides, so
+// parity holds. The .workflow/ tree (seal sentinel + changed-files.txt) is
+// ephemeral workflow state, so it is excluded here exactly as the hook excludes
+// it — otherwise writing the sentinel would change the hash and self-invalidate
+// the seal.
+function scopeHash(rootDir: string, baseRef: string): string {
+  const diffCommitted = run(`git diff ${shellQuote(baseRef)}...HEAD 2>/dev/null`, rootDir).output
+  const diffUnstaged = run("git diff 2>/dev/null", rootDir).output
+  const diffStaged = run("git diff --cached 2>/dev/null", rootDir).output
+  const untracked = run("git ls-files --others --exclude-standard 2>/dev/null", rootDir)
+    .output.split("\n")
+    .filter((line) => line.length > 0 && !line.startsWith(".workflow/"))
+    .sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b))) // LC_ALL=C byte order
+  const untrackedStream = untracked
+    .map((p) => `${p} ${run(`git hash-object -- ${shellQuote(p)} 2>/dev/null`, rootDir).output.trim()}\n`)
+    .join("")
+  return createHash("sha256").update(diffCommitted + diffUnstaged + diffStaged + untrackedStream).digest("hex")
 }
 
-function findCandidateFiles(rootDir: string, outRel: string): string[] {
-  const roots = ["scripts", "bin", ".github", "workflows", "."]
-  const namePattern = /(auth|login|setup|seed|fixture|e2e|playwright)/i
-  const results = new Set<string>()
+// --- Mechanical scans ----------------------------------------------------
 
-  for (const root of roots) {
-    const absolute = path.join(rootDir, root)
-    if (!existsSync(absolute)) {
-      continue
-    }
-    walk(absolute, rootDir, outRel, (relative) => {
-      if (namePattern.test(relative)) {
-        results.add(relative)
-      }
-    }, 3)
-  }
+const slopPhrases = [
+  "Here's why",
+  "not just",
+  "it's not",
+  "game-changer",
+  "game changer",
+  "seamless",
+  "robust",
+  "delight",
+  "leverage",
+  "unlock",
+  "supercharge",
+]
 
-  return Array.from(results).sort()
+const placeholderPattern = /\b(TODO|FIXME|HACK|stub|placeholder|not implemented)\b/i
+
+function isDocFile(file: string): boolean {
+  return /(^|\/)README(\.[^/]+)?$|(^|\/)docs\//i.test(file) || file.toLowerCase().endsWith(".md")
 }
 
-function walk(
-  current: string,
-  rootDir: string,
-  outRel: string,
-  visit: (relative: string) => void,
-  maxDepth: number,
-  depth = 0,
-): void {
-  if (depth > maxDepth) {
-    return
-  }
-
-  let entries
-  try {
-    entries = readdirSync(current, { withFileTypes: true })
-  } catch {
-    return
-  }
-
-  for (const entry of entries) {
-    const absolute = path.join(current, entry.name)
-    const relative = path.relative(rootDir, absolute)
-    if (
-      relative.startsWith(".git/") ||
-      relative.startsWith("node_modules/") ||
-      relative.startsWith(".workflow/") ||
-      (outRel && (relative === outRel || relative.startsWith(`${outRel}/`)))
-    ) {
-      continue
-    }
-    if (entry.isDirectory()) {
-      walk(absolute, rootDir, outRel, visit, maxDepth, depth + 1)
-    } else if (entry.isFile()) {
-      visit(relative)
-    }
-  }
+function isCodeFile(file: string): boolean {
+  return /\.(ts|tsx|js|jsx|mjs|cjs|py|c|h|cpp|cc|cxx|hpp|go|rs|rb|java|kt|swift|sh|cs|ex|exs)$/i.test(file)
 }
 
-function writeSetupScriptInventory(rootDir: string, outDir: string, outRel: string, scripts: Record<string, string>): void {
-  const pattern = /(auth|login|setup|seed|fixture|dev|preview|serve|start|e2e|playwright|test)/i
-  const scriptLines = Object.entries(scripts)
-    .filter(([name, command]) => pattern.test(name) || pattern.test(command))
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([name, command]) => `- package script \`${name}\`: \`${command}\``)
-  const fileLines = findCandidateFiles(rootDir, outRel).map((file) => `- file \`${file}\``)
+const testFilePattern = /(^|\/)(__tests__|tests?|spec|fixtures?|mocks?)(\/|$)|\.(test|spec)\./i
+const generatedFilePattern =
+  /(^|\/)(node_modules|vendor|vendors|generated|dist|build|coverage|out|target)(\/|$)|(^|\/).*\.generated\.|(^|\/).*\.min\.js$|(^|\/)(bun\.lock|package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$/i
+const ubsSupportedFilePattern =
+  /\.(ts|tsx|js|jsx|mjs|cjs|py|c|h|cpp|cc|cxx|hpp|rs|go|java|rb|swift|cs|ex|exs)$/i
+const ubsTimeoutMs = 60_000
+const ubsRawLogLimit = 20_000
+const ubsActionableLimit = 12
+const ubsMaxBufferBytes = 10 * 1024 * 1024
 
-  writeFileSync(
-    path.join(outDir, "setup-scripts.txt"),
-    [
-      "# Setup / auth / test-entrypoint script candidates",
-      "",
-      "Use deterministic setup scripts for repeated work such as login, seeded",
-      "accounts, fixture loading, dev-server boot, and test data resets. Prefer",
-      "these over slow browser-only setup when they exercise the same precondition.",
-      "",
-      ...(existsSync(path.join(rootDir, "package.json")) ? scriptLines : ["- No package.json found."]),
-      ...fileLines,
-      "",
-    ].join("\n"),
-    "utf8",
-  )
+function isTestFile(file: string): boolean {
+  return testFilePattern.test(file)
 }
 
-function writeSetupBlueprintTemplate(outDir: string): void {
-  writeFileSync(
-    path.join(outDir, "setup-blueprint-template.yml"),
-    `# Save hard-won setup knowledge here when QA required manual discovery.
-# Move the useful parts into a repo-owned testing skill, script, or fixture when
-# it becomes repeatable.
-name: finish-lane-setup
-trigger:
-  when_needed: []
-environment:
-  required_services: []
-  required_secrets: []
-  feature_flags: []
-  seed_data: []
-steps:
-  - name: ""
-    deterministic_command: ""
-    manual_fallback: ""
-    expected_ready_signal: ""
-reuse_candidate:
-  should_promote_to_repo_skill: false
-  reason: ""
-`,
-    "utf8",
-  )
+function isGeneratedFile(file: string): boolean {
+  return generatedFilePattern.test(file)
 }
 
-function writeVerificationTimeline(outDir: string): void {
-  writeFileSync(
-    path.join(outDir, "verification-timeline.md"),
-    `# Verification Timeline
-
-Use this as the chronological proof trail. Before taking an action, write the
-expected behavior. After the action, mark it \`passed\`, \`failed\`, or \`untested\`
-with evidence.
-
-| Time | Phase | Action | Expected Before Action | Result | Evidence |
-|---|---|---|---|---|---|
-| | setup | | | untested | |
-
-## Guardrails
-
-- Prefer real user-path actions for UI verification. Do not use browser
-  JavaScript to force state unless you label it as a lower-level probe and still
-  cover the user path.
-- For timing-sensitive UI such as toasts, loading states, animations, or
-  redirects, capture evidence around the action instead of one arbitrary
-  screenshot.
-- If setup required secrets, OTP, VPN, or a manual handoff, record that blocker
-  and the repeatable setup path to create next.
-`,
-    "utf8",
-  )
+function isUbsSupportedFile(file: string): boolean {
+  return ubsSupportedFilePattern.test(file)
 }
 
-function emptyFlags(): Record<ClassificationKey, boolean> {
-  return Object.fromEntries(classificationKeys.map((key) => [key, false])) as Record<ClassificationKey, boolean>
-}
-
-function emptyReasons(): Record<ClassificationKey, string[]> {
-  return Object.fromEntries(classificationKeys.map((key) => [key, []])) as Record<ClassificationKey, string[]>
-}
-
-function addReason(classification: Classification, key: ClassificationKey, file: string, reason: string): void {
-  classification.flags[key] = true
-  const entry = `\`${file}\`: ${reason}`
-  if (!classification.reasons[key].includes(entry) && classification.reasons[key].length < 5) {
-    classification.reasons[key].push(entry)
-  }
-}
-
-function isConfigPath(file: string): boolean {
-  return (
-    /(^|\/)\.gitignore$/i.test(file) ||
-    /(^|\/)(package|tsconfig|jsconfig|vite|next|nuxt|astro|eslint|prettier|biome|wrangler|turbo|nx|deno|bunfig|versions)\.(json|jsonc|ya?ml|toml|js|mjs|cjs|ts)$/i.test(
-      file,
-    ) ||
-    /(^|\/)(plugin|marketplace)\.json$/i.test(file) ||
-    /\.(json|jsonc|ya?ml|toml)$/i.test(file)
-  )
-}
-
-function isDocPath(file: string): boolean {
-  return /(^|\/)README(?:\.[^/]+)?$|(^|\/)docs\/|\.md$/i.test(file)
-}
-
-function isCliPath(file: string): boolean {
-  return /(^|\/)(commands|bin|scripts|cli)(\/|$)|\.(sh|bash|zsh)$/i.test(file)
-}
-
-function isSourcePath(file: string): boolean {
-  return /\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|sh)$/i.test(file)
-}
-
-function isUiPath(file: string): boolean {
-  return /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|html|css|scss|sass)$/i.test(file)
-}
-
-function isApiPath(file: string): boolean {
-  // Match these tokens as whole path segments, and the unambiguous ones also as
-  // dot/dash/underscore-delimited filename tokens. Short/ambiguous tokens (`db`,
-  // `edge`) stay segment-only so identifiers like `feedbacker` or `edge-cases`
-  // are not misread as backend surfaces.
-  return (
-    /(^|\/)(api|server|workers?|edge|db|database|migrations?|webhooks?)(\/|$)/i.test(file) ||
-    /(^|[._/-])(api|server|workers?|database|migrations?|webhooks?)([._-]|$)/i.test(file)
-  )
-}
-
-function isGoldenPath(file: string): boolean {
-  return /(^|\/)(goldens?|snapshots?|__snapshots__|approvals?)(\/|$)|\.(snap|golden)(\.[^/]*)?$/i.test(file)
-}
-
-function isOraclePath(file: string): boolean {
-  return /(^|\/)ml\/|search|compiler|extractor|parser|ranking|query|graphics|scientific/i.test(file)
-}
-
-function isPerfPath(file: string): boolean {
-  // `profile` is intentionally dropped from the delimited filename clause, and
-  // the segment clause requires plural `profiles/` or `profiling/`: singular
-  // `profile/` is overwhelmingly a user-profile UI route, not profiling. Content
-  // signals catch the rest.
-  return (
-    /(^|\/)(benchmarks?|perf|performance|profiles|profiling)(\/|$)|\.(bench|benchmark)\./i.test(file) ||
-    (!isDocPath(file) && /(^|[._-])(benchmark|hotpath|latency|throughput)([._-]|$)/i.test(file))
-  )
-}
-
-function isTestPath(file: string): boolean {
-  return /(^|\/)(__tests__|tests?|spec|fixtures?|mocks?|msw)(\/|$)|\.(test|spec)\./i.test(file)
-}
-
-function fileTextSample(rootDir: string, file: string): string {
+function readSample(rootDir: string, file: string): string | null {
   const absolute = path.join(rootDir, file)
-  if (!existsSync(absolute)) {
-    return ""
-  }
-
+  if (!existsSync(absolute)) return null
   try {
-    const stats = statSync(absolute)
-    if (!stats.isFile() || stats.size > 262144) {
-      return ""
-    }
     const buffer = readFileSync(absolute)
-    if (buffer.includes(0)) {
-      return ""
-    }
-    return buffer.toString("utf8").slice(0, maxPerFileSignalChars)
+    if (buffer.includes(0) || buffer.length > 524288) return null
+    return buffer.toString("utf8")
   } catch {
-    return ""
+    return null
   }
 }
 
-function gitDiffSample(rootDir: string, baseRef: string, file: string): string {
-  const quoted = shellQuote(file)
-  const sections = [
-    ["base", `git diff --unified=40 ${shellQuote(baseRef)}...HEAD -- ${quoted} 2>/dev/null`],
-    ["working", `git diff --unified=40 -- ${quoted} 2>/dev/null`],
-    ["cached", `git diff --unified=40 --cached -- ${quoted} 2>/dev/null`],
-  ]
-  const output = sections
-    .map(([label, command]) => {
-      const result = runCapture(command, rootDir).output.trim()
-      return result ? `# ${label} diff\n${result}` : ""
-    })
-    .filter(Boolean)
-    .join("\n\n")
-  return output.slice(0, maxPerFileSignalChars)
-}
+type Scan = { slop: number; placeholder: number; hits: string[] }
 
-function fileSignal(rootDir: string, baseRef: string, file: string): FileSignal {
-  const sample = [gitDiffSample(rootDir, baseRef, file), fileTextSample(rootDir, file)]
-    .filter(Boolean)
-    .join("\n\n")
-    .slice(0, maxPerFileSignalChars)
-  return { file, sample }
-}
-
-function hasCliSignal(signal: FileSignal): boolean {
-  return /\b(process\.argv|parseArgs|commander|yargs|argparse|click\.command|cobra\.Command|clap::|subcommand|stdio|stdout|stderr)\b/i.test(
-    signal.sample,
-  )
-}
-
-function hasUiSignal(signal: FileSignal): boolean {
-  return /<(!doctype|html|body|script|button|form|input)\b|document\.|addEventListener\(|className|useState\(|onClick=|aria-|role=/i.test(
-    signal.sample,
-  )
-}
-
-function hasApiSignal(signal: FileSignal): boolean {
-  return /\b(export\s+async\s+function\s+(GET|POST|PUT|PATCH|DELETE)|app\.(get|post|put|patch|delete)\(|router\.(get|post|put|patch|delete)\(|new\s+Response\(|NextResponse|RequestHandler|prisma\.|db\.(query|select|insert|update|delete)|sql`|webhook\s+secret)\b/i.test(
-    signal.sample,
-  )
-}
-
-function hasTestSignal(signal: FileSignal): boolean {
-  return /(^|[^.A-Za-z0-9_])(describe|it|test|expect|assert)\s*\(|pytest|toMatchSnapshot|snapshot\(/i.test(signal.sample)
-}
-
-function hasGoldenSignal(signal: FileSignal): boolean {
-  return /\b(toMatchSnapshot|snapshot\(|approval\s+test|golden\s+update)\b/i.test(signal.sample)
-}
-
-function hasOracleSignal(signal: FileSignal): boolean {
-  return /\b(parser\.parse|ranker|ranking\s+score|compiler\s+pass|tokenizer|ast\s+node|embedding\s+score|model\s+score)\b/i.test(
-    signal.sample,
-  )
-}
-
-function hasPerfSignal(signal: FileSignal): boolean {
-  return /\b(Benchmark|benchmark\(|performance\.mark|performance\.measure|p95|latency|throughput|hot\s+path)\b/i.test(
-    signal.sample,
-  )
-}
-
-function hasSimplificationSignal(signal: FileSignal): boolean {
-  return /\b(simplif(?:y|ication)|refactor|duplicate|duplication|dry|accidental\s+complexity|reduce\s+complexity|shared\s+helper|common\s+helper)\b/i.test(
-    signal.sample,
-  )
-}
-
-function allowsCliSignal(file: string): boolean {
-  return isCliPath(file) || isSourcePath(file)
-}
-
-function allowsUiSignal(file: string): boolean {
-  return isUiPath(file) || isSourcePath(file)
-}
-
-function allowsApiSignal(file: string): boolean {
-  return isApiPath(file) || isSourcePath(file)
-}
-
-function allowsTestSignal(file: string): boolean {
-  return isTestPath(file) || isSourcePath(file)
-}
-
-function allowsGoldenSignal(file: string): boolean {
-  return isGoldenPath(file) || isTestPath(file) || isSourcePath(file)
-}
-
-function allowsOracleSignal(file: string): boolean {
-  return isOraclePath(file) || isTestPath(file) || isSourcePath(file)
-}
-
-function allowsPerfSignal(file: string): boolean {
-  return isPerfPath(file) || isSourcePath(file)
-}
-
-function surfaceForSignal(signal: FileSignal): { reason: string; surface: string } {
-  const file = signal.file
-  if (isConfigPath(file)) {
-    return { reason: "config or manifest path", surface: "config/manifest surface" }
-  }
-  if (isCliPath(file)) {
-    return { reason: "command, script, or shell path", surface: "CLI/script surface" }
-  }
-  if (isUiPath(file)) {
-    return { reason: "frontend path or browser asset extension", surface: "UI/browser surface" }
-  }
-  if (isApiPath(file)) {
-    return { reason: "backend, worker, database, or integration path", surface: "API/edge/server surface" }
-  }
-  if (isTestPath(file)) {
-    return { reason: "test, fixture, mock, or spec path", surface: "test/fixture surface" }
-  }
-  if (isDocPath(file)) {
-    return { reason: "docs or Markdown path", surface: "docs surface" }
-  }
-  if (allowsCliSignal(file) && hasCliSignal(signal)) {
-    return { reason: "bounded diff/content shows CLI argument or stdio handling", surface: "CLI/script surface" }
-  }
-  if (allowsUiSignal(file) && hasUiSignal(signal)) {
-    return { reason: "bounded diff/content shows browser DOM or HTML behavior", surface: "UI/browser surface" }
-  }
-  if (allowsApiSignal(file) && hasApiSignal(signal)) {
-    return { reason: "bounded diff/content shows route, response, database, or webhook handling", surface: "API/edge/server surface" }
-  }
-  if (allowsTestSignal(file) && hasTestSignal(signal)) {
-    return { reason: "bounded diff/content shows test assertions", surface: "test/fixture surface" }
-  }
-  return { reason: isSourcePath(file) ? "source file extension" : "default changed-file fallback", surface: "code surface" }
-}
-
-function classify(rootDir: string, baseRef: string, files: string[]): Classification {
-  const classification: Classification = {
-    flags: emptyFlags(),
-    reasons: emptyReasons(),
-    surfaces: {},
-  }
-  let sampledFiles = 0
-  let totalSignalChars = 0
+function mechanicalScans(rootDir: string, files: string[]): Scan {
+  const scan: Scan = { slop: 0, placeholder: 0, hits: [] }
+  const emdash = /—/g
 
   for (const file of files) {
-    const shouldSample = sampledFiles < maxSignalFiles && totalSignalChars < maxTotalSignalChars
-    const signal = shouldSample ? fileSignal(rootDir, baseRef, file) : { file, sample: "" }
-    if (signal.sample) {
-      sampledFiles += 1
-      totalSignalChars += signal.sample.length
-    }
+    const text = readSample(rootDir, file)
+    if (text === null) continue
+    const lines = text.split(/\r?\n/)
 
-    if (isConfigPath(file)) addReason(classification, "config", file, "config/manifest path")
-    if (isDocPath(file)) addReason(classification, "doc", file, "docs or Markdown path")
-    if (isCliPath(file)) addReason(classification, "cli", file, "command/script path")
-    if (isSourcePath(file)) addReason(classification, "code", file, "source file path")
-    if (isUiPath(file)) addReason(classification, "ui", file, "frontend or browser asset path")
-    if (isApiPath(file)) addReason(classification, "api", file, "backend/integration path")
-    if (isTestPath(file)) addReason(classification, "test", file, "test/fixture/mock path")
-    if (isGoldenPath(file)) addReason(classification, "golden", file, "snapshot/golden/approval path")
-    if (isOraclePath(file)) addReason(classification, "oracle", file, "oracle-free domain path")
-    if (isPerfPath(file)) addReason(classification, "perf", file, "performance-sensitive path")
-
-    if (allowsCliSignal(file) && hasCliSignal(signal)) {
-      addReason(classification, "cli", file, "bounded diff/content shows CLI argument or stdio handling")
-    }
-    if (allowsUiSignal(file) && hasUiSignal(signal)) {
-      addReason(classification, "ui", file, "bounded diff/content shows browser DOM or HTML behavior")
-    }
-    if (allowsApiSignal(file) && hasApiSignal(signal)) {
-      addReason(classification, "api", file, "bounded diff/content shows route, response, database, or webhook handling")
-    }
-    if (allowsTestSignal(file) && hasTestSignal(signal)) {
-      addReason(classification, "test", file, "bounded diff/content shows test assertions")
-    }
-    if (allowsGoldenSignal(file) && hasGoldenSignal(signal)) {
-      addReason(classification, "golden", file, "bounded diff/content shows snapshot or approval-test behavior")
-    }
-    if (allowsOracleSignal(file) && hasOracleSignal(signal)) {
-      addReason(classification, "oracle", file, "bounded diff/content shows parser, ranking, compiler, or model-scoring behavior")
-    }
-    if (allowsPerfSignal(file) && hasPerfSignal(signal)) {
-      addReason(classification, "perf", file, "bounded diff/content shows benchmark or performance metric")
-    }
-    if (isSourcePath(file) && hasSimplificationSignal(signal)) {
-      addReason(classification, "code", file, "bounded diff/content shows simplification, refactor, duplication, or complexity signal")
-    }
-
-    classification.surfaces[file] = surfaceForSignal(signal)
+    lines.forEach((line, index) => {
+      if (isDocFile(file)) {
+        const emdashCount = (line.match(emdash) || []).length
+        if (emdashCount >= 2) {
+          scan.slop += 1
+          if (scan.hits.length < 40) scan.hits.push(`${file}:${index + 1}: emdash-overuse`)
+        }
+        for (const phrase of slopPhrases) {
+          if (line.toLowerCase().includes(phrase.toLowerCase())) {
+            scan.slop += 1
+            if (scan.hits.length < 40) scan.hits.push(`${file}:${index + 1}: slop "${phrase}"`)
+          }
+        }
+      }
+      if (placeholderPattern.test(line)) {
+        scan.placeholder += 1
+        if (scan.hits.length < 40) scan.hits.push(`${file}:${index + 1}: ${line.trim().slice(0, 80)}`)
+      }
+    })
   }
-
-  return classification
+  return scan
 }
 
-function gateSignal(classification: Classification, keys: ClassificationKey[]): string {
-  const reasons = keys.flatMap((key) => classification.reasons[key].map((reason) => `${key}: ${reason}`))
-  return reasons.length ? reasons.slice(0, 4).join("; ") : "No matching bounded signal."
+type UbsSeverity = "good" | "info" | "warning" | "critical"
+type UbsStatus = "skipped" | "clean" | "advisory-findings" | "tool-failure" | "timeout"
+type UbsCounts = Record<UbsSeverity, number>
+type UbsFindingKind = "source" | "test" | "generated" | "unsupported" | "unknown"
+
+type UbsFinding = {
+  severity: UbsSeverity
+  file: string
+  line: number | null
+  category: string
+  message: string
+  kind: UbsFindingKind
+  count: number
 }
 
-function hasGateReason(classification: Classification, key: ClassificationKey, pattern: RegExp): boolean {
-  return classification.reasons[key].some((reason) => pattern.test(reason))
-}
-
-function classificationReasonRows(classification: Classification): string[] {
-  const rows = classificationKeys.flatMap((key) =>
-    classification.reasons[key].map((reason) => `| \`${key}\` | ${markdownEscape(reason)} |`),
-  )
-  return rows.length ? rows : ["| `none` | No changed-file signals detected. |"]
-}
-
-function qualityGates(classification: Classification): QualityGate[] {
-  const { flags } = classification
-  return [
-    {
-      applies: flags.doc,
-      appliesWhen: "Changed Markdown, docs, README, handoff text, or PR body copy.",
-      deepPass: "For substantial public docs, do a line-by-line rewrite pass and verify every command, path, flag, and example against the live repo.",
-      evidence: "Before/after diff with removed filler, verified commands/paths, and a PR body that matches the actual diff.",
-      gate: "Prose quality and PR copy cleanup",
-      pattern: "prose-quality",
-      playbook: "review-patterns/prose-quality-pr-copy.md",
-      quickPass: "Manually read changed prose and remove AI-ish filler, formulaic phrasing, hype, awkward punctuation, and vague claims.",
-      signal: gateSignal(classification, ["doc"]),
-    },
-    {
-      applies: flags.config,
-      appliesWhen: "Changed package metadata, plugin manifests, tool configs, version maps, ignore files, JSON, YAML, or TOML.",
-      deepPass: "For published packages or plugins, verify loader/schema behavior and cross-file version, description, command, and documentation references.",
-      evidence: "Validator output or schema check, plus the exact manifests/config files reviewed and any intentional version/reference decisions.",
-      gate: "Manifest and config consistency",
-      pattern: "config-contract-check",
-      playbook: "review-patterns/config-contract-check.md",
-      quickPass: "Run the repo validator or nearest schema/config check, then compare changed manifests, versions, command names, descriptions, and docs references.",
-      signal: gateSignal(classification, ["config"]),
-    },
-    {
-      applies: flags.code || flags.test,
-      appliesWhen: "Changed implementation, tests, fixtures, scripts, or generated-looking code.",
-      deepPass: "For large or multi-agent-written diffs, combine keyword search with a short-function/no-op scan and inspect suspicious minimal implementations.",
-      evidence: "Search output, reviewed suspects with file:line refs, and either fixes or concrete skip rationales.",
-      gate: "Mock / stub / placeholder sweep",
-      pattern: "placeholder-detection",
-      playbook: "review-patterns/mock-stub-placeholder-sweep.md",
-      quickPass: "Search changed files for TODOs, fake implementations, placeholder data, overbroad mocks, and suspicious no-op paths.",
-      signal: gateSignal(classification, ["code", "test"]),
-    },
-    {
-      applies: flags.code || flags.api || flags.cli,
-      appliesWhen: "Changed behavior, trust boundaries, control flow, parsing, persistence, concurrency, or error handling.",
-      deepPass: "For correctness-sensitive diffs, run a second review pass after fixes with fresh assumptions; use a static risk scanner when available.",
-      evidence: "Findings list, fixes applied or rejected, second-pass notes after fixes, and validation for each real bug.",
-      gate: "Multi-pass bug hunting",
-      pattern: "iterative-correctness-review",
-      playbook: "review-patterns/multi-pass-bug-hunting.md",
-      quickPass: "Do one correctness/security pass, fix findings, then do a fresh-eyes pass over the updated diff.",
-      signal: gateSignal(classification, ["code", "api", "cli"]),
-    },
-    {
-      applies: (flags.code || flags.api || flags.cli) && commandExists("ubs"),
-      appliesWhen: "Changed code and `ubs` is installed.",
-      deepPass: "If UBS flags real findings, follow its fix/triage loop; if false positive, suppress only with a concrete safety reason.",
-      evidence: "`ubs` command, exit code, finding triage, fixes, suppressions, or skip reason if the tool cannot run.",
-      gate: "UBS / static risk scanner",
-      pattern: "tool-backed-static-risk-scan",
-      playbook: "review-patterns/ubs-static-risk-scanner.md",
-      quickPass: "Run `ubs --diff` or `ubs <changed-files>` and triage every finding before commit or PR prep.",
-      signal: gateSignal(classification, ["code", "api", "cli"]),
-    },
-    {
-      applies:
-        flags.code &&
-        hasGateReason(classification, "code", /simplification|refactor|duplication|complexity|accidental complexity/i),
-      appliesWhen: "Changed code contains explicit duplication, refactor, simplification, or complexity signals after behavior is protected.",
-      deepPass: "For larger refactors, write a behavior-preservation note first: tests/goldens/invariants, one lever per change, and rerun proof after each edit.",
-      evidence: "Tests/goldens/invariants proving behavior unchanged, plus a small note on why the simplification is safe.",
-      gate: "Isomorphic simplification",
-      pattern: "behavior-preserving-simplification",
-      playbook: "review-patterns/isomorphic-simplification.md",
-      quickPass: "After behavior is protected, remove accidental complexity only where tests, goldens, or explicit invariants prove behavior unchanged.",
-      signal: gateSignal(classification, ["code"]),
-    },
-    {
-      applies: flags.ui,
-      appliesWhen: "Changed routes, components, UI state, browser behavior, or frontend assets.",
-      deepPass: "For auth-heavy, cross-page, or visual-regression risk, use Playwright or a persistent browser session with trace/screenshot artifacts.",
-      evidence: "Route, user action, expected result, screenshot/trace, console/network notes, and any residual manual QA.",
-      gate: "Web/UI E2E verification",
-      pattern: "browser-e2e-verification",
-      playbook: "review-patterns/browser-e2e-verification.md",
-      quickPass: "Exercise the real route/component through browser or Playwright, with console/network checks and screenshot/trace evidence.",
-      signal: gateSignal(classification, ["ui"]),
-    },
-    {
-      applies: flags.ui,
-      appliesWhen: "Changed interface copy, layout, interaction, forms, navigation, empty/loading/error states, or accessibility surface.",
-      deepPass: "For launch-quality UI changes, produce a prioritized UX/a11y report covering flow, cognitive load, keyboard path, contrast, and screen-reader basics.",
-      evidence: "Keyboard path, responsive check, visible states checked, accessibility notes, and screenshots when useful.",
-      gate: "UX and accessibility audit",
-      pattern: "heuristic-ux-a11y-review",
-      playbook: "review-patterns/ux-accessibility-audit.md",
-      quickPass: "Check obviousness, keyboard path, error states, loading/empty states, responsive layout, and accessibility basics.",
-      signal: gateSignal(classification, ["ui"]),
-    },
-    {
-      applies: flags.api,
-      appliesWhen: "Changed auth, billing, webhooks, persistence, migrations, cache/proxy behavior, or integration boundaries.",
-      deepPass: "When mocks could hide production failures, use real test infrastructure, isolated fixtures, structured logs, and sanitized evidence.",
-      evidence: "Real-service command/request, status, sanitized response/log snippet, isolation strategy, and any unsafe-to-run rationale.",
-      gate: "Real-service integration check",
-      pattern: "mock-free-integration-risk",
-      playbook: "review-patterns/real-service-integration-check.md",
-      quickPass: "Prefer real DB/API/service test paths for auth, billing, webhooks, data deletion, migrations, and cache/proxy behavior.",
-      signal: gateSignal(classification, ["api"]),
-    },
-    {
-      applies: flags.golden,
-      appliesWhen: "Changed snapshots, golden files, approval tests, compiler/query/serialization output, or other complex stable artifacts.",
-      deepPass: "For durable golden suites, define canonicalization/scrubbing, update commands, human-review diff flow, and CI behavior.",
-      evidence: "Golden generation/update command, canonicalization note, diff reviewed by a human/agent, and update rationale.",
-      gate: "Golden artifact decision",
-      pattern: "golden-output-regression",
-      playbook: "review-patterns/golden-artifact-decision.md",
-      quickPass: "If outputs are complex but reviewable, capture/canonicalize a golden and require human diff review for updates.",
-      signal: gateSignal(classification, ["golden"]),
-    },
-    {
-      applies: flags.oracle,
-      appliesWhen: "Changed ML, search, ranking, compiler, parser, graphics, scientific, or other oracle-free behavior.",
-      deepPass: "When fixed examples are weak, design property/metamorphic tests with generated inputs and transformations that should preserve known relationships.",
-      evidence: "Named invariant, input transformation, expected relationship, property test or skip rationale.",
-      gate: "Metamorphic/property test decision",
-      pattern: "oracle-free-invariant-testing",
-      playbook: "review-patterns/metamorphic-property-test-decision.md",
-      quickPass: "If exact expected output is hard, define invariant-preserving transformations and property tests instead of weak examples.",
-      signal: gateSignal(classification, ["oracle"]),
-    },
-    {
-      applies: flags.cli,
-      appliesWhen: "Changed commands, scripts, CLI args, non-TTY behavior, robot/json output, or agent-facing errors.",
-      deepPass: "For agent-facing CLI changes, score the CLI against canonical tasks: discoverability, dry-run/JSON support, actionable errors, and automation safety.",
-      evidence: "Help output, success/failure commands, exit codes, stdout/stderr split, non-TTY check, JSON/robot mode notes.",
-      gate: "CLI agent ergonomics",
-      pattern: "agent-friendly-cli-contract",
-      playbook: "review-patterns/cli-agent-ergonomics.md",
-      quickPass: "Verify help, exit codes, stdout/stderr split, JSON/robot mode if present, non-TTY behavior, and actionable errors.",
-      signal: gateSignal(classification, ["cli"]),
-    },
-    {
-      applies: flags.cli && hasGateReason(classification, "cli", /setup|auth|login|bootstrap|doctor|diagnos|repair|seed|fixture/i),
-      appliesWhen: "Changed setup, repair, auth/bootstrap, diagnostics, or repeated failure-recovery paths.",
-      deepPass: "Before building serious self-healing, specify detect-before-fix behavior, backups/undo, idempotence, dry-run, and clear repair evidence.",
-      evidence: "Failure mode, detector idea, safe fixer/undo notes, or why a doctor command is not warranted.",
-      gate: "Doctor/self-healing candidate",
-      pattern: "diagnose-and-repair-contract",
-      playbook: "review-patterns/doctor-self-healing-candidate.md",
-      quickPass: "If setup or failure recovery is recurring, propose a doctor/check/repair command or deterministic setup skill.",
-      signal: gateSignal(classification, ["cli"]),
-    },
-    {
-      applies: flags.perf,
-      appliesWhen: "Changed performance-sensitive code or made performance claims.",
-      deepPass: "For speed-critical code, define scenario/metric, capture baseline, profile ranked hotspots, change one lever, and prove behavior unchanged.",
-      evidence: "Baseline, scenario, metric, profile or benchmark output, changed lever, and behavior proof.",
-      gate: "Performance profiling",
-      pattern: "profile-before-optimization",
-      playbook: "review-patterns/performance-profiling.md",
-      quickPass: "If performance was changed or claimed, baseline first, profile or benchmark, change one lever, and prove behavior unchanged.",
-      signal: gateSignal(classification, ["perf"]),
-    },
-  ]
-}
-
-function writeQualityGates(outDir: string, rootDir: string, classification: Classification): QualityGate[] {
-  const gates = qualityGates(classification)
-  const changedFilesPath = path.join(outDir, "changed-files.txt")
-  const reviewPatternDir = bundledReviewPatternDir()
-  writeFileSync(
-    path.join(outDir, "quality-gates.md"),
-    [
-      "# Quality Gates",
-      "",
-      "These gates are PR-prep checks with detailed bundled playbooks. The script",
-      "makes a cheap recommendation from bounded path, diff, and text samples;",
-      "the active agent makes the final applicability call in `gate-decisions.md`.",
-      "For each selected gate, load only the playbook named in the row, run the",
-      "quick pass, and record evidence. Mark skipped gates with a reason. Use the",
-      "deep pass only when the diff risk justifies the extra ceremony.",
-      "",
-      `Detection caps: first ${maxSignalFiles} changed files, ${maxPerFileSignalChars} chars per file, ${maxTotalSignalChars} chars total.`,
-      `Bundled playbook directory: \`${reviewPatternDir}\``,
-      "Generated playbook index: `review-patterns.md`.",
-      "",
-      "## Agent Applicability Review",
-      "",
-      "Before running QA, open `gate-decisions.md` and make a quick judgment pass:",
-      "",
-      "1. Accept or override the recommended gates using the actual project intent and diff.",
-      "2. Add a one-off local gate if new functionality introduces a surface or risk the defaults missed.",
-      "3. Summarize intentionally skipped gates so the user can see what was not exercised.",
-      "",
-      "## Internalized Review Patterns",
-      "",
-      "These are local instructions bundled with this skill. They are inspired by",
-      "the downloaded review-skill patterns, but this artifact does not require any",
-      "external skill package to be installed. The detailed prompts live under",
-      "`review-patterns/` beside this skill, and the generated index names the",
-      "absolute path for this run.",
-      "",
-      "| Inspired idea | Local gate / workflow behavior |",
-      "|---|---|",
-      "| Prose cleanup / de-slop pass | Prose quality and PR copy cleanup |",
-      "| Manifest/config drift check | Manifest and config consistency |",
-      "| Mock/stub finder | Mock / stub / placeholder sweep |",
-      "| Multi-pass bug review | Multi-pass bug hunting |",
-      "| Static risk scan | UBS / static risk scanner when available |",
-      "| Behavior-preserving cleanup | Isomorphic simplification |",
-      "| Real webapp exercise | Web/UI E2E verification and UX/accessibility audit |",
-      "| Real-service over mock-only testing | Real-service integration check |",
-      "| Golden output review | Golden artifact decision |",
-      "| Oracle-free invariant testing | Metamorphic/property test decision |",
-      "| Agent-friendly CLI review | CLI agent ergonomics |",
-      "| Diagnose-and-repair workflows | Doctor/self-healing candidate |",
-      "| Profile before optimizing | Performance profiling |",
-      "",
-      "## Why These Gates Apply",
-      "",
-      "| Signal | Reason |",
-      "|---|---|",
-      ...classificationReasonRows(classification),
-      "",
-      "| Gate | Recommended | Signal | Pattern | Playbook | Applies when | Quick pass | Deep pass | Evidence / skip rationale |",
-      "|---|---|---|---|---|---|---|---|---|",
-      ...gates.map(
-        (gate) =>
-          `| ${markdownEscape(gate.gate)} | ${gate.applies} | ${markdownEscape(gate.signal)} | ${markdownEscape(gate.pattern)} | \`${markdownEscape(gate.playbook)}\` | ${markdownEscape(gate.appliesWhen)} | ${markdownEscape(gate.quickPass)} | ${markdownEscape(gate.deepPass)} | ${markdownEscape(gate.evidence)} |`,
-      ),
-      "",
-      "## Fast Local Scans",
-      "",
-      "Run these only on changed files or relevant directories, then record",
-      "the result in the Evidence / skip rationale column above:",
-      "",
-      "```bash",
-      `repo_root=${shellQuote(rootDir)}`,
-      `changed_file_list=${shellQuote(changedFilesPath)}`,
-      "if [[ ! -f \"$changed_file_list\" ]]; then",
-      "  echo \"changed-files.txt is missing: $changed_file_list\" >&2",
-      "  exit 1",
-      "fi",
-      "cd \"$repo_root\" || exit 1",
-      "mapfile -t changed_files < <(grep -v '^#' \"$changed_file_list\" | sed '/^[[:space:]]*$/d')",
-      "if (( ${#changed_files[@]} == 0 )); then",
-      "  echo \"No changed files to scan.\"",
-      "  exit 0",
-      "fi",
-      "",
-      "# Placeholder sweep",
-      "rg -n \"TODO|FIXME|HACK|stub|mock|placeholder|fake|not implemented|throw new Error|return null|return undefined\" \"${changed_files[@]}\" 2>/dev/null",
-      "",
-      "# UBS/static risk scan when installed",
-      "command -v ubs >/dev/null 2>&1 && ubs \"${changed_files[@]}\"",
-      "",
-      "# Public prose quality scan on changed docs only",
-      "changed_doc_files=()",
-      "for file in \"${changed_files[@]}\"; do",
-      "  if [[ \"$file\" =~ (^|/)README([^/]*)?$ || \"$file\" =~ (^|/)docs/ || \"$file\" == *.md ]]; then",
-      "    changed_doc_files+=(\"$file\")",
-      "  fi",
-      "done",
-      "if (( ${#changed_doc_files[@]} > 0 )); then",
-      "  rg -n \"Here's why|not just|it's not|game[- ]changer|seamless|robust|delight|leverage|unlock|supercharge\" \"${changed_doc_files[@]}\" 2>/dev/null",
-      "fi",
-      "```",
-      "",
-    ].join("\n"),
-    "utf8",
-  )
-  return gates
-}
-
-function writeReviewPatternIndex(outDir: string, gates: QualityGate[]): void {
-  writeFileSync(
-    path.join(outDir, "review-patterns.md"),
-    [
-      "# Review Pattern Playbooks",
-      "",
-      "The detailed gate prompts are bundled with the `code` skill so the workflow",
-      "does not depend on any external skill collection. Load only the playbooks",
-      "for gates selected in `gate-decisions.md`, plus any one-off local gate you",
-      "add for new functionality.",
-      "",
-      `Bundled directory: \`${bundledReviewPatternDir()}\``,
-      "",
-      "| Gate | Recommended | Playbook | Absolute path |",
-      "|---|---|---|---|",
-      ...gates.map(
-        (gate) =>
-          `| ${markdownEscape(gate.gate)} | ${gate.applies} | \`${markdownEscape(gate.playbook)}\` | \`${markdownEscape(playbookPath(gate))}\` |`,
-      ),
-      "",
-      "## Loading Rule",
-      "",
-      "- Do not bulk-load every playbook.",
-      "- For each selected gate, read the listed playbook before running the gate.",
-      "- For an intentionally skipped gate, record the skip reason without loading the playbook unless the decision is unclear.",
-      "- For a new local gate, write a short gate-specific checklist in `gate-decisions.md` and cite any project source that justifies it.",
-      "",
-    ].join("\n"),
-    "utf8",
-  )
-}
-
-function writeGateDecisions(outDir: string, gates: QualityGate[]): void {
-  const selectedGates = gates.filter((gate) => gate.applies)
-  const unselectedGates = gates.filter((gate) => !gate.applies)
-  const selectedRows =
-    selectedGates.length > 0
-      ? selectedGates.map(
-          (gate) =>
-            `| ${markdownEscape(gate.gate)} | \`${markdownEscape(gate.playbook)}\` | ${markdownEscape(gate.signal)} | TODO: run / skip / deep / override / blocked | TODO | ${markdownEscape(gate.evidence)} |`,
-        )
-      : ["| `none` | n/a | No gates were recommended from bounded signals. | n/a | n/a | n/a |"]
-  const unselectedRows =
-    unselectedGates.length > 0
-      ? unselectedGates.map(
-          (gate) =>
-            `| ${markdownEscape(gate.gate)} | \`${markdownEscape(gate.playbook)}\` | not selected | ${markdownEscape(gate.signal)} | Override only if project context makes it applicable. |`,
-        )
-      : ["| `none` | n/a | n/a | n/a | n/a |"]
-
-  writeFileSync(
-    path.join(outDir, "gate-decisions.md"),
-    [
-      "# Gate Decisions",
-      "",
-      "The script recommends gates from bounded static signals. The active agent",
-      "owns the final decision because it has task intent, project context, and",
-      "recent model judgment that a regex cannot see.",
-      "",
-      "## Decision Rules",
-      "",
-      "- Decision verbs: `run` (do the quick pass), `deep` (do the deep pass), `skip` (not applicable; record why), `override` (change the script's recommendation), `blocked` (cannot execute; record the obstacle).",
-      "- Prefer the recommended gate set unless project intent or the actual diff shows it is wrong.",
-      "- Add a one-off local gate when the change introduces a new user-facing surface, runtime, integration, data contract, security boundary, or operational path.",
-      "- Do not run a gate just because it exists; do record the reason when an obvious gate is intentionally skipped.",
-      "- Load only the detailed playbooks for gates you select. See `review-patterns.md` for bundled paths.",
-      "- Keep evidence concrete: command output, file refs, route checked, screenshot/trace path, response snippet, or explicit blocker.",
-      "",
-      "## Recommended Gates To Decide",
-      "",
-      "Only these rows require an agent decision by default.",
-      "",
-      "| Gate | Playbook | Signal | Agent decision | Reason | Evidence target or skip rationale |",
-      "|---|---|---|---|---|---|",
-      ...selectedRows,
-      "",
-      "## Not Selected By The Script",
-      "",
-      "Do not justify every row here. Override only when project context or new",
-      "functionality makes one applicable.",
-      "",
-      "| Gate | Playbook | Default | Signal | Override rule |",
-      "|---|---|---|---|---|",
-      ...unselectedRows,
-      "",
-      "## New Gate Check",
-      "",
-      "- [ ] Did the change add a new surface that was not already part of the project, such as a first web UI, new CLI, new API, new background job, new database migration path, new billing/auth boundary, or new deploy/runtime target?",
-      "- [ ] Did the change create a risk that deserves a project-specific gate that is absent above?",
-      "",
-      "| Local gate | Applies because | Quick pass | Evidence target | Decision |",
-      "|---|---|---|---|---|",
-      "| TODO or `none` | TODO | TODO | TODO | TODO |",
-      "",
-      "## Intentionally Skipped Gates",
-      "",
-      "Fill this before handing work back to the user, even if the answer is `none`.",
-      "",
-      "| Gate | Why skipped | Residual risk or follow-up |",
-      "|---|---|---|",
-      "| TODO or `none` | TODO | TODO |",
-      "",
-    ].join("\n"),
-    "utf8",
-  )
-}
-
-function qaProbe(surface: string): { evidence: string; probe: string } {
-  switch (surface) {
-    case "UI/browser surface":
-      return {
-        evidence: "Screenshot plus console/network notes",
-        probe: "Open affected route/component, exercise changed interaction, check console and network",
-      }
-    case "API/edge/server surface":
-      return {
-        evidence: "Status, headers, sanitized response snippet, logs",
-        probe: "Call representative endpoint/path with changed inputs, auth, headers, and cache cases",
-      }
-    case "CLI/script surface":
-      return {
-        evidence: "Command, exit code, stdout/stderr, generated files",
-        probe: "Run user-facing command and failure-path variant",
-      }
-    case "config/manifest surface":
-      return {
-        evidence: "Validator/schema output and checked manifest/config refs",
-        probe: "Run repo validator or nearest schema/config check, then compare version/name/command references",
-      }
-    case "docs surface":
-      return {
-        evidence: "Checked command/path list",
-        probe: "Verify paths, commands, flags, and examples against the live repo",
-      }
-    default:
-      return {
-        evidence: "Test name/output and behavior notes",
-        probe: "Run narrow automated test and one user-path probe for changed behavior",
-      }
+type UbsSelection = {
+  files: string[]
+  skipped: {
+    test: number
+    generated: number
+    unsupported: number
+    missing: number
   }
 }
 
-function writeQaPlan(outDir: string, baseRef: string, files: string[], classification: Classification): void {
-  const rows = files.map((file) => {
-    const inferred = classification.surfaces[file] ?? { reason: "default fallback", surface: "code surface" }
-    const surface = inferred.surface
-    const { evidence, probe } = qaProbe(surface)
-    return `| \`${file}\` | ${surface} | ${markdownEscape(inferred.reason)} | file:line refs or command docs | write before testing | ${probe} | ${evidence} |`
-  })
-
-  writeFileSync(
-    path.join(outDir, "qa-plan.md"),
-    [
-      "# Targeted QA Plan",
-      "",
-      `Base ref: \`${baseRef}\``,
-      "",
-      "Use this as the manual QA checklist before staging or PR prep. Surfaces",
-      "are inferred from bounded path, diff, and text signals; correct any false",
-      "positive before testing. Replace generic expectations with exact URLs,",
-      "commands, accounts, payloads, and visible results once the current agent",
-      "inspects the diff.",
-      "",
-      "This plan is a lightweight evidence harness. It is not a full",
-      "test-framework generator; use the evidence standards below when the diff",
-      "risk or surface complexity calls for deeper proof.",
-      "",
-      "| Changed file | Surface | Why inferred | Source grounding to fill | Expected behavior before action | QA probe to define | Evidence to capture |",
-      "|---|---|---|---|---|---|---|",
-      ...rows,
-      "",
-      "## Evidence Standards By Surface",
-      "",
-      "| Surface | Minimum useful evidence | Deep escalation trigger |",
-      "|---|---|---|",
-      "| UI/browser | route, user action, screenshot or trace, console/network notes | auth-heavy flows, cross-page journeys, visual regression, persistent browser debugging |",
-      "| API/edge/server | command/request, status, headers, sanitized response/log snippet | auth, billing, webhooks, migrations, cache/proxy, or real-service contract risk |",
-      "| CLI/script | command, exit code, stdout/stderr split, generated files, failure-path variant | agent-facing CLI, JSON/robot output, non-TTY behavior, recurring setup failures |",
-      "| Config/manifest | validator/schema output, version/name/command reference check, changed config list | published package/plugin metadata, release manifests, CI/tooling config |",
-      "| Docs | checked command/path/example list and before/after prose diff | public README/API docs, release docs, or repeated setup instructions |",
-      "| Complex output | golden diff, canonicalization note, review/update rationale | compiler/query/serialization/snapshot output that is easier to diff than assert field-by-field |",
-      "| Oracle-free behavior | named invariant, input transformation, expected relationship | search, ranking, parser, ML, graphics, scientific, or other behavior without a trusted exact oracle |",
-      "",
-      "## Assertion Discipline",
-      "",
-      "- Ground every named test in source, docs, or a user-visible contract before testing.",
-      "- Add each test action to `verification-timeline.md` before performing it.",
-      "- Mark every assertion as `passed`, `failed`, or `untested`; do not leave implied passes.",
-      "- Store screenshots, recordings, traces, logs, or response snippets under `evidence/` when practical.",
-      "",
-      "## Residual Manual QA",
-      "",
-      "- [ ] Confirm the changed behavior through the closest real user path.",
-      "- [ ] Check at least one relevant error/empty/loading state.",
-      "- [ ] Capture exact evidence or explain why live QA was blocked.",
-      "",
-    ].join("\n"),
-    "utf8",
-  )
+type UbsArtifacts = {
+  findings: string
+  report: string
+  summary: string
+  rawLog: string
 }
 
-function subagentTasks(gates: QualityGate[]): { name: string; run: boolean; task: string }[] {
-  return [
-    {
-      name: "docs-copy-reviewer",
-      run: gateApplies(gates, "Prose quality and PR copy cleanup"),
-      task: "Read changed docs and PR draft only. Report concise de-slop edits; do not modify files.",
-    },
-    {
-      name: "mock-stub-sweeper",
-      run: gateApplies(gates, "Mock / stub / placeholder sweep"),
-      task: "Search changed code for TODOs, fake implementations, placeholders, and suspicious no-op paths. Report file:line findings only.",
-    },
-    {
-      name: "bug-hunter",
-      run: gateApplies(gates, "Multi-pass bug hunting"),
-      task: "Do a read-only correctness/security pass over the current diff. Prioritize real behavioral defects and missing tests.",
-    },
-    {
-      name: "ux-a11y-reviewer",
-      run: gateApplies(gates, "UX and accessibility audit"),
-      task: "Review affected UI for usability, keyboard path, error/loading/empty states, responsive layout, and accessibility basics.",
-    },
-    {
-      name: "cli-ergonomics-reviewer",
-      run: gateApplies(gates, "CLI agent ergonomics"),
-      task: "Review CLI/script changes for help, exit codes, stdout/stderr split, JSON/robot mode, non-TTY behavior, and actionable errors.",
-    },
-    {
-      name: "test-strategy-reviewer",
-      run: gateApplies(gates, "Golden artifact decision") || gateApplies(gates, "Metamorphic/property test decision"),
-      task: "Design test strategy for complex outputs or oracle-free behavior. Recommend goldens, property tests, or skip rationale.",
-    },
-  ]
+type UbsScan = {
+  status: UbsStatus
+  available: boolean
+  exitCode: number | null
+  scannedFiles: number
+  skipped: UbsSelection["skipped"]
+  counts: UbsCounts
+  actionable: UbsFinding[]
+  artifacts: UbsArtifacts
+  parseable: boolean
+  note: string
 }
 
-function gateApplies(gates: QualityGate[], name: string): boolean {
-  return Boolean(gates.find((gate) => gate.gate === name)?.applies)
+function emptyUbsCounts(): UbsCounts {
+  return { good: 0, info: 0, warning: 0, critical: 0 }
 }
 
-function writeSubagentPlan(outDir: string, gates: QualityGate[]): void {
-  const tasks = subagentTasks(gates)
-  writeFileSync(
-    path.join(outDir, "subagent-plan.md"),
-    [
-      "# Subagent Plan",
-      "",
-      "Default mode: run the deterministic lane sequentially, then fan out only",
-      "read-only specialist reviews that apply to the current diff. The main agent",
-      "owns synthesis, edits, final QA, staging, and PR narrative.",
-      "",
-      "| Subagent | Suggested | Read-only task |",
-      "|---|---|---|",
-      ...tasks.map((task) => `| ${task.name} | ${task.run} | ${markdownEscape(task.task)} |`),
-      "",
-      "## Rules",
-      "",
-      "- Do not let subagents mutate the working tree unless the user explicitly asks.",
-      "- Give each subagent the current diff, quality-gates.md, qa-plan.md, and only the selected gate playbook from review-patterns.md.",
-      "- Main agent triages findings; subagents do not decide commit or PR readiness.",
-      "- Keep browser, real-service, golden updates, and profiling sequential unless each run has isolated state.",
-      "",
-    ].join("\n"),
-    "utf8",
-  )
+function configuredUbsTimeoutMs(): number {
+  const raw = process.env.FINISH_LANE_UBS_TIMEOUT_MS
+  if (!raw) return ubsTimeoutMs
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : ubsTimeoutMs
 }
 
-function writeAgentPrompt(outDir: string): void {
-  const prompt = path.join(outDir, "prompts", "finish-review.md")
-  writeFileSync(
-    prompt,
-    `You are running the finish lane after implementation.
-
-Goal: inspect the current working tree, clean up accidental complexity,
-verify behavior with targeted QA, and prepare PR-ready summary text.
-
-Default mode for second-pass agents: read-only review. Do not edit, stage,
-commit, push, deploy, or create a PR unless the user explicitly asks after this
-review.
-
-Read these artifacts first:
-- ${outDir}/workflow-status.html
-- ${outDir}/workflow-status.md
-- ${outDir}/report.md
-- ${outDir}/changed-files.txt
-- ${outDir}/qa-plan.md
-- ${outDir}/secret-risk.md
-- ${outDir}/setup-scripts.txt
-- ${outDir}/setup-blueprint-template.yml
-- ${outDir}/verification-timeline.md
-- ${outDir}/review-patterns.md
-- ${outDir}/quality-gates.md
-- ${outDir}/gate-decisions.md
-- ${outDir}/subagent-plan.md
-- ${outDir}/steps.tsv
-
-Then do the following:
-1. Review the diff for correctness, security, contract drift, missing tests, and accidental complexity.
-2. Convert qa-plan.md into source-grounded named tests with expected behavior written before action.
-3. Run feasible QA through real user paths when applicable; use JavaScript/state injection only as a labeled lower-level probe.
-4. Annotate verification-timeline.md with setup notes, named test starts, pass/fail/untested assertions, and evidence paths.
-5. Review gate-decisions.md: accept or override recommended gates, add any one-off gate for new functionality, and list intentionally skipped gates.
-6. Load only the detailed playbooks for gates you select from review-patterns.md.
-7. Run each selected quick pass in quality-gates.md or write a concrete skip rationale; escalate only when risk justifies it.
-8. Use subagent-plan.md for read-only specialist reviews when subagents are available and worthwhile.
-9. Active prepare-pr agent only: apply safe, scoped fixes. Second-pass agents report findings only. Do not stage, commit, push, or create a PR unless the user asks.
-10. If setup was painful or repeated, fill setup-blueprint-template.yml and propose a repo-owned deterministic setup skill or script.
-11. Produce PR text with: behavior change, why it matters, how it works, validation evidence, quality gates, skipped gates, and residual risk.
-
-Be explicit about skipped checks and blockers. Keep unrelated worktree changes out of scope.
-`,
-    "utf8",
-  )
+function configuredUbsMaxBufferBytes(): number {
+  const raw = process.env.FINISH_LANE_UBS_MAX_BUFFER
+  if (!raw) return ubsMaxBufferBytes
+  const parsed = Number(raw)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : ubsMaxBufferBytes
 }
 
-function writeAgentReviewPlaceholder(outDir: string, message: string): void {
-  writeFileSync(path.join(outDir, "agent-review.md"), `# Agent Review\n\n${message}\n`, "utf8")
+function capText(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text
+  return `${text.slice(0, maxChars)}\n[truncated ${text.length - maxChars} chars]\n`
 }
 
-function writePrDraft(outDir: string, steps: Step[]): void {
-  const validation = steps.map((step) =>
-    step.status === 0
-      ? `- \`${step.name}\`: passed`
-      : `- \`${step.name}\`: failed (see \`${step.logFile}\`)`,
-  )
-
-  writeFileSync(
-    path.join(outDir, "pr-body-draft.md"),
-    [
-      "This PR changes ...",
-      "",
-      "## Behavior Change",
-      "",
-      "- Replace with the user-visible or operator-visible behavior that now changes.",
-      "",
-      "## Why It Matters",
-      "",
-      "- Replace with the bug, workflow friction, safety issue, or capability this addresses.",
-      "",
-      "## How It Works",
-      "",
-      "- Keep this to the smallest useful implementation explanation.",
-      "",
-      "## Validation",
-      "",
-      ...validation,
-      "",
-      "## Verification Evidence",
-      "",
-      "- Source-grounded QA plan: `qa-plan.md`",
-      "- Timeline/assertions: `verification-timeline.md`",
-      "- Evidence artifacts: `evidence/`",
-      "",
-      "## Quality Gates",
-      "",
-      "- See `gate-decisions.md` and `quality-gates.md`; replace with gates selected, quick passes run, deep passes, and skip rationales.",
-      "- Intentionally skipped gates: replace with `none` or the skipped-gate summary.",
-      "",
-      "## Residual Risk",
-      "",
-      "- Replace with any skipped manual QA, flaky environment, or known follow-up.",
-      "",
-    ].join("\n"),
-    "utf8",
-  )
+function relativeArtifact(rootDir: string, file: string): string {
+  return path.relative(rootDir, file).replace(/\\/g, "/")
 }
 
-function workflowNextAction(steps: Step[], gates: QualityGate[]): string {
-  const failedSteps = steps.filter((step) => step.status !== 0)
-  const applicableGates = gates.filter((gate) => gate.applies)
+function normalizePath(rootDir: string, file: string): string {
+  if (!file) return ""
+  const cleaned = file.replace(/^file:\/\//, "").replace(/\\/g, "/")
+  const filesScanMarker = "/files_scan/"
+  const scratchIndex = cleaned.lastIndexOf(filesScanMarker)
+  if (scratchIndex >= 0) return cleaned.slice(scratchIndex + filesScanMarker.length)
+  const absolute = path.isAbsolute(cleaned) ? cleaned : path.join(rootDir, cleaned)
+  return path.relative(rootDir, absolute).replace(/\\/g, "/")
+}
 
-  if (failedSteps.length > 0) {
-    return `Inspect failed logs for ${failedSteps.map((step) => `\`${step.name}\``).join(", ")}.`
+function ubsArtifacts(outDir: string): UbsArtifacts {
+  return {
+    findings: path.join(outDir, "ubs-findings.jsonl"),
+    report: path.join(outDir, "ubs-report.json"),
+    summary: path.join(outDir, "ubs-summary.md"),
+    rawLog: path.join(outDir, "ubs-raw.log"),
   }
-  if (applicableGates.length > 0) {
-    return "Fill gate-decisions.md, add any missing local gate, then run selected gates and source-grounded QA."
-  }
-  return "Confirm gate-decisions.md, fill QA expectations, and prepare PR text."
 }
 
-function workflowPhases(steps: Step[], gates: QualityGate[], agent: AgentMode): {
-  artifact: string
-  detail: string
-  status: string
-  title: string
-}[] {
-  const failedSteps = steps.filter((step) => step.status !== 0)
-  const applicableGates = gates.filter((gate) => gate.applies)
-
-  return [
-    {
-      artifact: "changed-files.txt, secret-risk.md",
-      detail: "Changed file inventory and filename-only risk scan are ready.",
-      status: "complete",
-      title: "Scope",
-    },
-    {
-      artifact: "setup-scripts.txt, setup-blueprint-template.yml",
-      detail: "Setup, auth, fixture, and test entrypoint candidates are listed.",
-      status: "complete",
-      title: "Setup Discovery",
-    },
-    {
-      artifact: "steps.tsv, logs/",
-      detail: failedSteps.length > 0 ? `${failedSteps.length} command(s) need review.` : "All recorded commands exited successfully.",
-      status: failedSteps.length > 0 ? "attention" : "complete",
-      title: "Validation",
-    },
-    {
-      artifact: "review-patterns.md, quality-gates.md, gate-decisions.md",
-      detail:
-        applicableGates.length > 0
-          ? `${applicableGates.length} gate(s) are recommended; agent must accept, override, add local gates, and load selected playbooks only.`
-          : "No gate was auto-recommended; agent still checks whether new functionality needs a local gate.",
-      status: "todo",
-      title: "Quality Gates",
-    },
-    {
-      artifact: "qa-plan.md, verification-timeline.md, evidence/",
-      detail: "Fill exact expectations before testing, then record pass, fail, or untested evidence.",
-      status: "todo",
-      title: "Source-Grounded QA",
-    },
-    {
-      artifact: "subagent-plan.md",
-      detail:
-        agent === "none"
-          ? "Read-only specialist reviews are optional for this run."
-          : "An independent agent review was requested; inspect its artifact if produced.",
-      status: agent === "none" ? "optional" : "requested",
-      title: "Subagent Reviews",
-    },
-    {
-      artifact: "pr-body-draft.md",
-      detail: "Draft exists as raw material; rewrite it against the actual diff and evidence.",
-      status: "scaffolded",
-      title: "PR Draft",
-    },
-    {
-      artifact: "prepare-pr output",
-      detail: "Stage, commit, push, or edit PR only after explicit user approval.",
-      status: "pending",
-      title: "Commit Plan",
-    },
-  ]
+function ubsPathArg(file: string): string {
+  return file.startsWith("-") ? `./${file}` : file
 }
 
-function writeWorkflowStatus(outDir: string, steps: Step[], gates: QualityGate[], agent: AgentMode): void {
-  const failedSteps = steps.filter((step) => step.status !== 0)
-  const next = workflowNextAction(steps, gates)
-  const phases = workflowPhases(steps, gates, agent)
-
-  writeFileSync(
-    path.join(outDir, "workflow-status.md"),
-    [
-      "# Prepare PR Workflow Status",
-      "",
-      `Current next action: ${next}`,
-      "",
-      "```mermaid",
-      "flowchart LR",
-      "  A[Scope] --> B[Setup Discovery]",
-      "  B --> C[Validation]",
-      "  C --> D[Quality Gates]",
-      "  D --> E[Source-Grounded QA]",
-      "  E --> F[Subagent Reviews]",
-      "  F --> G[PR Draft]",
-      "  G --> H[Commit Plan]",
-      "  classDef done fill:#dcfce7,stroke:#166534,color:#14532d;",
-      "  classDef attention fill:#fee2e2,stroke:#991b1b,color:#7f1d1d;",
-      "  classDef todo fill:#fef9c3,stroke:#854d0e,color:#713f12;",
-      "  class A,B done;",
-      `  class C ${failedSteps.length ? "attention" : "done"};`,
-      "  class D,E,F,G,H todo;",
-      "```",
-      "",
-      "| Phase | Status | Where to look |",
-      "|---|---|---|",
-      ...phases.map((phase) => `| ${phase.title} | ${phase.status} | \`${phase.artifact}\` |`),
-      "",
-    ].join("\n"),
-    "utf8",
-  )
-}
-
-function writeWorkflowStatusHtml(outDir: string, steps: Step[], gates: QualityGate[], agent: AgentMode, baseRef: string): void {
-  const phases = workflowPhases(steps, gates, agent)
-  const data = {
-    agent,
-    artifacts: [
-      { href: "workflow-status.md", label: "Markdown Status" },
-      { href: "report.md", label: "Report" },
-      { href: "changed-files.txt", label: "Changed Files" },
-      { href: "secret-risk.md", label: "Secret Risk" },
-      { href: "review-patterns.md", label: "Review Patterns" },
-      { href: "quality-gates.md", label: "Quality Gates" },
-      { href: "gate-decisions.md", label: "Gate Decisions" },
-      { href: "qa-plan.md", label: "QA Plan" },
-      { href: "verification-timeline.md", label: "Verification Timeline" },
-      { href: "subagent-plan.md", label: "Subagent Plan" },
-      { href: "agent-review.md", label: "Agent Review" },
-      { href: "pr-body-draft.md", label: "PR Draft" },
-      { href: "logs/", label: "Logs" },
-      { href: "evidence/", label: "Evidence" },
-    ],
-    baseRef,
-    generatedAt: new Date().toISOString(),
-    gates: gates.map((gate) => ({
-      applies: gate.applies,
-      appliesWhen: gate.appliesWhen,
-      deepPass: gate.deepPass,
-      evidence: gate.evidence,
-      gate: gate.gate,
-      pattern: gate.pattern,
-      playbook: gate.playbook,
-      quickPass: gate.quickPass,
-      signal: gate.signal,
-    })),
-    nextAction: workflowNextAction(steps, gates).replace(/`/g, ""),
-    phases,
-    steps: steps.map((step) => ({
-      href: path.relative(outDir, step.logFile),
-      name: step.name,
-      status: step.status,
-    })),
+function selectUbsFiles(rootDir: string, files: string[]): UbsSelection {
+  const selection: UbsSelection = {
+    files: [],
+    skipped: { test: 0, generated: 0, unsupported: 0, missing: 0 },
   }
 
-  writeFileSync(
-    path.join(outDir, "workflow-status.html"),
-    `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Prepare PR Workflow Status</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --bg: #f8f3e8;
-      --paper: #fffaf0;
-      --ink: #24201b;
-      --muted: #75695d;
-      --line: #ded2bd;
-      --clay: #b66a50;
-      --clay-dark: #7f3f2f;
-      --green: #2f7d51;
-      --green-bg: #e4f3df;
-      --red: #a33a35;
-      --red-bg: #f7dddd;
-      --gold: #9a6a19;
-      --gold-bg: #f5ebc9;
-      --blue: #486b8f;
-      --blue-bg: #ddebf5;
-      --radius: 8px;
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  for (const file of files) {
+    if (!isCodeFile(file)) continue
+    if (!existsSync(path.join(rootDir, file))) {
+      selection.skipped.missing += 1
+      continue
     }
-
-    * {
-      box-sizing: border-box;
+    if (isGeneratedFile(file)) {
+      selection.skipped.generated += 1
+      continue
     }
-
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--ink);
+    if (isTestFile(file)) {
+      selection.skipped.test += 1
+      continue
     }
-
-    main {
-      width: min(1180px, calc(100vw - 32px));
-      margin: 0 auto;
-      padding: 30px 0 42px;
+    if (!isUbsSupportedFile(file)) {
+      selection.skipped.unsupported += 1
+      continue
     }
+    selection.files.push(file)
+  }
 
-    header {
-      display: grid;
-      gap: 12px;
-      margin-bottom: 22px;
+  return selection
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null
+}
+
+function recordViews(record: Record<string, unknown>): Record<string, unknown>[] {
+  const views = [record]
+  for (const key of ["finding", "issue", "result", "data", "location", "position", "range", "span"]) {
+    const nested = asRecord(record[key])
+    if (nested) views.push(nested)
+  }
+  return views
+}
+
+function stringValue(record: Record<string, unknown>, keys: string[]): string {
+  for (const view of recordViews(record)) {
+    for (const key of keys) {
+      const value = view[key]
+      if (typeof value === "string" && value.trim()) return value.trim()
     }
+  }
+  return ""
+}
 
-    h1 {
-      margin: 0;
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(2rem, 5vw, 4.8rem);
-      font-weight: 500;
-      letter-spacing: 0;
-      line-height: 0.95;
+function numberValue(record: Record<string, unknown>, keys: string[]): number | null {
+  for (const view of recordViews(record)) {
+    for (const key of keys) {
+      const value = view[key]
+      if (typeof value === "number" && Number.isFinite(value)) return value
+      if (typeof value === "string" && /^-?\d+$/.test(value.trim())) return Number(value)
     }
+  }
+  return null
+}
 
-    .meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      color: var(--muted);
-      font: 0.82rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+function normalizeSeverity(value: unknown): UbsSeverity {
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase()
+    if (normalized === "good" || normalized === "info" || normalized === "warning" || normalized === "critical") {
+      return normalized
     }
+    if (normalized === "warn") return "warning"
+    if (normalized === "error" || normalized === "high") return "critical"
+  }
+  return "info"
+}
 
-    .next {
-      display: grid;
-      gap: 6px;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-left: 5px solid var(--clay);
-      border-radius: var(--radius);
-      background: var(--paper);
+function severityFromRecord(record: Record<string, unknown>): UbsSeverity {
+  for (const view of recordViews(record)) {
+    const severity = normalizeSeverity(view.severity ?? view.level ?? view.priority)
+    if (severity !== "info" || view.severity || view.level || view.priority) return severity
+  }
+  return "info"
+}
+
+function countsFromObject(value: unknown): UbsCounts | null {
+  const record = asRecord(value)
+  if (!record) return null
+  const counts = emptyUbsCounts()
+  let seen = 0
+  for (const severity of Object.keys(counts) as UbsSeverity[]) {
+    const direct = record[severity]
+    const suffixed = record[`${severity}_count`] ?? record[`${severity}Count`]
+    const valueForSeverity = direct ?? suffixed
+    if (typeof valueForSeverity === "number" && Number.isFinite(valueForSeverity)) {
+      counts[severity] = valueForSeverity
+      seen += 1
+    } else if (typeof valueForSeverity === "string" && /^\d+$/.test(valueForSeverity.trim())) {
+      counts[severity] = Number(valueForSeverity)
+      seen += 1
     }
+  }
+  return seen > 0 ? counts : null
+}
 
-    .eyebrow {
-      color: var(--clay-dark);
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+function findTotals(records: Record<string, unknown>[]): UbsCounts | null {
+  for (const record of records) {
+    const kind = stringValue(record, ["type", "kind", "name"])
+    const candidates = [record.totals, record.total, record.counts, record.summary, record.severity_counts, record.severityCounts, record.stats]
+    for (const candidate of candidates) {
+      const counts = countsFromObject(candidate)
+      if (counts) return counts
     }
-
-    .next strong {
-      font-size: 1.08rem;
-      line-height: 1.35;
+    if (/total|summary|count/i.test(kind)) {
+      const counts = countsFromObject(record)
+      if (counts) return counts
     }
+  }
+  return null
+}
 
-    .grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
-      gap: 18px;
-      align-items: start;
-    }
+function flattenReportRecords(value: unknown): Record<string, unknown>[] {
+  if (Array.isArray(value)) return value.flatMap((entry) => flattenReportRecords(entry))
+  const record = asRecord(value)
+  if (!record) return []
+  const records: Record<string, unknown>[] = [record]
+  for (const key of ["findings", "issues", "results", "records", "items", "data", "scanners"]) {
+    if (Array.isArray(record[key])) records.push(...flattenReportRecords(record[key]))
+  }
+  return records
+}
 
-    .panel {
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: var(--paper);
-      overflow: hidden;
-    }
+function reportSampleRecords(value: unknown): Record<string, unknown>[] {
+  const report = asRecord(value)
+  const scanners = Array.isArray(report?.scanners) ? report.scanners : []
+  const records: Record<string, unknown>[] = []
 
-    .panel h2 {
-      margin: 0;
-      padding: 16px 16px 10px;
-      font-size: 0.92rem;
-      letter-spacing: 0.07em;
-      text-transform: uppercase;
-    }
-
-    .flow {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
-      padding: 0 16px 16px;
-    }
-
-    .phase {
-      min-height: 138px;
-      display: grid;
-      gap: 8px;
-      align-content: start;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: #fffdf8;
-      position: relative;
-    }
-
-    .phase::after {
-      content: "";
-      position: absolute;
-      top: 50%;
-      right: -11px;
-      width: 11px;
-      height: 1px;
-      background: var(--line);
-    }
-
-    .phase:nth-child(4n)::after,
-    .phase:last-child::after {
-      display: none;
-    }
-
-    .phase-title {
-      font-weight: 750;
-    }
-
-    .phase-detail {
-      color: var(--muted);
-      font-size: 0.88rem;
-      line-height: 1.35;
-    }
-
-    .pill {
-      width: max-content;
-      max-width: 100%;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .complete { background: var(--green-bg); color: var(--green); }
-    .attention { background: var(--red-bg); color: var(--red); }
-    .todo { background: var(--gold-bg); color: var(--gold); }
-    .optional,
-    .requested,
-    .scaffolded,
-    .pending { background: var(--blue-bg); color: var(--blue); }
-
-    .phase a,
-    .links a,
-    .table a {
-      color: var(--clay-dark);
-      text-decoration-color: rgba(127, 63, 47, 0.35);
-      text-underline-offset: 3px;
-    }
-
-    .stack {
-      display: grid;
-      gap: 18px;
-    }
-
-    .links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding: 0 16px 16px;
-    }
-
-    .links a {
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 7px 10px;
-      background: #fffdf8;
-      font-size: 0.86rem;
-    }
-
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9rem;
-    }
-
-    .table th,
-    .table td {
-      padding: 10px 16px;
-      border-top: 1px solid var(--line);
-      text-align: left;
-      vertical-align: top;
-    }
-
-    .table th {
-      color: var(--muted);
-      font-size: 0.74rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .gate-list {
-      display: grid;
-      gap: 8px;
-      padding: 0 16px 16px;
-    }
-
-    .gate {
-      display: grid;
-      gap: 8px;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: #fffdf8;
-    }
-
-    .gate-pattern {
-      color: var(--muted);
-      font: 0.75rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    }
-
-    .gate-field {
-      display: grid;
-      gap: 2px;
-    }
-
-    .gate-field span {
-      color: var(--clay-dark);
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
-    .gate p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.86rem;
-      line-height: 1.35;
-    }
-
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      padding: 0 16px 12px;
-    }
-
-    button {
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: #fffdf8;
-      color: var(--ink);
-      cursor: pointer;
-      font: inherit;
-      font-size: 0.84rem;
-      padding: 7px 10px;
-    }
-
-    button[aria-pressed="true"] {
-      background: var(--clay);
-      border-color: var(--clay);
-      color: white;
-    }
-
-    @media (max-width: 860px) {
-      main {
-        width: min(100vw - 20px, 720px);
-        padding-top: 20px;
-      }
-
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      .flow {
-        grid-template-columns: 1fr;
-      }
-
-      .phase::after {
-        display: none;
-      }
-    }
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <div class="eyebrow">Finish Lane</div>
-      <h1>Prepare PR Workflow Status</h1>
-      <div class="meta" id="meta"></div>
-      <section class="next">
-        <span class="eyebrow">Current next action</span>
-        <strong id="next-action"></strong>
-      </section>
-    </header>
-
-    <section class="grid">
-      <div class="stack">
-        <section class="panel">
-          <h2>Phase Map</h2>
-          <div class="flow" id="phase-map"></div>
-        </section>
-
-        <section class="panel">
-          <h2>Validation Steps</h2>
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Step</th>
-                <th>Exit</th>
-                <th>Log</th>
-              </tr>
-            </thead>
-            <tbody id="steps"></tbody>
-          </table>
-        </section>
-      </div>
-
-      <div class="stack">
-        <section class="panel">
-          <h2>Artifacts</h2>
-          <nav class="links" id="artifact-links" aria-label="Workflow artifacts"></nav>
-        </section>
-
-        <section class="panel">
-          <h2>Quality Gates</h2>
-          <div class="toolbar" aria-label="Gate filters">
-            <button type="button" data-filter="all" aria-pressed="true">All</button>
-            <button type="button" data-filter="applies" aria-pressed="false">Applies</button>
-            <button type="button" data-filter="optional" aria-pressed="false">Optional</button>
-          </div>
-          <div class="gate-list" id="gates"></div>
-        </section>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    const workflowData = ${jsonForHtml(data)};
-
-    function element(tag, attrs, children) {
-      const node = document.createElement(tag);
-      Object.entries(attrs || {}).forEach(function(entry) {
-        const key = entry[0];
-        const value = entry[1];
-        if (value === undefined || value === null) return;
-        if (key === "className") node.className = value;
-        else if (key === "text") node.textContent = value;
-        else node.setAttribute(key, String(value));
-      });
-      (children || []).forEach(function(child) {
-        if (typeof child === "string") node.appendChild(document.createTextNode(child));
-        else if (child) node.appendChild(child);
-      });
-      return node;
-    }
-
-    function pill(status) {
-      return element("span", { className: "pill " + status, text: status }, []);
-    }
-
-    function link(href, label) {
-      return element("a", { href: href, text: label }, []);
-    }
-
-    function renderMeta() {
-      const meta = document.getElementById("meta");
-      [
-        "base: " + workflowData.baseRef,
-        "agent: " + workflowData.agent,
-        "generated: " + workflowData.generatedAt
-      ].forEach(function(text) {
-        meta.appendChild(element("span", { text: text }, []));
-      });
-    }
-
-    function renderPhases() {
-      const container = document.getElementById("phase-map");
-      workflowData.phases.forEach(function(phase) {
-        const artifactHref = firstArtifactHref(phase.artifact);
-        const artifactNode = artifactHref
-          ? link(artifactHref, phase.artifact)
-          : element("span", { text: phase.artifact }, []);
-        const card = element("article", { className: "phase" }, [
-          pill(phase.status),
-          element("div", { className: "phase-title", text: phase.title }, []),
-          element("div", { className: "phase-detail", text: phase.detail }, []),
-          element("div", {}, [artifactNode])
-        ]);
-        container.appendChild(card);
-      });
-    }
-
-    function firstArtifactHref(label) {
-      const first = label.split(",")[0].trim();
-      if (first.indexOf(".") === -1 && first.indexOf("/") === -1) return "";
-      return first;
-    }
-
-    function renderArtifacts() {
-      const container = document.getElementById("artifact-links");
-      workflowData.artifacts.forEach(function(item) {
-        container.appendChild(link(item.href, item.label));
-      });
-    }
-
-    function renderSteps() {
-      const body = document.getElementById("steps");
-      workflowData.steps.forEach(function(step) {
-        const row = element("tr", {}, [
-          element("td", { text: step.name }, []),
-          element("td", {}, [pill(step.status === 0 ? "complete" : "attention")]),
-          element("td", {}, [link(step.href, "open log")])
-        ]);
-        body.appendChild(row);
-      });
-    }
-
-    function renderGates(filter) {
-      const container = document.getElementById("gates");
-      container.textContent = "";
-      workflowData.gates
-        .filter(function(gate) {
-          if (filter === "applies") return gate.applies;
-          if (filter === "optional") return !gate.applies;
-          return true;
+  for (const scannerValue of scanners) {
+    const scanner = asRecord(scannerValue)
+    const extras = asRecord(scanner?.extras)
+    if (!scanner || !extras) continue
+    const language = typeof scanner.language === "string" ? scanner.language : ""
+    for (const [analyzer, extraValue] of Object.entries(extras)) {
+      const extra = asRecord(extraValue)
+      const samples = Array.isArray(extra?.samples) ? extra.samples : []
+      for (const sampleValue of samples) {
+        const sample = asRecord(sampleValue)
+        if (!sample) continue
+        records.push({
+          ...sample,
+          type: "sample",
+          category: analyzer,
+          language,
+          severity: normalizeSeverity(extra?.severity ?? scanner.severity),
+          message: typeof sample.code === "string" ? sample.code : analyzer,
         })
-        .forEach(function(gate) {
-          container.appendChild(element("article", { className: "gate" }, [
-            pill(gate.applies ? "todo" : "optional"),
-            element("strong", { text: gate.gate }, []),
-            element("div", { className: "gate-pattern", text: gate.pattern }, []),
-            gateField("Playbook", gate.playbook),
-            gateField("Signal", gate.signal),
-            gateField("When", gate.appliesWhen),
-            gateField("Quick pass", gate.quickPass),
-            gateField("Deep pass", gate.deepPass),
-            gateField("Evidence", gate.evidence)
-          ]));
-        });
+      }
+    }
+  }
+
+  return records
+}
+
+function jsonlRecords(text: string): Record<string, unknown>[] {
+  const records: Record<string, unknown>[] = []
+  for (const line of text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)) {
+    try {
+      const record = asRecord(JSON.parse(line))
+      if (record) records.push(record)
+    } catch {
+      // Keep parsing later lines; malformed JSONL means fallback if nothing useful is found.
+    }
+  }
+  return records
+}
+
+function uniqueRecords(records: Record<string, unknown>[]): Record<string, unknown>[] {
+  const seen = new Set<string>()
+  return records.filter((record) => {
+    const key = JSON.stringify(record)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function readUbsRecords(artifacts: UbsArtifacts, stdout = ""): { records: Record<string, unknown>[]; parseable: boolean } {
+  const records: Record<string, unknown>[] = []
+
+  const findingRecords = existsSync(artifacts.findings) ? jsonlRecords(readFileSync(artifacts.findings, "utf8")) : []
+  records.push(...findingRecords)
+  if (findingRecords.length === 0 && stdout.trim()) records.push(...jsonlRecords(stdout))
+
+  if (existsSync(artifacts.report)) {
+    try {
+      const report = JSON.parse(readFileSync(artifacts.report, "utf8"))
+      records.push(...flattenReportRecords(report), ...reportSampleRecords(report))
+    } catch {
+      // The raw fallback log records that UBS produced no usable structured output.
+    }
+  }
+
+  const unique = uniqueRecords(records)
+  return { records: unique, parseable: unique.length > 0 }
+}
+
+function classifyFindingFile(file: string): UbsFindingKind {
+  if (!file) return "unknown"
+  if (isGeneratedFile(file)) return "generated"
+  if (isTestFile(file)) return "test"
+  if (!isUbsSupportedFile(file)) return "unsupported"
+  return "source"
+}
+
+function findingFromRecord(rootDir: string, record: Record<string, unknown>): UbsFinding | null {
+  const type = stringValue(record, ["type", "kind", "name"]).toLowerCase()
+  const isFindingRecord = type === "finding" || type === "issue" || type === "result" || type === "sample"
+  const file = normalizePath(rootDir, stringValue(record, ["file", "path", "filename", "uri", "source"]))
+  const line = numberValue(record, ["line", "start_line", "startLine", "lineNumber", "row"])
+  const title = stringValue(record, ["message", "title", "check", "rule"])
+  const description = stringValue(record, ["description", "text", "summary"])
+  const message = title && description && title !== description ? `${title}: ${description}` : title || description
+  const category = stringValue(
+    record,
+    isFindingRecord
+      ? ["category", "category_id", "categoryId", "rule", "rule_id", "ruleId", "id", "language"]
+      : ["category", "category_id", "categoryId", "rule", "rule_id", "ruleId", "id"],
+  )
+  const count = numberValue(record, ["count", "total"])
+  if (!file && !isFindingRecord) return null
+  if (!file && count !== null && count <= 0) return null
+  if (!file && !message && !category) return null
+
+  return {
+    severity: severityFromRecord(record),
+    file,
+    line,
+    category,
+    message,
+    kind: file ? classifyFindingFile(file) : "source",
+    count: count && count > 0 ? count : 1,
+  }
+}
+
+function summarizeCountsFromFindings(findings: UbsFinding[], records: Record<string, unknown>[]): UbsCounts {
+  const counts = emptyUbsCounts()
+  for (const record of records) {
+    const severity = severityFromRecord(record)
+    const count = numberValue(record, ["count", "total"])
+    const file = stringValue(record, ["file", "path", "filename", "uri", "source"])
+    if (count !== null && count > 0 && !file) counts[severity] += count
+  }
+  if (counts.good || counts.info || counts.warning || counts.critical) return counts
+
+  for (const finding of findings) counts[finding.severity] += 1
+  return counts
+}
+
+function isNoiseFinding(finding: UbsFinding): boolean {
+  const category = finding.category.toLowerCase()
+  const message = finding.message.toLowerCase()
+  if (/^(11|12|13|14)$/.test(category)) return true
+  // Word-bounded: a real finding whose message echoes an identifier like
+  // fetchTodos / hackney / xxxHash must not be dropped as discuss-only noise.
+  return /\b(debug code|todo|fixme|hack|xxx|deep nesting)\b/.test(`${category} ${message}`)
+}
+
+function actionableUbsFindings(findings: UbsFinding[]): UbsFinding[] {
+  // The same defect can arrive twice — once as a JSONL finding record and once
+  // as a report `extras` sample with a different record shape — so raw-record
+  // dedup (uniqueRecords) misses it. Dedup on the resolved finding identity.
+  const seen = new Set<string>()
+  return findings
+    .filter((finding) => finding.kind === "source")
+    .filter((finding) => finding.severity === "critical" || finding.severity === "warning")
+    .filter((finding) => !isNoiseFinding(finding))
+    .filter((finding) => {
+      const key = `${finding.severity}|${finding.file}|${finding.line ?? ""}|${finding.category}|${finding.message}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+}
+
+function ubsFindingCount(findings: UbsFinding[], severity: UbsSeverity): number {
+  return findings.filter((finding) => finding.severity === severity).reduce((sum, finding) => sum + finding.count, 0)
+}
+
+function formatUbsFinding(finding: UbsFinding): string {
+  const location = finding.file ? `${finding.file}${finding.line ? `:${finding.line}` : ""}` : "source scan"
+  const category = finding.category ? ` [${finding.category}]` : ""
+  const message = finding.message ? ` ${finding.message}` : ""
+  const count = finding.count > 1 ? ` (${finding.count} occurrences)` : ""
+  return `${finding.severity} ${location}${category}${message}${count}`.trim()
+}
+
+function writeUbsSummary(rootDir: string, scan: UbsScan): void {
+  const lines: string[] = []
+  lines.push("# UBS Summary")
+  lines.push("")
+  lines.push(`status: ${scan.status}`)
+  lines.push(`exit_code: ${scan.exitCode === null ? "n/a" : scan.exitCode}`)
+  lines.push(`parseable: ${scan.parseable ? "yes" : "no"}`)
+  lines.push(`scanned_source_files: ${scan.scannedFiles}`)
+  lines.push(
+    `skipped: tests=${scan.skipped.test} generated=${scan.skipped.generated} unsupported=${scan.skipped.unsupported} missing=${scan.skipped.missing}`,
+  )
+  lines.push(
+    `severity_totals: critical=${scan.counts.critical} warning=${scan.counts.warning} info=${scan.counts.info} good=${scan.counts.good}`,
+  )
+  if (scan.note) lines.push(`note: ${scan.note}`)
+  lines.push("")
+  lines.push("## Actionable Source Findings")
+  if (scan.actionable.length === 0) {
+    lines.push("")
+    lines.push("None.")
+  } else {
+    lines.push("")
+    for (const finding of scan.actionable.slice(0, ubsActionableLimit)) {
+      lines.push(`- ${formatUbsFinding(finding)}`)
+    }
+    if (scan.actionable.length > ubsActionableLimit) {
+      lines.push(`- ... ${scan.actionable.length - ubsActionableLimit} more finding(s) in ${relativeArtifact(rootDir, scan.artifacts.findings)}`)
+    }
+  }
+  lines.push("")
+  lines.push("## Artifacts")
+  lines.push("")
+  lines.push(`- findings: ${relativeArtifact(rootDir, scan.artifacts.findings)}`)
+  lines.push(`- report: ${relativeArtifact(rootDir, scan.artifacts.report)}`)
+  if (existsSync(scan.artifacts.rawLog)) lines.push(`- raw fallback log: ${relativeArtifact(rootDir, scan.artifacts.rawLog)}`)
+  writeFileSync(scan.artifacts.summary, `${lines.join("\n")}\n`, "utf8")
+}
+
+function writeUbsRawLog(artifacts: UbsArtifacts, stdout: string, stderr: string, note: string): void {
+  const raw = [`note: ${note}`, "", "## stdout", stdout || "(empty)", "", "## stderr", stderr || "(empty)", ""].join("\n")
+  writeFileSync(artifacts.rawLog, capText(raw, ubsRawLogLimit), "utf8")
+}
+
+function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
+  const artifacts = ubsArtifacts(outDir)
+  for (const file of [artifacts.findings, artifacts.report, artifacts.summary, artifacts.rawLog]) rmSync(file, { force: true })
+
+  const selection = selectUbsFiles(rootDir, files)
+  const base: Omit<UbsScan, "status" | "available" | "exitCode" | "parseable" | "note"> = {
+    scannedFiles: selection.files.length,
+    skipped: selection.skipped,
+    counts: emptyUbsCounts(),
+    actionable: [],
+    artifacts,
+  }
+
+  if (!commandExists("ubs")) {
+    const scan: UbsScan = {
+      ...base,
+      status: "skipped",
+      available: false,
+      exitCode: null,
+      parseable: false,
+      note: "ubs not installed",
+    }
+    writeUbsSummary(rootDir, scan)
+    return scan
+  }
+
+  if (selection.files.length === 0) {
+    const scan: UbsScan = {
+      ...base,
+      status: "skipped",
+      available: true,
+      exitCode: 0,
+      parseable: false,
+      note: "no supported source files to scan",
+    }
+    writeUbsSummary(rootDir, scan)
+    return scan
+  }
+
+  const args = [
+    "--ci",
+    "--format=jsonl",
+    `--beads-jsonl=${artifacts.findings}`,
+    `--report-json=${artifacts.report}`,
+    // UBS v5.3.2 treats a POSIX `--` end-of-options marker as a literal file
+    // path, so protect dash-leading changed files by prefixing them with `./`.
+    ...selection.files.map(ubsPathArg),
+  ]
+  const result = spawnSync("ubs", args, {
+    cwd: rootDir,
+    encoding: "utf8",
+    shell: false,
+    timeout: configuredUbsTimeoutMs(),
+    maxBuffer: configuredUbsMaxBufferBytes(),
+  })
+  const stdout = result.stdout ?? ""
+  const stderr = result.stderr ?? ""
+  const error = result.error as (Error & { code?: string }) | undefined
+  const timedOut = error?.code === "ETIMEDOUT"
+  const exitCode = typeof result.status === "number" ? result.status : timedOut ? null : 1
+
+  if (timedOut) {
+    writeUbsRawLog(artifacts, stdout, stderr, "ubs timed out")
+    const scan: UbsScan = {
+      ...base,
+      status: "timeout",
+      available: true,
+      exitCode,
+      parseable: false,
+      note: `ubs timed out after ${configuredUbsTimeoutMs()}ms`,
+    }
+    writeUbsSummary(rootDir, scan)
+    return scan
+  }
+
+  // Any other spawn-level failure (e.g. ENOBUFS when ubs floods past maxBuffer,
+  // EACCES, a killed process) means ubs was interrupted. Treat it as a tool
+  // failure instead of parsing whatever partial artifact survived — otherwise a
+  // truncated run could be reported clean/advisory, breaking "tool failure is
+  // never clean".
+  if (error) {
+    const code = error.code ?? error.message
+    writeUbsRawLog(artifacts, stdout, stderr, `ubs failed to run: ${code}`)
+    const scan: UbsScan = {
+      ...base,
+      status: "tool-failure",
+      available: true,
+      exitCode,
+      parseable: false,
+      note: `ubs failed to run (${code}); run ubs doctor --fix, then rescan`,
+    }
+    writeUbsSummary(rootDir, scan)
+    return scan
+  }
+
+  // A process terminated by an external signal (e.g. the OOM killer SIGKILLing
+  // ubs) sets result.signal but leaves result.error undefined and result.status
+  // null, so it slips past both the timeout and error guards above. Treat it as
+  // a tool failure rather than parsing whatever partial artifact survived.
+  if (result.signal) {
+    writeUbsRawLog(artifacts, stdout, stderr, `ubs killed by signal ${result.signal}`)
+    const scan: UbsScan = {
+      ...base,
+      status: "tool-failure",
+      available: true,
+      exitCode,
+      parseable: false,
+      note: `ubs was killed by signal ${result.signal}; run ubs doctor --fix, then rescan`,
+    }
+    writeUbsSummary(rootDir, scan)
+    return scan
+  }
+
+  if (exitCode === 2) {
+    writeUbsRawLog(artifacts, stdout, stderr, "ubs exited 2 (tool failure)")
+    const scan: UbsScan = {
+      ...base,
+      status: "tool-failure",
+      available: true,
+      exitCode,
+      parseable: false,
+      note: "ubs exited 2; run ubs doctor --fix, then rescan",
+    }
+    writeUbsSummary(rootDir, scan)
+    return scan
+  }
+
+  const { records, parseable } = readUbsRecords(artifacts, stdout)
+  const findings = records.map((record) => findingFromRecord(rootDir, record)).filter((finding): finding is UbsFinding => finding !== null)
+  const totals = findTotals(records)
+  const counts = totals ?? summarizeCountsFromFindings(findings, records)
+  const actionable = actionableUbsFindings(findings)
+
+  // `parseable` from readUbsRecords only means we decoded *some* JSON object; a
+  // report like {"error":"..."} decodes but yields neither a recognized finding
+  // nor a severity-totals block. Require one of those before trusting the run,
+  // so a structured error report falls through to tool-failure (never clean).
+  const meaningful = parseable && (totals !== null || findings.length > 0)
+
+  if (!meaningful) {
+    writeUbsRawLog(artifacts, stdout, stderr, "ubs ran but produced no parseable structured output")
+    const scan: UbsScan = {
+      ...base,
+      status: "tool-failure",
+      available: true,
+      exitCode,
+      parseable: false,
+      note: "ubs ran but produced no parseable structured output",
+    }
+    writeUbsSummary(rootDir, scan)
+    return scan
+  }
+
+  const highSeverityTotals = counts.critical > 0 || counts.warning > 0
+  const highSeverityFindings = findings.filter((finding) => finding.severity === "critical" || finding.severity === "warning")
+  const status: UbsStatus = actionable.length > 0 || (highSeverityTotals && highSeverityFindings.length === 0) ? "advisory-findings" : "clean"
+  const scan: UbsScan = {
+    ...base,
+    status,
+    available: true,
+    exitCode,
+    parseable: true,
+    counts,
+    actionable,
+    note:
+      status === "advisory-findings"
+        ? actionable.length > 0
+          ? "UBS findings are advisory; they do not seal-block this patch."
+          : "UBS reported warning/critical totals without source-actionable detail; inspect the artifacts."
+        : highSeverityTotals
+          ? "UBS reported warning/critical totals but no source-actionable finding records."
+          : "",
+  }
+  writeUbsSummary(rootDir, scan)
+  return scan
+}
+
+// --- Surface tagger ------------------------------------------------------
+
+// Shared source-code extension set. Widened beyond the original multi-pass list to cover
+// compiled languages; reused by the simplification, metamorphic, and doctor routing rules.
+const CODE_EXT = "ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|c|cc|cpp|cxx|h|hpp|cs|scala|php|m|mm|dart|ex|exs"
+const codeFileTest = new RegExp(`\\.(${CODE_EXT})$`, "i")
+
+const lensRules: { lens: string; test: RegExp }[] = [
+  { lens: "browser-e2e-verification.md", test: /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|html|css|scss|sass)$/i },
+  { lens: "ux-accessibility-audit.md", test: /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|vue|svelte|html|css|scss|sass)$/i },
+  { lens: "real-service-integration-check.md", test: /(^|\/)(api|server|workers?|db|database|migrations?|webhooks?|auth|billing|payments?|checkout|subscriptions?|stripe|paypal|integration|e2e|factories?)(\/|$)|(^|\/)[^/]*(factory|harness)[^/]*\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$|(^|\/)[^/]*test[^/]*db[^/]*\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$/i },
+  { lens: "cli-agent-ergonomics.md", test: /(^|\/)(commands|bin|scripts|cli)(\/|$)|\.(sh|bash|zsh)$/i },
+  { lens: "prose-quality-pr-copy.md", test: /(^|\/)README(\.[^/]+)?$|(^|\/)(CHANGELOG|CHANGES|HISTORY)(\.[^/]+)?$|(^|\/)docs\/|\.md$/i },
+  { lens: "config-contract-check.md", test: /(^|\/)(package|tsconfig|plugin|marketplace|versions)\.(json|jsonc)$|\.(ya?ml|toml)$|(^|\/)SKILL\.md$|(^|\/)\.c(laude|odex)-plugin\/plugin\.json$|(^|\/)commands\/.+\.md$/i },
+  { lens: "performance-profiling.md", test: /(^|\/)(benchmarks?|perf|performance|profiles|profiling)(\/|$)|\.(bench|benchmark)\./i },
+  { lens: "golden-artifact-decision.md", test: /(^|\/)(goldens?|snapshots?|__snapshots__|approvals?|goldenfiles?)(\/|$)|\.(snap|golden|approved|received|actual|ambr)(\.[^/]*)?$/i },
+  { lens: "mock-stub-placeholder-sweep.md", test: testFilePattern },
+  { lens: "mock-stub-placeholder-sweep.md", test: /(^|\/)(api|server|workers?|routes|jobs)\/.+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$/i },
+  { lens: "multi-pass-bug-hunting.md", test: codeFileTest },
+  { lens: "isomorphic-simplification.md", test: codeFileTest },
+  { lens: "doctor-self-healing-candidate.md", test: new RegExp(`(^|/)(doctor|fixers?|repair|healers?)/|(^|/)(doctor|repair|heal|fixer|setup|bootstrap|provision)[^/]*\\.(sh|bash|zsh|${CODE_EXT})$|(^|/)migrations?/`, "i") },
+  { lens: "metamorphic-property-test-decision.md", test: new RegExp(`(^|/)(parser|serializ|deserial|codec|compiler|interpreter|ranking|scoring|optimizer|transform)[^/]*\\.(${CODE_EXT})$|(^|/)(parse|serialize|encode|decode)[^/]*\\.(${CODE_EXT})$`, "i") },
+  // ubs-static-risk-scanner.md is intentionally NOT routed here: runUbsScan runs it unconditionally as an
+  // advisory step (see below), so a lensRules entry would double-surface the same scanner.
+]
+
+export function suggestLenses(files: string[]): string[] {
+  const selected = new Set<string>()
+  for (const file of files) {
+    for (const rule of lensRules) {
+      if (rule.test.test(file)) selected.add(rule.lens)
+    }
+  }
+  return Array.from(selected).sort()
+}
+
+// --- Command execution ---------------------------------------------------
+
+function runCommands(rootDir: string, pm: PackageManager, scripts: Record<string, string>, names: string[]): CmdResult[] {
+  const results: CmdResult[] = []
+  if (!pm) return results
+  for (const name of names) {
+    if (!scripts[name]) continue
+    const cmd = scriptCommand(pm, name)
+    const status = run(cmd, rootDir).status === 0 ? "ok" : "fail"
+    results.push({ cmd, status })
+  }
+  return results
+}
+
+function repoValidationCommands(rootDir: string): string[] {
+  const scriptsDir = path.join(rootDir, "scripts")
+  if (!existsSync(scriptsDir)) return []
+
+  let entries: string[]
+  try {
+    entries = readdirSync(scriptsDir)
+  } catch {
+    return []
+  }
+
+  const commands: string[] = []
+  for (const entry of entries.sort()) {
+    if (!/^(check|test|validate)[A-Za-z0-9_.-]*\.(sh|bash|zsh)$/.test(entry)) continue
+
+    const absolute = path.join(scriptsDir, entry)
+    try {
+      if (!statSync(absolute).isFile()) continue
+    } catch {
+      continue
     }
 
-    function gateField(label, value) {
-      return element("div", { className: "gate-field" }, [
-        element("span", { text: label }, []),
-        element("p", { text: value }, [])
-      ]);
-    }
+    commands.push(`bash scripts/${entry}`)
+  }
+  return commands
+}
 
-    function bindFilters() {
-      document.querySelectorAll("[data-filter]").forEach(function(button) {
-        button.addEventListener("click", function() {
-          document.querySelectorAll("[data-filter]").forEach(function(other) {
-            other.setAttribute("aria-pressed", String(other === button));
-          });
-          renderGates(button.getAttribute("data-filter"));
-        });
-      });
-    }
+function runValidation(rootDir: string, pm: PackageManager, scripts: Record<string, string>): CmdResult[] {
+  const results = runCommands(rootDir, pm, scripts, ["validate", "check", "lint", "typecheck", "test", "build"])
+  const seen = new Set(results.map((result) => result.cmd))
 
-    document.getElementById("next-action").textContent = workflowData.nextAction;
-    renderMeta();
-    renderPhases();
-    renderArtifacts();
-    renderSteps();
-    renderGates("all");
-    bindFilters();
-  </script>
-</body>
-</html>
-`,
+  for (const cmd of repoValidationCommands(rootDir)) {
+    if (seen.has(cmd)) continue
+    results.push({ cmd, status: run(cmd, rootDir).status === 0 ? "ok" : "fail" })
+    seen.add(cmd)
+  }
+
+  if ((existsSync(path.join(rootDir, "pyproject.toml")) || existsSync(path.join(rootDir, "pytest.ini")) || existsSync(path.join(rootDir, "tests"))) && commandExists("pytest")) {
+    results.push({ cmd: "pytest", status: run("pytest", rootDir).status === 0 ? "ok" : "fail" })
+  }
+  if (existsSync(path.join(rootDir, "go.mod")) && commandExists("go")) {
+    results.push({ cmd: "go test ./...", status: run("go test ./...", rootDir).status === 0 ? "ok" : "fail" })
+  }
+  if (existsSync(path.join(rootDir, "Cargo.toml")) && commandExists("cargo")) {
+    results.push({ cmd: "cargo test", status: run("cargo test", rootDir).status === 0 ? "ok" : "fail" })
+  }
+  return results
+}
+
+// --- Seal ----------------------------------------------------------------
+
+function branchSlug(branch: string): string {
+  return (branch || "detached").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "detached"
+}
+
+function sealPath(rootDir: string, slug: string): string {
+  return path.join(rootDir, ".workflow", "finish-lane", "seal", `${slug}.sealed`)
+}
+
+// Per-repo id, byte-identical to gate-before-push.sh: sha256(toplevel abs path)
+// truncated to 16 hex chars. The hook keys the arm marker by this exact value,
+// so arming/disarming via this script must compute it the same way.
+function repoId(rootDir: string): string {
+  return createHash("sha256").update(rootDir).digest("hex").slice(0, 16)
+}
+
+function armMarkerPath(rootDir: string): string | null {
+  const dataDir = process.env.CLAUDE_PLUGIN_DATA
+  if (!dataDir) return null
+  return path.join(dataDir, "prepare-pr", "armed", `${repoId(rootDir)}.armed`)
+}
+
+function writeSeal(rootDir: string, baseRef: string, branch: string, hash: string): { slug: string; head: string; hash: string } {
+  const slug = branchSlug(branch)
+  const head = run("git rev-parse HEAD 2>/dev/null", rootDir).output.trim()
+  const file = sealPath(rootDir, slug)
+  mkdirSync(path.dirname(file), { recursive: true })
+  writeFileSync(
+    file,
+    `${JSON.stringify({ head, scope_hash: hash, sealed_at: new Date().toISOString(), base: baseRef }, null, 2)}\n`,
     "utf8",
   )
+  return { slug, head, hash }
 }
 
-function writeReport(
-  outDir: string,
-  rootDir: string,
-  baseRef: string,
-  options: Options,
-  steps: Step[],
-): string {
-  const branch = runCapture("git branch --show-current 2>/dev/null", rootDir).output.trim()
-  const lines = [
-    "# Finish Lane Report",
-    "",
-    `- Run directory: \`${outDir}\``,
-    `- Repository: \`${rootDir}\``,
-    `- Branch: \`${branch}\``,
-    `- Base ref: \`${baseRef}\``,
-    `- Mechanical fixes: \`${options.runFixes}\``,
-    `- Validation checks: \`${options.runChecks}\``,
-    `- Agent pass: \`${options.agent}\``,
-    "",
-    "## Artifacts",
-    "",
-    "- `workflow-status.html` - browser-friendly phase map, artifact links, gates, and validation status",
-    "- `workflow-status.md` - visual phase map and next action",
-    "- `changed-files.txt` - scoped file inventory",
-    "- `secret-risk.md` - filename-only secret/bulky-file risk scan",
-    "- `setup-scripts.txt` - deterministic setup/auth/test entrypoint candidates",
-    "- `setup-blueprint-template.yml` - template for saving hard-won setup knowledge",
-    "- `review-patterns.md` - generated index of bundled detailed gate playbooks",
-    "- `quality-gates.md` - gate manifest with playbook links, quick passes, deep passes, and evidence requirements",
-    "- `gate-decisions.md` - agent applicability ledger, one-off local gate check, and skipped-gate summary",
-    "- `qa-plan.md` - targeted manual QA starter",
-    "- `verification-timeline.md` - chronological setup/action/assertion ledger",
-    "- `subagent-plan.md` - read-only specialist review suggestions",
-    "- `agent-review.md` - optional read-only Claude/Codex review output when requested",
-    "- `evidence/` - screenshots, recordings, traces, logs, and snippets",
-    "- `prompts/finish-review.md` - prompt for the active agent or a second pass",
-    "- `pr-body-draft.md` - PR body skeleton seeded with validation results",
-    "- `logs/` - command outputs",
-    "",
-    "## Step Results",
-    "",
-    "| Step | Exit | Log |",
-    "|---|---:|---|",
-    ...steps.map((step) => `| \`${step.name}\` | ${step.status} | \`${step.logFile}\` |`),
-    "",
-    "## Next Agent Actions",
-    "",
-    "1. Open `workflow-status.html` or `workflow-status.md` to see the current phase and next action.",
-    "2. Read `qa-plan.md` and replace generic probes with source-grounded exact routes, commands, payloads, and expected results.",
-    "3. Write expectations into `verification-timeline.md` before taking each QA action, then mark assertions passed, failed, or untested.",
-    "4. Fill `gate-decisions.md`: accept or override recommended gates, add any one-off local gate for new functionality, and summarize intentional skips.",
-    "5. Load only the detailed playbooks for selected gates from `review-patterns.md`.",
-    "6. Run each selected quick pass in `quality-gates.md`, escalate only when risk justifies it, or write a concrete skip rationale.",
-    "7. Use `subagent-plan.md` for read-only specialist reviews when useful, while keeping fixes sequential.",
-    "8. Inspect failed logs and decide whether each failure is a code defect, environment blocker, or unrelated pre-existing issue.",
-    "9. Apply scoped cleanup only where behavior can be proved unchanged.",
-    "10. Promote repeated setup pain into a deterministic setup script or repo skill using `setup-blueprint-template.yml`.",
-    "11. Re-run this script after fixes, then use `pr-body-draft.md` for PR creation or update.",
-    "",
-  ]
-
-  const report = lines.join("\n")
-  writeFileSync(path.join(outDir, "report.md"), report, "utf8")
-  return report
-}
-
-function resolveAgentPass(agentMode: AgentMode, agentExplicit: boolean, rootDir: string): { agent: ConcreteAgent; reason: string } {
-  const invoker = detectInvoker()
-  const preference = readAgentPreference(rootDir)
-
-  if (agentMode === "none") {
-    if (agentExplicit) {
-      writeAgentPreference(rootDir, "none")
-    }
-    return { agent: "none", reason: agentExplicit ? "Project preference saved as no independent reviewer." : "No independent reviewer requested." }
-  }
-
-  if (agentMode === "auto") {
-    if (!preference || preference.reviewAgent === "none") {
-      return {
-        agent: "none",
-        reason: "No project independent-review preference is saved. Run with `--agent peer`, `--agent codex`, or `--agent claude` to opt in.",
-      }
-    }
-    if (!commandExists(preference.reviewAgent)) {
-      return {
-        agent: "none",
-        reason: `Saved reviewer \`${preference.reviewAgent}\` is not available on PATH. Re-run with an available explicit reviewer to update the project preference.`,
-      }
-    }
-    return { agent: preference.reviewAgent, reason: `Using saved project reviewer preference: \`${preference.reviewAgent}\`.` }
-  }
-
-  if (agentMode === "peer") {
-    if (invoker === "unknown") {
-      return {
-        agent: "none",
-        reason: "Could not detect whether the invoker is Claude or Codex. Set `FINISH_LANE_INVOKER=claude` or `FINISH_LANE_INVOKER=codex`, or pass `--agent codex` / `--agent claude` explicitly.",
-      }
-    }
-    const peer: ConcreteAgent = invoker === "claude" ? "codex" : "claude"
-    if (!commandExists(peer)) {
-      return {
-        agent: "none",
-        reason: `Detected invoker \`${invoker}\`, but peer reviewer \`${peer}\` is not available on PATH. No project preference was saved.`,
-      }
-    }
-    writeAgentPreference(rootDir, peer)
-    return { agent: peer, reason: `Detected invoker \`${invoker}\`; using peer reviewer \`${peer}\` and saving it as the project preference.` }
-  }
-
-  if (!commandExists(agentMode)) {
-    return { agent: "none", reason: `Requested reviewer \`${agentMode}\` is not available on PATH. No project preference was saved.` }
-  }
-  writeAgentPreference(rootDir, agentMode)
-  return { agent: agentMode, reason: `Using explicit reviewer \`${agentMode}\` and saving it as the project preference.` }
-}
-
-function runAgentPass(agentMode: AgentMode, agentExplicit: boolean, outDir: string, rootDir: string, logDir: string, steps: Step[]): ConcreteAgent {
-  const resolved = resolveAgentPass(agentMode, agentExplicit, rootDir)
-  const agent = resolved.agent
-  const prompt = path.join(outDir, "prompts", "finish-review.md")
-  const output = path.join(outDir, "agent-review.md")
-
-  if (agent === "none") {
-    log("skipping agent pass")
-    writeAgentReviewPlaceholder(outDir, resolved.reason)
-    return "none"
-  }
-
-  log(resolved.reason)
-  const reviewPrompt = `Read ${prompt} and complete the requested finish-lane review. Stay read-only: do not edit, stage, commit, push, deploy, or create a PR.`
-
-  if (agent === "claude") {
-    const allowedTools = "Read,Grep,Glob,Bash(git status *),Bash(git diff *),Bash(git log *),Bash(git rev-parse *)"
-    const disallowedTools = "Edit,Write,MultiEdit,NotebookEdit,Bash(git add *),Bash(git commit *),Bash(git push *),Bash(git reset *),Bash(git checkout *)"
-    runStep(
-      "agent-review",
-      `claude -p --permission-mode plan --no-session-persistence --allowedTools ${shellQuote(allowedTools)} --disallowedTools ${shellQuote(disallowedTools)} --output-format text ${shellQuote(reviewPrompt)} > ${shellQuote(output)} < /dev/null`,
-      rootDir,
-      logDir,
-      steps,
-    )
-  }
-
-  if (agent === "codex") {
-    runStep(
-      "agent-review",
-      `codex exec --sandbox read-only -c model_reasoning_effort="medium" ${shellQuote(reviewPrompt)} > ${shellQuote(output)} < /dev/null`,
-      rootDir,
-      logDir,
-      steps,
-    )
-  }
-
-  // The review command redirects its stdout into agent-review.md, truncating the
-  // placeholder before it runs. If the reviewer wrote nothing to stdout (e.g. an
-  // auth error sent only to stderr), restore a placeholder that points at the
-  // captured log instead of leaving an empty artifact the report links to. A
-  // non-empty partial review is kept as-is; its step status in steps.tsv already
-  // records any non-zero exit.
-  const reviewStep = steps[steps.length - 1]
-  const producedReview = existsSync(output) && readFileSync(output, "utf8").trim().length > 0
-  if (!producedReview) {
-    const logRef = reviewStep ? reviewStep.logFile : path.join(logDir, "agent-review.log")
-    writeAgentReviewPlaceholder(outDir, `Agent \`${agent}\` review did not produce output. See \`${logRef}\`.`)
-  }
-  return agent
-}
+// --- Main ----------------------------------------------------------------
 
 function main(): void {
   const options = parseArgs(process.argv.slice(2))
-  const rootResult = runCapture("git rev-parse --show-toplevel 2>/dev/null")
-  if (rootResult.status !== 0) {
-    fail("finish-lane must run inside a git checkout.")
-  }
+  const rootResult = run("git rev-parse --show-toplevel 2>/dev/null")
+  if (rootResult.status !== 0) fail("finish-lane must run inside a git checkout.")
   const rootDir = rootResult.output.trim()
   process.chdir(rootDir)
 
-  const baseRef = detectBaseRef(options.baseRef)
-  const outDir = path.resolve(rootDir, options.outDir || `.workflow/finish-lane/${timestamp()}`)
-  const outRel = path.relative(rootDir, outDir)
-  const logDir = path.join(outDir, "logs")
-  const promptDir = path.join(outDir, "prompts")
-  const evidenceDir = path.join(outDir, "evidence")
+  // --disarm is a standalone terminal step (prepare-pr Phase 5, after push):
+  // remove the arm marker so the gate goes inert again. No scope work needed.
+  if (options.disarm) {
+    const marker = armMarkerPath(rootDir)
+    // Symmetric with --arm: when there is no CLAUDE_PLUGIN_DATA (Codex or a bare
+    // checkout) there is no arm marker and no enforcing hook, so disarm is a
+    // genuine no-op rather than an error. Hard-failing here would make the
+    // documented Phase 5 disarm step always break outside the Claude plugin.
+    if (!marker) {
+      console.log("DISARM SKIPPED (no CLAUDE_PLUGIN_DATA; the push gate is inert outside the installed plugin runtime)")
+      return
+    }
+    rmSync(marker, { force: true })
+    console.log(`DISARMED ${marker}`)
+    return
+  }
 
-  mkdirSync(logDir, { recursive: true })
-  mkdirSync(promptDir, { recursive: true })
-  mkdirSync(path.join(evidenceDir, "screenshots"), { recursive: true })
-  mkdirSync(path.join(evidenceDir, "videos"), { recursive: true })
-  mkdirSync(path.join(evidenceDir, "traces"), { recursive: true })
-
-  const scripts = packageScripts(rootDir)
+  const baseRef = detectBase(options.baseRef)
+  const branch = run("git branch --show-current 2>/dev/null", rootDir).output.trim()
   const pm = packageManager(rootDir)
-  const steps: Step[] = []
-  const changedFiles = writeChangedFiles(rootDir, outDir, outRel, baseRef)
-  const classification = classify(rootDir, baseRef, changedFiles)
+  const scripts = packageScripts(rootDir)
 
-  writeSecretRiskReport(outDir, changedFiles)
-  writeSetupScriptInventory(rootDir, outDir, outRel, scripts)
-  writeSetupBlueprintTemplate(outDir)
-  writeVerificationTimeline(outDir)
-  const gates = writeQualityGates(outDir, rootDir, classification)
-  writeReviewPatternIndex(outDir, gates)
-  writeGateDecisions(outDir, gates)
-  writeSubagentPlan(outDir, gates)
-  writeQaPlan(outDir, baseRef, changedFiles, classification)
-  writeAgentPrompt(outDir)
-  writeAgentReviewPlaceholder(outDir, "No independent agent review was requested for this run.")
+  const scope = scopeFiles(rootDir, baseRef)
+  const outDir = path.join(rootDir, ".workflow", "finish-lane")
+  mkdirSync(outDir, { recursive: true })
+  const changedFilesPath = path.join(outDir, "changed-files.txt")
+  writeFileSync(changedFilesPath, `${scope.all.join("\n")}${scope.all.length ? "\n" : ""}`, "utf8")
+  const hash = scopeHash(rootDir, baseRef)
 
-  runStep("git-status", "git status --short", rootDir, logDir, steps)
-  runStep("diff-stat", `git diff --stat ${shellQuote(baseRef)}...HEAD && git diff --stat && git diff --cached --stat`, rootDir, logDir, steps)
-  runStep("untracked-files", "git ls-files --others --exclude-standard", rootDir, logDir, steps)
-  runStep("diff-check", "git diff --check && git diff --cached --check", rootDir, logDir, steps)
+  const fixResults = options.runFixes
+    ? runCommands(rootDir, pm, scripts, ["format", "fmt", "lint:fix", "fix"])
+    : []
+  const validationResults = runValidation(rootDir, pm, scripts)
+  const scan = mechanicalScans(rootDir, scope.all)
+  const ubs = ubsScan(rootDir, scope.all, outDir)
+  const lenses = suggestLenses(scope.all)
 
-  if (options.runFixes && pm) {
-    for (const script of ["format", "fmt", "lint:fix", "fix"]) {
-      if (scripts[script]) {
-        runStep(`fix-${script}`, packageScriptCommand(pm, script), rootDir, logDir, steps)
-      }
+  const out: string[] = []
+  out.push(`FINISH_LANE ${new Date().toISOString()}`)
+  out.push(`base=${baseRef} branch=${branch || "(detached)"}`)
+  out.push(
+    `scope: committed=${scope.committed.length} uncommitted=${scope.uncommitted.length} untracked=${scope.untracked.length} total=${scope.all.length}`,
+  )
+  out.push(`changed-files: ${changedFilesPath}`)
+  out.push(`scope_hash=${hash}`)
+
+  out.push("fix commands:")
+  if (!options.runFixes) out.push("  (skipped; pass --fix to run format/fmt/lint:fix/fix)")
+  else if (fixResults.length === 0) out.push("  (none discovered)")
+  else for (const r of fixResults) out.push(`  ${r.cmd} -> ${r.status}`)
+
+  out.push("validation commands:")
+  if (validationResults.length === 0) out.push("  (none discovered)")
+  else for (const r of validationResults) out.push(`  ${r.cmd} -> ${r.status}`)
+
+  out.push("mechanical scans:")
+  out.push(`  slop hits: ${scan.slop}`)
+  out.push(`  placeholder hits: ${scan.placeholder}`)
+  out.push("  ubs:")
+  out.push(`    status: ${ubs.status}`)
+  out.push(`    available: ${ubs.available ? "yes" : "no"}`)
+  out.push(`    exit_code: ${ubs.exitCode === null ? "n/a" : ubs.exitCode}`)
+  out.push(`    scanned source files: ${ubs.scannedFiles}`)
+  out.push(
+    `    skipped: tests=${ubs.skipped.test} generated=${ubs.skipped.generated} unsupported=${ubs.skipped.unsupported} missing=${ubs.skipped.missing}`,
+  )
+  out.push(
+    `    severity totals: critical=${ubs.counts.critical} warning=${ubs.counts.warning} info=${ubs.counts.info} good=${ubs.counts.good}`,
+  )
+  out.push(
+    `    actionable source findings: critical=${ubsFindingCount(ubs.actionable, "critical")} warning=${ubsFindingCount(ubs.actionable, "warning")}`,
+  )
+  if (ubs.note) out.push(`    note: ${ubs.note}`)
+  out.push(`    summary artifact: ${relativeArtifact(rootDir, ubs.artifacts.summary)}`)
+  for (const finding of ubs.actionable.slice(0, 5)) out.push(`      ${formatUbsFinding(finding)}`)
+  if (ubs.actionable.length > 5) out.push(`      ... ${ubs.actionable.length - 5} more in ${relativeArtifact(rootDir, ubs.artifacts.summary)}`)
+  if (scan.hits.length > 0) {
+    out.push("  scan samples:")
+    for (const hit of scan.hits) out.push(`    ${hit}`)
+  }
+
+  out.push("suggested lenses:")
+  if (lenses.length === 0) out.push("  (none matched changed-file globs)")
+  else for (const lens of lenses) out.push(`  review-patterns/${lens}`)
+
+  // Sealing is the mechanical half of "gated on green": never stamp a
+  // push-ready sentinel while a discovered validation command is red, or the
+  // hook would wave through a push the gate exists to stop. No validation
+  // discovered (length 0) is not a failure — the agent's judgment is the gate
+  // for docs-only / no-command repos.
+  //
+  // UBS findings are intentionally NOT part of this gate, even source-level
+  // criticals. UBS is high-false-positive ("cries wolf often"), so auto-blocking
+  // the seal on it would gate real pushes on tool noise. Instead finish-lane
+  // surfaces classified, capped actionable source findings for the agent to
+  // triage; only validation commands that actually ran red refuse the seal.
+  let sealRefused = false
+  if (options.seal) {
+    const failed = validationResults.filter((r) => r.status === "fail")
+    if (failed.length > 0) {
+      out.push(`SEAL REFUSED: ${failed.length} validation command(s) failed — fix and re-run --seal; the push gate stays closed:`)
+      for (const r of failed) out.push(`  ${r.cmd} -> fail`)
+      sealRefused = true
+    } else {
+      const sealed = writeSeal(rootDir, baseRef, branch, hash)
+      out.push(`SEALED ${sealed.slug} head=${sealed.head} scope_hash=${sealed.hash}`)
     }
   }
 
-  if (options.runChecks) {
-    if (pm) {
-      for (const script of ["validate", "check", "lint", "typecheck", "test", "build"]) {
-        if (scripts[script]) {
-          runStep(`package-${script}`, packageScriptCommand(pm, script), rootDir, logDir, steps)
-        }
-      }
-    }
-
-    if ((existsSync("pyproject.toml") || existsSync("pytest.ini") || existsSync("tests")) && commandExists("pytest")) {
-      runStep("pytest", "pytest", rootDir, logDir, steps)
-    }
-
-    if (existsSync("go.mod") && commandExists("go")) {
-      runStep("go-test", "go test ./...", rootDir, logDir, steps)
-    }
-
-    if (existsSync("Cargo.toml") && commandExists("cargo")) {
-      runStep("cargo-test", "cargo test", rootDir, logDir, steps)
+  if (options.arm) {
+    const marker = armMarkerPath(rootDir)
+    if (!marker) {
+      out.push("arm: SKIPPED (no CLAUDE_PLUGIN_DATA; the push gate is inert outside the installed plugin runtime)")
+    } else {
+      mkdirSync(path.dirname(marker), { recursive: true })
+      writeFileSync(marker, `${new Date().toISOString()}\n`, "utf8")
+      out.push(`ARMED ${marker}`)
     }
   }
 
-  writeSteps(outDir, steps)
-  writePrDraft(outDir, steps)
-
-  const resolvedAgent = runAgentPass(options.agent, options.agentExplicit, outDir, rootDir, logDir, steps)
-  writeSteps(outDir, steps)
-  writePrDraft(outDir, steps)
-
-  writeWorkflowStatus(outDir, steps, gates, resolvedAgent)
-  writeWorkflowStatusHtml(outDir, steps, gates, resolvedAgent, baseRef)
-  const report = writeReport(outDir, rootDir, baseRef, { ...options, agent: resolvedAgent }, steps)
-  log(`wrote ${path.join(outDir, "report.md")}`)
-  console.log(report)
+  console.log(out.join("\n"))
+  if (sealRefused) process.exit(2)
 }
 
-main()
+if (import.meta.main) main()
