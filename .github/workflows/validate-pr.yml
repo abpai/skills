@@ -13,6 +13,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: oven-sh/setup-bun@v2
+      - name: Install PyYAML (strict frontmatter parse, matches npx skills)
+        run: pip install pyyaml
       - name: Sync plugin versions and regenerate versions.json
         run: |
           scripts/sync-plugin-versions.sh
@@ -28,6 +30,16 @@ jobs:
           fi
       - name: Run skill validation
         run: scripts/validate-skills.sh
+
+  npx-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate skills are installable via the real npx skills installer
+        run: scripts/validate-npx-install.sh
 
   wrapper-parity:
     runs-on: ubuntu-latest

@@ -198,6 +198,30 @@ if not closed:
     print(f'[FAIL] {path}: missing closing frontmatter fence')
     sys.exit(1)
 
+# ── Strict YAML parse (matches the `npx skills` installer) ──
+# The installer parses frontmatter with the spec-compliant `yaml` npm package
+# and silently skips any skill whose frontmatter fails to parse ("No skills
+# found"), so an unquoted ': ' inside a plain scalar (e.g. a description like
+# "... Subcommands: 'prepare-pr' ...") makes the skill un-installable while
+# Claude Code's lenient loader still accepts it. Reject such frontmatter here
+# so the regression fails CI instead of only breaking `npx skills update`.
+try:
+    import yaml  # type: ignore
+except ImportError:
+    print(f"[WARN] {path}: PyYAML not installed; skipping strict YAML frontmatter check")
+else:
+    try:
+        parsed_fm = yaml.safe_load('\n'.join(fm_lines))
+    except yaml.YAMLError as exc:
+        detail = str(getattr(exc, 'problem', exc) or exc).strip()
+        print(f"[FAIL] {path}: frontmatter is not valid YAML ({detail}) — "
+              f"the `npx skills` installer would skip this skill. "
+              f"Quote any value containing ': ' (e.g. wrap the description in double quotes).")
+        sys.exit(1)
+    if not isinstance(parsed_fm, dict):
+        print(f"[FAIL] {path}: frontmatter does not parse to a mapping")
+        sys.exit(1)
+
 # Top-level scalar fields and the description (supporting block/folded scalars).
 fields = {}
 description = None
