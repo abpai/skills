@@ -1,0 +1,10 @@
+{
+  "name": "harness",
+  "version": "1.0.3",
+  "description": "Agent harness workflow pack for designing repository environments that help coding agents navigate docs, glossary terms, todo specs, validation paths, design guidance, and domain invariants.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT"
+}

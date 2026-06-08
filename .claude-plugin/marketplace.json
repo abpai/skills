@@ -72,6 +72,13 @@
       "keywords": ["code", "goal", "prepare-pr", "review", "commit", "qa", "manual-qa", "pr-prep", "browser", "explain", "try", "walkthrough", "understand", "dead-code", "scratch", "dependency-security", "html", "handoff", "continuation"]
     },
     {
+      "name": "harness",
+      "description": "Agent harness workflows for repository environments that expose progressive docs, glossary terms, todo specs, validation routes, design guidance, and domain invariants to coding agents.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "harness" },
+      "category": "productivity",
+      "keywords": ["harness", "agents", "docs", "glossary", "ubiquitous-language", "defined-terms", "todos", "specs", "progressive-disclosure", "architecture", "design", "domains", "invariants", "testing", "validation", "doctor"]
+    },
+    {
       "name": "decision-worksheet",
       "description": "Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item and return the decisions.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "decision-worksheet" },
