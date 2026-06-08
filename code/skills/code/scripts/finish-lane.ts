@@ -635,14 +635,26 @@ function isNoiseFinding(finding: UbsFinding): boolean {
   const category = finding.category.toLowerCase()
   const message = finding.message.toLowerCase()
   if (/^(11|12|13|14)$/.test(category)) return true
-  return /debug code|todo|fixme|hack|xxx|deep nesting/.test(`${category} ${message}`)
+  // Word-bounded: a real finding whose message echoes an identifier like
+  // fetchTodos / hackney / xxxHash must not be dropped as discuss-only noise.
+  return /\b(debug code|todo|fixme|hack|xxx|deep nesting)\b/.test(`${category} ${message}`)
 }
 
 function actionableUbsFindings(findings: UbsFinding[]): UbsFinding[] {
+  // The same defect can arrive twice — once as a JSONL finding record and once
+  // as a report `extras` sample with a different record shape — so raw-record
+  // dedup (uniqueRecords) misses it. Dedup on the resolved finding identity.
+  const seen = new Set<string>()
   return findings
     .filter((finding) => finding.kind === "source")
     .filter((finding) => finding.severity === "critical" || finding.severity === "warning")
     .filter((finding) => !isNoiseFinding(finding))
+    .filter((finding) => {
+      const key = `${finding.severity}|${finding.file}|${finding.line ?? ""}|${finding.category}|${finding.message}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
 }
 
 function ubsFindingCount(findings: UbsFinding[], severity: UbsSeverity): number {
@@ -744,6 +756,9 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
     "--format=jsonl",
     `--beads-jsonl=${artifacts.findings}`,
     `--report-json=${artifacts.report}`,
+    // End-of-options marker: a changed file named like `--report-json=x` or
+    // `--help.ts` must be treated as a path, not parsed as a ubs flag.
+    "--",
     ...selection.files,
   ]
   const result = spawnSync("ubs", args, {
@@ -793,6 +808,24 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
     return scan
   }
 
+  // A process terminated by an external signal (e.g. the OOM killer SIGKILLing
+  // ubs) sets result.signal but leaves result.error undefined and result.status
+  // null, so it slips past both the timeout and error guards above. Treat it as
+  // a tool failure rather than parsing whatever partial artifact survived.
+  if (result.signal) {
+    writeUbsRawLog(artifacts, stdout, stderr, `ubs killed by signal ${result.signal}`)
+    const scan: UbsScan = {
+      ...base,
+      status: "tool-failure",
+      available: true,
+      exitCode,
+      parseable: false,
+      note: `ubs was killed by signal ${result.signal}; run ubs doctor --fix, then rescan`,
+    }
+    writeUbsSummary(rootDir, scan)
+    return scan
+  }
+
   if (exitCode === 2) {
     writeUbsRawLog(artifacts, stdout, stderr, "ubs exited 2 (tool failure)")
     const scan: UbsScan = {
@@ -809,10 +842,17 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
 
   const { records, parseable } = readUbsRecords(artifacts, stdout)
   const findings = records.map((record) => findingFromRecord(rootDir, record)).filter((finding): finding is UbsFinding => finding !== null)
-  const counts = findTotals(records) ?? summarizeCountsFromFindings(findings, records)
+  const totals = findTotals(records)
+  const counts = totals ?? summarizeCountsFromFindings(findings, records)
   const actionable = actionableUbsFindings(findings)
 
-  if (!parseable) {
+  // `parseable` from readUbsRecords only means we decoded *some* JSON object; a
+  // report like {"error":"..."} decodes but yields neither a recognized finding
+  // nor a severity-totals block. Require one of those before trusting the run,
+  // so a structured error report falls through to tool-failure (never clean).
+  const meaningful = parseable && (totals !== null || findings.length > 0)
+
+  if (!meaningful) {
     writeUbsRawLog(artifacts, stdout, stderr, "ubs ran but produced no parseable structured output")
     const scan: UbsScan = {
       ...base,
@@ -860,7 +900,7 @@ const codeFileTest = new RegExp(`\\.(${CODE_EXT})$`, "i")
 const lensRules: { lens: string; test: RegExp }[] = [
   { lens: "browser-e2e-verification.md", test: /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|html|css|scss|sass)$/i },
   { lens: "ux-accessibility-audit.md", test: /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|vue|svelte|html|css|scss|sass)$/i },
-  { lens: "real-service-integration-check.md", test: /(^|\/)(api|server|workers?|db|database|migrations?|webhooks?|auth|billing|payments?|checkout|subscriptions?|stripe|paypal|integration|e2e|factories?)(\/|$)|(^|\/)[^/]*(factory|harness)[^/]*\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$|(^|\/)[^/]*test[^/]*db[^/]*/i },
+  { lens: "real-service-integration-check.md", test: /(^|\/)(api|server|workers?|db|database|migrations?|webhooks?|auth|billing|payments?|checkout|subscriptions?|stripe|paypal|integration|e2e|factories?)(\/|$)|(^|\/)[^/]*(factory|harness)[^/]*\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$|(^|\/)[^/]*test[^/]*db[^/]*\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$/i },
   { lens: "cli-agent-ergonomics.md", test: /(^|\/)(commands|bin|scripts|cli)(\/|$)|\.(sh|bash|zsh)$/i },
   { lens: "prose-quality-pr-copy.md", test: /(^|\/)README(\.[^/]+)?$|(^|\/)(CHANGELOG|CHANGES|HISTORY)(\.[^/]+)?$|(^|\/)docs\/|\.md$/i },
   { lens: "config-contract-check.md", test: /(^|\/)(package|tsconfig|plugin|marketplace|versions)\.(json|jsonc)$|\.(ya?ml|toml)$|(^|\/)SKILL\.md$|(^|\/)\.c(laude|odex)-plugin\/plugin\.json$|(^|\/)commands\/.+\.md$/i },

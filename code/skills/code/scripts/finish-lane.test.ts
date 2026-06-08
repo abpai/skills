@@ -346,6 +346,119 @@ exit 1
   expect(result.stdout).toContain("SEALED")
 })
 
+// A real critical whose message echoes an identifier containing a noise word
+// (fetchTodos -> "todo") must stay actionable; the noise filter is word-bounded.
+test("a critical whose message contains a noise substring is not dropped", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/app.ts", "export const value = maybe.missing\n")
+  const fakeBin = makeFakeUbs(
+    repo,
+    `
+findings=""
+for arg in "$@"; do
+  case "$arg" in --beads-jsonl=*) findings="\${arg#*=}" ;; esac
+done
+cat > "$findings" <<'JSONL'
+{"type":"totals","critical":1,"warning":0,"info":0,"good":0}
+{"file":"src/app.ts","line":1,"severity":"critical","category":"1","message":"possible null access on result of fetchTodos()"}
+JSONL
+exit 1
+`,
+  )
+
+  const result = runFinishLane(repo, { PATH: `${fakeBin}:${systemPath}` })
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("status: advisory-findings")
+  expect(result.stdout).toContain("actionable source findings: critical=1 warning=0")
+})
+
+// A defect emitted both as a JSONL finding and as a report `extras` sample is
+// the same finding; it must be listed once, not double-counted.
+test("a finding duplicated across jsonl and report samples is listed once", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/app.ts", "export async function demo(url: string) {\n  return open(url)\n}\n")
+  const fakeBin = makeFakeUbs(
+    repo,
+    `
+findings=""
+report=""
+for arg in "$@"; do
+  case "$arg" in
+    --beads-jsonl=*) findings="\${arg#*=}" ;;
+    --report-json=*) report="\${arg#*=}" ;;
+  esac
+done
+cat > "$findings" <<'JSONL'
+{"type":"totals","critical":0,"warning":1,"info":0,"good":0}
+{"type":"finding","file":"src/app.ts","line":2,"severity":"warning","category":"resource_lifecycle","message":"return open(url)"}
+JSONL
+cat > "$report" <<'JSON'
+{"scanners":[{"language":"ts","extras":{"resource_lifecycle":{"severity":"warning","samples":[{"file":"/x/files_scan/src/app.ts","line":2,"code":"return open(url)"}]}}}],"totals":{"critical":0,"warning":1,"info":0}}
+JSON
+exit 0
+`,
+  )
+
+  const result = runFinishLane(repo, { PATH: `${fakeBin}:${systemPath}` })
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("actionable source findings: critical=0 warning=1")
+})
+
+// An external signal kill leaves result.signal set but result.error undefined;
+// it must surface as a tool failure, never a parsed clean/advisory run.
+test("a signal-killed ubs is a tool failure, not a parsed clean run", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/app.ts", "export const value = maybe.missing\n")
+  const fakeBin = makeFakeUbs(
+    repo,
+    `
+findings=""
+for arg in "$@"; do
+  case "$arg" in --beads-jsonl=*) findings="\${arg#*=}" ;; esac
+done
+cat > "$findings" <<'JSONL'
+{"type":"totals","critical":1,"warning":0,"info":0,"good":0}
+{"file":"src/app.ts","line":1,"severity":"critical","category":"1","message":"possible null access"}
+JSONL
+kill -KILL $$
+`,
+  )
+
+  const result = runFinishLane(repo, { PATH: `${fakeBin}:${systemPath}` })
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("status: tool-failure")
+  expect(result.stdout).not.toContain("status: advisory-findings")
+})
+
+// A report that decodes to JSON but carries no finding or totals block (e.g. an
+// error envelope) must fall through to tool-failure, not be reported clean.
+test("a structured error-only report is a tool failure, not clean", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/app.ts", "export const value = 1\n")
+  const fakeBin = makeFakeUbs(
+    repo,
+    `
+report=""
+for arg in "$@"; do
+  case "$arg" in --report-json=*) report="\${arg#*=}" ;; esac
+done
+cat > "$report" <<'JSON'
+{"error":"engine unavailable"}
+JSON
+exit 0
+`,
+  )
+
+  const result = runFinishLane(repo, { PATH: `${fakeBin}:${systemPath}` })
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("status: tool-failure")
+  expect(result.stdout).not.toContain("status: clean")
+})
+
 // --- suggestLenses routing (lensRules coverage) ---------------------------
 
 test("suggestLenses: a plain code file routes bug-hunting + simplification", () => {
@@ -365,6 +478,12 @@ test("suggestLenses: doc prose never routes code-only lenses", () => {
   const parserDoc = suggestLenses(["docs/parser-guide.md"])
   expect(parserDoc).toContain("prose-quality-pr-copy.md")
   expect(parserDoc).not.toContain("metamorphic-property-test-decision.md")
+
+  // The real-service `test*db*` fragment is extension-anchored: a doc whose name
+  // merely contains the substrings "test" and "db" must not route the code lens.
+  const dbDoc = suggestLenses(["docs/latestdberby.md"])
+  expect(dbDoc).toContain("prose-quality-pr-copy.md")
+  expect(dbDoc).not.toContain("real-service-integration-check.md")
 })
 
 test("suggestLenses: service & test-harness surfaces route real-service integration", () => {
