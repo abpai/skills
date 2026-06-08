@@ -50,8 +50,9 @@ surface.
 5. **Internal-wrapper three-flag invariant (CI-enforced).** A wrapper with
    `disable-model-invocation: true` MUST also set `metadata.internal: true`, and
    — when its pack has an umbrella sibling `skills/<plugin>/SKILL.md` — also
-   `user-invocable: false`. Missing either fails `validate-skills.sh` (lines
-   ~239 and ~251) → `validate-pr.yml`. Each flag prevents a specific failure, so
+   `user-invocable: false`. Missing either fails `validate-skills.sh` (the
+   `validate_skill_md` wrapper-flag checks in `scripts/validate_skills.py`) →
+   `validate-pr.yml`. Each flag prevents a specific failure, so
    you can judge intent rather than pattern-match:
    - `disable-model-invocation: true` — stops the model auto-invoking the wrapper
      instead of routing through the umbrella.
