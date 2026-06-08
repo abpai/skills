@@ -1,6 +1,6 @@
 ---
 name: code
-description: "Grouped coding workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'prepare-pr' (full PR readiness — diff, preflight, quality gates, QA, PR text, push), 'review-and-commit' (quick local review + commit), 'handoff' (create a self-contained continuation prompt for a new session), 'thermo-nuclear' (strict evidence-backed structural audit, findings only), 'explain', 'walkthrough', 'understand', 'dead-code', 'scratch', 'secure-dependencies'."
+description: "Grouped coding workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'prepare-pr' (full PR readiness — diff, preflight, quality gates, QA, PR text, push), 'review-and-commit' (quick local review + commit), 'handoff' (create a self-contained continuation prompt for a new session), 'thermo-nuclear' (strict evidence-backed structural audit, findings only), 'walkthrough', 'understand', 'dead-code', 'secure-dependencies'."
 argument-hint: "[subcommand] [args] — e.g. understand src/api, --prepare-pr, review-and-commit, thermo-nuclear"
 # allowed-tools lives on this umbrella, NOT on the per-workflow wrappers: the
 # wrappers set disable-model-invocation + user-invocable: false, so they are
@@ -18,7 +18,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob
 metadata:
-  version: "2.0.11"
+  version: "2.1.0"
 ---
 
 # Code Workflow Pack
@@ -32,18 +32,16 @@ Invoke a workflow by passing its name as the first argument to this umbrella —
 - `code <subcommand> <args>` — e.g. `code understand src/api`
 - `code --<subcommand> <args>` — e.g. `code --understand src/api`
 
-Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load `skills/code/<subcommand>.md` and treat the remaining tokens as that workflow's input. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `prepare-pr`, `review-and-commit`, `explain`, `walkthrough`, `understand`, `dead-code`, `scratch`, `secure-dependencies`, `handoff`, `thermo-nuclear`.
+Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load `skills/code/<subcommand>.md` and treat the remaining tokens as that workflow's input. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `prepare-pr`, `review-and-commit`, `walkthrough`, `understand`, `dead-code`, `secure-dependencies`, `handoff`, `thermo-nuclear`.
 
 ## Routing
 
 - Use `prepare-pr.md` for full PR readiness: a single self-contained workflow that runs a deterministic preflight (scope union of `<base>...HEAD` + uncommitted + untracked, discovered fix/validation commands, mechanical scans, suggested-lens tagger), selects and runs quality gates from `review-patterns/`, performs source-grounded QA and verification, runs independent review, drafts PR text, commits the unambiguous intended scope, then seals and gates before push/PR update. There is no separate finish-lane command — the preflight is a phase inside `prepare-pr`.
 - Use `review-and-commit.md` for quick local review plus commit: inspect scope, fix real issues, run targeted checks, plan a commit, ask approval, then commit.
 - Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
-- Use `explain.md` for dense technical explanations, tutorials, walkthrough prose, README guidance, or onboarding docs.
-- Use `walkthrough.md` to teach the owner a system or change to verified mastery: ground a checklist, then quiz one scenario at a time until every item has an unaided correct answer. It is a persistent comprehension goal, not a tour.
-- Use `understand.md` for tracing a specific code path into a `.understand/<topic>.html` artifact with call graph, concrete values, side effects, and scratch skeleton imports.
+- Use `walkthrough.md` to teach the owner a system or change to verified mastery: establish mission and prior knowledge, ground a checklist, then quiz one scenario at a time until every item has an unaided correct answer. It is a persistent comprehension goal, not a tour.
+- Use `understand.md` for tracing a specific code path into a `.understand/<topic>.html` artifact with call graph, concrete values, side effects, and import skeleton.
 - Use `dead-code.md` for conservative dead-code reachability audits and safe removal plans.
-- Use `scratch.md` for hands-on codebase exploration with runnable `.scratch/` scripts.
 - Use `secure-dependencies.md` for dependency resolution and supply-chain hardening in code repositories.
 - Use `handoff.md` for creating a focused continuation prompt that lets a new coding session resume with live repo state, file refs, decisions, next steps, and verification.
 - Use `thermo-nuclear.md` for unusually strict baseline-to-PR code quality audits: define scope, protect the working tree, gather structural evidence, and report only evidence-backed findings without editing code or preparing PR artifacts.

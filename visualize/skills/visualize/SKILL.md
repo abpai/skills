@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2"
+  version: "1.2.1"
   upstream_skill: https://github.com/nicobailon/visual-explainer
 ---
 
