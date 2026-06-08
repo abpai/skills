@@ -1038,7 +1038,14 @@ function main(): void {
   // remove the arm marker so the gate goes inert again. No scope work needed.
   if (options.disarm) {
     const marker = armMarkerPath(rootDir)
-    if (!marker) fail("--disarm needs CLAUDE_PLUGIN_DATA (run inside the installed plugin runtime).", 2)
+    // Symmetric with --arm: when there is no CLAUDE_PLUGIN_DATA (Codex or a bare
+    // checkout) there is no arm marker and no enforcing hook, so disarm is a
+    // genuine no-op rather than an error. Hard-failing here would make the
+    // documented Phase 5 disarm step always break outside the Claude plugin.
+    if (!marker) {
+      console.log("DISARM SKIPPED (no CLAUDE_PLUGIN_DATA; the push gate is inert outside the installed plugin runtime)")
+      return
+    }
     rmSync(marker, { force: true })
     console.log(`DISARMED ${marker}`)
     return

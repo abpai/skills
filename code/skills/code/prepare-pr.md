@@ -18,7 +18,11 @@ gated-on-green action — never an early "share it then polish" step. Pushing fi
 turns every finding into a post-hoc follow-up commit a reviewer already saw. An
 always-on plugin hook (`gate-before-push.sh`) enforces this while prepare-pr is
 **armed**: it blocks push/PR-create/PR-body-edit unless a fresh seal sentinel
-exists for the current branch.
+exists for the current branch. **This enforcing hook exists only under Claude
+Code** — Codex has no hook system, so there the arm/seal/disarm steps still run
+but nothing auto-blocks the push. Under Codex, gate-before-push is a discipline
+you self-enforce, with `--seal`'s refuse-on-red (Phase 5) as the deterministic
+green check before you push.
 
 **BRIGHT LINE 2 — Source-grounded verification.** Write the expected behavior
 into the verification log _before_ each action, grounded in source, docs, route,
@@ -56,13 +60,15 @@ stdout summary):
 ```bash
 # inside the skills checkout itself
 bun code/skills/code/scripts/finish-lane.ts --fix --arm
-# installed via project-local skills
+# installed via project-local skills (e.g. Codex's .agents/skills)
 bun .agents/skills/code/scripts/finish-lane.ts --fix --arm
 # loaded as a Claude Code plugin
 bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --fix --arm
 ```
 
-Pick the path that exists. Pass `--base <ref>` when the auto-detected base is
+Pick the path that exists — `${CLAUDE_PLUGIN_ROOT}` is set only under the Claude
+Code plugin runtime, so under Codex or a bare checkout use one of the first two.
+Remember which path resolved; Phase 5 reuses it for `--seal`/`--disarm`. Pass `--base <ref>` when the auto-detected base is
 wrong (PR onto a non-default branch). The script scopes to the union of
 `<base>...HEAD` + uncommitted + staged + untracked and auto-detects `<base>`, so
 a committed-but-unpushed branch with a clean working tree has real work to do —
@@ -81,9 +87,10 @@ it as the shared state for the rest of the workflow.
 `<repo-id>` exactly as the hook does, so do not hand-build the path). The
 always-on hook now blocks push/PR-create/PR-body-edit for this repo until the
 branch is sealed (Phase 5); it is disarmed only in Phase 5 after a successful
-push. The look-for `ARMED <path>` line in the summary confirms it. (Outside the
-installed plugin runtime there is no `CLAUDE_PLUGIN_DATA`; arming is a no-op and
-the gate stays inert — expected in a bare checkout.)
+push. The look-for `ARMED <path>` line in the summary confirms it. (Under Codex
+or a bare checkout there is no `CLAUDE_PLUGIN_DATA` and no enforcing hook, so
+`--arm` is a no-op and the gate stays inert — expected. Seal still works as your
+green check; you self-enforce gate-before-push there.)
 
 **Enumerate untracked files.** Flag anything large, data-shaped, or
 secret-looking (dumps, exports, `.env`, tokens) as commit-excluded by default.
@@ -126,18 +133,28 @@ cross-boundary-consumer checks here — they catch what a green suite hides.
 
 ## Phase 4 — Independent review & PR text
 
-For correctness-sensitive or behavior-affecting diffs, run an independent review:
-`codex review --uncommitted`, or a fresh no-context sub-agent under a read-only
-sandbox, reads the current diff. Self-review reliably misses regressions your own
-fix just introduced. Fold findings into `Review Findings` and triage them — do
-**not** auto-apply. Skip with a rationale only for trivial docs/metadata diffs.
+For correctness-sensitive or behavior-affecting diffs, run an **independent**
+review of the current diff — a reviewer with no memory of why you wrote the code,
+because self-review reliably misses regressions your own fix just introduced. Use
+the path that fits the harness:
+
+- **Under Claude Code:** spawn a fresh no-context sub-agent (the Task tool) under
+  a read-only sandbox to read the diff, or run `codex review --uncommitted` if
+  the Codex CLI is installed.
+- **Under Codex:** run the review in a *separate* read-only `codex exec` session
+  over the diff — a fresh context, not your active one. Do **not** recursively
+  `codex review` your own running session.
+
+Fold findings into `Review Findings` and triage them — do **not** auto-apply.
+Skip with a rationale only for trivial docs/metadata diffs.
 
 Draft or rewrite PR text from the actual diff + evidence: what now happens that
 did not before, why it matters, how it works (only as much as a reviewer needs),
 exact validation commands + live QA evidence, and residual manual QA or known
 risk. Draft and compare the text against the current diff here, but **apply it to
-a live PR with `gh pr edit --body-file` only in Phase 5, after the seal** — the
-gate blocks PR-body edits until the branch is sealed. (Optional: a self-contained
+a live PR with `gh pr edit --body-file` only in Phase 5, after the seal** — under
+Claude Code the gate blocks PR-body edits until the branch is sealed; under Codex
+that ordering is self-enforced. (Optional: a self-contained
 HTML explainer for complex diffs — opt-in, not mandatory.)
 
 ## Phase 5 — Commit, seal, push & disarm
@@ -161,27 +178,41 @@ resolve that explicitly (move, ignore, or ask) before sealing; do not push a PR
 whose local scope cannot be represented by the committed branch.
 
 **Seal** only after gates + QA + independent review pass and after all intended
-commits have been created:
+commits have been created (reuse the finish-lane.ts path that resolved in
+Phase 1 — `${CLAUDE_PLUGIN_ROOT}/...` under the Claude plugin, or
+`.agents/skills/...` under Codex / project-local skills):
 
 ```bash
+# Claude Code plugin runtime:
 bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --seal
+# Codex / project-local skills:
+bun .agents/skills/code/scripts/finish-lane.ts --seal
+# inside the skills checkout itself:
+bun code/skills/code/scripts/finish-lane.ts --seal
 ```
 
 This writes the per-branch sentinel
 `.workflow/finish-lane/seal/<branch-slug>.sealed` stamped with the current HEAD
-sha + scope hash + timestamp. The hook treats it as fresh only if HEAD and the
-scope hash still match — any new commit, staged change, unstaged edit, or new
-untracked file invalidates the seal and re-blocks push. `--seal` **refuses to
+sha + scope hash + timestamp. Under Claude Code the hook treats it as fresh only
+if HEAD and the scope hash still match — any new commit, staged change, unstaged
+edit, or new untracked file invalidates the seal and re-blocks push; under Codex
+the sentinel is your own freshness check, since no hook consumes it. `--seal` **refuses to
 write the sentinel (exit 2) if any discovered validation command is failing**, so
 the mechanical gate can never be sealed red — fix the failure and re-seal. (No
 validation command discovered is not a failure; for a docs-only diff your skip
 rationale is the gate.) `--seal` does **not** disarm.
 
 Push / open or update the PR once the seal is fresh. Then **disarm immediately**
-so the gate goes inert again:
+so the gate goes inert again (same finish-lane.ts path as above; under Codex this
+is a harmless no-op — there was no armed hook to clear):
 
 ```bash
+# Claude Code plugin runtime:
 bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --disarm
+# Codex / project-local skills:
+bun .agents/skills/code/scripts/finish-lane.ts --disarm
+# inside the skills checkout itself:
+bun code/skills/code/scripts/finish-lane.ts --disarm
 ```
 
 If any commit or file change happens after sealing, the seal is stale — re-seal
