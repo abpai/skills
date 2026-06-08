@@ -109,20 +109,44 @@ ARM_MARKER="$CLAUDE_PLUGIN_DATA/prepare-pr/armed/$REPO_ID.armed"
 # "still block to be safe").
 GATED=0
 
-# git ... push  (git as a token, push as a later token in the SAME invocation:
-# disallow shell separators and '#' comments between git and push so a trailing
-# "# ready to push" comment can't smuggle a match).
-if printf '%s' "$CMD" | grep -Eq '(^|[^[:alnum:]_-])git([[:space:]]+[^|;&#]*)?[[:space:]]+push([[:space:]]|$)'; then
+# A command-position prefix: start-of-string, or immediately after a shell
+# separator (';', '&&', '||', '|', '(', '{', '&', newline). Any number of leading
+# inline assignments (`FOO=bar git push`) and env/sudo-style wrappers
+# (`env FOO=bar`, `sudo -n`, `command`, `nice`) may sit in between so a leading
+# wrapper or env-var assignment doesn't smuggle git/gh out of command position.
+# Kept as a reusable fragment so both the git and gh matchers anchor identically.
+#
+# NOTE: these matchers require the binary to be in COMMAND POSITION — so
+# `echo git push` and a trailing "# ready to push" comment do NOT match, but
+# `git push`, `git -C dir push`, `sudo git push`, `FOO=bar git push`,
+# `GH_TOKEN=x gh pr create`, and `foo && git push` do.
+CMDPOS='(^|[;&|({]|&&|\|\|)[[:space:]]*(([A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|#]*[[:space:]]+)|((env|sudo|command|nice|nohup|time)[[:space:]]+([-][^[:space:];&|#]*[[:space:]]+)*([A-Za-z_][A-Za-z0-9_]*=[^[:space:];&|#]*[[:space:]]+)*))*'
+
+# A terminator after the gated verb: whitespace, end-of-string, or a shell
+# separator/redirect/grouping char (';', '&', '|', ')', '}', '<', '>'). Matching
+# these means `git push;`, `git push && ...`, `git push|tee`, and `{ git push; }`
+# still gate — without it a trailing separator would smuggle the verb past the
+# boundary. A bare '-' is deliberately excluded so `git push-foo` isn't matched.
+TERM='([[:space:];&|)}<>]|$)'
+
+# git ... push  (git in command position, push as a later token in the SAME
+# invocation: disallow shell separators and '#' comments between git and push so
+# a trailing "# ready to push" comment can't smuggle a match. The optional
+# middle tokens cover global options like `git -C dir`.)
+if printf '%s' "$CMD" | grep -Eq "${CMDPOS}git([[:space:]]+[^|;&#]*)?[[:space:]]+push${TERM}"; then
   GATED=1
 fi
 
-# gh pr create
-if printf '%s' "$CMD" | grep -Eq '(^|[^[:alnum:]_-])gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$)'; then
+# gh ... pr create  (gh in command position; tolerate global options such as
+# `-R owner/repo` / `--repo owner/repo` between `gh` and `pr`. Disallow shell
+# separators and '#' comments between the tokens so comments can't smuggle a
+# match.)
+if printf '%s' "$CMD" | grep -Eq "${CMDPOS}gh([[:space:]]+[^|;&#]*)?[[:space:]]+pr([[:space:]]+[^|;&#]*)?[[:space:]]+create${TERM}"; then
   GATED=1
 fi
 
-# gh pr edit ... --body / --body-file
-if printf '%s' "$CMD" | grep -Eq '(^|[^[:alnum:]_-])gh[[:space:]]+pr[[:space:]]+edit([[:space:]]|$)'; then
+# gh ... pr edit ... --body / --body-file  (same global-flag tolerance as create)
+if printf '%s' "$CMD" | grep -Eq "${CMDPOS}gh([[:space:]]+[^|;&#]*)?[[:space:]]+pr([[:space:]]+[^|;&#]*)?[[:space:]]+edit${TERM}"; then
   if printf '%s' "$CMD" | grep -Eq '(^|[[:space:]])--body(-file)?([[:space:]]|=|$)'; then
     GATED=1
   fi

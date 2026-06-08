@@ -134,14 +134,19 @@ if [[ -n "$ENV_FILE" ]]; then
     exit 1
   }
 elif [[ -z "${CURSOR_API_KEY:-}" ]]; then
-  dir="$PWD"
+  # Search ancestor .env files starting from the workspace. Canonicalize to an
+  # absolute path first so a relative --workspace (e.g. '.') can't make
+  # `dirname` spin forever, and guard the loop against a fixed point regardless.
+  dir="$(cd "$WORKSPACE" 2>/dev/null && pwd -P || printf '%s' "$WORKSPACE")"
   loaded="false"
-  while [[ "$dir" != "/" ]]; do
+  while :; do
     if load_env_file "$dir/.env"; then
       loaded="true"
       break
     fi
-    dir="$(dirname "$dir")"
+    next="$(dirname "$dir")"
+    [[ "$next" == "$dir" ]] && break
+    dir="$next"
   done
   if [[ "$loaded" != "true" ]]; then
     echo "[FAIL] CURSOR_API_KEY not found; set it or pass CURSOR_ENV_FILE/--env-file" >&2
