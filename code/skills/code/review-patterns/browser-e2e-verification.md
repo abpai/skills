@@ -9,6 +9,16 @@ Drive changed UI through real user paths and prove it renders and behaves correc
 - Auth-gated, multi-page, or payment/order flows (escalate to Deep pass).
 - Skip only diffs with **no** UI surface.
 
+## Tool choice
+
+Pick by the evidence needed, not by a fixed tool ranking:
+
+- **Default to agent-browser / Browser plugin when available for ordinary local UI signoff.** Use it to drive the actual user path with real controls and bounded observations. It is the cheapest honest proof for "does this path work in a real browser?"
+- **Escalate to Chrome DevTools MCP when the question is DevTools-shaped.** Prefer it for network request details (payloads, headers, status, timing), structured console messages, performance traces/insights, Lighthouse, emulation/throttling, heap snapshots, extension surfaces, or browser-internals debugging. It can drive input too when agent-browser is unavailable, but its primary job here is diagnosis and richer evidence.
+- **Use repo-native E2E as durable regression proof, not as a last resort.** If the repo already has Playwright/Cypress/Puppeteer, run it and extend it when the change should survive into CI. Interactive proof is a session artifact; checked-in E2E is the regression lock.
+- **Use ad-hoc Playwright only when no integrated browser surface or repo-native E2E path exists.** Use ad-hoc Puppeteer only when the repo already standardizes on Puppeteer or the Chrome DevTools MCP/Puppeteer stack is the natural local surface.
+- **Keep browser evidence token-bounded.** Prefer semantic/accessibility snapshots and focused assertion summaries over raw DOM dumps. Screenshot only when the question is visual; avoid screenshot loops. Write heavy artifacts (traces, network dumps, videos, heap snapshots, performance profiles) to files and reference paths/URIs instead of inlining payloads.
+
 ## Gotchas
 
 1. **The `evaluate()` trap — the most dangerous trap for agent QA.** Driving the UI via `page.evaluate()` / direct DOM manipulation bypasses the actionability checks (visible, stable, enabled, **not-obscured**, receives-events, editable) that Playwright's action methods (`.click()`, `.fill()`, `.check()`, `.press()`, `.selectOption()`) run on every interaction. A button completely hidden behind a modal overlay "works" via `evaluate()` but is **untouchable by a real user**. Rule: if you're reaching for `evaluate()` to trigger an interaction, ask "could a human do this?" — if yes, use the action method. `evaluate()` is for reading state and staging conditions only, **never** as signoff proof.
@@ -46,10 +56,10 @@ Drive changed UI through real user paths and prove it renders and behaves correc
 ## Quick pass
 
 1. Build a QA inventory from **three sources**: requested requirements, what you actually built, and the claims you're signing off — every item maps to a check. Add ≥2 off-happy-path scenarios.
-2. Start or reuse the app with repo-native tooling; drive **real controls only** (`.click()`/`.fill()`/`.press()`) for signoff.
+2. Start or reuse the app with repo-native tooling; choose the browser surface from [Tool choice](#tool-choice); drive **real controls only** (`.click()`/`.fill()`/`.press()`) for signoff.
 3. Per change, run the Edit-Reload-Verify micro-loop: reload → `diffLayoutSnapshots` → `domHealthCheck` → screenshot.
 4. Attach a `ConsoleMonitor`; check console (hydration first) and network — no new errors or failed requests on tested paths.
-5. Capture a screenshot or trace per item, or record the exact blocker.
+5. Capture bounded evidence per item: assertion summary + screenshot/trace/network artifact path where relevant, or the exact blocker.
 
 ## Deep pass
 
@@ -59,6 +69,8 @@ Risk-gated escalation when the gate triggers flag auth, multi-page journeys, res
 - **Failure-injection pass** (gotcha 8) — `resilienceSmokeTest` first, then per-endpoint network modes and state-corruption modes; grade A–F.
 - **Double-submit + input stress** (gotchas 9, 10) on forms — `rapidInteractionTest`, `inputStressTest`.
 - **Auth test users** (gotcha 15) for protected routes; persistent Playwright sessions with trace/video for multi-step flows.
+- **DevTools-shaped escalation** (tool choice) — Chrome DevTools MCP for network payload/header/timing inspection, console source detail, Lighthouse, performance traces, emulation/throttling, or heap snapshots. Store heavy output as files and cite paths.
+- **Durable regression proof** (tool choice) — extend repo-native E2E when the bug/change should be locked into CI.
 - **Stabilize** (gotcha 14) before any before/after comparison.
 
 ## Scripts
@@ -67,7 +79,7 @@ Risk-gated escalation when the gate triggers flag auth, multi-page journeys, res
 - [`scripts/failure-injection.js`](scripts/failure-injection.js) — `resilienceSmokeTest(page, url)` (30-sec smoke), `injectNetworkFailure(page, urlPattern, mode, opts)`, `corruptSessionState(page, mode)`, `rapidInteractionTest(page, selector, {count, intervalMs})` (double-submit), `inputStressTest(page, selector)` + `INPUT_STRESS_VECTORS`.
 - [`scripts/console-monitor.js`](scripts/console-monitor.js) — `new ConsoleMonitor(page)`, `.getUnexpectedErrors()` (allowlist-filtered), `.hasHydrationErrors()`, `.getSummary()`.
 
-Invoke from a persistent Playwright session, e.g. `const { domHealthCheck } = require('./scripts/dom-health-check.js'); const h = await domHealthCheck(page);`.
+Invoke from a persistent Playwright-compatible session, e.g. `const { domHealthCheck } = require('./scripts/dom-health-check.js'); const h = await domHealthCheck(page);`.
 
 ## False positives
 
@@ -80,4 +92,4 @@ Invoke from a persistent Playwright session, e.g. `const { domHealthCheck } = re
 
 ## Evidence to record
 
-Per QA item: route, viewport, account/browser state, user action, expected-vs-actual, screenshot/trace path, console + network notes, and any residual manual QA. Record functional and visual as **independent** passes (one does not imply the other), plus the failure-resilience grade if the Deep pass ran. End with explicit **negative confirmation** of the defect classes checked and not found, and the two pre-signoff answers (gotcha 16). Cite any `evaluate()`, forced state, or DB write strictly as a diagnostic. When skipping: record "no UI surface." When **blocked** (not skipped) — app won't start, auth unavailable, seed data missing, required service unreachable — name the obstacle, the smallest diagnostic attempted, the closest proof reached, and the residual human QA.
+Per QA item: route, chosen browser surface, viewport, account/browser state, user action, expected-vs-actual, bounded assertion summary, screenshot/trace/network artifact path, console + network notes, and any residual manual QA. Record functional and visual as **independent** passes (one does not imply the other), plus the failure-resilience grade if the Deep pass ran. End with explicit **negative confirmation** of the defect classes checked and not found, and the two pre-signoff answers (gotcha 16). Cite any `evaluate()`, forced state, or DB write strictly as a diagnostic. When skipping: record "no UI surface." When **blocked** (not skipped) — app won't start, auth unavailable, seed data missing, required service unreachable — name the obstacle, the smallest diagnostic attempted, the closest proof reached, and the residual human QA.
