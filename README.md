@@ -83,7 +83,7 @@ research and review. The debate workflow now lives inside `pi` as
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
 | **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and return the decisions |
-| **harness** | Groups agent-harness workflows under `/harness:*`: starts with `/harness:docs` for progressive-disclosure repo docs, `docs/GLOSSARY.md` terms, durable `docs/todos` specs, domain code maps, invariants, design guidance, and validation routes |
+| **harness** | Groups agent-harness workflows under `/harness:*`: `/harness:docs` creates progressive-disclosure repo docs and `/harness:doctor` audits docs, `AGENTS.md`, glossary/todo specs, domain maps, validation routes, and Harness Doctor findings |
 
 ### Tools
 
@@ -139,7 +139,9 @@ abpai/skills/
 ├── harness/                   ← grouped agent-harness workflows
 │   └── skills/
 │       ├── harness/           ← umbrella skill (/harness) + flat modules
-│       │   └── docs.md        ← progressive-disclosure docs workflow
+│       │   ├── docs.md        ← progressive-disclosure docs workflow
+│       │   └── doctor.md      ← Harness Doctor audit workflow
+│       ├── doctor/            ← /harness:doctor wrapper
 │       └── docs/              ← /harness:docs wrapper
 ├── pi/                        ← intentional Claude-only exception
 │   ├── .claude-plugin/plugin.json

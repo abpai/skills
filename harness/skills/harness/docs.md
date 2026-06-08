@@ -415,42 +415,13 @@ Prioritize `docs/design/migration-patterns.md`, because agents need translation 
 | Desktop-only table | responsive data table pattern | Must validate mobile layout |
 ```
 
-### 9. Apply Harness Doctor thinking
+### 9. Leave scanner work to `harness:doctor`
 
-Harness Doctor is the React Doctor analogy for agent guidance. It should live outside product repos and scan repo docs plus agent guidance for missing, stale, duplicated, too-broad, or hard-to-navigate information.
+Harness Doctor is the React Doctor analogy for agent guidance. The scanner should live outside product repos and inspect stable repo docs plus agent guidance for deterministic gaps: missing files, stale links, incomplete domain docs, banned long-lived paths, and todo-spec shape.
 
-Product repos should contain only stable docs and optional thin config such as:
+During docs work, product repos should contain only stable docs and optional thin config such as `doctor.config.ts` with `docsContract: true`. Do not embed scanner packages, agent utility scripts, generated reports, or task outputs in every product repo.
 
-```text
-harness-doctor.config.ts
-```
-
-Do not embed scanner packages, agent utility scripts, generated reports, or task outputs in every product repo.
-
-Use these checks manually until tooling exists or when the configured scanner is unavailable:
-
-- `AGENTS.md` exists and is below the line/token limit.
-- `AGENTS.md` mostly links outward instead of becoming a manual.
-- `docs/INDEX.md` links to every major docs area.
-- Every `docs/domains/*` folder has `INDEX.md`, `code-map.md`, `invariants.md`, and `test-map.md`.
-- `docs/todos/INDEX.md` links to every open todo spec.
-- Each todo spec has status, scope, start files, invariants, validation, and close condition.
-- Glossary terms have definitions and aliases to avoid.
-- Repeated non-obvious phrases in docs are either linked to the glossary or intentionally left local.
-- There is only one canonical glossary file.
-- No duplicated guidance across `AGENTS.md`, `CLAUDE.md`, docs, and tool rules.
-- Broad rules are not buried in domain docs.
-- Domain-specific rules are not promoted to root.
-- Each domain code map has task to start files to validation.
-- Each invariant points to a test/lint when enforceable.
-- Each design migration rule points to canonical component or pattern docs.
-- Docs mention files that still exist.
-- Important code directories have docs routes.
-- Commands in docs still run.
-- Validation commands are current.
-- Long docs have tables, anchors, or a clear scan structure.
-- Vendor docs are not committed without a version and freshness policy.
-- Historical plans/specs are not still committed after task completion unless preserved through an explicit completed-todos convention.
+When the user asks to audit, score, run the scanner, triage findings, or apply the Keep / Move / Delete review, route to `doctor.md` instead of expanding this authoring workflow.
 
 ## Verification
 

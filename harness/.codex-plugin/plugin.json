@@ -1,7 +1,7 @@
 {
   "name": "harness",
-  "version": "1.0.3",
-  "description": "Agent harness workflow pack for designing repository environments that help coding agents navigate docs, glossary terms, todo specs, validation paths, design guidance, and domain invariants.",
+  "version": "1.0.4",
+  "description": "Agent harness workflow pack for designing and auditing repository environments: progressive docs, glossary terms, todo specs, validation paths, design guidance, domain invariants, and Harness Doctor triage.",
   "author": {
     "name": "Andy Pai"
   },
