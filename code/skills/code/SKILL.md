@@ -18,7 +18,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob
 metadata:
-  version: "2.0.10"
+  version: "2.0.11"
 ---
 
 # Code Workflow Pack
