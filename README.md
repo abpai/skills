@@ -13,6 +13,8 @@ This repository now ships metadata for both runtimes:
 
 ### Claude Code
 
+Run these slash commands **inside a Claude Code session**:
+
 ```bash
 # Add the marketplace (once)
 /plugin marketplace add abpai/skills
@@ -220,14 +222,18 @@ and [Claude Code plugin docs](https://code.claude.com/docs/en/plugins):
 
 #### From the marketplace
 
+Lines starting with `/plugin` are slash commands you run **inside a Claude Code
+session**; lines starting with `claude plugin` are run **from your terminal /
+CLI**.
+
 ```bash
-# Add the marketplace (once)
+# Inside a session: add the marketplace (once)
 /plugin marketplace add abpai/skills
 
-# Browse available plugins
+# Inside a session: browse available plugins
 /plugin
 
-# Install a plugin (user scope, default)
+# From your terminal: install a plugin (user scope, default)
 claude plugin install distill@abpai-skills
 
 # Install to project scope (shared with team via .claude/settings.json)
@@ -268,8 +274,9 @@ cd skills
 codex
 ```
 
-Open the plugin directory with `codex /plugins` — all Codex-compatible
-plugins appear automatically from the repo marketplace.
+Open the plugin directory with `codex /plugins` — the repo marketplace appears
+there, and you install the Codex-compatible plugins from it (it is not a fully
+automatic install).
 
 `pi` stays Claude-only in this repo and therefore does not appear in the Codex
 marketplace list. The engineering-practice workflows (Matt Pocock-inspired)

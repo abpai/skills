@@ -91,8 +91,21 @@ function gitRefExists(ref: string): boolean {
   return run(`git rev-parse --verify --quiet ${shellQuote(ref)} >/dev/null`).status === 0
 }
 
+// Resolve an explicit --base to a commit. The scope diffs run with `2>/dev/null`,
+// so an unresolvable base (e.g. the typo `orgin/main`) would otherwise silently
+// yield an EMPTY committed diff and the workflow could seal an incomplete scope.
+// Fail fast here, before any scope computation, sentinel, or changed-files write.
 function detectBase(requested: string): string {
-  if (requested) return requested
+  if (requested) {
+    if (!gitRefExists(`${requested}^{commit}`)) {
+      fail(
+        `--base ${requested} does not resolve to a commit. Check for a typo (e.g. 'orgin/main') ` +
+          `or fetch the ref first; refusing to compute scope against an invalid base.`,
+        2,
+      )
+    }
+    return requested
+  }
   const head = run("git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||'").output.trim()
   if (head && gitRefExists(`origin/${head}`)) return `origin/${head}`
   for (const candidate of ["origin/main", "origin/master", "main", "master", "HEAD"]) {

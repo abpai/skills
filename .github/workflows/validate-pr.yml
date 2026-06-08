@@ -17,6 +17,15 @@ jobs:
         run: |
           scripts/sync-plugin-versions.sh
           scripts/generate-versions.sh
+      - name: Verify generated version surfaces are committed
+        run: |
+          if ! git diff --exit-code -- \
+            versions.json \
+            '*/.claude-plugin/plugin.json' \
+            '*/.codex-plugin/plugin.json'; then
+            echo "::error::Generated version surfaces are out of date. Run scripts/sync-plugin-versions.sh && scripts/generate-versions.sh and commit the result."
+            exit 1
+          fi
       - name: Run skill validation
         run: scripts/validate-skills.sh
 
@@ -29,6 +38,8 @@ jobs:
           python-version: "3.12"
       - name: Run wrapper parity tests
         run: scripts/test-wrapper-parity.sh
+      - name: Run push-gate tests
+        run: scripts/test-gate-before-push.sh
 
   check-version-bump:
     runs-on: ubuntu-latest

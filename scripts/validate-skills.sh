@@ -75,6 +75,17 @@ if not data.get('description'):
     print(f'[FAIL] {path}: missing description')
     sys.exit(1)
 
+# Namespaced commands MUST be skills/<name>/SKILL.md — never a plugin-root
+# commands/ dir, and never a 'commands' manifest path (flat commands/*.md do not
+# acquire the plugin namespace). See CLAUDE.md 'Namespaced commands MUST be skill
+# subdirectories'.
+if 'commands' in data:
+    print(f'[FAIL] {path}: declares a \"commands\" path — flat commands/*.md do not acquire the plugin namespace; convert each into skills/<name>/SKILL.md (see CLAUDE.md)')
+    sys.exit(1)
+if (plugin_dir / 'commands').is_dir():
+    print(f'[FAIL] {plugin_dir}: plugin-root commands/ directory is forbidden — flat commands/*.md do not acquire the plugin namespace; convert each into skills/<name>/SKILL.md (see CLAUDE.md)')
+    sys.exit(1)
+
 extras = sorted(p.name for p in meta_dir.iterdir() if p.name != 'plugin.json')
 if extras:
     joined = ', '.join(extras)
@@ -98,7 +109,7 @@ def validate_path_entry(key, entry):
         print(f'[FAIL] {path}: {key} path \"{entry}\" does not exist')
         sys.exit(1)
 
-for key in ('commands', 'agents', 'skills', 'outputStyles'):
+for key in ('agents', 'skills', 'outputStyles'):
     value = data.get(key)
     if value is None:
         continue
@@ -130,155 +141,170 @@ for key in ('hooks', 'mcpServers', 'lspServers'):
     SKILL_FILES+=("$f")
   done < <(find "$plugin_dir/skills" -name 'SKILL.md' -type f 2>/dev/null | sort)
 
-  COMMAND_FILES=()
-  while IFS= read -r f; do
-    COMMAND_FILES+=("$f")
-  done < <(find "$plugin_dir/commands" -name '*.md' -type f 2>/dev/null | sort)
-
   AGENT_FILES=()
   while IFS= read -r f; do
     AGENT_FILES+=("$f")
   done < <(find "$plugin_dir/agents" -name '*.md' -type f 2>/dev/null | sort)
 
   if [[ ${#SKILL_FILES[@]} -eq 0 ]]; then
-    has_commands="$(printf '%s\n' "${COMMAND_FILES[@]}" | head -1)"
     has_agents="$(printf '%s\n' "${AGENT_FILES[@]}" | head -1)"
-    if [[ -z "$has_commands" && -z "$has_agents" ]]; then
-      echo "[FAIL] $plugin_dir: no skills, commands, or agents found"
+    if [[ -z "$has_agents" ]]; then
+      echo "[FAIL] $plugin_dir: no skills or agents found"
       failed=1
     fi
   fi
 
-  # Validate each SKILL.md
+  # Does this plugin have an umbrella skill (skills/<plugin>/SKILL.md)? If so,
+  # every NON-umbrella sibling skill is a per-command wrapper that must be hidden.
+  has_umbrella=0
+  if [[ -f "$plugin_dir/skills/$plugin_name/SKILL.md" ]]; then
+    has_umbrella=1
+  fi
+
+  # Validate each SKILL.md. name/description are parsed from the FIRST '---'
+  # fenced YAML frontmatter block only (a body line like `name:` must not count,
+  # and a SKILL.md with no frontmatter fence fails). Wrapper-hiding flags are
+  # enforced for every non-umbrella sibling when the plugin has an umbrella.
   for skill_file in "${SKILL_FILES[@]}"; do
     skill_subdir="$(dirname "$skill_file")"
     skill_name="$(basename "$skill_subdir")"
-
-    name_line="$(awk '/^name:/{print; exit}' "$skill_file" || true)"
-    desc_line="$(awk '/^description:/{print; exit}' "$skill_file" || true)"
-
-    if [[ -z "$name_line" ]]; then
-      echo "[FAIL] $skill_file: missing 'name' in frontmatter"
-      failed=1
-      continue
-    fi
-
-    actual_name="${name_line#name: }"
-    actual_name="${actual_name%\"}"
-    actual_name="${actual_name#\"}"
-
-    if [[ "$actual_name" != "$skill_name" ]]; then
-      echo "[FAIL] $skill_file: name '$actual_name' does not match folder '$skill_name'"
-      failed=1
-    fi
-
-    if [[ ! "$actual_name" =~ $name_regex ]]; then
-      echo "[FAIL] $skill_file: name '$actual_name' must be lowercase kebab-case"
-      failed=1
-    fi
-
-    if (( ${#actual_name} > 64 )); then
-      echo "[FAIL] $skill_file: name exceeds 64 chars"
-      failed=1
-    fi
-
-    if [[ -z "$desc_line" ]]; then
-      echo "[FAIL] $skill_file: missing 'description' in frontmatter"
-      failed=1
-    fi
-
-    # agentskills.io spec: SKILL.md recommended ≤ 500 lines
-    line_count="$(wc -l < "$skill_file")"
-    if (( line_count > 500 )); then
-      echo "[WARN] $skill_file: $line_count lines exceeds 500-line spec recommendation"
-    fi
-
-    # agentskills.io spec: description must be ≤ 1024 chars
-    desc_text="$(awk '
-      /^---$/ { fence++; next }
-      fence == 1 && /^description:/ {
-        sub(/^description:[ ]*>?[ ]*/, "")
-        if (length($0) > 0) { printf "%s", $0 }
-        capturing = 1; next
-      }
-      fence == 1 && capturing && /^  / {
-        sub(/^  /, "")
-        printf " %s", $0
-        next
-      }
-      fence == 1 && capturing { exit }
-      fence >= 2 { exit }
-    ' "$skill_file")"
-    if (( ${#desc_text} > 1024 )); then
-      echo "[FAIL] $skill_file: description is ${#desc_text} chars (max 1024)"
-      failed=1
-    fi
-
-    # Guardrail: a user-only per-command wrapper (disable-model-invocation: true)
-    # must be hidden everywhere except its umbrella. It must set:
-    #   - metadata.internal: true  — so flat-list installers that surface every
-    #     SKILL.md as a separate item (notably the `npx skills` CLI that Codex
-    #     uses) hide the wrapper and show only the umbrella pack.
-    #   - user-invocable: false    — so Claude Code keeps the wrapper out of the
-    #     `/` menu, leaving the umbrella as the single scoped entry instead of an
-    #     unscoped `/<name>` duplicate.
-    # Both flags leave the umbrella's `/<plugin> <name>` router as the access
-    # path. See CLAUDE.md "Grouped workflow pack pattern".
-    wrapper_flags="$(awk '
-      /^---$/ { fence++; if (fence == 2) exit; next }
-      fence != 1 { next }
-      /^disable-model-invocation:[[:space:]]*true[[:space:]]*$/ { disable = 1 }
-      /^user-invocable:[[:space:]]*false[[:space:]]*$/ { uinv = 1 }
-      /^metadata:[[:space:]]*$/ { inmeta = 1; next }
-      inmeta && /^[^[:space:]]/ { inmeta = 0 }
-      inmeta && /^[[:space:]]+internal:[[:space:]]*true[[:space:]]*$/ { internal = 1 }
-      END { print (disable + 0) " " (internal + 0) " " (uinv + 0) }
-    ' "$skill_file")"
-    read -r wf_disable wf_internal wf_uinv <<< "$wrapper_flags"
-    if [[ "$wf_disable" == "1" ]]; then
-      if [[ "$wf_internal" != "1" ]]; then
-        echo "[FAIL] $skill_file: 'disable-model-invocation: true' requires 'metadata.internal: true' (user-only wrappers must be hidden from flat-list installers like npx skills/Codex; add a metadata block with 'internal: true')"
-        failed=1
-      fi
-      # The user-invocable:false requirement applies only to a wrapper that belongs
-      # to an umbrella pack (a sibling skills/<plugin>/SKILL.md). Such a wrapper is
-      # redundant with the umbrella, so hiding it from the `/` menu leaves the
-      # umbrella as the only scoped entry and its `/<plugin> <name>` router as the
-      # access path. A pack with no umbrella (e.g. pi) has no fallback route, so its
-      # per-command skills are the primary interface and stay user-invocable.
-      skill_plugin="${skill_file#./}"; skill_plugin="${skill_plugin%%/*}"
-      if [[ -f "$skill_plugin/skills/$skill_plugin/SKILL.md" && "$wf_uinv" != "1" ]]; then
-        echo "[FAIL] $skill_file: 'disable-model-invocation: true' in an umbrella pack requires 'user-invocable: false' (per-command wrappers must stay out of the Claude Code / menu so the umbrella is the only scoped entry; add 'user-invocable: false')"
-        failed=1
-      fi
-    fi
-  done
-
-  # Validate each command markdown file
-  for command_file in "${COMMAND_FILES[@]}"; do
-    if ! python3 - "$command_file" <<'PY'
-from pathlib import Path
+    if ! python3 - "$skill_file" "$skill_name" "$plugin_name" "$name_regex" "$has_umbrella" <<'PY'
+import re
 import sys
+from pathlib import Path
 
 path = Path(sys.argv[1])
+skill_name = sys.argv[2]
+plugin_name = sys.argv[3]
+name_regex = sys.argv[4]
+has_umbrella = sys.argv[5] == '1'
+
 text = path.read_text(encoding='utf-8')
-if not text.startswith('---\n'):
-    print(f'[FAIL] {path}: missing opening frontmatter fence')
+lines = text.splitlines()
+
+# ── Parse the FIRST '---' fenced YAML frontmatter block once ──
+if not lines or lines[0].strip() != '---':
+    print(f"[FAIL] {path}: missing opening frontmatter fence ('---' as first line)")
     sys.exit(1)
-parts = text.split('\n---\n', 1)
-if len(parts) != 2:
+
+fm_lines = []
+closed = False
+for line in lines[1:]:
+    if line.strip() == '---':
+        closed = True
+        break
+    fm_lines.append(line)
+if not closed:
     print(f'[FAIL] {path}: missing closing frontmatter fence')
     sys.exit(1)
+
+# Top-level scalar fields and the description (supporting block/folded scalars).
 fields = {}
-for line in parts[0].splitlines()[1:]:
-    if not line or line.startswith((' ', '\t', '#')):
+description = None
+i = 0
+while i < len(fm_lines):
+    line = fm_lines[i]
+    if not line or line[0] in (' ', '\t', '#'):
+        i += 1
         continue
-    if ':' in line:
-        key, value = line.split(':', 1)
-        fields[key.strip()] = value.strip().strip('"')
-if not fields.get('description'):
-    print(f"[FAIL] {path}: missing 'description' in frontmatter")
+    if ':' not in line:
+        i += 1
+        continue
+    key, value = line.split(':', 1)
+    key = key.strip()
+    value = value.strip()
+    if key == 'description':
+        # Folded/literal block scalar: collect following indented lines.
+        if value in ('>', '|', '>-', '|-', '>+', '|+', ''):
+            parts = []
+            j = i + 1
+            while j < len(fm_lines) and (fm_lines[j].startswith(('  ', '\t')) or fm_lines[j] == ''):
+                stripped = fm_lines[j].strip()
+                if stripped:
+                    parts.append(stripped)
+                j += 1
+            description = ' '.join(parts)
+            i = j
+            continue
+        description = value.strip('"').strip("'")
+    else:
+        fields[key] = value.strip('"').strip("'")
+    i += 1
+
+failed = False
+
+# ── name (Finding 8: must come from frontmatter) ──
+actual_name = fields.get('name')
+if not actual_name:
+    print(f"[FAIL] {path}: missing 'name' in frontmatter")
     sys.exit(1)
+if actual_name != skill_name:
+    print(f"[FAIL] {path}: name '{actual_name}' does not match folder '{skill_name}'")
+    failed = True
+if not re.fullmatch(name_regex, actual_name):
+    print(f"[FAIL] {path}: name '{actual_name}' must be lowercase kebab-case")
+    failed = True
+if len(actual_name) > 64:
+    print(f'[FAIL] {path}: name exceeds 64 chars')
+    failed = True
+
+# ── description (Finding 8: must come from frontmatter) ──
+if not description:
+    print(f"[FAIL] {path}: missing 'description' in frontmatter")
+    failed = True
+
+# agentskills.io spec: SKILL.md recommended <= 500 lines
+if len(lines) > 500:
+    print(f'[WARN] {path}: {len(lines)} lines exceeds 500-line spec recommendation')
+
+# agentskills.io spec: description must be <= 1024 chars
+if description and len(description) > 1024:
+    print(f'[FAIL] {path}: description is {len(description)} chars (max 1024)')
+    failed = True
+
+# ── Wrapper-hiding flags (frontmatter-scoped) ──
+disable_mi = fields.get('disable-model-invocation') == 'true'
+user_invocable = fields.get('user-invocable')
+
+# metadata.internal: true (nested under a `metadata:` block).
+internal = False
+in_meta = False
+for line in fm_lines:
+    if re.fullmatch(r'metadata:\s*', line):
+        in_meta = True
+        continue
+    if in_meta:
+        if line and not line[0].isspace():
+            in_meta = False
+        elif re.fullmatch(r'\s+internal:\s*true\s*', line):
+            internal = True
+
+is_umbrella = (skill_name == plugin_name)
+
+# Finding 9: when a plugin has an umbrella, EVERY non-umbrella sibling skill is a
+# per-command wrapper and MUST be hidden — set disable-model-invocation: true,
+# metadata.internal: true, and user-invocable: false. The documented exception is
+# `pi`, which has NO umbrella (handled by has_umbrella being false there). See
+# CLAUDE.md "Grouped workflow pack pattern".
+if has_umbrella and not is_umbrella:
+    if not disable_mi:
+        print(f"[FAIL] {path}: per-command wrapper in an umbrella pack must set 'disable-model-invocation: true' (so the model routes through the umbrella, not the wrapper; see CLAUDE.md)")
+        failed = True
+    if not internal:
+        print(f"[FAIL] {path}: per-command wrapper requires 'metadata.internal: true' (user-only wrappers must be hidden from flat-list installers like npx skills/Codex; add a metadata block with 'internal: true')")
+        failed = True
+    if user_invocable != 'false':
+        print(f"[FAIL] {path}: per-command wrapper in an umbrella pack requires 'user-invocable: false' (wrappers must stay out of the Claude Code / menu so the umbrella is the only scoped entry)")
+        failed = True
+elif disable_mi:
+    # Wrapper outside an umbrella pack (e.g. pi phase commands): still must be
+    # hidden from flat-list installers, but stays user-invocable since there is
+    # no umbrella router to fall back to.
+    if not internal:
+        print(f"[FAIL] {path}: 'disable-model-invocation: true' requires 'metadata.internal: true' (hide user-only wrappers from flat-list installers like npx skills/Codex; add a metadata block with 'internal: true')")
+        failed = True
+
+sys.exit(1 if failed else 0)
 PY
     then
       failed=1
@@ -475,6 +501,7 @@ marketplace=".claude-plugin/marketplace.json"
 if [[ -f "$marketplace" ]]; then
   python3 -c "
 import json, sys
+from pathlib import Path
 path = sys.argv[1]
 try:
     with open(path, encoding='utf-8') as f:
@@ -488,7 +515,12 @@ if not data.get('owner'):
 plugins = data.get('plugins', [])
 if not plugins:
     print(f'[FAIL] {path}: no plugins listed'); sys.exit(1)
+
+failed = False
 names = set()
+# entry_path maps each marketplace entry name to the plugin folder it points at,
+# so we can verify the source path matches the corresponding manifest.
+entry_path = {}
 for i, p in enumerate(plugins):
     n = p.get('name')
     if not n:
@@ -496,8 +528,52 @@ for i, p in enumerate(plugins):
     if n in names:
         print(f'[FAIL] {path}: duplicate plugin name \"{n}\"'); sys.exit(1)
     names.add(n)
-    if not p.get('source'):
+    source = p.get('source')
+    if not source:
         print(f'[FAIL] {path}: plugins[{i}] (\"{n}\") missing source'); sys.exit(1)
+    # source may be a string ('./foo') or a dict (e.g. git-subdir with a 'path').
+    if isinstance(source, str):
+        sp = source
+    elif isinstance(source, dict):
+        sp = source.get('path')
+    else:
+        sp = None
+    if sp:
+        entry_path[n] = Path(sp.lstrip('./')).name
+
+# Set-equality: every Claude plugin (*/.claude-plugin/plugin.json) must appear
+# exactly once, with no extras.
+expected = set()
+manifest_name = {}
+for manifest in sorted(Path('.').glob('*/.claude-plugin/plugin.json')):
+    pdir = manifest.parent.parent.name
+    try:
+        mname = json.loads(manifest.read_text(encoding='utf-8')).get('name')
+    except Exception as exc:
+        print(f'[FAIL] {manifest}: cannot parse JSON: {exc}'); sys.exit(1)
+    expected.add(pdir)
+    manifest_name[pdir] = mname
+
+missing = sorted(expected - names)
+extra = sorted(names - expected)
+if missing:
+    print(f'[FAIL] {path}: missing plugins (have Claude manifest but no marketplace entry): {\", \".join(missing)}')
+    failed = True
+if extra:
+    print(f'[FAIL] {path}: unexpected plugins (marketplace entry with no Claude manifest): {\", \".join(extra)}')
+    failed = True
+
+# Each entry's source path/name must match the corresponding plugin folder/manifest.
+for n in sorted(names & expected):
+    if n in entry_path and entry_path[n] != n:
+        print(f'[FAIL] {path}: plugin \"{n}\" source path points at \"{entry_path[n]}\" (expected folder \"{n}\")')
+        failed = True
+    if manifest_name.get(n) != n:
+        print(f'[FAIL] {path}: plugin \"{n}\" manifest name is {manifest_name.get(n)!r} (expected \"{n}\")')
+        failed = True
+
+if failed:
+    sys.exit(1)
 print(f'  [OK] marketplace.json ({len(plugins)} plugins)')
 " "$marketplace" || failed=1
 else
@@ -524,13 +600,20 @@ if not isinstance(plugins, list):
     print(f'[FAIL] {path}: plugins must be a list')
     sys.exit(1)
 
+failed = False
+names = set()
+entry_path = {}
 for i, plugin in enumerate(plugins):
     name = plugin.get('name')
     source = plugin.get('source', {})
-    rel_path = source.get('path')
+    rel_path = source.get('path') if isinstance(source, dict) else source
     if not name:
         print(f'[FAIL] {path}: plugins[{i}] missing name')
         sys.exit(1)
+    if name in names:
+        print(f'[FAIL] {path}: duplicate plugin name \"{name}\"')
+        sys.exit(1)
+    names.add(name)
     if not rel_path:
         print(f'[FAIL] {path}: plugins[{i}] (\"{name}\") missing source.path')
         sys.exit(1)
@@ -545,7 +628,42 @@ for i, plugin in enumerate(plugins):
             'but that folder has no .codex-plugin/plugin.json'
         )
         sys.exit(1)
+    entry_path[name] = plugin_dir.name
 
+# Set-equality: every Codex plugin (*/.codex-plugin/plugin.json) must appear
+# exactly once. 'pi' is intentionally excluded from Codex (no .codex-plugin),
+# so it never enters the expected set and must not appear here. See CLAUDE.md.
+expected = set()
+manifest_name = {}
+for manifest in sorted(Path('.').glob('*/.codex-plugin/plugin.json')):
+    pdir = manifest.parent.parent.name
+    try:
+        mname = json.loads(manifest.read_text(encoding='utf-8')).get('name')
+    except Exception as exc:
+        print(f'[FAIL] {manifest}: cannot parse JSON: {exc}')
+        sys.exit(1)
+    expected.add(pdir)
+    manifest_name[pdir] = mname
+
+missing = sorted(expected - names)
+extra = sorted(names - expected)
+if missing:
+    print(f'[FAIL] {path}: missing plugins (have Codex manifest but no marketplace entry): {\", \".join(missing)}')
+    failed = True
+if extra:
+    print(f'[FAIL] {path}: unexpected plugins (marketplace entry with no Codex manifest, e.g. the Codex-excluded pi): {\", \".join(extra)}')
+    failed = True
+
+for name in sorted(names & expected):
+    if entry_path.get(name) != name:
+        print(f'[FAIL] {path}: plugin \"{name}\" source path points at \"{entry_path.get(name)}\" (expected folder \"{name}\")')
+        failed = True
+    if manifest_name.get(name) != name:
+        print(f'[FAIL] {path}: plugin \"{name}\" manifest name is {manifest_name.get(name)!r} (expected \"{name}\")')
+        failed = True
+
+if failed:
+    sys.exit(1)
 print(f'  [OK] {path} ({len(plugins)} plugins)')
 " "$codex_marketplace" || failed=1
 else
@@ -677,29 +795,117 @@ fi
 finish_lane_script="code/skills/code/scripts/finish-lane.ts"
 if [[ -f "$finish_lane_script" ]]; then
   if ! command -v bun >/dev/null 2>&1; then
-    echo "[FAIL] $finish_lane_script: bun is required to validate this helper"
+    # Finding 15: emit ONE actionable bun-required message and skip every
+    # bun-dependent step (build + test) so a missing bun does not spray repeated
+    # 'bun: command not found' noise.
+    echo "[FAIL] $finish_lane_script: bun is required to validate this helper (and to run its tests); install bun or skip these checks"
     failed=1
-  elif bun build "$finish_lane_script" --target=bun --outfile /tmp/skills-validate-finish-lane.js >/tmp/skills-validate-finish-lane.log 2>&1; then
-    echo "  [OK] $finish_lane_script (bun build)"
-    rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
   else
-    echo "[FAIL] $finish_lane_script: bun build failed"
-    cat /tmp/skills-validate-finish-lane.log
-    rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
-    failed=1
-  fi
-
-  finish_lane_test="code/skills/code/scripts/finish-lane.test.ts"
-  if [[ -f "$finish_lane_test" ]]; then
-    if bun test "$finish_lane_test" >/tmp/skills-validate-finish-lane-test.log 2>&1; then
-      echo "  [OK] $finish_lane_test (bun test)"
-      rm -f /tmp/skills-validate-finish-lane-test.log
+    if bun build "$finish_lane_script" --target=bun --outfile /tmp/skills-validate-finish-lane.js >/tmp/skills-validate-finish-lane.log 2>&1; then
+      echo "  [OK] $finish_lane_script (bun build)"
+      rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
     else
-      echo "[FAIL] $finish_lane_test: bun test failed"
-      cat /tmp/skills-validate-finish-lane-test.log
-      rm -f /tmp/skills-validate-finish-lane-test.log
+      echo "[FAIL] $finish_lane_script: bun build failed"
+      cat /tmp/skills-validate-finish-lane.log
+      rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
       failed=1
     fi
+
+    finish_lane_test="code/skills/code/scripts/finish-lane.test.ts"
+    if [[ -f "$finish_lane_test" ]]; then
+      if bun test "$finish_lane_test" >/tmp/skills-validate-finish-lane-test.log 2>&1; then
+        echo "  [OK] $finish_lane_test (bun test)"
+        rm -f /tmp/skills-validate-finish-lane-test.log
+      else
+        echo "[FAIL] $finish_lane_test: bun test failed"
+        cat /tmp/skills-validate-finish-lane-test.log
+        rm -f /tmp/skills-validate-finish-lane-test.log
+        failed=1
+      fi
+    fi
+  fi
+fi
+
+# ── Syntax-check other shipped helper scripts (Finding 14) ──
+#
+# Low-cost syntax/parse checks across all shipped helpers, each guarded by a
+# tool-availability check so a missing tool degrades gracefully (mirrors the
+# `command -v bun` guard above) instead of failing the run. Helpers are
+# discovered generically under each plugin's skills/ and hooks/ dirs plus the
+# repo's own scripts/, excluding finish-lane.* (already built/tested above) and
+# this validator itself.
+
+# Shell helpers: `bash -n` parse check.
+SHELL_HELPERS=()
+while IFS= read -r f; do
+  SHELL_HELPERS+=("$f")
+done < <(find . -path ./.git -prune -o -name '*.sh' -type f -print \
+         | grep -vE '/scripts/validate-skills\.sh$' | sort)
+if [[ ${#SHELL_HELPERS[@]} -gt 0 ]]; then
+  if ! command -v bash >/dev/null 2>&1; then
+    echo "  [SKIP] shell helper syntax checks (bash not found)"
+  else
+    for sh_file in "${SHELL_HELPERS[@]}"; do
+      if ! bash -n "$sh_file" >/tmp/skills-validate-sh.log 2>&1; then
+        echo "[FAIL] $sh_file: bash -n syntax check failed"
+        cat /tmp/skills-validate-sh.log
+        failed=1
+      fi
+    done
+    rm -f /tmp/skills-validate-sh.log
+    echo "  [OK] shell helper syntax (${#SHELL_HELPERS[@]} scripts, bash -n)"
+  fi
+fi
+
+# Python helpers: `python3 -m py_compile` parse check.
+PY_HELPERS=()
+while IFS= read -r f; do
+  PY_HELPERS+=("$f")
+done < <(find . -path ./.git -prune -o \
+           -path '*/__pycache__/*' -prune -o \
+           -path './.ruff_cache/*' -prune -o \
+           -path './.understand/*' -prune -o \
+           -path './.workflow/*' -prune -o \
+           -path './scripts/*' -prune -o \
+           -name '*.py' -type f -print | sort)
+if [[ ${#PY_HELPERS[@]} -gt 0 ]]; then
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "  [SKIP] python helper syntax checks (python3 not found)"
+  else
+    if python3 -m py_compile "${PY_HELPERS[@]}" >/tmp/skills-validate-py.log 2>&1; then
+      echo "  [OK] python helper syntax (${#PY_HELPERS[@]} scripts, py_compile)"
+    else
+      echo "[FAIL] python helper py_compile failed"
+      cat /tmp/skills-validate-py.log
+      failed=1
+    fi
+    rm -f /tmp/skills-validate-py.log
+  fi
+fi
+
+# Other TypeScript helpers: `bun build --target=bun` to a temp outfile. Skips
+# finish-lane.ts (built above) and *.test.ts files (exercised via `bun test`).
+TS_HELPERS=()
+while IFS= read -r f; do
+  TS_HELPERS+=("$f")
+done < <(find . -path ./.git -prune -o -name '*.ts' -type f -print \
+         | grep -vE '/finish-lane(\.test)?\.ts$' \
+         | grep -vE '\.test\.ts$' | sort)
+if [[ ${#TS_HELPERS[@]} -gt 0 ]]; then
+  if ! command -v bun >/dev/null 2>&1; then
+    echo "  [SKIP] other TypeScript helper builds (bun not found)"
+  else
+    for ts_file in "${TS_HELPERS[@]}"; do
+      if bun build "$ts_file" --target=bun --outfile /tmp/skills-validate-ts.js >/tmp/skills-validate-ts.log 2>&1; then
+        rm -f /tmp/skills-validate-ts.js
+      else
+        echo "[FAIL] $ts_file: bun build failed"
+        cat /tmp/skills-validate-ts.log
+        failed=1
+      fi
+    done
+    rm -f /tmp/skills-validate-ts.js /tmp/skills-validate-ts.log
+    echo "  [OK] other TypeScript helper builds (${#TS_HELPERS[@]} scripts, bun build)"
   fi
 fi
 

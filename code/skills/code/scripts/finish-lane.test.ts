@@ -474,6 +474,44 @@ test("--disarm is a clean no-op when CLAUDE_PLUGIN_DATA is unset", () => {
   expect(result.stdout).toContain("DISARM SKIPPED")
 })
 
+// An explicit --base that does not resolve to a commit (e.g. the typo
+// `orgin/main`) must fail fast: the scope diffs run with `2>/dev/null`, so an
+// unvalidated bad base would silently yield an empty committed diff and the
+// workflow could seal an incomplete scope. It must NOT write changed-files.txt
+// or any seal sentinel.
+test("an invalid explicit --base fails fast and writes no scope/seal artifacts", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/app.ts", "export const value = 1\n")
+
+  const result = spawnSync(process.execPath, [finishLaneScript, "--base", "orgin/main", "--seal"], {
+    cwd: repo,
+    encoding: "utf8",
+    env: { ...process.env, PATH: systemPath },
+  })
+
+  expect(result.status).not.toBe(0)
+  expect(`${result.stdout ?? ""}${result.stderr ?? ""}`).toContain("does not resolve to a commit")
+  expect(existsSync(path.join(repo, ".workflow/finish-lane/changed-files.txt"))).toBe(false)
+  expect(existsSync(path.join(repo, ".workflow/finish-lane/seal"))).toBe(false)
+})
+
+// A valid explicit base still computes scope and seals as before.
+test("a valid explicit --base still computes scope and seals", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/app.ts", "export const value = 1\n")
+
+  const result = spawnSync(process.execPath, [finishLaneScript, "--base", "HEAD", "--seal"], {
+    cwd: repo,
+    encoding: "utf8",
+    env: { ...process.env, PATH: systemPath },
+  })
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("base=HEAD")
+  expect(result.stdout).toContain("SEALED")
+  expect(existsSync(path.join(repo, ".workflow/finish-lane/changed-files.txt"))).toBe(true)
+})
+
 // --- suggestLenses routing (lensRules coverage) ---------------------------
 
 test("suggestLenses: a plain code file routes bug-hunting + simplification", () => {

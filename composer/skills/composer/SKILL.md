@@ -4,7 +4,7 @@ description: Use when the user asks for /composer:setup, /composer:generate, /co
 argument-hint: "[subcommand] [args] — e.g. generate <brief>, --review <PR>, setup --smoke"
 license: MIT
 metadata:
-  version: "1.3.0"
+  version: "1.3.1"
 ---
 
 # Composer Workflow Pack
