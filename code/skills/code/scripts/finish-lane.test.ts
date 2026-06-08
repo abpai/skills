@@ -548,6 +548,32 @@ test("a valid explicit --base still computes scope and seals", () => {
   expect(existsSync(path.join(repo, ".workflow/finish-lane/changed-files.txt"))).toBe(true)
 })
 
+// The scope hash must fold in untracked file CONTENT, not just paths — an
+// untracked file is in PR scope but rides in no git diff, so editing its
+// contents after a seal would otherwise leave scope_hash unchanged and let the
+// push gate stay green on unreviewed bytes. git hash-object per path closes that.
+test("editing an untracked file's contents changes scope_hash", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "notes.txt", "first\n") // untracked: in no diff, only scope-hashed
+
+  const seal = (): string => {
+    const r = spawnSync(process.execPath, [finishLaneScript, "--base", "HEAD", "--seal"], {
+      cwd: repo,
+      encoding: "utf8",
+      env: { ...process.env, PATH: systemPath },
+    })
+    const match = `${r.stdout ?? ""}`.match(/scope_hash=([0-9a-f]{64})/)
+    if (!match) throw new Error(`no scope_hash in output:\n${r.stdout}\n${r.stderr}`)
+    return match[1]
+  }
+
+  const before = seal()
+  writeRepoFile(repo, "notes.txt", "second\n") // same path, different contents
+  const after = seal()
+
+  expect(after).not.toBe(before)
+})
+
 // --- suggestLenses routing (lensRules coverage) ---------------------------
 
 test("suggestLenses: a plain code file routes bug-hunting + simplification", () => {
