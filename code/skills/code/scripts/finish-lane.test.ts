@@ -181,6 +181,42 @@ exit 0
   expect(summary).toContain("warning src/app.ts:3 [resource_lifecycle] return open(url)")
 })
 
+test("passes ubs file paths without a literal end-of-options marker", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "--help.ts", "export const value = 1\n")
+  const fakeBin = makeFakeUbs(
+    repo,
+    `
+findings=""
+report=""
+seen_dash_path=0
+for arg in "$@"; do
+  case "$arg" in
+    --beads-jsonl=*) findings="\${arg#*=}" ;;
+    --report-json=*) report="\${arg#*=}" ;;
+    --) echo "unexpected literal -- arg" >&2; exit 2 ;;
+    --help.ts) echo "dash-leading path was not protected" >&2; exit 2 ;;
+    ./--help.ts) seen_dash_path=1 ;;
+  esac
+done
+[ "$seen_dash_path" -eq 1 ] || { echo "missing protected dash-leading path" >&2; exit 2; }
+cat > "$findings" <<'JSONL'
+{"type":"totals","critical":0,"warning":0,"info":0,"good":0}
+JSONL
+cat > "$report" <<'JSON'
+{"totals":{"critical":0,"warning":0,"info":0,"good":0}}
+JSON
+exit 0
+`,
+  )
+
+  const result = runFinishLane(repo, { PATH: `${fakeBin}:${systemPath}` })
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("status: clean")
+  expect(result.stdout).not.toContain("status: tool-failure")
+})
+
 test("treats test-only findings as clean in the primary status", () => {
   const repo = makeRepo()
   writeRepoFile(repo, "src/app.ts", "export const value = 1\n")

@@ -384,6 +384,10 @@ function ubsArtifacts(outDir: string): UbsArtifacts {
   }
 }
 
+function ubsPathArg(file: string): string {
+  return file.startsWith("-") ? `./${file}` : file
+}
+
 function selectUbsFiles(rootDir: string, files: string[]): UbsSelection {
   const selection: UbsSelection = {
     files: [],
@@ -769,10 +773,9 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
     "--format=jsonl",
     `--beads-jsonl=${artifacts.findings}`,
     `--report-json=${artifacts.report}`,
-    // End-of-options marker: a changed file named like `--report-json=x` or
-    // `--help.ts` must be treated as a path, not parsed as a ubs flag.
-    "--",
-    ...selection.files,
+    // UBS v5.3.2 treats a POSIX `--` end-of-options marker as a literal file
+    // path, so protect dash-leading changed files by prefixing them with `./`.
+    ...selection.files.map(ubsPathArg),
   ]
   const result = spawnSync("ubs", args, {
     cwd: rootDir,
