@@ -1,6 +1,6 @@
 ---
 name: code
-description: Grouped coding workflow pack. Use /code:prepare-pr for full PR readiness — full PR diff (committed and uncommitted), deterministic preflight, quality gates, source-grounded QA, validation, PR text, commits, push/PR update, gate-before-push. Use /code:review-and-commit for quick local review plus commit. Also use for /code:explain, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:secure-dependencies, and /code:handoff.
+description: Grouped coding workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'prepare-pr' (full PR readiness — diff, preflight, quality gates, QA, PR text, push), 'review-and-commit' (quick local review + commit), 'handoff' (create a self-contained continuation prompt for a new session), 'explain', 'walkthrough', 'understand', 'dead-code', 'scratch', 'secure-dependencies'.
 argument-hint: "[subcommand] [args] — e.g. understand src/api, --prepare-pr, review-and-commit"
 # allowed-tools lives on this umbrella, NOT on the per-workflow wrappers: the
 # wrappers set disable-model-invocation + user-invocable: false, so they are
@@ -18,7 +18,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob
 metadata:
-  version: "2.0.7"
+  version: "2.0.8"
 ---
 
 # Code Workflow Pack
