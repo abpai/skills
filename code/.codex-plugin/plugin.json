@@ -1,6 +1,6 @@
 {
   "name": "code",
-  "version": "2.0.11",
+  "version": "2.1.0",
   "description": "Grouped code workflows for /code:* commands. prepare-pr is full PR readiness (deterministic preflight, quality gates, source-grounded QA, validation, PR text, commits, push/PR update), review-and-commit is quick local review plus commit, and thermo-nuclear is a strict evidence-backed structural audit.",
   "author": {
     "name": "Andy Pai"
