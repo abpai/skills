@@ -11,7 +11,7 @@ Use this workflow when the user asks to run Harness Doctor, score repo docs, fin
 - `harness-doctor` CLI checks deterministic facts only: files, links, line budgets, banned paths, complete domain docs, glossary count, and todo-spec sections.
 - Semantic judgment stays in this skill: duplicated guidance, rule altitude, glossary usefulness, invariant quality, and whether a todo is strategically worth keeping.
 
-Do not add scanner scripts to product repos. A product repo may keep stable docs plus optional `doctor.config.ts`; scanner output stays temporary.
+Do not add scanner scripts to product repos. A product repo may keep stable docs plus optional `harness-doctor.config.ts` (the `harness-doctor` CLI's config file); scanner output stays temporary.
 
 ## Fast Path
 
@@ -85,7 +85,7 @@ Then inspect:
 - `docs/todos/INDEX.md` exists when the repo opted into the Harness docs contract or has todo specs.
 - Every `docs/domains/*` folder has `INDEX.md`, `code-map.md`, `invariants.md`, and `test-map.md`.
 - Local markdown links and referenced repo paths resolve.
-- Banned default paths are absent: `.agent/`, `scripts/agent/`, `.cursor/rules/`, `docs/adr/`, `docs/product-specs/`, `docs/exec-plans/`, `docs/references/vendor-docs/`, `feature-registry.json`.
+- Banned default paths are absent: `.agent/`, `scripts/agent/`, `.cursor/rules/`, `docs/product-specs/`, `docs/exec-plans/`, `docs/references/vendor-docs/`, `feature-registry.json`. (`docs/adr/` is not banned: flag it only if newly created by default, but keep an existing maintained ADR convention.)
 - Todo specs have status, scope, start points, invariants, validation, and close condition.
 
 ## Keep / Move / Delete Audit

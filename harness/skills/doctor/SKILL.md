@@ -1,9 +1,10 @@
 ---
 name: doctor
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
-description: Run or manually apply the Harness Doctor audit workflow: deterministic docs scanner results, progressive-disclosure findings, Keep/Move/Delete doc review, AGENTS.md line gate, readiness triage, and proof-backed next steps.
+description: "Run or manually apply the Harness Doctor audit workflow: deterministic docs scanner results, progressive-disclosure findings, Keep/Move/Delete doc review, AGENTS.md line gate, readiness triage, and proof-backed next steps."
 argument-hint: "[repo audit goal]"
 ---
 

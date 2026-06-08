@@ -67,12 +67,13 @@ Do not add these as long-lived repo defaults:
 .agent/
 scripts/agent/
 .cursor/rules/
-docs/adr/
 docs/product-specs/
 docs/exec-plans/
 docs/references/vendor-docs/
 feature-registry.json
 ```
+
+Do not create ADRs (`docs/adr/`) by default, but preserve an existing, maintained ADR convention if it is the repo's source of truth for architecture history — link it from `docs/INDEX.md` rather than duplicating it.
 
 Temporary task files such as `TODO.md`, `TASK_PLAN.md`, and migration notes belong on the task branch only. Delete them before merge, or condense real deferred work into `docs/todos/<todo-slug>.md` with code routes, invariants, validation, and a close condition.
 
@@ -419,7 +420,7 @@ Prioritize `docs/design/migration-patterns.md`, because agents need translation 
 
 Harness Doctor is the React Doctor analogy for agent guidance. The scanner should live outside product repos and inspect stable repo docs plus agent guidance for deterministic gaps: missing files, stale links, incomplete domain docs, banned long-lived paths, and todo-spec shape.
 
-During docs work, product repos should contain only stable docs and optional thin config such as `doctor.config.ts` with `docsContract: true`. Do not embed scanner packages, agent utility scripts, generated reports, or task outputs in every product repo.
+During docs work, product repos should contain only stable docs and optional thin config such as `harness-doctor.config.ts` with `docsContract: true`. Do not embed scanner packages, agent utility scripts, generated reports, or task outputs in every product repo.
 
 When the user asks to audit, score, run the scanner, triage findings, or apply the Keep / Move / Delete review, route to `doctor.md` instead of expanding this authoring workflow.
 

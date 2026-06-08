@@ -1,23 +1,23 @@
 ---
 name: harness
-description: Agent harness workflow pack. Use /harness:docs in Claude or $harness docs in Codex to create progressive-disclosure repository docs; use /harness:doctor or $harness doctor to audit docs, agent guidance, todo specs, glossary/routes, and validation paths with Harness Doctor or a manual checklist.
-argument-hint: "[subcommand] [args] - e.g. docs, doctor, --docs docs overhaul"
+description: "Grouped agent-harness workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'docs' (create progressive-disclosure repository docs — tiny AGENTS.md router, docs/ indexes, glossary, architecture/design/engineering, todo specs, per-domain code maps), 'doctor' (audit docs, AGENTS.md, glossary/todo specs, domain maps, and validation routes with Harness Doctor or a manual checklist)."
+argument-hint: "[subcommand] [args] — e.g. docs, doctor, --docs docs overhaul"
 metadata:
-  version: "1.0.4"
+  version: "1.0.5"
 ---
 
 # Harness Workflow Pack
 
 This umbrella skill is the model-invocable entry point for agent harness work: the designed repository environment that lets coding agents find the right code, owner, invariant, and validation path quickly.
 
-Each public workflow also ships as its own `harness/skills/<name>/SKILL.md` so it surfaces as a namespaced `/harness:<name>` command in Claude. Those per-command skills set `disable-model-invocation: true` and `metadata.internal: true`, so model routing stays here while flat-list installers such as Codex surface only this pack. The workflow modules referenced below live beside this `SKILL.md` as flat support files.
+Each workflow also ships as its own `harness/skills/<name>/SKILL.md`, but those per-command skills set `disable-model-invocation: true`, `user-invocable: false`, and `metadata.internal: true`, so they stay out of the model's auto-invocation, out of the `/` menu (no unscoped `/<name>` duplicates of the umbrella), and out of flat-list installers like the `npx skills` installer used by Codex. Reach any workflow through this umbrella — the subcommand router below maps `/harness <name>` to the matching module. The workflow modules referenced below live beside this `SKILL.md` as flat support files.
 
 ## Subcommand invocation
 
-On surfaces without `/harness:<name>` namespacing, invoke a workflow by passing its name as the first argument. Both forms are equivalent and supported:
+Invoke a workflow by passing its name as the first argument to this umbrella — this is the access path on every surface: the Claude `/` menu shows only `/harness` (the per-command wrappers are hidden), and Codex has no `:` namespace. Both forms are equivalent and supported:
 
-- `harness <subcommand> <args>` - e.g. `harness docs`
-- `harness --<subcommand> <args>` - e.g. `harness --docs docs overhaul`
+- `harness <subcommand> <args>` — e.g. `harness docs`
+- `harness --<subcommand> <args>` — e.g. `harness --docs docs overhaul`
 
 Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it case-insensitively against the workflow names below. On a match, load `skills/harness/<subcommand>.md` and treat the remaining tokens as that workflow's input. If the first token is not a known subcommand, treat the whole input as a natural-language harness request and route by intent.
 

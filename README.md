@@ -87,7 +87,7 @@ research and review. The debate workflow now lives inside `pi` as
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
 | **capture-feedback** | Capture concise agent-behavior corrections into a local shared inbox for later trace review and skill or rule improvements |
 | **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and return the decisions |
-| **harness** | Groups agent-harness workflows under `/harness:*`: `/harness:docs` creates progressive-disclosure repo docs and `/harness:doctor` audits docs, `AGENTS.md`, glossary/todo specs, domain maps, validation routes, and Harness Doctor findings |
+| **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; run a workflow with `/harness docs` (create progressive-disclosure repo docs) or `/harness doctor` (audit docs, `AGENTS.md`, glossary/todo specs, domain maps, validation routes, and Harness Doctor findings) |
 
 ### Tools
 

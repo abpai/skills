@@ -1,9 +1,10 @@
 ---
 name: docs
 disable-model-invocation: true
+user-invocable: false
 metadata:
   internal: true
-description: Create progressive-disclosure repository docs for agent harnesses: tiny AGENTS.md routers, docs/ indexes, docs/GLOSSARY.md defined terms, architecture maps, engineering commands/testing/observability docs, design-system guidance, docs/todos specs, and per-domain code maps, invariants, and test maps.
+description: "Create progressive-disclosure repository docs for agent harnesses: tiny AGENTS.md routers, docs/ indexes, docs/GLOSSARY.md defined terms, architecture maps, engineering commands/testing/observability docs, design-system guidance, docs/todos specs, and per-domain code maps, invariants, and test maps."
 argument-hint: "[repo docs goal]"
 ---
 
