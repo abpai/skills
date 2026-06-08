@@ -459,6 +459,21 @@ exit 0
   expect(result.stdout).not.toContain("status: clean")
 })
 
+// Without CLAUDE_PLUGIN_DATA (Codex / bare checkout) there is no arm marker and
+// no enforcing hook, so --disarm must no-op cleanly, not fail — otherwise the
+// documented Phase 5 disarm step always errors outside the Claude plugin.
+test("--disarm is a clean no-op when CLAUDE_PLUGIN_DATA is unset", () => {
+  const repo = makeRepo()
+  const result = spawnSync(process.execPath, [finishLaneScript, "--disarm"], {
+    cwd: repo,
+    encoding: "utf8",
+    env: { ...process.env, PATH: systemPath, CLAUDE_PLUGIN_DATA: "" },
+  })
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("DISARM SKIPPED")
+})
+
 // --- suggestLenses routing (lensRules coverage) ---------------------------
 
 test("suggestLenses: a plain code file routes bug-hunting + simplification", () => {
