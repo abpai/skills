@@ -1,9 +1,9 @@
 ---
 name: engineering
-description: Engineering-practice workflow pack. Use when the user asks for /engineering:grill-me, /engineering:tdd, /engineering:zoom-out, /engineering:improve-architecture, /engineering:defined-terms, /engineering:complexity-report, or wants to stress-test a plan, use TDD, zoom out on code, improve codebase architecture, build a DDD ubiquitous-language glossary, or produce a read-only complexity/performance report with stable finding IDs.
+description: Grouped engineering-practice workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'grill-me' (stress-test plans), 'tdd' (test-first loops), 'zoom-out' (map unfamiliar code), 'improve-architecture' (deep modules/leverage), 'defined-terms' (DDD glossary), 'complexity-report' (read-only complexity report).
 argument-hint: "[subcommand] [args] — e.g. tdd add retries, --grill-me, complexity-report src/"
 metadata:
-  version: "1.8.0"
+  version: "1.8.1"
 ---
 
 # Engineering Workflow Pack
