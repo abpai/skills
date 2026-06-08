@@ -70,7 +70,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, commits, push, and PR update) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes explain, walkthrough (teach a system to verified mastery), understand, dead-code, scratch, secure-dependencies, and handoff |
+| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, commits, push, and PR update) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes explain, walkthrough (teach a system to verified mastery), understand, dead-code, scratch, secure-dependencies, handoff, and thermo-nuclear (strict baseline-to-PR structural audit) |
 | **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
 
 ### Engineering Practices
@@ -128,13 +128,14 @@ abpai/skills/
 │   │   └── gate-before-push.sh
 │   └── skills/
 │       ├── code/              ← umbrella skill (/code) + flat workflow modules
-│       │   ├── *.md           ← prepare-pr.md, review-and-commit.md, ...
+│       │   ├── *.md           ← prepare-pr.md, review-and-commit.md, thermo-nuclear.md, ...
 │       │   ├── references/
 │       │   ├── review-patterns/        ← per-gate lenses
 │       │   │   └── scripts/   ← ported executable review assets
 │       │   └── scripts/       ← bundled helpers (e.g. finish-lane.ts preflight)
 │       ├── review-and-commit/ ← /code:review-and-commit (one SKILL.md per command)
 │       ├── prepare-pr/        ← /code:prepare-pr
+│       ├── thermo-nuclear/    ← /code:thermo-nuclear
 │       └── <workflow>/        ← one namespaced skill per workflow
 ├── engineering/               ← grouped engineering-practice workflows
 │   └── skills/
