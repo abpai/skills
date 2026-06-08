@@ -3,23 +3,30 @@
 
 This is the single source of truth that `scripts/validate-skills.sh` drives. It
 used to live as ~8 separate `python3 -c "..."` / heredoc blocks embedded in the
-bash script, each re-implementing its own frontmatter parser; consolidating them
-here means every SKILL.md / agent / manifest is parsed exactly once, with a
-single strict-YAML frontmatter parser (the same spec-compliant behaviour the
-`npx skills` installer relies on — see validate-npx-install.sh).
+bash script; consolidating them here means one process, structured functions,
+and one place to read the rules.
+
+Frontmatter handling deliberately mirrors the pre-refactor behaviour exactly:
+
+  - SKILL.md frontmatter gets a strict-YAML *validity gate* (the same
+    spec-compliant parse the `npx skills` installer relies on — see
+    validate-npx-install.sh). When PyYAML is missing the gate is skipped with a
+    one-line WARN, NOT a failure.
+  - Field extraction (name/description/flags) is done by the same lenient
+    line-based parser as before, regardless of whether the strict gate ran, so
+    the validator still works without PyYAML and the boolean-flag semantics
+    (string compares, quote stripping) are unchanged.
+  - Agent frontmatter uses its own original line-based parser with no strict
+    gate, matching the old block.
 
 The bash wrapper still owns the toolchain checks (bun build/test, `bash -n`,
 `py_compile`, `bun build` for TS) because those orchestrate external tools.
 
-Output contract (unchanged, relied on by humans + CI logs):
-  - "Found N plugins."
-  - "  [OK] <plugin>" per plugin (printed even if a sub-item failed, matching
-    the original; a malformed *manifest* is the only thing that skips it)
-  - "  [OK] marketplace.json (N plugins)" / codex marketplace / versions.json
-  - "[FAIL] ..." / "[WARN] ..." / "  [SKIP] ..." lines as before
-Exit 0 when everything passed, 1 when any [FAIL] was emitted. The wrapper prints
-the final "Validation passed."/"Validation failed." line after also running the
-toolchain checks.
+Output contract (unchanged, relied on by humans + CI logs): "Found N plugins.",
+"  [OK] <plugin>" per plugin (printed even if a sub-item failed; only a
+malformed *manifest* skips it), the marketplace/codex-marketplace/versions lines,
+and [FAIL]/[WARN]/[SKIP] lines as before. Exit 0 when everything passed, 1 when
+any [FAIL] was emitted; the wrapper prints the final pass/fail verdict.
 """
 
 from __future__ import annotations
@@ -31,15 +38,15 @@ from pathlib import Path
 
 try:
     import yaml
-except ImportError:  # pragma: no cover - exercised via the wrapper's WARN path
+except ImportError:  # pragma: no cover - exercised via the WARN path
     yaml = None
 
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 SEMVER_RE = re.compile(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?")
+_META_OPEN_RE = re.compile(r"metadata:\s*")
+_META_INTERNAL_RE = re.compile(r"\s+internal:\s*true\s*")
 
-# Whether the strict-YAML frontmatter parse is active. Mirrors the original
-# behaviour where a missing PyYAML degraded to a one-line WARN per SKILL.md
-# rather than failing the run.
+# Mirrors the original one-time WARN when PyYAML is unavailable.
 _YAML_WARNED = False
 
 
@@ -70,23 +77,105 @@ def load_json(path: Path, rep: Reporter) -> dict | None:
         return None
 
 
-def parse_frontmatter(path: Path, rep: Reporter) -> tuple[dict | None, int]:
-    """Return (frontmatter_dict, total_line_count).
+# ── SKILL.md ────────────────────────────────────────────────────────────────
 
-    Emits the same fence/YAML failures the embedded parser did and returns
-    (None, n) on any hard failure so callers can stop. When PyYAML is missing we
-    emit a single WARN (once) and fall back to an empty dict so name/description
-    checks still run via the dict's .get returning None — matching the original
-    degraded mode where the strict check was skipped.
+
+def _strict_yaml_gate(path: Path, fm_lines: list[str], rep: Reporter) -> bool:
+    """Strict-YAML validity gate. Returns False iff a hard failure was reported.
+
+    Skipped (returns True) with a one-time WARN when PyYAML is unavailable, so
+    the validator degrades exactly like the original instead of false-failing.
     """
     global _YAML_WARNED
+    if yaml is None:
+        if not _YAML_WARNED:
+            rep.warn(
+                f"{path}: PyYAML not installed; skipping strict YAML frontmatter check"
+            )
+            _YAML_WARNED = True
+        return True
+    try:
+        parsed = yaml.safe_load("\n".join(fm_lines))
+    except yaml.YAMLError as exc:
+        detail = str(getattr(exc, "problem", exc) or exc).strip()
+        rep.fail(
+            f"{path}: frontmatter is not valid YAML ({detail}) — "
+            f"the `npx skills` installer would skip this skill. "
+            f"Quote any value containing ': ' (e.g. wrap the description in double quotes)."
+        )
+        return False
+    if not isinstance(parsed, dict):
+        rep.fail(f"{path}: frontmatter does not parse to a mapping")
+        return False
+    return True
+
+
+def _extract_skill_fields(fm_lines: list[str]) -> tuple[dict[str, str], str | None]:
+    """Lenient line-based extraction of top-level scalars + description.
+
+    Ported verbatim from the original embedded parser (supports block/folded
+    description scalars; strips one layer of surrounding quotes).
+    """
+    fields: dict[str, str] = {}
+    description: str | None = None
+    i = 0
+    while i < len(fm_lines):
+        line = fm_lines[i]
+        if not line or line[0] in (" ", "\t", "#"):
+            i += 1
+            continue
+        if ":" not in line:
+            i += 1
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip()
+        value = value.strip()
+        if key == "description":
+            if value in (">", "|", ">-", "|-", ">+", "|+", ""):
+                parts: list[str] = []
+                j = i + 1
+                while j < len(fm_lines) and (
+                    fm_lines[j].startswith(("  ", "\t")) or fm_lines[j] == ""
+                ):
+                    stripped = fm_lines[j].strip()
+                    if stripped:
+                        parts.append(stripped)
+                    j += 1
+                description = " ".join(parts)
+                i = j
+                continue
+            description = value.strip('"').strip("'")
+        else:
+            fields[key] = value.strip('"').strip("'")
+        i += 1
+    return fields, description
+
+
+def _detect_internal(fm_lines: list[str]) -> bool:
+    """metadata.internal: true detection (line-based, as in the original)."""
+    internal = False
+    in_meta = False
+    for line in fm_lines:
+        if _META_OPEN_RE.fullmatch(line):
+            in_meta = True
+            continue
+        if in_meta:
+            if line and not line[0].isspace():
+                in_meta = False
+            elif _META_INTERNAL_RE.fullmatch(line):
+                internal = True
+    return internal
+
+
+def validate_skill_md(
+    path: Path, skill_name: str, plugin_name: str, has_umbrella: bool, rep: Reporter
+) -> None:
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
 
     if not lines or lines[0].strip() != "---":
         rep.fail(f"{path}: missing opening frontmatter fence ('---' as first line)")
-        return None, len(lines)
-
+        return
     fm_lines: list[str] = []
     closed = False
     for line in lines[1:]:
@@ -96,33 +185,133 @@ def parse_frontmatter(path: Path, rep: Reporter) -> tuple[dict | None, int]:
         fm_lines.append(line)
     if not closed:
         rep.fail(f"{path}: missing closing frontmatter fence")
-        return None, len(lines)
+        return
 
-    if yaml is None:
-        if not _YAML_WARNED:
-            rep.warn(
-                f"{path}: PyYAML not installed; skipping strict YAML frontmatter check"
+    if not _strict_yaml_gate(path, fm_lines, rep):
+        return
+
+    fields, description = _extract_skill_fields(fm_lines)
+
+    name = fields.get("name")
+    if not name:
+        rep.fail(f"{path}: missing 'name' in frontmatter")
+        return
+    if name != skill_name:
+        rep.fail(f"{path}: name '{name}' does not match folder '{skill_name}'")
+    if not NAME_RE.fullmatch(name):
+        rep.fail(f"{path}: name '{name}' must be lowercase kebab-case")
+    if len(name) > 64:
+        rep.fail(f"{path}: name exceeds 64 chars")
+
+    if not description:
+        rep.fail(f"{path}: missing 'description' in frontmatter")
+
+    if len(lines) > 500:
+        rep.warn(f"{path}: {len(lines)} lines exceeds 500-line spec recommendation")
+
+    if description and len(description) > 1024:
+        rep.fail(f"{path}: description is {len(description)} chars (max 1024)")
+
+    disable_mi = fields.get("disable-model-invocation") == "true"
+    user_invocable = fields.get("user-invocable")
+    internal = _detect_internal(fm_lines)
+    is_umbrella = skill_name == plugin_name
+
+    # Finding 9: when a plugin has an umbrella, EVERY non-umbrella sibling skill
+    # is a per-command wrapper and MUST be hidden — disable-model-invocation +
+    # metadata.internal + user-invocable: false. `pi` has no umbrella, so its
+    # phase commands fall into the elif branch. See CLAUDE.md.
+    if has_umbrella and not is_umbrella:
+        if not disable_mi:
+            rep.fail(
+                f"{path}: per-command wrapper in an umbrella pack must set "
+                "'disable-model-invocation: true' (so the model routes through the "
+                "umbrella, not the wrapper; see CLAUDE.md)"
             )
-            _YAML_WARNED = True
-        return {}, len(lines)
-
-    try:
-        data = yaml.safe_load("\n".join(fm_lines))
-    except yaml.YAMLError as exc:
-        detail = str(getattr(exc, "problem", exc) or exc).strip()
+        if not internal:
+            rep.fail(
+                f"{path}: per-command wrapper requires 'metadata.internal: true' "
+                "(user-only wrappers must be hidden from flat-list installers like "
+                "npx skills/Codex; add a metadata block with 'internal: true')"
+            )
+        if user_invocable != "false":
+            rep.fail(
+                f"{path}: per-command wrapper in an umbrella pack requires "
+                "'user-invocable: false' (wrappers must stay out of the Claude Code "
+                "/ menu so the umbrella is the only scoped entry)"
+            )
+    elif disable_mi and not internal:
         rep.fail(
-            f"{path}: frontmatter is not valid YAML ({detail}) — "
-            f"the `npx skills` installer would skip this skill. "
-            f"Quote any value containing ': ' (e.g. wrap the description in double quotes)."
+            f"{path}: 'disable-model-invocation: true' requires 'metadata.internal: "
+            "true' (hide user-only wrappers from flat-list installers like npx "
+            "skills/Codex; add a metadata block with 'internal: true')"
         )
-        return None, len(lines)
 
+
+# ── Plugin agents ─────────────────────────────────────────────────────────────
+
+
+def validate_agent(path: Path, expected_name: str, rep: Reporter) -> None:
+    # Line-based parser matching the original agent block exactly (no strict YAML
+    # gate, strips only double quotes, original fence-error messages).
+    text = path.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        rep.fail(f"{path}: missing opening frontmatter fence")
+        return
+    parts = text.split("\n---\n", 1)
+    if len(parts) != 2:
+        rep.fail(f"{path}: missing closing frontmatter fence")
+        return
+    fields: dict[str, str] = {}
+    for line in parts[0].splitlines()[1:]:
+        if not line or line.startswith((" ", "\t", "#")):
+            continue
+        if ":" in line:
+            key, value = line.split(":", 1)
+            fields[key.strip()] = value.strip().strip('"')
+    name = fields.get("name")
+    if not name:
+        rep.fail(f"{path}: missing 'name' in frontmatter")
+        return
+    if name != expected_name:
+        rep.fail(f"{path}: name '{name}' does not match file '{expected_name}.md'")
+        return
+    if not NAME_RE.fullmatch(name):
+        rep.fail(f"{path}: name '{name}' must be lowercase kebab-case")
+        return
+    if len(name) > 64:
+        rep.fail(f"{path}: name exceeds 64 chars")
+        return
+    if not fields.get("description"):
+        rep.fail(f"{path}: missing 'description' in frontmatter")
+        return
+    for unsupported in ("hooks", "mcpServers", "permissionMode"):
+        if unsupported in fields:
+            rep.fail(
+                f"{path}: plugin agents must not declare unsupported "
+                f"'{unsupported}' frontmatter"
+            )
+            return
+
+
+# ── hooks.json ────────────────────────────────────────────────────────────────
+
+
+def validate_hooks(path: Path, rep: Reporter) -> None:
+    data = load_json(path, rep)
     if data is None:
-        data = {}
+        return
     if not isinstance(data, dict):
-        rep.fail(f"{path}: frontmatter does not parse to a mapping")
-        return None, len(lines)
-    return data, len(lines)
+        rep.fail(f"{path}: hooks file must contain a JSON object")
+        return
+    if "hooks" not in data:
+        rep.fail(f'{path}: missing top-level "hooks" object')
+        return
+    if not isinstance(data["hooks"], dict):
+        rep.fail(f'{path}: top-level "hooks" must be an object')
+
+
+# ── plugin.json manifests (.claude-plugin and .codex-plugin) ─────────────────
 
 
 def validate_manifest(
@@ -136,11 +325,8 @@ def validate_manifest(
     forbid_commands: bool,
     cross_check: dict | None = None,
 ) -> bool:
-    """Validate a .claude-plugin / .codex-plugin plugin.json.
-
-    flavor is the human label used in the "only plugin.json belongs in ..."
-    message (".claude-plugin" or ".codex-plugin"). Returns True on success.
-    """
+    """Validate a plugin.json. `flavor` is the dir label used in the
+    "only plugin.json belongs in ..." message. Returns True on success."""
     manifest_path = path.resolve()
     plugin_dir = manifest_path.parent.parent
     meta_dir = manifest_path.parent
@@ -259,115 +445,6 @@ def validate_manifest(
     return True
 
 
-def validate_skill_md(
-    path: Path, skill_name: str, plugin_name: str, has_umbrella: bool, rep: Reporter
-) -> None:
-    data, line_count = parse_frontmatter(path, rep)
-    if data is None:
-        return
-
-    name = data.get("name")
-    if not name:
-        rep.fail(f"{path}: missing 'name' in frontmatter")
-        return
-    if name != skill_name:
-        rep.fail(f"{path}: name '{name}' does not match folder '{skill_name}'")
-    if not NAME_RE.fullmatch(str(name)):
-        rep.fail(f"{path}: name '{name}' must be lowercase kebab-case")
-    if len(str(name)) > 64:
-        rep.fail(f"{path}: name exceeds 64 chars")
-
-    description = data.get("description")
-    if not description:
-        rep.fail(f"{path}: missing 'description' in frontmatter")
-
-    if line_count > 500:
-        rep.warn(f"{path}: {line_count} lines exceeds 500-line spec recommendation")
-
-    if description and len(str(description)) > 1024:
-        rep.fail(f"{path}: description is {len(str(description))} chars (max 1024)")
-
-    disable_mi = data.get("disable-model-invocation") is True
-    user_invocable = data.get("user-invocable")
-    metadata = data.get("metadata")
-    internal = isinstance(metadata, dict) and metadata.get("internal") is True
-
-    is_umbrella = skill_name == plugin_name
-
-    # Finding 9: when a plugin has an umbrella, EVERY non-umbrella sibling skill
-    # is a per-command wrapper and MUST be hidden — disable-model-invocation +
-    # metadata.internal + user-invocable: false. `pi` has no umbrella, so its
-    # phase commands fall into the elif branch. See CLAUDE.md.
-    if has_umbrella and not is_umbrella:
-        if not disable_mi:
-            rep.fail(
-                f"{path}: per-command wrapper in an umbrella pack must set "
-                "'disable-model-invocation: true' (so the model routes through the "
-                "umbrella, not the wrapper; see CLAUDE.md)"
-            )
-        if not internal:
-            rep.fail(
-                f"{path}: per-command wrapper requires 'metadata.internal: true' "
-                "(user-only wrappers must be hidden from flat-list installers like "
-                "npx skills/Codex; add a metadata block with 'internal: true')"
-            )
-        if user_invocable is not False:
-            rep.fail(
-                f"{path}: per-command wrapper in an umbrella pack requires "
-                "'user-invocable: false' (wrappers must stay out of the Claude Code "
-                "/ menu so the umbrella is the only scoped entry)"
-            )
-    elif disable_mi and not internal:
-        rep.fail(
-            f"{path}: 'disable-model-invocation: true' requires 'metadata.internal: "
-            "true' (hide user-only wrappers from flat-list installers like npx "
-            "skills/Codex; add a metadata block with 'internal: true')"
-        )
-
-
-def validate_agent(path: Path, expected_name: str, rep: Reporter) -> None:
-    data, _ = parse_frontmatter(path, rep)
-    if data is None:
-        return
-    name = data.get("name")
-    if not name:
-        rep.fail(f"{path}: missing 'name' in frontmatter")
-        return
-    if name != expected_name:
-        rep.fail(f"{path}: name '{name}' does not match file '{expected_name}.md'")
-        return
-    if not NAME_RE.fullmatch(str(name)):
-        rep.fail(f"{path}: name '{name}' must be lowercase kebab-case")
-        return
-    if len(str(name)) > 64:
-        rep.fail(f"{path}: name exceeds 64 chars")
-        return
-    if not data.get("description"):
-        rep.fail(f"{path}: missing 'description' in frontmatter")
-        return
-    for unsupported in ("hooks", "mcpServers", "permissionMode"):
-        if unsupported in data:
-            rep.fail(
-                f"{path}: plugin agents must not declare unsupported "
-                f"'{unsupported}' frontmatter"
-            )
-            return
-
-
-def validate_hooks(path: Path, rep: Reporter) -> None:
-    data = load_json(path, rep)
-    if data is None:
-        return
-    if not isinstance(data, dict):
-        rep.fail(f'{path}: hooks file must contain a JSON object')
-        return
-    if "hooks" not in data:
-        rep.fail(f'{path}: missing top-level "hooks" object')
-        return
-    if not isinstance(data["hooks"], dict):
-        rep.fail(f'{path}: top-level "hooks" must be an object')
-
-
 def validate_plugin(plugin_dir: Path, rep: Reporter) -> None:
     plugin_name = plugin_dir.name
     manifest = plugin_dir / ".claude-plugin" / "plugin.json"
@@ -417,10 +494,15 @@ def validate_plugin(plugin_dir: Path, rep: Reporter) -> None:
             cross_check=claude_data or {},
         )
 
+    # NOTE: printed even when a skill/agent/hooks/codex sub-check failed above —
+    # only a malformed .claude-plugin manifest skips it (via the early return).
     rep.ok(plugin_name)
 
 
-def _marketplace_entry_path(source: object) -> str | None:
+# ── marketplaces ──────────────────────────────────────────────────────────────
+
+
+def _entry_path_name(source: object) -> str | None:
     if isinstance(source, str):
         return Path(source.lstrip("./")).name
     if isinstance(source, dict):
@@ -445,6 +527,9 @@ def validate_marketplace(path: Path, rep: Reporter) -> None:
         rep.fail(f"{path}: no plugins listed")
         return
 
+    # Local flag so the marketplace [OK] reflects only this check, matching the
+    # original block's behaviour even when earlier plugins already failed.
+    local_failed = False
     names: set[str] = set()
     entry_path: dict[str, str] = {}
     for i, p in enumerate(plugins):
@@ -460,7 +545,7 @@ def validate_marketplace(path: Path, rep: Reporter) -> None:
         if not source:
             rep.fail(f'{path}: plugins[{i}] ("{n}") missing source')
             return
-        sp = _marketplace_entry_path(source)
+        sp = _entry_path_name(source)
         if sp:
             entry_path[n] = sp
 
@@ -481,11 +566,13 @@ def validate_marketplace(path: Path, rep: Reporter) -> None:
             f"{path}: missing plugins (have Claude manifest but no marketplace "
             f"entry): {', '.join(missing)}"
         )
+        local_failed = True
     if extra:
         rep.fail(
             f"{path}: unexpected plugins (marketplace entry with no Claude "
             f"manifest): {', '.join(extra)}"
         )
+        local_failed = True
 
     for n in sorted(names & expected):
         if n in entry_path and entry_path[n] != n:
@@ -493,13 +580,15 @@ def validate_marketplace(path: Path, rep: Reporter) -> None:
                 f'{path}: plugin "{n}" source path points at "{entry_path[n]}" '
                 f'(expected folder "{n}")'
             )
+            local_failed = True
         if manifest_name.get(n) != n:
             rep.fail(
                 f'{path}: plugin "{n}" manifest name is {manifest_name.get(n)!r} '
                 f'(expected "{n}")'
             )
+            local_failed = True
 
-    if not rep.failed:
+    if not local_failed:
         rep.ok(f"marketplace.json ({len(plugins)} plugins)")
 
 
@@ -586,12 +675,14 @@ def validate_codex_marketplace(path: Path, rep: Reporter) -> None:
         rep.ok(f"{path} ({len(plugins)} plugins)")
 
 
+# ── versions.json ─────────────────────────────────────────────────────────────
+
+
 def _skill_md_version(path: Path) -> str | None:
-    """Extract metadata.version from a SKILL.md (line-based, fence-scoped)."""
+    """metadata.version from a SKILL.md (line-based, fence-scoped)."""
     in_frontmatter = False
     in_metadata = False
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line
+    for line in path.read_text(encoding="utf-8").splitlines():
         if line == "---":
             if not in_frontmatter:
                 in_frontmatter = True
@@ -611,8 +702,7 @@ def _skill_md_version(path: Path) -> str | None:
 
 def _skill_md_disabled(path: Path) -> bool:
     in_frontmatter = False
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line
+    for line in path.read_text(encoding="utf-8").splitlines():
         if line == "---":
             if not in_frontmatter:
                 in_frontmatter = True
@@ -688,13 +778,15 @@ def validate_versions(path: Path, rep: Reporter) -> None:
     rep.ok(f"{path} ({len(expected)} skills)")
 
 
+# ── entrypoint ────────────────────────────────────────────────────────────────
+
+
 def main(argv: list[str]) -> int:
     skip_versions = "--skip-versions" in argv
     rep = Reporter()
 
     plugin_dirs = sorted(
-        m.parent.parent
-        for m in Path(".").glob("*/.claude-plugin/plugin.json")
+        m.parent.parent for m in Path(".").glob("*/.claude-plugin/plugin.json")
     )
     if not plugin_dirs:
         print("No plugins found (no .claude-plugin/plugin.json files).")
