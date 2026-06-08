@@ -26,7 +26,9 @@ Use the `review` module.
    command wrapper, or `composer/skills/composer/review.md` in the repo.
 2. Resolve the review target and prepare a strict read-only review prompt.
 3. Run Composer review, verify findings, and return a findings-first verdict.
-4. If the user also asked to improve, update, or merge, do those steps yourself
+4. Keep the review read-only — Composer never writes. The write-capable tools
+   above are reserved for a separate phase that runs only if the user explicitly
+   asked to improve, update, or merge. In that case do those steps yourself
    after review; refresh against the current base and verify mergeability first.
 
 User input: $ARGUMENTS

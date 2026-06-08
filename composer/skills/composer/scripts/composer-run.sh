@@ -38,6 +38,7 @@ OUTPUT_FORMAT="text"
 RUN_MODE=""
 AUTH_MODE="auto"
 ENV_FILE="${CURSOR_ENV_FILE:-}"
+ENV_FILE_EXPLICIT="false"
 TIMEOUT_SECONDS="1800"
 WORKTREE_NAME=""
 WORKTREE_BASE=""
@@ -72,6 +73,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --env-file)
       ENV_FILE="${2:?missing value for --env-file}"
+      ENV_FILE_EXPLICIT="true"
       shift 2
       ;;
     --timeout)
@@ -164,17 +166,20 @@ load_env_file() {
   return 1
 }
 
-if [[ -n "$ENV_FILE" ]]; then
-  if [[ "$AUTH_MODE" == "login" ]]; then
+if [[ "$AUTH_MODE" == "login" ]]; then
+  # Login means "do not use a key". Only an explicit --env-file conflicts; an
+  # ambient CURSOR_ENV_FILE is ignored so login stays usable when the key file
+  # is exported for other runs.
+  if [[ "$ENV_FILE_EXPLICIT" == "true" ]]; then
     echo "[FAIL] --env-file cannot be combined with --auth login" >&2
     exit 2
   fi
+  CURSOR_KEY_VALUE=""
+elif [[ -n "$ENV_FILE" ]]; then
   load_env_file "$ENV_FILE" || {
     echo "[FAIL] explicit env file did not contain CURSOR_API_KEY: $ENV_FILE" >&2
     exit 1
   }
-elif [[ "$AUTH_MODE" == "login" ]]; then
-  CURSOR_KEY_VALUE=""
 elif [[ -n "${CURSOR_API_KEY:-}" ]]; then
   CURSOR_KEY_VALUE="$CURSOR_API_KEY"
 else

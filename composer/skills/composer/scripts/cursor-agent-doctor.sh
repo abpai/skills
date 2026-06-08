@@ -6,6 +6,7 @@ TIMEOUT_SECONDS="60"
 RUN_SMOKE="false"
 CHECK_CODEX="true"
 ENV_FILE="${CURSOR_ENV_FILE:-}"
+ENV_FILE_EXPLICIT="false"
 CURSOR_KEY_VALUE="${CURSOR_API_KEY:-}"
 AUTH_MODE="auto"
 ACTIVE_CURSOR_KEY=""
@@ -43,6 +44,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --env-file)
       ENV_FILE="${2:?missing value for --env-file}"
+      ENV_FILE_EXPLICIT="true"
       shift 2
       ;;
     --auth)
@@ -73,7 +75,7 @@ case "$AUTH_MODE" in
     ;;
 esac
 
-if [[ -n "$ENV_FILE" && "$AUTH_MODE" == "login" ]]; then
+if [[ "$ENV_FILE_EXPLICIT" == "true" && "$AUTH_MODE" == "login" ]]; then
   echo "[FAIL] --env-file cannot be combined with --auth login" >&2
   exit 2
 fi
@@ -177,12 +179,15 @@ run_cursor_models() {
 model_list_has_name() {
   local output_file="$1"
   local wanted="$2"
-  awk -v wanted="$wanted" '$1 == wanted { found = 1 } END { exit(found ? 0 : 1) }' "$output_file"
+  # Scan every whitespace-delimited field, not just $1, so a leading marker
+  # (e.g. "* composer-2.5" for the active model, or a "- " bullet) doesn't hide
+  # the id. Field equality still avoids substring false positives.
+  awk -v wanted="$wanted" '{ for (i = 1; i <= NF; i++) if ($i == wanted) found = 1 } END { exit(found ? 0 : 1) }' "$output_file"
 }
 
 model_list_has_composer_25() {
   local output_file="$1"
-  awk '$1 ~ /^composer-2\.5(-fast)?$/ { found = 1 } END { exit(found ? 0 : 1) }' "$output_file"
+  awk '{ for (i = 1; i <= NF; i++) if ($i ~ /^composer-2\.5(-fast)?$/) found = 1 } END { exit(found ? 0 : 1) }' "$output_file"
 }
 
 check_models() {
