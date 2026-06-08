@@ -460,8 +460,11 @@ def validate_plugin(plugin_dir: Path, rep: Reporter) -> None:
     ):
         return  # malformed manifest skips the rest of this plugin (and its [OK])
 
-    skill_files = sorted((plugin_dir / "skills").glob("*/SKILL.md"))
-    agent_files = sorted((plugin_dir / "agents").glob("*.md"))
+    # Recursive (rglob), matching the original `find ... -name`, so a SKILL.md /
+    # agent .md nested deeper than one level is still validated rather than
+    # silently skipped.
+    skill_files = sorted((plugin_dir / "skills").rglob("SKILL.md"))
+    agent_files = sorted((plugin_dir / "agents").rglob("*.md"))
 
     if not skill_files and not agent_files:
         rep.fail(f"{plugin_dir}: no skills or agents found")
@@ -792,19 +795,32 @@ def main(argv: list[str]) -> int:
         print("No plugins found (no .claude-plugin/plugin.json files).")
         return 1
 
+    # Each section is isolated: an unexpected exception in one (e.g. a malformed
+    # marketplace entry that isn't a dict) is reported as a failure but does not
+    # abort the remaining sections — matching the original, where each block ran
+    # as its own python3 subprocess.
+    def section(label: str, fn) -> None:
+        try:
+            fn()
+        except Exception as exc:  # noqa: BLE001 - isolate per-section crashes
+            rep.fail(f"{label}: unexpected validation error: {exc}")
+
     print(f"Found {len(plugin_dirs)} plugins.")
     for plugin_dir in plugin_dirs:
-        validate_plugin(plugin_dir, rep)
+        section(str(plugin_dir), lambda d=plugin_dir: validate_plugin(d, rep))
 
     marketplace = Path(".claude-plugin/marketplace.json")
     if marketplace.is_file():
-        validate_marketplace(marketplace, rep)
+        section(str(marketplace), lambda: validate_marketplace(marketplace, rep))
     else:
         rep.warn("No .claude-plugin/marketplace.json found")
 
     codex_marketplace = Path(".agents/plugins/marketplace.json")
     if codex_marketplace.is_file():
-        validate_codex_marketplace(codex_marketplace, rep)
+        section(
+            str(codex_marketplace),
+            lambda: validate_codex_marketplace(codex_marketplace, rep),
+        )
     else:
         rep.warn("No .agents/plugins/marketplace.json found")
 
@@ -812,7 +828,7 @@ def main(argv: list[str]) -> int:
     if skip_versions:
         print("  [SKIP] versions.json (--skip-versions)")
     elif versions_file.is_file():
-        validate_versions(versions_file, rep)
+        section(str(versions_file), lambda: validate_versions(versions_file, rep))
     else:
         rep.fail(f"{versions_file}: missing file")
 
