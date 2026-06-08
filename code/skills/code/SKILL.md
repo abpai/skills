@@ -2,6 +2,21 @@
 name: code
 description: Grouped coding workflow pack. Use /code:prepare-pr for full PR readiness — full PR diff (committed and uncommitted), deterministic preflight, quality gates, source-grounded QA, validation, PR text, commits, push/PR update, gate-before-push. Use /code:review-and-commit for quick local review plus commit. Also use for /code:explain, /code:walkthrough, /code:understand, /code:dead-code, /code:scratch, /code:secure-dependencies, and /code:handoff.
 argument-hint: "[subcommand] [args] — e.g. understand src/api, --prepare-pr, review-and-commit"
+# allowed-tools lives on this umbrella, NOT on the per-workflow wrappers: the
+# wrappers set disable-model-invocation + user-invocable: false, so they are
+# never the *active* skill (the umbrella is), and a skill's allowed-tools only
+# applies while that skill is active. Declared here it actually suppresses the
+# prompts during the routed workflows (superset of every workflow's needs;
+# git push / gh are still independently seal-gated by hooks/gate-before-push.sh).
+allowed-tools: >
+  Bash(git status *) Bash(git diff *) Bash(git log *)
+  Bash(git add *) Bash(git commit *) Bash(git branch *)
+  Bash(git push *) Bash(git rev-parse *) Bash(git restore --staged *)
+  Bash(codex *) Bash(curl *) Bash(npm *) Bash(yarn *)
+  Bash(pnpm *) Bash(bun *) Bash(npx *) Bash(pytest *)
+  Bash(go test *) Bash(cargo test *) Bash(gh *)
+  mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
+  Read Write Edit Grep Glob
 metadata:
   version: "2.0.7"
 ---
