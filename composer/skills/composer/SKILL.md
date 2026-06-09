@@ -3,8 +3,43 @@ name: composer
 description: "Grouped Cursor Composer workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'setup' (verify Cursor Agent/API key), 'generate' (delegate implementation to Composer), 'review' (strict read-only Composer review of a diff or PR)."
 argument-hint: "[subcommand] [args] — e.g. generate <brief>, --review <PR>, setup --smoke"
 license: MIT
+# allowed-tools lives on this umbrella, not on the per-workflow wrappers: the
+# wrappers set disable-model-invocation + user-invocable: false, so they are
+# never the active skill. Declared here, the union suppresses prompts during the
+# routed setup/generate/review workflows without depending on wrapper activation.
+allowed-tools:
+  - Bash(composer/skills/composer/scripts/cursor-agent-doctor.sh)
+  - Bash(composer/skills/composer/scripts/cursor-agent-doctor.sh:*)
+  - Bash(composer/skills/composer/scripts/composer-run.sh:*)
+  - Bash(bash composer/skills/composer/scripts/cursor-agent-doctor.sh:*)
+  - Bash(bash composer/skills/composer/scripts/composer-run.sh:*)
+  - Bash(cursor-agent *)
+  - Bash(codex *)
+  - Bash(git status:*)
+  - Bash(git diff:*)
+  - Bash(git fetch:*)
+  - Bash(git log:*)
+  - Bash(git branch:*)
+  - Bash(git worktree:*)
+  - Bash(git add:*)
+  - Bash(git commit:*)
+  - Bash(git push:*)
+  - Bash(gh pr create:*)
+  - Bash(gh pr view:*)
+  - Bash(gh pr diff:*)
+  - Bash(gh pr edit:*)
+  - Bash(gh pr checks:*)
+  - Bash(gh pr merge:*)
+  - Bash(mkdir:*)
+  - Bash(rm:*)
+  - Bash(mktemp:*)
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
 metadata:
-  version: "1.4.1"
+  version: "1.4.2"
 ---
 
 # Composer Workflow Pack

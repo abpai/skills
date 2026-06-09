@@ -6,11 +6,9 @@ metadata:
   internal: true
 description: Verify Cursor Composer and OpenAI Codex CLI auth for planner/executor workflows.
 argument-hint: "[--smoke or env-file hint]"
-allowed-tools: >
-  Bash(composer/skills/composer/scripts/cursor-agent-doctor.sh)
-  Bash(composer/skills/composer/scripts/cursor-agent-doctor.sh *)
-  Bash(cursor-agent *) Bash(codex *) Bash(git status *)
-  Read
+# No allowed-tools here: this wrapper is disable-model-invocation +
+# user-invocable: false, so it is never the active skill. The Composer umbrella
+# carries the union allowlist used by the routed /composer setup workflow.
 ---
 
 # /composer:setup

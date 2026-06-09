@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
       - name: Sync plugin versions and regenerate versions.json
         run: |
           scripts/sync-plugin-versions.sh

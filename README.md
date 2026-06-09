@@ -355,6 +355,7 @@ This repo includes a comprehensive validator at `scripts/validate-skills.sh` tha
 - Agent and command frontmatter
 - Both marketplace.json catalogs (completeness and consistency)
 - versions.json (all skills present with matching versions)
+- docs/index.html catalog cards, versions, and plugin counts
 
 ```bash
 bash scripts/validate-skills.sh

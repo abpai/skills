@@ -81,6 +81,10 @@ Run:
 scripts/validate-skills.sh
 ```
 
+Local validation requires Bun because the repo uses a shared Bun/TypeScript
+metadata resolver and builds/tests shipped TypeScript helpers. CI installs Bun
+before running the same gate.
+
 For wrapper changes that affect `codex-exec` or `claude`, also run:
 
 ```bash

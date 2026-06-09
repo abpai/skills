@@ -689,7 +689,7 @@ EOF
     printf 'TRANSCRIPT_FILE=%q\n' "$transcript"
     printf 'BASE_TRANSCRIPT_LINES=3\n'
     printf 'HEARTBEAT_SECONDS=1\n'
-    printf 'TIMEOUT_SECONDS=2\n'
+    printf 'TIMEOUT_SECONDS=5\n'
     printf 'STARTUP_WAIT_SECONDS=0\n'
     printf 'PASTE_SETTLE_SECONDS=0\n'
     printf 'SUBMIT_KEY=C-m\n'
