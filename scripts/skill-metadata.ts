@@ -334,7 +334,7 @@ function parseRoot(args: string[]): { root: string; args: string[] } {
   return { root, args: rest };
 }
 
-function git(root: string, args: string[], input?: string): string {
+function git(root: string, args: string[], { input, allowFail }: { input?: string; allowFail?: boolean } = {}): string {
   const result = spawnSync("git", args, {
     cwd: root,
     input,
@@ -344,7 +344,8 @@ function git(root: string, args: string[], input?: string): string {
     throw result.error;
   }
   if (result.status !== 0) {
-    return "";
+    if (allowFail) return "";
+    throw new Error(`git ${args.join(" ")} exited ${result.status}: ${result.stderr || result.stdout}`.trim());
   }
   return result.stdout;
 }
@@ -410,11 +411,11 @@ export function checkVersionBumps(root: string, baseRef: string): { checked: num
     if (source) {
       versionFile = rel(root, source.path);
       currentVersion = source.version;
-      baseVersion = extractVersionFromSkillText(git(root, ["show", `${baseRef}:${versionFile}`]));
+      baseVersion = extractVersionFromSkillText(git(root, ["show", `${baseRef}:${versionFile}`], { allowFail: true }));
     } else {
       versionFile = `${dir}/.claude-plugin/plugin.json`;
       currentVersion = manifestVersion(join(root, versionFile));
-      baseVersion = extractVersionFromManifestText(git(root, ["show", `${baseRef}:${versionFile}`]));
+      baseVersion = extractVersionFromManifestText(git(root, ["show", `${baseRef}:${versionFile}`], { allowFail: true }));
     }
 
     if (!currentVersion) {

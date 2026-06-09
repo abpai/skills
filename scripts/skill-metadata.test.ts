@@ -183,6 +183,19 @@ metadata:
     );
   });
 
+  test("throws when the base ref cannot be resolved (fail-closed)", () => {
+    const root = makeRoot();
+    git(root, ["init"]);
+    git(root, ["config", "user.email", "test@example.com"]);
+    git(root, ["config", "user.name", "Test User"]);
+    writeManifest(root, "widget", "1.0.0");
+    writeSkill(root, "widget", "widget", `description: Widget\nmetadata:\n  version: "1.0.0"\n`);
+    git(root, ["add", "."]);
+    git(root, ["commit", "-m", "base"]);
+
+    expect(() => checkVersionBumps(root, "refs/heads/definitely-not-a-real-base")).toThrow();
+  });
+
   test("reports changed plugins whose version source was not bumped", () => {
     const root = makeRoot();
     git(root, ["init"]);
