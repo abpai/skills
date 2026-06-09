@@ -5,6 +5,21 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CODEX_RUN="$ROOT_DIR/codex-exec/skills/codex-exec/scripts/codex-run.sh"
 CLAUDE_RUN="$ROOT_DIR/claude/skills/claude/scripts/claude-tmux-run.sh"
 
+# Resolve an outer-timeout binary once (GNU coreutils `timeout`, or `gtimeout`
+# from brew coreutils on macOS). Empty if neither exists — monitor calls then
+# run unguarded, bounded only by their internal TIMEOUT_SECONDS. The monitor
+# cases below self-bound (returning 124), but if one ever fails to, the whole
+# suite would otherwise hang until the CI job ceiling (GitHub's 6h default);
+# the guard turns that into a fast, useful failure. CI (Linux) always has it.
+TIMEOUT_CMD=""
+if command -v timeout >/dev/null 2>&1; then
+  TIMEOUT_CMD="timeout"
+elif command -v gtimeout >/dev/null 2>&1; then
+  TIMEOUT_CMD="gtimeout"
+fi
+MONITOR_OUTER_TIMEOUT="${MONITOR_OUTER_TIMEOUT:-60}"
+MONITOR_STATUS=0
+
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/skills-wrapper-parity.XXXXXX")"
 cleanup() {
   rm -rf "$TMP_DIR"
@@ -64,6 +79,33 @@ assert_empty_file() {
 
 assert_not_exists() {
   [[ ! -e "$1" ]] || fail "unexpected file exists: $1"
+}
+
+# Run the claude wrapper's `monitor` under the outer-timeout guard, capturing
+# combined output to <outfile> and setting MONITOR_STATUS to the wrapper's exit.
+# Pass env via `env KEY=VAL ...` so the assignments survive the timeout prefix.
+# GNU `timeout` also exits 124 on fire (colliding with the monitor's own 124
+# self-timeout), so a genuine hang is disambiguated by wall-clock: a run lasting
+# >= the outer bound means the guard fired, and we hard-fail with the output
+# rather than let an assertion mistake a hang for the expected self-timeout.
+# Usage: run_monitor <outfile> env [KEY=VAL ...] bash "$CLAUDE_RUN" monitor ...
+run_monitor() {
+  local outfile="$1"
+  shift
+  local start="$SECONDS"
+  set +e
+  if [[ -n "$TIMEOUT_CMD" ]]; then
+    "$TIMEOUT_CMD" "$MONITOR_OUTER_TIMEOUT" "$@" > "$outfile" 2>&1
+  else
+    "$@" > "$outfile" 2>&1
+  fi
+  MONITOR_STATUS=$?
+  set -e
+  if [[ -n "$TIMEOUT_CMD" && $(( SECONDS - start )) -ge "$MONITOR_OUTER_TIMEOUT" ]]; then
+    echo "---- monitor output (outer ${MONITOR_OUTER_TIMEOUT}s guard fired) ----" >&2
+    cat "$outfile" >&2
+    fail "monitor exceeded ${MONITOR_OUTER_TIMEOUT}s outer guard (internal TIMEOUT_SECONDS failed to bound it): $*"
+  fi
 }
 
 extract_run_dir() {
@@ -588,11 +630,8 @@ EOF
     printf 'SUBMIT_KEY=C-m\n'
   } > "$run_dir/run.env"
 
-  set +e
-  PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir" > "$tool_running_output" 2>&1
-  local monitor_status=$?
-  set -e
-  [[ "$monitor_status" == "124" ]] || fail "expected tool-running monitor timeout, got $monitor_status"
+  run_monitor "$tool_running_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
+  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected tool-running monitor timeout, got $MONITOR_STATUS"
   assert_contains "$tool_running_output" "phase=tool-running"
   assert_contains "$tool_running_output" "last_event=tool_use"
   assert_contains "$tool_running_output" "last_tool=Read"
@@ -602,11 +641,8 @@ EOF
 {"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"hi"}]}}
 EOF
 
-  set +e
-  PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir" > "$partial_result_output" 2>&1
-  monitor_status=$?
-  set -e
-  [[ "$monitor_status" == "124" ]] || fail "expected partial-result monitor timeout, got $monitor_status"
+  run_monitor "$partial_result_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
+  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected partial-result monitor timeout, got $MONITOR_STATUS"
   assert_contains "$partial_result_output" "phase=tool-running"
   assert_contains "$partial_result_output" "last_event=tool_result"
   assert_contains "$partial_result_output" "last_tool=Read"
@@ -616,11 +652,8 @@ EOF
 {"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_2","content":"README"}]}}
 EOF
 
-  set +e
-  PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir" > "$thinking_output" 2>&1
-  monitor_status=$?
-  set -e
-  [[ "$monitor_status" == "124" ]] || fail "expected thinking monitor timeout, got $monitor_status"
+  run_monitor "$thinking_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
+  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected thinking monitor timeout, got $MONITOR_STATUS"
   assert_contains "$thinking_output" "phase=thinking"
   assert_contains "$thinking_output" "last_event=tool_result"
   assert_contains "$thinking_output" "last_tool=Read"
@@ -633,11 +666,8 @@ EOF
 {"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Final from Claude."}]}}
 EOF
 
-  set +e
-  PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir" > "$responding_output" 2>&1
-  monitor_status=$?
-  set -e
-  [[ "$monitor_status" == "124" ]] || fail "expected responding monitor timeout, got $monitor_status"
+  run_monitor "$responding_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
+  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected responding monitor timeout, got $MONITOR_STATUS"
   assert_contains "$responding_output" "phase=responding"
   assert_contains "$responding_output" "last_event=assistant_text"
   assert_contains "$responding_output" "transcript_lines=8"
@@ -647,7 +677,7 @@ EOF
 {"type":"system","subtype":"turn_duration"}
 EOF
 
-  PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir" > "$done_output" 2>&1
+  run_monitor "$done_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
   assert_contains "$done_output" "event=finish state=done exit_code=0 phase=done"
   assert_contains "$run_dir/status.env" "state=done"
   assert_contains "$run_dir/status.env" "phase=done"
@@ -695,12 +725,10 @@ EOF
     printf 'SUBMIT_KEY=C-m\n'
   } > "$run_dir/run.env"
 
-  set +e
-  FAKE_TMUX_PANE_COUNTER="$run_dir/pane-counter" \
-    PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir" > "$stall_output" 2>&1
-  local monitor_status=$?
-  set -e
-  [[ "$monitor_status" == "124" ]] || fail "expected stall monitor timeout, got $monitor_status"
+  run_monitor "$stall_output" \
+    env "FAKE_TMUX_PANE_COUNTER=$run_dir/pane-counter" "PATH=$fakebin:$PATH" \
+    bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
+  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected stall monitor timeout, got $MONITOR_STATUS"
   assert_contains "$stall_output" "phase=tool-running"
 
   # The pane must have actually churned across heartbeats, otherwise the test is
@@ -761,11 +789,8 @@ EOF
     printf 'SUBMIT_KEY=C-m\n'
   } > "$run_dir/run.env"
 
-  set +e
-  PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir" > "$noid_output" 2>&1
-  local monitor_status=$?
-  set -e
-  [[ "$monitor_status" == "124" ]] || fail "expected no-id tool_result monitor timeout, got $monitor_status"
+  run_monitor "$noid_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
+  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected no-id tool_result monitor timeout, got $MONITOR_STATUS"
   assert_contains "$noid_output" "phase=tool-running"
   assert_contains "$noid_output" "last_event=tool_result"
   assert_contains "$noid_output" "transcript_lines=6"
@@ -819,7 +844,7 @@ test_claude_run_env_is_not_sourced() {
   assert_contains "$run_dir/run.env" "SESSION_ID=safe-claude-session"
   assert_contains "$run_dir/run.env" "TMUX_SESSION=safe-claude-tmux"
 
-  PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$prior" > "$monitor_output" 2>&1
+  run_monitor "$monitor_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$prior"
   assert_not_exists "$pwned_monitor"
   assert_contains "$monitor_output" "event=finish state=dry-run exit_code=0"
 
