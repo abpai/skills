@@ -43,6 +43,10 @@ jobs:
 
   wrapper-parity:
     runs-on: ubuntu-latest
+    # Belt-and-suspenders to the per-monitor outer timeout inside the script: if a
+    # monitor case ever fails to self-bound AND the in-script guard is somehow
+    # defeated, cap the job well below GitHub's 6h default so it fails fast.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

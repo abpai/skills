@@ -109,6 +109,12 @@ run_case deny 'cd repo && git push'
 run_case deny 'git push;'
 run_case deny 'git push && x'
 run_case deny 'git push|tee'
+# line continuations: a verb split by `\<newline>` still executes as one command
+# and must gate (regression: per-line matching used to BYPASS these).
+run_case deny "$(printf 'git \\\npush')"
+run_case deny "$(printf 'git \\\n  push origin main')"
+run_case deny "$(printf 'gh \\\npr create')"
+run_case deny "$(printf 'gh pr \\\ncreate --fill')"
 
 # --- ALLOW: not gated (git/gh not in command position, or non-gated verb) ----
 run_case allow 'echo git push'
@@ -116,6 +122,35 @@ run_case allow 'git status'
 run_case allow 'git commit -m "ready to push"'
 run_case allow 'echo FOO=bar git push'
 run_case allow 'git push-foo'
+# A continuation that joins `git push` onto a preceding token without a shell
+# separator is NOT a command (Bash runs it as args of the first word), so it
+# stays ALLOW — matching Bash semantics, and proving the join can't over-gate.
+run_case allow "$(printf 'echo foo \\\ngit push')"
+# BYPASS REGRESSION: an EVEN run of trailing backslashes is escaped literal
+# backslashes, NOT a continuation — Bash keeps the newline as a real separator
+# and runs `git push`. The join must NOT merge these lines (a naive `\$` match
+# used to, hiding the push). Must DENY.
+run_case deny "$(printf 'echo \\\\\ngit push')"
+run_case deny "$(printf 'x=\\\\\ngit push')"
+# An ODD run of trailing backslashes IS a real continuation (last backslash
+# escapes the newline); `&& \<nl>git push` still runs the push -> DENY.
+run_case deny "$(printf 'true && \\\ngit push')"
+
+# --- Heredoc handling: SECURITY over usability -------------------------------
+# We do NOT strip heredoc bodies (a parser-free stripper mis-detects openers and
+# silently BYPASSES the gate — see normalize_cmd). So a heredoc body line that
+# looks like a gated command is conservatively DENIED (a fail-SAFE over-block).
+# Benign-but-over-blocked heredoc body (accepted limitation):
+run_case deny "$(printf "cat > README.md <<'EOF'\ngit push\nEOF")"
+# A real push on the heredoc OPENING line still gates.
+run_case deny "$(printf 'git push <<EOF\nnote\nEOF')"
+# BYPASS REGRESSIONS: a FAKE heredoc opener inside quotes or a comment must NOT
+# hide a following real command. Bash runs the `git push`/`gh pr create` here,
+# so the gate must DENY (the old heredoc-stripping normalizer wrongly ALLOWED).
+run_case deny "$(printf "echo '<<EOF'\ngit push\nEOF")"
+run_case deny "$(printf 'echo "<<EOF"\ngit push\nEOF')"
+run_case deny "$(printf '# <<EOF\ngit push\nEOF')"
+run_case deny "$(printf 'echo $((1<<B))\ngh pr create\nB')"
 
 if [ "$FAILED" -ne 0 ]; then
   echo "[FAIL] one or more gate cases did not behave as expected" >&2

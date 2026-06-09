@@ -94,6 +94,40 @@ description: Hidden setup wrapper
     });
   });
 
+  test("resolves metadata.version regardless of quote style or extra indentation", () => {
+    const root = makeRoot();
+    // Single-quoted value (valid YAML) — the resolver must strip single quotes
+    // exactly as it strips double quotes, so the version source matches.
+    writeManifest(root, "composer", "1.4.0");
+    writeSkill(
+      root,
+      "composer",
+      "composer",
+      `
+description: Composer umbrella
+metadata:
+  version: '1.4'
+`,
+    );
+    // Deeper indentation under metadata: must still be found.
+    writeManifest(root, "distill", "2.0.0");
+    writeSkill(
+      root,
+      "distill",
+      "distill",
+      `
+description: Distill
+metadata:
+    version: "2.0"
+`,
+    );
+
+    expect(collectVersionSources(root).versions).toEqual({
+      composer: "1.4",
+      distill: "2.0",
+    });
+  });
+
   test("uses plugin manifest version for command-only plugins", () => {
     const root = makeRoot();
     writeManifest(root, "pi", "0.11.1");

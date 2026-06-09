@@ -160,11 +160,18 @@ function metadataVersion(lines: string[]): string | null {
       inMetadata = true;
       continue;
     }
-    if (inMetadata && line.startsWith("  version:")) {
-      return line.slice(line.indexOf(":") + 1).trim().replace(/^"|"$/g, "");
-    }
-    if (inMetadata && line && !line.startsWith("  ")) {
+    // The metadata block ends at the next non-indented (new top-level) key.
+    if (inMetadata && line && !/^\s/.test(line)) {
       inMetadata = false;
+    }
+    if (inMetadata) {
+      // Tolerate any indentation and single- OR double-quoted values, matching
+      // topLevelValue()'s quote handling, so a strict-YAML-valid but
+      // differently-styled `metadata.version` resolves the same here.
+      const match = line.match(/^\s+version:\s*(.*)$/);
+      if (match) {
+        return match[1].trim().replace(/^["']|["']$/g, "");
+      }
     }
   }
   return null;
@@ -384,7 +391,6 @@ export function checkVersionBumps(root: string, baseRef: string): { checked: num
       return [
         `${dir}/skills/`,
         `${dir}/agents/`,
-        `${dir}/commands/`,
         `${dir}/hooks/`,
         `${dir}/internal/`,
         `${dir}/.claude-plugin/plugin.json`,

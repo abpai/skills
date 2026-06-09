@@ -104,6 +104,20 @@ function detectBase(requested: string): string {
         2,
       )
     }
+    // A base that resolves but shares NO common history with HEAD (e.g. an
+    // unrelated/orphan branch) makes `git diff base...HEAD` exit 128 with EMPTY
+    // output. Because the scope diffs suppress that (2>/dev/null), it would
+    // silently yield an empty committed scope and seal an incomplete PR. Require
+    // a merge-base. Skipped on an unborn HEAD (no commits): there is no
+    // committed scope to diff and uncommitted/untracked scope is still captured.
+    if (gitRefExists("HEAD") && run(`git merge-base ${shellQuote(requested)} HEAD >/dev/null 2>&1`).status !== 0) {
+      fail(
+        `--base ${requested} shares no common history with HEAD (no merge-base), so ` +
+          `'git diff ${requested}...HEAD' cannot compute a committed diff. Pass a base that is ` +
+          `an ancestor of this branch (e.g. origin/main), or fetch the correct ref first.`,
+        2,
+      )
+    }
     return requested
   }
   const head = run("git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||'").output.trim()
@@ -142,6 +156,27 @@ function scriptCommand(pm: PackageManager, name: string): string {
 
 // --- Scope union ---------------------------------------------------------
 
+// Committed-scope diff (base...HEAD), run FAIL-CLOSED. The `2>/dev/null` form
+// used elsewhere hides git's exit status, so a base...HEAD that errors (exit
+// 128) reads as an empty committed scope — exactly how an incomplete PR could
+// seal. detectBase() already rejects an explicit no-merge-base base up front;
+// this is defense-in-depth for any other diff failure. The one legitimate
+// empty case — an unborn HEAD with no commits — is detected and returned empty
+// rather than treated as an error (uncommitted/untracked scope still applies).
+function committedDiff(rootDir: string, baseRef: string, extraArgs: string): string {
+  if (!gitRefExists("HEAD")) return ""
+  const args = extraArgs ? `${extraArgs} ` : ""
+  const result = run(`git diff ${args}${shellQuote(baseRef)}...HEAD`, rootDir)
+  if (result.status !== 0) {
+    fail(
+      `git diff ${baseRef}...HEAD failed (exit ${result.status}): ${result.output.trim() || "no output"}. ` +
+        `Refusing to compute an incomplete committed scope.`,
+      2,
+    )
+  }
+  return result.output
+}
+
 function scopeFiles(rootDir: string, baseRef: string): {
   committed: string[]
   uncommitted: string[]
@@ -154,7 +189,10 @@ function scopeFiles(rootDir: string, baseRef: string): {
       .map((line) => line.trim())
       .filter(Boolean)
 
-  const committed = lines(`git diff --name-only ${shellQuote(baseRef)}...HEAD 2>/dev/null`)
+  const committed = committedDiff(rootDir, baseRef, "--name-only")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
   const uncommitted = [
     ...lines("git diff --name-only 2>/dev/null"),
     ...lines("git diff --cached --name-only 2>/dev/null"),
@@ -196,7 +234,7 @@ function scopeFiles(rootDir: string, baseRef: string): {
 // it — otherwise writing the sentinel would change the hash and self-invalidate
 // the seal.
 function scopeHash(rootDir: string, baseRef: string): string {
-  const diffCommitted = run(`git diff ${shellQuote(baseRef)}...HEAD 2>/dev/null`, rootDir).output
+  const diffCommitted = committedDiff(rootDir, baseRef, "")
   const diffUnstaged = run("git diff 2>/dev/null", rootDir).output
   const diffStaged = run("git diff --cached 2>/dev/null", rootDir).output
   const untracked = run("git ls-files --others --exclude-standard 2>/dev/null", rootDir)
