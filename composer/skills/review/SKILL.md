@@ -6,16 +6,9 @@ metadata:
   internal: true
 description: Run strict read-only Cursor Composer review on a diff or PR.
 argument-hint: "[diff scope, PR URL/number, or model hint]"
-allowed-tools: >
-  Bash(composer/skills/composer/scripts/cursor-agent-doctor.sh *)
-  Bash(composer/skills/composer/scripts/composer-run.sh *)
-  Bash(cursor-agent *) Bash(git status *) Bash(git diff *)
-  Bash(git fetch *) Bash(git log *) Bash(git branch *)
-  Bash(git worktree *) Bash(git add *) Bash(git commit *)
-  Bash(git push *) Bash(gh pr view *) Bash(gh pr diff *)
-  Bash(gh pr edit *) Bash(gh pr checks *) Bash(gh pr merge *)
-  Bash(mktemp *) Bash(rm *) Bash(mkdir *)
-  Read Write Edit Grep Glob
+# No allowed-tools here: this wrapper is disable-model-invocation +
+# user-invocable: false, so it is never the active skill. The Composer umbrella
+# carries the union allowlist used by the routed /composer review workflow.
 ---
 
 # /composer:review

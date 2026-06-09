@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Structural + content validation for every plugin in this marketplace.
 
-This is the single source of truth that `scripts/validate-skills.sh` drives. It
+This is the structural validator that `scripts/validate-skills.sh` drives. It
 used to live as ~8 separate `python3 -c "..."` / heredoc blocks embedded in the
-bash script; consolidating them here means one process, structured functions,
-and one place to read the rules.
+bash script; consolidating those checks here means one process, structured
+functions, and one place to read the structural rules. Shared version-source
+metadata lives in `scripts/skill-metadata.ts` so generation, manifest sync,
+docs/version drift checks, and CI version-bump checks resolve plugin versions
+through the same code path.
 
 Frontmatter handling deliberately mirrors the pre-refactor behaviour exactly:
 
@@ -12,10 +15,10 @@ Frontmatter handling deliberately mirrors the pre-refactor behaviour exactly:
     spec-compliant parse the `npx skills` installer relies on — see
     validate-npx-install.sh). When PyYAML is missing the gate is skipped with a
     one-line WARN, NOT a failure.
-  - Field extraction (name/description/flags) is done by the same lenient
-    line-based parser as before, regardless of whether the strict gate ran, so
-    the validator still works without PyYAML and the boolean-flag semantics
-    (string compares, quote stripping) are unchanged.
+  - Structural field extraction (name/description/flags) is done by the same
+    lenient line-based parser as before, regardless of whether the strict gate
+    ran, so the boolean-flag semantics (string compares, quote stripping) are
+    unchanged. Version-source extraction is delegated to `skill-metadata.ts`.
   - Agent frontmatter uses its own original line-based parser with no strict
     gate, matching the old block.
 
@@ -33,7 +36,9 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
 
 try:
@@ -48,6 +53,20 @@ _META_INTERNAL_RE = re.compile(r"\s+internal:\s*true\s*")
 
 # Mirrors the original one-time WARN when PyYAML is unavailable.
 _YAML_WARNED = False
+
+
+def _class_tokens(attrs: list[tuple[str, str | None]]) -> set[str]:
+    for key, value in attrs:
+        if key == "class" and value:
+            return set(value.split())
+    return set()
+
+
+def _attr_value(attrs: list[tuple[str, str | None]], name: str) -> str | None:
+    for key, value in attrs:
+        if key == name:
+            return value
+    return None
 
 
 class Reporter:
@@ -214,6 +233,7 @@ def validate_skill_md(
 
     disable_mi = fields.get("disable-model-invocation") == "true"
     user_invocable = fields.get("user-invocable")
+    has_allowed_tools = "allowed-tools" in fields
     internal = _detect_internal(fm_lines)
     is_umbrella = skill_name == plugin_name
 
@@ -222,6 +242,13 @@ def validate_skill_md(
     # metadata.internal + user-invocable: false. `pi` has no umbrella, so its
     # phase commands fall into the elif branch. See CLAUDE.md.
     if has_umbrella and not is_umbrella:
+        if has_allowed_tools:
+            rep.fail(
+                f"{path}: per-command wrapper in an umbrella pack must not set "
+                "'allowed-tools'; put the union allowlist on "
+                f"{plugin_name}/skills/{plugin_name}/SKILL.md because the umbrella "
+                "is the active routed skill"
+            )
         if not disable_mi:
             rep.fail(
                 f"{path}: per-command wrapper in an umbrella pack must set "
@@ -705,41 +732,47 @@ def validate_codex_marketplace(path: Path, rep: Reporter) -> None:
 # ── versions.json ─────────────────────────────────────────────────────────────
 
 
-def _skill_md_version(path: Path) -> str | None:
-    """metadata.version from a SKILL.md (line-based, fence-scoped)."""
-    in_frontmatter = False
-    in_metadata = False
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line == "---":
-            if not in_frontmatter:
-                in_frontmatter = True
-                continue
-            break
-        if not in_frontmatter:
-            continue
-        if line.startswith("metadata:"):
-            in_metadata = True
-            continue
-        if in_metadata and line.startswith("  version:"):
-            return line.split(":", 1)[1].strip().strip('"')
-        if in_metadata and line and not line.startswith("  "):
-            in_metadata = False
-    return None
+def _expected_skill_versions(rep: Reporter) -> dict[str, str] | None:
+    metadata_script = Path("scripts/skill-metadata.ts")
+    if not metadata_script.is_file():
+        rep.fail(f"{metadata_script}: missing shared skill metadata resolver")
+        return None
 
+    try:
+        result = subprocess.run(
+            ["bun", str(metadata_script), "expected-versions", "--json"],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except FileNotFoundError:
+        rep.fail("bun: required to resolve shared skill metadata versions")
+        return None
 
-def _skill_md_disabled(path: Path) -> bool:
-    in_frontmatter = False
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line == "---":
-            if not in_frontmatter:
-                in_frontmatter = True
-                continue
-            break
-        if not in_frontmatter:
-            continue
-        if line.strip() == "disable-model-invocation: true":
-            return True
-    return False
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        if detail:
+            for line in detail.splitlines():
+                rep.fail(line)
+        else:
+            rep.fail("scripts/skill-metadata.ts: expected-versions failed")
+        return None
+
+    try:
+        parsed = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        rep.fail(f"scripts/skill-metadata.ts: invalid expected-versions JSON: {exc}")
+        return None
+
+    if not isinstance(parsed, dict) or not all(
+        isinstance(key, str) and isinstance(value, str)
+        for key, value in parsed.items()
+    ):
+        rep.fail("scripts/skill-metadata.ts: expected-versions JSON must be a string map")
+        return None
+
+    return dict(sorted(parsed.items()))
 
 
 def validate_versions(path: Path, rep: Reporter) -> None:
@@ -747,35 +780,8 @@ def validate_versions(path: Path, rep: Reporter) -> None:
     if data is None:
         return
 
-    expected: dict[str, str] = {}
-    missing_versions: list[str] = []
-    for manifest in sorted(Path(".").glob("*/.claude-plugin/plugin.json")):
-        plugin_dir = manifest.parent.parent
-        plugin_name = plugin_dir.name
-        versioned_skill_found = False
-        for skill_file in sorted((plugin_dir / "skills").glob("*/SKILL.md")):
-            if _skill_md_disabled(skill_file):
-                continue
-            version = _skill_md_version(skill_file)
-            if not version:
-                missing_versions.append(str(skill_file))
-                continue
-            expected[skill_file.parent.name] = version
-            versioned_skill_found = True
-
-        if not versioned_skill_found:
-            manifest_data = load_json(manifest, rep)
-            if manifest_data is None:
-                return
-            version = manifest_data.get("version")
-            if not version:
-                missing_versions.append(str(manifest))
-                continue
-            expected[plugin_name] = version
-
-    if missing_versions:
-        for version_file in missing_versions:
-            rep.fail(f"{version_file}: missing version metadata")
+    expected = _expected_skill_versions(rep)
+    if expected is None:
         return
 
     actual = data.get("skills")
@@ -803,6 +809,210 @@ def validate_versions(path: Path, rep: Reporter) -> None:
         return
 
     rep.ok(f"{path} ({len(expected)} skills)")
+
+
+# ── docs/index.html ───────────────────────────────────────────────────────────
+
+
+class DocsIndexParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.cards: list[tuple[str, str]] = []
+        self.meta_counts: list[tuple[str, str]] = []
+        self.plugin_count: str | None = None
+        self.result_count: str | None = None
+        self._in_card = False
+        self._in_card_name = False
+        self._in_card_version = False
+        self._capture: str | None = None
+        self._card_name_parts: list[str] = []
+        self._card_version_parts: list[str] = []
+        self._capture_plugin_count = False
+        self._capture_result_count = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        classes = _class_tokens(attrs)
+        if tag == "meta":
+            name = _attr_value(attrs, "name") or _attr_value(attrs, "property")
+            content = _attr_value(attrs, "content")
+            if name in {"description", "og:description"} and content:
+                self.meta_counts.append((name, content))
+            return
+
+        if tag == "article" and "skill-card" in classes:
+            self._in_card = True
+            self._card_name_parts = []
+            self._card_version_parts = []
+            return
+
+        if self._in_card and tag == "h3" and "card-name" in classes:
+            self._in_card_name = True
+            self._capture = "card-name"
+            return
+
+        if self._in_card and tag == "span" and "card-version" in classes:
+            self._in_card_version = True
+            return
+
+        if self._in_card and self._in_card_version and tag == "strong":
+            self._capture = "card-version"
+            return
+
+        if tag == "strong" and _attr_value(attrs, "id") == "pluginCount":
+            self._capture_plugin_count = True
+            self._capture = "plugin-count"
+            return
+
+        if tag == "span" and _attr_value(attrs, "id") == "resultCount":
+            self._capture_result_count = True
+            self._capture = "result-count"
+
+    def handle_data(self, data: str) -> None:
+        if self._capture == "card-name":
+            self._card_name_parts.append(data)
+        elif self._capture == "card-version":
+            self._card_version_parts.append(data)
+        elif self._capture == "plugin-count":
+            self.plugin_count = (self.plugin_count or "") + data
+        elif self._capture == "result-count":
+            self.result_count = (self.result_count or "") + data
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "h3" and self._in_card_name:
+            self._in_card_name = False
+            if self._capture == "card-name":
+                self._capture = None
+            return
+
+        if tag == "strong" and self._capture == "card-version":
+            self._capture = None
+            return
+
+        if tag == "span" and self._in_card_version:
+            self._in_card_version = False
+            return
+
+        if tag == "strong" and self._capture_plugin_count:
+            self._capture_plugin_count = False
+            if self._capture == "plugin-count":
+                self._capture = None
+            return
+
+        if tag == "span" and self._capture_result_count:
+            self._capture_result_count = False
+            if self._capture == "result-count":
+                self._capture = None
+            return
+
+        if tag == "article" and self._in_card:
+            name = "".join(self._card_name_parts).strip()
+            version = "".join(self._card_version_parts).strip()
+            self.cards.append((name, version))
+            self._in_card = False
+            self._in_card_name = False
+            self._in_card_version = False
+            self._capture = None
+
+
+def validate_docs_index(path: Path, rep: Reporter) -> None:
+    expected = _expected_skill_versions(rep)
+    if expected is None:
+        return
+
+    try:
+        text = path.read_text(encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001
+        rep.fail(f"{path}: cannot read docs index: {exc}")
+        return
+
+    parser = DocsIndexParser()
+    try:
+        parser.feed(text)
+    except Exception as exc:  # noqa: BLE001
+        rep.fail(f"{path}: cannot parse docs index HTML: {exc}")
+        return
+
+    local_failed = False
+    card_versions: dict[str, str] = {}
+    duplicate_cards: list[str] = []
+    for name, version in parser.cards:
+        if not name:
+            rep.fail(f"{path}: plugin card missing card-name")
+            local_failed = True
+            continue
+        if not version:
+            rep.fail(f"{path}: plugin card for {name!r} missing card-version")
+            local_failed = True
+            continue
+        if name in card_versions:
+            duplicate_cards.append(name)
+        card_versions[name] = version
+
+    if duplicate_cards:
+        rep.fail(f"{path}: duplicate plugin cards: {', '.join(sorted(set(duplicate_cards)))}")
+        local_failed = True
+
+    missing = sorted(set(expected) - set(card_versions))
+    extra = sorted(set(card_versions) - set(expected))
+    if missing:
+        rep.fail(f"{path}: missing plugin cards: {', '.join(missing)}")
+        local_failed = True
+    if extra:
+        rep.fail(f"{path}: unexpected plugin cards: {', '.join(extra)}")
+        local_failed = True
+
+    for name in sorted(set(expected) & set(card_versions)):
+        if card_versions[name] != expected[name]:
+            rep.fail(
+                f"{path}: {name} card version {card_versions[name]!r} does not "
+                f"match version source {expected[name]!r}"
+            )
+            local_failed = True
+
+    expected_count = len(expected)
+    if parser.plugin_count is None:
+        rep.fail(f"{path}: missing #pluginCount stat")
+        local_failed = True
+    else:
+        count_text = parser.plugin_count.strip()
+        if count_text != str(expected_count):
+            rep.fail(
+                f"{path}: #pluginCount is {count_text!r} "
+                f"(expected {expected_count})"
+            )
+            local_failed = True
+
+    if parser.result_count is None:
+        rep.fail(f"{path}: missing #resultCount text")
+        local_failed = True
+    else:
+        result_text = " ".join(parser.result_count.split())
+        expected_result = f"{expected_count} / {expected_count}"
+        if result_text != expected_result:
+            rep.fail(
+                f"{path}: #resultCount is {result_text!r} "
+                f"(expected {expected_result!r})"
+            )
+            local_failed = True
+
+    if not parser.meta_counts:
+        rep.fail(f"{path}: missing description/og:description plugin count")
+        local_failed = True
+    else:
+        for label, content in parser.meta_counts:
+            first_number = re.search(r"\b\d+\b", content)
+            if not first_number:
+                rep.fail(f"{path}: {label} meta description has no plugin count")
+                local_failed = True
+            elif int(first_number.group(0)) != expected_count:
+                rep.fail(
+                    f"{path}: {label} meta description count "
+                    f"{first_number.group(0)} does not match {expected_count}"
+                )
+                local_failed = True
+
+    if not local_failed:
+        rep.ok(f"{path} ({expected_count} plugin cards)")
 
 
 # ── entrypoint ────────────────────────────────────────────────────────────────
@@ -849,6 +1059,12 @@ def main(argv: list[str]) -> int:
         run_guarded(rep, str(versions_file), lambda: validate_versions(versions_file, rep))
     else:
         rep.fail(f"{versions_file}: missing file")
+
+    docs_index = Path("docs/index.html")
+    if docs_index.is_file():
+        run_guarded(rep, str(docs_index), lambda: validate_docs_index(docs_index, rep))
+    else:
+        rep.warn("No docs/index.html found")
 
     return 1 if rep.failed else 0
 
