@@ -13,9 +13,25 @@ cd "$ROOT_DIR"
 
 failed=0
 
+# --skip-versions is the bun-free structural contract: it skips every
+# version-derived surface (Python: versions.json + docs cards) AND, here, the
+# bun-dependent toolchain blocks below (metadata test, finish-lane build/test,
+# TS helper builds). With bun present we still run everything. Without bun and
+# WITHOUT --skip-versions we hard-fail, because a silent partial run would read
+# as a full pass.
+skip_versions=0
+for arg in "$@"; do
+  [[ "$arg" == "--skip-versions" ]] && skip_versions=1
+done
+
+have_bun=1
 if ! command -v bun >/dev/null 2>&1; then
-  echo "[FAIL] scripts/validate-skills.sh: bun is required to validate skill metadata and TypeScript helpers; install bun or skip this gate"
-  exit 1
+  have_bun=0
+  if [[ "$skip_versions" -ne 1 ]]; then
+    echo "[FAIL] scripts/validate-skills.sh: bun is required to validate skill metadata and TypeScript helpers; install bun, or pass --skip-versions for a bun-free structural-only run"
+    exit 1
+  fi
+  echo "  [SKIP] bun toolchain checks (bun not found; --skip-versions bun-free run: skipping metadata test, finish-lane build/test, and TS helper builds)"
 fi
 
 # ── Plugin / skill / agent / marketplace / versions validation (Python) ──
@@ -27,7 +43,7 @@ fi
 # ── Validate shared metadata tooling ──
 
 metadata_test="scripts/skill-metadata.test.ts"
-if [[ -f "$metadata_test" ]]; then
+if [[ "$have_bun" -eq 1 && -f "$metadata_test" ]]; then
   if bun test "$metadata_test" >/tmp/skills-validate-metadata-test.log 2>&1; then
     echo "  [OK] $metadata_test (bun test)"
     rm -f /tmp/skills-validate-metadata-test.log
@@ -42,7 +58,7 @@ fi
 # ── Validate bundled TypeScript helpers ──
 
 finish_lane_script="code/skills/code/scripts/finish-lane.ts"
-if [[ -f "$finish_lane_script" ]]; then
+if [[ "$have_bun" -eq 1 && -f "$finish_lane_script" ]]; then
   if bun build "$finish_lane_script" --target=bun --outfile /tmp/skills-validate-finish-lane.js >/tmp/skills-validate-finish-lane.log 2>&1; then
     echo "  [OK] $finish_lane_script (bun build)"
     rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
@@ -83,7 +99,12 @@ fi
 SHELL_HELPERS=()
 while IFS= read -r f; do
   SHELL_HELPERS+=("$f")
-done < <(find . -path ./.git -prune -o -name '*.sh' -type f -print \
+done < <(find . -path ./.git -prune -o \
+           -path '*/__pycache__/*' -prune -o \
+           -path './.ruff_cache/*' -prune -o \
+           -path './.understand/*' -prune -o \
+           -path './.workflow/*' -prune -o \
+           -name '*.sh' -type f -print \
          | grep -vE '/scripts/validate-skills\.sh$' | sort)
 if [[ ${#SHELL_HELPERS[@]} -gt 0 ]]; then
   if ! command -v bash >/dev/null 2>&1; then
@@ -133,10 +154,15 @@ fi
 TS_HELPERS=()
 while IFS= read -r f; do
   TS_HELPERS+=("$f")
-done < <(find . -path ./.git -prune -o -name '*.ts' -type f -print \
+done < <(find . -path ./.git -prune -o \
+           -path '*/__pycache__/*' -prune -o \
+           -path './.ruff_cache/*' -prune -o \
+           -path './.understand/*' -prune -o \
+           -path './.workflow/*' -prune -o \
+           -name '*.ts' -type f -print \
          | grep -vE '/finish-lane(\.test)?\.ts$' \
          | grep -vE '\.test\.ts$' | sort)
-if [[ ${#TS_HELPERS[@]} -gt 0 ]]; then
+if [[ "$have_bun" -eq 1 && ${#TS_HELPERS[@]} -gt 0 ]]; then
   for ts_file in "${TS_HELPERS[@]}"; do
     if bun build "$ts_file" --target=bun --outfile /tmp/skills-validate-ts.js >/tmp/skills-validate-ts.log 2>&1; then
       rm -f /tmp/skills-validate-ts.js

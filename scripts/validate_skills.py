@@ -542,7 +542,7 @@ def validate_plugin(plugin_dir: Path, rep: Reporter) -> None:
                 flavor=".codex-plugin",
                 path_keys=("skills", "apps"),
                 object_keys=("mcpServers",),
-                forbid_commands=False,
+                forbid_commands=True,
                 cross_check=claude_data or {},
             )
 
@@ -672,7 +672,30 @@ def validate_codex_marketplace(path: Path, rep: Reporter) -> None:
         if not rel_path:
             rep.fail(f'{path}: plugins[{i}] ("{name}") missing source.path')
             return
+        # This is a repo-scoped marketplace: every source.path must be a
+        # repo-local "./<plugin>" — mirroring the strict Claude manifest path
+        # rules. Without this, a path like "../elsewhere/distill" or an absolute
+        # path ending in the plugin name could pass, since only the basename is
+        # cross-checked below.
+        if not isinstance(rel_path, str) or not rel_path.startswith("./"):
+            rep.fail(
+                f'{path}: plugins[{i}] ("{name}") source.path {rel_path!r} must start with ./'
+            )
+            return
+        repo_root = Path(".").resolve()
         plugin_dir = Path(rel_path)
+        try:
+            plugin_dir.resolve().relative_to(repo_root)
+        except ValueError:
+            rep.fail(
+                f'{path}: plugins[{i}] ("{name}") source.path {rel_path!r} escapes the repo root'
+            )
+            return
+        if rel_path != f"./{name}":
+            rep.fail(
+                f'{path}: plugins[{i}] ("{name}") source.path {rel_path!r} must be "./{name}"'
+            )
+            return
         if not plugin_dir.exists():
             rep.fail(
                 f'{path}: plugins[{i}] ("{name}") points to missing path {rel_path!r}'
@@ -1061,7 +1084,14 @@ def main(argv: list[str]) -> int:
         rep.fail(f"{versions_file}: missing file")
 
     docs_index = Path("docs/index.html")
-    if docs_index.is_file():
+    if skip_versions:
+        # docs/index.html validation cross-checks plugin cards against the
+        # bun-resolved version source (_expected_skill_versions), so it is a
+        # version-DERIVED surface. --skip-versions means "run without the
+        # bun-backed version toolchain", so skip it here too — otherwise the
+        # flag still hard-requires bun and defeats its own purpose.
+        print("  [SKIP] docs/index.html (--skip-versions)")
+    elif docs_index.is_file():
         run_guarded(rep, str(docs_index), lambda: validate_docs_index(docs_index, rep))
     else:
         rep.warn("No docs/index.html found")
