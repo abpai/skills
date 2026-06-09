@@ -73,10 +73,10 @@
     },
     {
       "name": "harness",
-      "description": "Agent harness workflows for repository environments that expose progressive docs, glossary terms, todo specs, validation routes, design guidance, and domain invariants to coding agents.",
+      "description": "Agent harness workflow pack for making repos ergonomic for agent-driven development: spec contracts (docs/SPEC_CONTRACT.md), prose-to-enforcement conversion, tiny AGENTS.md routers, validation-path docs, and verification-first Harness Doctor readiness audits.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "harness" },
       "category": "productivity",
-      "keywords": ["harness", "agents", "docs", "glossary", "ubiquitous-language", "defined-terms", "todos", "specs", "progressive-disclosure", "architecture", "design", "domains", "invariants", "testing", "validation", "doctor"]
+      "keywords": ["harness", "agents", "docs", "spec-contract", "enforcement", "validation", "testing", "agents-md", "progressive-disclosure", "architecture", "domains", "invariants", "glossary", "todos", "doctor", "readiness"]
     },
     {
       "name": "decision-worksheet",

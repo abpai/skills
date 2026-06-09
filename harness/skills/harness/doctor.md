@@ -1,19 +1,20 @@
 # Harness Doctor
 
-Audit and improve an agent harness without turning the scanner into a prose judge. The external `harness-doctor` CLI owns deterministic checks; this skill owns triage, semantic review, and remediation planning.
+Audit how ready a repo is for agent-driven development and turn findings into next actions. Verification surfaces are weighted above doc shape: a repo with runnable proofs and a thin router outscores a repo with a beautiful docs tree and no checks.
 
-Use this workflow when the user asks to run Harness Doctor, score repo docs, find stale or missing agent guidance, audit progressive disclosure, review `AGENTS.md`, inspect `docs/todos`, or decide what docs should be kept, moved, or deleted.
+Use this workflow when the user asks to run Harness Doctor, score repo readiness, audit docs or `AGENTS.md`, check the spec contract, find stale or missing agent guidance, or decide what guidance to keep, move, or delete.
+
+Readiness scoring of this kind is experimental — explanations matter more than the number, and the audit must not reward scaffolding for its own sake: an empty `docs/domains/` tree is a finding, not a point.
 
 ## Core split
 
-- `harness:docs` authors the documentation structure.
-- `harness:doctor` audits the structure and turns findings into next actions.
-- `harness-doctor` CLI checks deterministic facts only: files, links, line budgets, banned paths, complete domain docs, glossary count, and todo-spec sections.
-- Semantic judgment stays in this skill: duplicated guidance, rule altitude, glossary usefulness, invariant quality, and whether a todo is strategically worth keeping.
+- `harness:docs` (`docs.md`) is the canonical source for the shared concepts: enforcement hierarchy, spec contract shape, AGENTS line gate, nested AGENTS decision test, Keep/Move/Delete verdicts, demonstrated-need evidence, budgets. This module applies them as audit dimensions — when judging, follow the `docs.md` definitions; deterministic symptom lists are kept local here for executability.
+- The external `harness-doctor` CLI checks deterministic facts only: files, links, byte/line budgets, banned paths, doc shapes, command existence.
+- Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract.
 
-Do not add scanner scripts to product repos. A product repo may keep stable docs plus optional `harness-doctor.config.ts` (the `harness-doctor` CLI's config file); scanner output stays temporary.
+Do not add scanner scripts to product repos. A product repo may keep stable docs plus optional `harness-doctor.config.ts`; scanner output stays temporary.
 
-## Fast Path
+## Fast path
 
 From the repo root:
 
@@ -21,114 +22,129 @@ From the repo root:
 npx harness-doctor@latest --json --verbose --diff
 ```
 
-If diff mode is unavailable or the user asks for a full audit:
+If diff mode is unavailable or the user asks for a full audit, drop `--diff`. Record the resolved CLI version in the proof section (`npx` resolves `@latest` at run time). If the CLI is unavailable (no network, no `npx`), use the manual checks below and say the scanner was unavailable. The CLI does not yet cover every check in this module — run the spec-contract alignment, byte-budget, and execution checks manually regardless.
 
-```bash
-npx harness-doctor@latest --json --verbose
-```
+## Execution policy
 
-If the CLI is not available, the network is blocked, or the repo intentionally cannot run `npx`, use the manual checks below and say the scanner was unavailable.
+This audit **runs the repo's validation commands** — documented commands, spec-contract proof-menu rows, test suites, lints, builds, and e2e paths — and records pass/fail and runtime for each. A command that exists but was not run is reported `unverified`, never as passing. Rules:
 
-## Read The Report
+- Run only commands that terminate. Dev servers and watch modes (`dev`, `start`, `watch`, `serve`) are `not-applicable`, not validation commands.
+- Long suites still run — this is a full audit. Launch them in the background, continue other checks meanwhile, and record runtimes.
+- A command that fails because the local environment is missing (services, credentials, Docker) is `env-blocked`, not `fail`, and counts as neither a passing nor failing data point.
+- Suites that hit paid or external APIs: confirm with the user before running; otherwise mark `inspected-not-run`.
+- Never execute irreversible or environment-mutating commands — deploys, releases, migration applies, data deletion, anything touching production. Verify by inspection and mark `inspected-not-run`.
 
-Parse JSON when available. Each diagnostic has `filePath`, `plugin`, `rule`, `severity`, `message`, `help`, `line`, `column`, and `category`.
+`inspected-not-run` does not block a top score when inspection confirms the command exists and is wired into CI.
 
-Group findings for the handoff:
+## Audit dimensions
 
-- Critical: missing entry point, missing `docs/`, stale local links, deleted referenced paths, or misleading routes that will send agents to the wrong code.
-- High: giant `AGENTS.md`, missing `docs/INDEX.md`, missing architecture map, missing glossary, duplicate glossaries, incomplete domain docs, missing todo index, or banned long-lived paths.
-- Medium: oversized docs, todo specs with missing sections, weak scan structure, or follow-up semantic review items.
+Score each reviewed dimension 0-4 against the `docs.md` bar:
 
-Output recommendation-first:
+| # | Dimension | Weight | 4 means | 0 means |
+| --- | --- | --- | --- | --- |
+| D1 | Validation commands | 25 | All documented commands run and pass; none unverified. | No commands documented anywhere (`commands.md`, README, proof menu) — regardless of what `package.json` contains. Undocumented-but-working validation is a D1 finding (supply without routing). |
+| D2 | E2E proof paths | 20 | Every major change type has a runnable end-to-end proof (e2e suite, screenshot diff, contract test). | No change type has one. |
+| D3 | Spec contract | 20 | `docs/SPEC_CONTRACT.md` exists, routed from `AGENTS.md`, aligned in both directions (below). | File missing. |
+| D4 | Enforcement coverage | 15 | Known invariants carried by tests/lints/CI gates, not prose; CI blocks merge on them. | Invariants live only in prose, or nothing blocks merge. |
+| D5 | Entry-point quality | 10 | `AGENTS.md` passes the line gate and budgets (~80 lines / 6 KiB root, 32 KiB combined); `CLAUDE.md` shim present (`@AGENTS.md`). | Entry point missing or grossly over budget. |
+| D6 | Docs structure and routing | 10 | Index present, links resolve, no banned paths, earned surfaces complete, no default scaffolding. | No `docs/`, or routing broken throughout. |
+
+Intermediate scores: start at 4 and subtract roughly one point per named gap; every point lost must link to one or more finding IDs. D3, D5, and D6 are deterministically checkable by hand and are never `unreviewed`, even when the CLI is unavailable. Mark a genuinely unreviewed semantic dimension `unreviewed` — never guess.
+
+Overall score: `round(100 × Σ(weightᵢ × dimᵢ/4) / Σ weightᵢ)`, summing only reviewed dimensions; print `–/4` for unreviewed dimensions in the header. Diff-scoped runs emit findings only — the score is computed only on a full audit.
+
+## Spec-contract alignment check
+
+The spec contract is the demand side; the repo's validation surfaces are the supply side. Check both directions:
+
+- Every proof-menu row references a command that exists — and run it (per the execution policy).
+- Every major change type evident in the repo (from CI jobs, test layout, package scripts) has a proof-menu row. Missing rows mean intake will produce specs this repo cannot verify.
+- Escalation boundaries are stated.
+
+A missing `SPEC_CONTRACT.md` is D3 = 0 — Critical when the repo opted into the contract (`harness-doctor.config.ts` with `docsContract: true`), High otherwise (finding: the repo has not adopted the contract). A stale proof menu (rows referencing dead commands) is Critical, because it silently breaks the intake → execution pipeline.
+
+## Findings
+
+Every finding gets an ID (`HD-1`, `HD-2`, … in report order, or the scanner rule id when the CLI produced it), a severity, evidence, and a fix. Evidence rule: include the file path when a file caused or proves the finding; for semantic findings with no single file, cite the files inspected or state the evidence that was missing. Vague areas ("docs", "auth code") are banned when a concrete path exists.
+
+Severity describes impact:
+
+- **Critical**: missing entry point, stale spec-contract proof menu, validation commands that fail or do not exist, stale local links, or misleading routes that send agents to the wrong code.
+- **High**: no e2e proof path for a major change type, invariants carried only as prose, giant or over-budget `AGENTS.md`, missing `docs/INDEX.md` or `SPEC_CONTRACT.md` routing, banned long-lived paths, incomplete earned surfaces.
+- **Medium**: oversized docs, todo specs missing sections, duplicate vocabulary files, default scaffolding without demonstrated need, follow-up semantic review items.
+
+Anything below Medium is omitted, not reported — do not inflate trivia to Medium.
+
+Tiers describe execution order, reference finding IDs, and never restate findings.
+
+## Report shape
 
 ```text
-Harness Doctor Score: <score or unknown>
+Harness Readiness: <score>/100 (D1 <n>/4 · D2 <n>/4 · D3 <n>/4 · D4 <n>/4 · D5 <n>/4 · D6 <n>/4; unreviewed shown as –/4)
 
 Recommendation
 <one short paragraph>
 
 Critical
-- <finding + file path + fix>
+- HD-1 <finding> — <path/evidence> — <fix>
 
 High
-- <finding + file path + fix>
+- HD-2 ...
 
 Medium
-- <finding + file path + fix>
+- HD-3 ...
 
-Immediate
-1. <first concrete fix>
+Immediate: HD-1, HD-2
+Near-term: HD-3
+Later: HD-4
 
-Near-term
-1. <next structural improvement>
-
-Later
-1. <semantic or adoption improvement>
+Proof
+<what was actually run and checked — see below>
 ```
 
-## Manual Checks
+Scope may vary by input (diff-only versus full repo) but there are no named audit modes — one standard audit, always recommendation-first.
 
-Run these when the scanner is unavailable or after it finishes:
+## Manual checks
 
 ```bash
-wc -l AGENTS.md 2>/dev/null || true
-rg --files -g 'AGENTS.md' -g 'CLAUDE.md' -g 'docs/**' -g '.agent/**' -g '.cursor/**' -g 'feature-registry.json' | sort
+wc -l AGENTS.md 2>/dev/null                                    # warn past ~80 lines or 6 KiB at root (docs.md budgets)
+find . -name 'AGENTS.md' -not -path '*/node_modules/*' -print0 | xargs -0 cat | wc -c   # combined bytes, must stay under 32768
+rg --files --hidden -g 'AGENTS.md' -g 'CLAUDE.md' -g 'docs/**' -g 'STRUCTURE.md' -g '.agent/**' -g '.cursor/**' -g 'scripts/agent/**' -g 'feature-registry.json' 2>/dev/null | sort
 rg -n "\\[[^]]+\\]\\([^)]+\\)" AGENTS.md CLAUDE.md docs 2>/dev/null || true
-rg --files docs/domains 2>/dev/null | sort
-rg --files docs/todos 2>/dev/null | sort
+rg --files docs/domains docs/todos 2>/dev/null | sort
+cat package.json 2>/dev/null | python3 -c "import json,sys; print('\n'.join(json.load(sys.stdin).get('scripts',{}).keys()))" 2>/dev/null || true
+rg --files --hidden -g '.github/workflows/*' -g 'Makefile' -g 'justfile' 2>/dev/null
 ```
 
-Then inspect:
+`--hidden` is required — without it ripgrep skips `.github/`, `.cursor/`, and `.agent/` entirely, and `rg --files` respects `.gitignore`; check those paths directly before concluding they are absent.
 
-- `AGENTS.md` is a map, not a manual.
-- `docs/INDEX.md`, `docs/ARCHITECTURE.md`, and one canonical glossary exist.
-- `docs/todos/INDEX.md` exists when the repo opted into the Harness docs contract or has todo specs.
-- Every `docs/domains/*` folder has `INDEX.md`, `code-map.md`, `invariants.md`, and `test-map.md`.
+Then inspect against the `docs.md` bar:
+
+- `AGENTS.md` is a router passing the six-test line gate; `CLAUDE.md` shim present (single `@AGENTS.md` import line).
+- `docs/INDEX.md`, `docs/SPEC_CONTRACT.md`, and `docs/ARCHITECTURE.md` exist and are routed.
+- `docs/engineering/commands.md` and `testing.md` exist; run their commands per the execution policy.
 - Local markdown links and referenced repo paths resolve.
-- Banned default paths are absent: `.agent/`, `scripts/agent/`, `.cursor/rules/`, `docs/product-specs/`, `docs/exec-plans/`, `docs/references/vendor-docs/`, `feature-registry.json`. (`docs/adr/` is not banned: flag it only if newly created by default, but keep an existing maintained ADR convention.)
-- Todo specs have status, scope, start points, invariants, validation, and close condition.
+- Banned default paths absent: `.agent/`, `scripts/agent/`, `.cursor/rules/`, `docs/product-specs/`, `docs/exec-plans/`, `docs/references/vendor-docs/`, `feature-registry.json`. (`docs/adr/` is flagged only if newly created by default; keep an existing maintained convention.)
+- `STRUCTURE.md` present → flag under `docs-structure/no-structure-md` unless the repo's `harness-doctor.config.ts` disables that rule (mid-migration or intentionally divergent repos).
+- Earned surfaces that exist are complete (domain folders have all four files; todo specs have status, scope, start points, invariants, validation, close condition) — and surfaces that exist without demonstrated need (per the `docs.md` evidence bar) are findings, not points.
+- Nested `AGENTS.md` symptoms: shorter than root, outward links, no duplicate root lines, valid local paths, combined byte budget holds. Whether the subtree truly needs its own contract stays semantic.
 
-## Keep / Move / Delete Audit
+## Keep / Move / Delete candidates
 
-For each docs or agent-guidance item, recommend one verdict:
+Generate candidate findings for deterministic smells — oversized root files, duplicate links, stale paths, banned paths, missing outward routes — and hand them to the `docs.md` Keep/Move/Delete procedure (verdict + reason + destination, enforcement preferred over any docs move). The final verdict is a semantic audit; this module proposes, it does not decide.
 
-- Keep: answers where the code is, who owns behavior, what must not break, how to validate, or defines a useful project term.
-- Move: belongs in a smaller doc, domain doc, glossary, design docs, `docs/todos`, code, tests, or issue/PR context.
-- Delete: duplicates source truth, records completed task scaffolding, mirrors vendor docs without freshness policy, or preserves stale historical plans.
+## Feedback compounding
 
-Do not promote domain-specific rules to root. Do not bury broad repo rules inside a domain doc.
-
-## AGENTS Line Gate
-
-Each durable `AGENTS.md` line should pass this test:
-
-- Universal: applies to all agents entering the repo or subtree.
-- Operational: changes what the agent should do.
-- Durable: likely to remain true after this PR.
-- Enforceable: if it can be linted, tested, or scripted, prefer that over prose.
-- Best location: cannot live in a narrower docs file without losing usefulness.
-
-Use nested `AGENTS.md` only when a subtree has different commands, invariants, validation, or ownership that would bloat the root map.
-
-## Feedback Compounding
-
-Treat repeated failures as harness gaps:
-
-- If agents keep asking where code lives, add or repair a code map.
-- If agents keep breaking the same invariant, add a test or move the invariant near validation.
-- If agents keep using confusing words, add a glossary term or aliases to avoid.
-- If agents keep leaving TODOs in PR notes, add a `docs/todos` spec shape.
-
-Repo-local source of truth wins. Prefer code, tests, runtime behavior, and current repo docs over Slack, memory, or stale external docs unless the user explicitly provides a current source.
+Treat repeated failures as harness gaps and route repairs through the `docs.md` enforcement hierarchy (enforcement first, prose last). Do not claim a failure is recurring without evidence — transcripts, PR review comments, CI history, or issue/todo history. One observation is an anecdote; cite the evidence in the finding.
 
 ## Proof
 
-Proof beats assertion. End every audit with what was actually checked:
+End every audit with what was actually checked:
 
-- Scanner command and result, or why it was unavailable.
-- Manual commands run.
-- Files inspected.
-- Any link/path failures verified.
-- Product-facing proof for UI/API docs when relevant: route loads, endpoint responds, screenshot/trace exists, or validation command ran.
+- Scanner command, resolved version, and result — or why it was unavailable.
+- Every validation command executed, with pass/fail and runtime; commands marked `inspected-not-run`, `env-blocked`, `not-applicable`, or `unverified`, each with the reason.
+- Manual commands run and files inspected.
+- Link/path failures verified.
+- Product-facing proof for UI/API claims when relevant: route loads, endpoint responds, screenshot/trace exists.
 
-Do not claim commands in docs still run unless you ran them or explicitly mark them unverified.
+Never claim a documented command works unless this audit ran it.

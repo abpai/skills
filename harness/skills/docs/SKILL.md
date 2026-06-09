@@ -4,7 +4,7 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: "Create progressive-disclosure repository docs for agent harnesses: tiny AGENTS.md routers, docs/ indexes, docs/GLOSSARY.md defined terms, architecture maps, engineering commands/testing/observability docs, design-system guidance, docs/todos specs, and per-domain code maps, invariants, and test maps."
+description: "Make a repository ergonomic for agent-driven development: author docs/SPEC_CONTRACT.md from real validation surfaces, convert prose rules into tests/lints/CI gates per the enforcement hierarchy, keep AGENTS.md a tiny router with a CLAUDE.md shim, and create earned doc surfaces (glossary, todos, domains, design) only on demonstrated need."
 argument-hint: "[repo docs goal]"
 ---
 
@@ -13,9 +13,9 @@ argument-hint: "[repo docs goal]"
 Use the `docs` module.
 
 1. Read `skills/harness/docs.md`.
-2. Inventory current agent entry points and documentation.
-3. Create or update the progressive-disclosure docs structure.
-4. Keep `AGENTS.md` as a short map and move deeper guidance into indexed docs.
-5. Verify line count, links, and unresolved external knowledge pointers.
+2. Inventory current guidance and validation surfaces (scripts, CI, tests, lints).
+3. Run the Keep/Move/Delete audit and convert prose rules to enforcement.
+4. Author `docs/SPEC_CONTRACT.md` with a proof menu derived from the validation inventory.
+5. Rewrite `AGENTS.md` as a tiny router; verify budgets and links, and run every documented command.
 
 User input: $ARGUMENTS

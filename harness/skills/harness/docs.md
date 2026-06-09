@@ -1,467 +1,266 @@
 # Docs Harness
 
-Build or renovate a repository documentation system so agents can answer four questions quickly:
+Make a repository ergonomic for agent-driven development. Verification loops are the product; docs are the routing layer that gets agents to them. Build the smallest system that lets an agent answer five questions quickly:
 
 1. Where is the code?
 2. What owns this behavior?
 3. What must not be broken?
 4. How do I validate the change?
+5. How do I prove it works end-to-end?
 
-Everything else should be code, tests, PR context, issue context, durable todo specs under `docs/todos`, glossary entries for useful shared terms, temporary task scaffolding, or external harness-tooling output. The target is progressive disclosure: a tiny universal entry point, compact indexes, defined terms, todo specs for real deferred work, and domain docs that route agents to code and validation without becoming a manual.
+Everything else should be enforcement (tests, lints, CI gates, validation scripts), code, PR/issue context, durable todo specs under `docs/todos`, or temporary task scaffolding. Long prose scaffolding is the canonical anti-pattern: bloated agent files measurably degrade instruction adherence, and Codex silently truncates combined `AGENTS.md` content past 32 KiB (`project_doc_max_bytes` default).
 
 ## Use when
 
-Use this workflow when the user asks to slim `AGENTS.md`, create or restructure repo docs, improve agent guidance, make a codebase easier to navigate, define ambiguous project terms, build domain maps, add design-system migration guidance, create durable follow-up specs under `docs/todos`, or prepare a repo for Harness Doctor-style scanning.
+Use this workflow when the user asks to prepare a repo for agent-driven execution, slim `AGENTS.md`, create or restructure repo docs, define what a good SPEC.md looks like for the project, convert prose guidance into enforcement, improve agent navigation, build domain maps, or prepare a repo for Harness Doctor scanning.
 
-Do not use this to create eval registries, long-lived execution plans, committed agent scratchpads, or vendor-doc mirrors.
+Do not use this workflow for per-task intake (interviewing a human to produce a SPEC.md happens outside the repo, in the intake workflow), eval registries, long-lived execution plans, committed agent scratchpads, or vendor-doc mirrors.
+
+## Operating model
+
+The repo serves a pipeline where humans specify intent, acceptance criteria, risk, taste, and priority, and agents own implementation, testing, e2e verification, docs maintenance, and cleanup. The repo's side of that contract:
+
+- Specs arrive from outside; `docs/SPEC_CONTRACT.md` defines what they must contain so this repo can verify them.
+- Every change type has a runnable validation path. Without a pass/fail check, the human becomes the verification loop.
+- Escalation boundaries are explicit: agents stop and surface (rather than guess) on irreversible actions, scope changes, and decisions the spec reserves for humans. Everything else they execute end-to-end.
+- Repeated agent failures are harness gaps. Repair the harness, do not append warnings.
+
+State this model in a few `AGENTS.md` lines that route to `docs/SPEC_CONTRACT.md` and the validation docs. Do not write an essay about it.
+
+## Enforcement hierarchy
+
+When a rule must hold, put it on the highest surface that fits:
+
+1. **Failing test** — the rule is checked on every validation run.
+2. **Lint rule** — the rule is checked on every commit/CI run.
+3. **CI gate** — the rule blocks merge.
+4. **Validation script / clearer runtime error** — the rule fails loudly at the moment it is broken.
+5. **Docs routing** — a code map or invariant line that sends the agent to the right place.
+6. **Prose rule** — last resort, kept lean.
+
+Keep enforcement runtime-agnostic: tests, lints, CI, and scripts run no matter which agent harness executes the work. Claude Code hooks are an optional extra layer for repos also developed interactively with Claude — never the only enforcement. Prose remains valid (instruction-following keeps improving) but it is the only surface with measured negative returns when it bloats, so every prose rule must survive the line gate below.
+
+When the same failure recurs, repair the smallest durable surface by walking the same hierarchy top-down:
+
+- Agents keep breaking the same invariant → add a test that fails when it breaks.
+- Agents keep running the wrong command → fix the script name or add a lint/CI check, then correct `docs/engineering/commands.md`.
+- Agents keep editing the wrong file → fix the code map line.
+- Agents keep misusing a term → add a glossary entry with aliases to avoid.
+- Agents keep deferring the same work → write one `docs/todos` spec.
+- Only if nothing mechanical fits → one prose line, placed by the line gate.
 
 ## Target structure
 
-Create this structure unless the repo already has a stronger equivalent:
+Default core — create this unless the repo has a stronger equivalent:
 
 ```text
 repo/
-├── AGENTS.md
-├── CLAUDE.md
+├── AGENTS.md                     # universal router, tiny
+├── CLAUDE.md                     # one-line shim: @AGENTS.md (Claude Code reads only CLAUDE.md)
 └── docs/
-    ├── INDEX.md
-    ├── ARCHITECTURE.md
-    ├── GLOSSARY.md
-    ├── todos/
-    │   ├── INDEX.md
-    │   └── <todo-slug>.md
-    ├── engineering/
-    │   ├── commands.md
-    │   ├── testing.md
-    │   ├── observability.md
-    │   ├── migrations.md
-    │   └── conventions.md
-    ├── design/
-    │   ├── INDEX.md
-    │   ├── components.md
-    │   ├── page-patterns.md
-    │   ├── migration-patterns.md
-    │   ├── tokens.md
-    │   ├── accessibility.md
-    │   └── anti-patterns.md
-    └── domains/
-        └── <domain>/
-            ├── INDEX.md
-            ├── code-map.md
-            ├── invariants.md
-            └── test-map.md
+    ├── INDEX.md                  # table of contents
+    ├── SPEC_CONTRACT.md          # what a good SPEC.md looks like for this repo
+    ├── ARCHITECTURE.md           # current structure map, compact
+    └── engineering/
+        ├── commands.md           # canonical commands, validated by running them
+        └── testing.md            # change type → required validation → proof
 ```
 
-Optional files:
+Earned surfaces — create only on demonstrated need, never as default scaffolding. Demonstrated need means two or more independent observations in transcripts, PR review comments, CI history, or issue/todo history; a single observation is an anecdote that stays in the PR/issue.
 
-- `CLAUDE.md` - Claude-specific shim; often just points to `AGENTS.md`.
-- `docs/engineering/migrations.md` - only when migrations are frequent or high-risk.
-- `docs/engineering/conventions.md` - only for current conventions not enforceable in code.
-- `docs/domains/<domain>/runbook.md` - only where operational debugging flows are useful.
-- `docs/todos/<todo-slug>.md` - durable follow-up specs for real work intentionally left out of the current PR.
-- `UBIQUITOUS_LANGUAGE.md` or `docs/reference/glossary.md` - keep an existing convention if the repo already has one, but link it from `docs/INDEX.md` and do not create a duplicate glossary.
+| Surface | Earned when |
+| --- | --- |
+| `docs/GLOSSARY.md` | A term is repeatedly misused or repeatedly takes too many words. Keep an existing `UBIQUITOUS_LANGUAGE.md` or `docs/reference/glossary.md` convention; never create a duplicate. |
+| `docs/todos/` (+ `INDEX.md`) | Real deferred work exists with a code route, invariant, validation, and close condition. |
+| `docs/domains/<domain>/` | A domain repeatedly misroutes agents and a nested `AGENTS.md` (below) is not enough. Shape: `INDEX.md`, `code-map.md`, `invariants.md`, `test-map.md`. |
+| Nested `AGENTS.md` | A subtree has materially different commands, invariants, validation, or ownership (see decision test below). Often the better vehicle than a `docs/domains/` entry. |
+| `docs/design/` | The repo does agentic UI work and needs migration rules (`migration-patterns.md` first — legacy pattern → new pattern tables). |
+| `docs/engineering/observability.md`, `migrations.md`, `conventions.md` | Runtime debugging routes, frequent/high-risk migrations, or current conventions not enforceable in code. |
+| `docs/domains/<domain>/runbook.md` | Operational debugging flows are real and used. |
 
-Do not add these as long-lived repo defaults:
+Do not add these as long-lived repo defaults: `.agent/`, `scripts/agent/`, `.cursor/rules/`, `docs/product-specs/`, `docs/exec-plans/`, `docs/references/vendor-docs/`, `feature-registry.json`. Do not create ADRs (`docs/adr/`) by default, but preserve an existing maintained ADR convention and link it from `docs/INDEX.md`.
 
-```text
-.agent/
-scripts/agent/
-.cursor/rules/
-docs/product-specs/
-docs/exec-plans/
-docs/references/vendor-docs/
-feature-registry.json
-```
+`STRUCTURE.md` is not an equivalent default. Use an existing one as migration input: move durable structure information into `docs/ARCHITECTURE.md`, route to it from `docs/INDEX.md`, then delete it (or leave it only if the repo explicitly disables the `docs-structure/no-structure-md` rule).
 
-Do not create ADRs (`docs/adr/`) by default, but preserve an existing, maintained ADR convention if it is the repo's source of truth for architecture history — link it from `docs/INDEX.md` rather than duplicating it.
-
-Temporary task files such as `TODO.md`, `TASK_PLAN.md`, and migration notes belong on the task branch only. Delete them before merge, or condense real deferred work into `docs/todos/<todo-slug>.md` with code routes, invariants, validation, and a close condition.
-
-## File roles
-
-| File | Purpose | Keep? |
-| --- | --- | --- |
-| `AGENTS.md` | Universal agent router | Yes |
-| `CLAUDE.md` | Claude-specific shim | Optional |
-| `docs/INDEX.md` | Human/agent table of contents | Yes |
-| `docs/ARCHITECTURE.md` | Current architecture map | Yes, compact |
-| `docs/GLOSSARY.md` | Canonical defined terms and aliases to avoid | Yes, when terms exist |
-| `docs/todos/INDEX.md` | Durable queue of follow-up specs | Yes |
-| `docs/todos/<todo-slug>.md` | One deferred task/spec agents can pick up later | Yes, when real |
-| `docs/engineering/commands.md` | Canonical commands | Yes |
-| `docs/engineering/testing.md` | Validation paths | Yes |
-| `docs/engineering/observability.md` | Runtime debugging paths | Yes |
-| `docs/engineering/conventions.md` | Current conventions not enforceable elsewhere | Maybe |
-| `docs/design/*` | Design-system migration and UI guidance | Yes |
-| `docs/domains/*/code-map.md` | Where to start for each domain | Yes |
-| `docs/domains/*/invariants.md` | Current rules and constraints | Yes |
-| `docs/domains/*/test-map.md` | Area-specific validation | Yes |
-| `docs/domains/*/runbook.md` | Operational/debugging flow | Only where useful |
+Temporary task files (`TODO.md`, `TASK_PLAN.md`, migration notes) live on the task branch only. Delete before merge, or condense real deferred work into `docs/todos/<todo-slug>.md`.
 
 ## Process
 
-### 1. Inventory current guidance
+### 1. Inventory guidance and validation surfaces
 
-Read local agent entry points and docs before editing:
+Read both the prose and the machinery before editing:
 
 ```bash
 pwd
-rg --files -g 'AGENTS.md' -g 'CLAUDE.md' -g 'README.md' -g 'docs/**' -g '.cursor/**' -g '.agent/**' -g 'feature-registry.json'
-rg -n "Slack|Google Doc|Figma|Linear|Notion|TODO|decision|architecture|domain|owner|source of truth|tribal|agent|cursor|plan|eval" AGENTS.md CLAUDE.md README.md docs .cursor .agent 2>/dev/null || true
+rg --files --hidden -g 'AGENTS.md' -g 'CLAUDE.md' -g 'README.md' -g 'docs/**' -g '.cursor/**' -g '.agent/**' -g 'STRUCTURE.md' -g 'feature-registry.json' 2>/dev/null
+rg --files --hidden -g '.github/workflows/*' -g 'Makefile' -g 'justfile' -g '*.lint*' -g 'lefthook*' -g '.husky/**' 2>/dev/null
+rg --files -g '**/package.json' -g 'pyproject.toml' -g 'Cargo.toml' -g 'go.mod' -g 'Gemfile' --max-depth 3 2>/dev/null
+cat package.json 2>/dev/null | python3 -c "import json,sys; print('\n'.join(json.load(sys.stdin).get('scripts',{}).keys()))" 2>/dev/null || true
+rg -n "Slack|Google Doc|Figma|Linear|Notion|TODO|tribal|source of truth" AGENTS.md CLAUDE.md README.md docs 2>/dev/null || true
 ```
 
-If external knowledge is referenced but unavailable, preserve the pointer and mark it as missing. Do not invent product truth.
+`--hidden` is required — without it ripgrep skips `.github/`, `.husky/`, `.cursor/`, and `.agent/` entirely. `rg --files` also respects `.gitignore`, so if the CI/lint listing comes back empty, check those paths directly before concluding they are absent.
 
-### 2. Decide the docs map
+The validation-surface inventory (scripts, CI jobs, lint configs, test layout, e2e harnesses) feeds the spec contract in step 4. In monorepos, read per-package manifests too — root `package.json` alone hides workspace scripts. If external knowledge is referenced but unavailable, preserve the pointer and mark it missing. Do not invent product truth.
 
-Name the target files and what each one will own. Keep every long-lived doc tied to at least one of the four core questions.
+### 2. Run the Keep / Move / Delete audit
 
-Ask of each proposed file:
+Give every durable guidance item an explicit verdict with a reason and a destination:
 
-- Does this help agents find code?
-- Does this name ownership or domain scope?
-- Does this state a real invariant?
-- Does this identify validation?
-- Does this name a concept that was non-obvious or repeatedly awkward to describe?
+- **Keep** — answers one of the five questions or defines a genuinely useful term, and already sits on the smallest correct surface.
+- **Move** — belongs on a better surface. Preference order: test/lint/CI/script (enforcement beats prose — these moves are executed in step 3), then engineering docs, design docs, domain docs, glossary, `docs/todos`, code, tests, issue/PR context.
+- **Delete** — stale, duplicative, completed-task residue, or a vendor mirror without freshness policy.
 
-If the answer is no, keep the information in code, tests, PR context, issue context, or temporary task scaffolding. If the answer is yes but the work is intentionally outside the current PR, write the smallest durable spec under `docs/todos`.
+A Move destination may be a planned core file from the Target structure (created in later steps). A Move targeting an earned surface that does not yet exist is itself demonstrated-need evidence — record it in the verdict's reason; if it is a single observation, the item stays in PR/issue context instead.
 
-### 3. Rewrite `AGENTS.md` as a router
+Record verdicts as a table (`item | verdict | reason | destination`) with concrete file paths. Vague areas ("docs", "auth code") are banned when a concrete path exists.
 
-Keep it tiny. It should point outward instead of teaching the whole repo.
+### 3. Convert prose rules to enforcement
 
-Use this shape:
+Execute the "move to enforcement" verdicts: for each prose rule, implement the highest surface on the enforcement hierarchy that fits — write the test, add the lint rule, add the CI gate, or create the validation script — then delete the prose. Validate every command you create or document by running it. A rule the agent already follows without the line gets the line deleted outright.
+
+If the target surface does not exist (no test runner, no lint config, no CI), do not bootstrap project infrastructure inside this workflow: convert what fits existing surfaces, record the rest as `docs/todos` specs (a missing enforcement surface is demonstrated need), and surface the infra decision to the user. An unconverted rule keeps its prose line plus a todo route.
+
+### 4. Author `docs/SPEC_CONTRACT.md`
+
+This file defines what a good SPEC.md looks like for this repo, so per-task intake (which happens outside the repo) produces specs the repo can verify. It has two parts: a generic quality bar and a project-specific proof menu **derived from the validation surfaces inventoried in step 1** — never freeform.
+
+```md
+# Spec contract
+
+Specs executed against this repo must meet this bar. A spec that promises a
+proof not listed in the proof menu is invalid — extend the menu (and the
+validation surface behind it) first.
+
+## Quality bar
+
+A spec is ready when it:
+
+- Is self-contained: an agent with no prior context can execute it.
+- Names a goal as a user-visible outcome, not an implementation.
+- Lists acceptance criteria that each map to a proof in the menu below.
+- Names the files/interfaces it expects to touch, when known.
+- States what is out of scope.
+- States risk and taste constraints the agent must not trade away.
+- Ends with an end-to-end verification step drawn from the proof menu.
+
+## Proof menu
+
+| Change type | Validation command | Proof artifact |
+| --- | --- | --- |
+| <area> logic | `<command>` | passing run output |
+| <area> UI | `<command>` + screenshot diff | screenshot pair |
+| API surface | `<contract/e2e command>` | passing run + response trace |
+| Cross-cutting | `<full check command>` | CI-green equivalent locally |
+
+## Escalation boundaries
+
+Agents stop and surface instead of guessing when:
+
+- An acceptance criterion cannot be proven with the menu above.
+- The change requires an irreversible action (deploy, migration apply, data deletion).
+- The spec's scope and the code's reality conflict.
+```
+
+Fill the proof menu with the repo's real commands. Every row must reference a command that exists and runs. Monorepos keep a single root `SPEC_CONTRACT.md`; the change-type column carries the package/workspace dimension (e.g. `<pkg> logic | pnpm --filter <pkg> test | …`). Route to this file from `AGENTS.md`.
+
+### 5. Author the remaining core docs
+
+- `docs/ARCHITECTURE.md` — the current structure map, compact: packages/services, boundaries, data flow. Current state only; history belongs in an existing maintained ADR convention, linked from `docs/INDEX.md`.
+- `docs/engineering/commands.md` — canonical install/dev/test/lint/build commands. Run each command before documenting it.
+- `docs/engineering/testing.md` — change type → required validation → proof, seeded from the spec-contract proof menu and extended with area-specific detail.
+
+### 6. Rewrite `AGENTS.md` as a router
+
+Keep it tiny: point outward, never teach the whole repo. Hard budgets: warn past ~80 lines or 6 KiB at root; the combined size of all `AGENTS.md` files must stay under 32 KiB or Codex silently drops the rest.
 
 ```md
 # Agent guide
 
-This repo treats code, tests, and runtime behavior as the source of truth. Docs exist to help agents find the right code and validation path quickly.
+Code, tests, and runtime behavior are the source of truth. Docs route you to the right code and validation path.
 
-## Start here
+## Operating model
 
-1. Read `docs/INDEX.md`.
-2. Read the relevant domain guide under `docs/domains/`.
-3. For UI work, read `docs/design/INDEX.md`.
-4. Identify the validation command before editing.
-5. Prefer small, reversible diffs.
+- Specs come from intake against `docs/SPEC_CONTRACT.md`; you own implementation through end-to-end proof.
+- Identify the validation command before editing. Escalate per the spec contract; otherwise execute end-to-end.
 
 ## Where to look
 
-- Architecture: `docs/ARCHITECTURE.md`
-- Glossary: `docs/GLOSSARY.md`
-- Todos/specs: `docs/todos/INDEX.md`
-- Commands: `docs/engineering/commands.md`
-- Testing: `docs/engineering/testing.md`
-- Observability: `docs/engineering/observability.md`
-- Design system: `docs/design/INDEX.md`
-- Domain maps: `docs/domains/*/INDEX.md`
+- Spec contract: `docs/SPEC_CONTRACT.md`
+- Index: `docs/INDEX.md` · Architecture: `docs/ARCHITECTURE.md`
+- Commands: `docs/engineering/commands.md` · Validation: `docs/engineering/testing.md`
 
 ## Rules
 
+- If a rule can be tested, linted, or scripted, enforce it there — do not add it here.
 - Do not duplicate product truth in docs.
-- Do not add generic rules to this file.
-- Do not create long-lived task plans; use `docs/todos` only for real deferred specs.
-- If a rule can be tested or linted, prefer enforcement over prose.
-- If you struggle to find the right code, mention the missing route in your handoff.
+- If you struggle to find the right code, say so in your handoff (that is a harness gap).
 
 ## Done means
 
-- Relevant validation passed or failure is explained.
-- The changed code path is clear.
-- User-visible behavior was checked where applicable.
-- Durable knowledge was added only to the smallest relevant doc.
-- Deferred work was recorded in `docs/todos` only if it is real and actionable.
+- Required validation passed or the failure is explained.
+- End-to-end proof produced per the spec.
+- Durable knowledge landed on the smallest relevant surface; deferred work in `docs/todos` only if real and actionable.
 ```
 
-If the repo has `CLAUDE.md`, make it a small shim unless Claude genuinely needs different instructions.
+Adapt sections to the repo (add earned-surface links only when those surfaces exist). Make `CLAUDE.md` a shim whose content is the single import line `@AGENTS.md` (Claude Code's import syntax — a prose "see AGENTS.md" does not reliably load the file). Claude Code reads only `CLAUDE.md`, other agents read `AGENTS.md`; the shim keeps one source of truth.
 
-### 4. Create `docs/INDEX.md`
+#### AGENTS line gate
 
-Use this shape:
+Every durable line must pass all six tests; otherwise move or delete it per step 2:
 
-```md
-# Documentation index
+1. **Universal** — applies to all agents entering the repo or subtree.
+2. **Operational** — changes what the agent should do.
+3. **Durable** — likely true after this PR.
+4. **Enforceable?** — if it can be tested, linted, or scripted, do that instead (step 3).
+5. **Best location** — cannot live on a narrower surface without losing usefulness.
+6. **Not already followed** — if the agent does it correctly without the line, delete the line.
 
-## System
+#### Nested AGENTS decision test
 
-- `ARCHITECTURE.md` - current system shape and package boundaries.
-- `GLOSSARY.md` - canonical defined terms and aliases to avoid.
+A nested `AGENTS.md` (nearest-file precedence) is the standard vehicle for subtree-specific guidance — often better than a parallel `docs/domains/` entry — but each one is another prose surface. Before adding one, require a justification: would putting this rule at root bloat the universal map or mislead agents working elsewhere? If yes, nest it; if no, move the detail to a narrower doc or delete it. A nested file must stay shorter than root, name the local boundary, point to local docs/tests, never restate generic repo rules, and count against the combined byte budget. Note: tool compliance with nested files is uneven (documented Copilot bugs), so keep root routes to critical subtree rules.
 
-If the repo already uses `UBIQUITOUS_LANGUAGE.md` or `docs/reference/glossary.md`, link to that file instead of creating a duplicate.
+### 7. Create `docs/INDEX.md`
 
-## Engineering
+A short table of contents listing only files that exist: spec contract, architecture, engineering docs, and any earned surfaces. Link existing conventions (ADRs, an existing glossary) instead of duplicating them.
 
-- `engineering/commands.md` - install/dev/test/lint/build commands.
-- `engineering/testing.md` - validation matrix by area.
-- `engineering/observability.md` - logs, traces, dashboards, debugging.
-- `engineering/migrations.md` - migration process, if applicable.
+### 8. Build earned surfaces only as needed
 
-## Todos
+When the need from the Target structure table is demonstrated, use these shapes and keep them small:
 
-- `todos/INDEX.md` - durable follow-up specs intentionally left outside current PRs.
+- **Glossary** — table of `Term | Definition | Aliases to avoid`. Add a term only when it is repeatedly misused or repeatedly verbose to describe. No generic programming terms.
+- **Todo specs** — `docs/todos/INDEX.md` table plus one file per spec containing: status, why this exists, scope, start-here table (task → file), invariants, validation table, close condition. A note lacking a code route, invariant, validation path, or close condition stays in the PR/issue.
+- **Domain folder** — `INDEX.md` (owns / start here / related domains), `code-map.md` (task → start file → also inspect), `invariants.md` (current constraints only), `test-map.md` (change type → required validation). Consider whether a nested `AGENTS.md` covers the need with less surface first.
+- **Design docs** — `migration-patterns.md` first (legacy pattern → new pattern → notes table); add `components.md`, `page-patterns.md`, `tokens.md`, `accessibility.md`, `anti-patterns.md` only as UI work demands.
 
-## Design
+### 9. Leave scanning to `harness:doctor`
 
-- `design/INDEX.md` - design-system map.
-- `design/components.md` - canonical components.
-- `design/page-patterns.md` - approved page/layout patterns.
-- `design/migration-patterns.md` - legacy UI to new system rules.
-- `design/anti-patterns.md` - things not to do.
-
-## Domains
-
-- `domains/pricing/`
-- `domains/subscriptions/`
-- `domains/auth/`
-- `domains/markets-data/`
-- `domains/portfolio/`
-- `domains/articles/`
-- `domains/seo/`
-- `domains/notifications/`
-```
-
-Adjust the domain list to the actual repo.
-
-### 5. Build the glossary
-
-Use `docs/GLOSSARY.md` for canonical project vocabulary. Two reasons justify adding a term:
-
-1. An agent or maintainer keeps using a term that is non-obvious to the reader.
-2. The team keeps needing too many words to describe the same thing and should name it.
-
-Do not add obvious programming terms, generic acronyms, or concepts that only appear once. A glossary entry should reduce ambiguity, prevent wrong synonyms, or make repeated communication shorter.
-
-Use this shape:
-
-```md
-# Glossary
-
-This is the canonical vocabulary file for this repo. Use these terms in code, public interfaces, tests, docs, prompts, issues, PRs, and commit messages. Add or adjust a term here before introducing new public language.
-
-| Term | Definition | Aliases to avoid |
-| --- | --- | --- |
-| Chrome | The visible application frame around page content: headers, sidebars, footers, nav, and persistent controls. | browser only, wrapper, shell unless translating external terminology |
-| Workstation | The right-side panel that contains operator buttons, widgets, and contextual controls. | right panel, sidebar, controls area |
-
-## Relationships
-
-- The Workstation is part of the app Chrome.
-- Domain-specific terms may link to `docs/domains/<domain>/INDEX.md` when ownership matters.
-```
-
-Entry rules:
-
-- Prefer the name already used in code when it is clear and correct.
-- Include aliases to avoid so agents stop spreading synonyms.
-- Add relationships when terms are easily confused.
-- If a term belongs to exactly one domain, link that domain's docs.
-- If a term should appear in public APIs, tests, CLI output, or UI copy, say so.
-
-Existing glossary names are acceptable. If the repo already has `UBIQUITOUS_LANGUAGE.md` or `docs/reference/glossary.md`, keep it and route to it from `docs/INDEX.md`.
-
-### 6. Build todo specs
-
-Use `docs/todos` for durable follow-up work that an agent notices but should not handle in the current PR. This is the repo-local shelf for "likely next" work, not a scratchpad.
-
-Create an index:
-
-```md
-# Todo specs
-
-| Spec | Area | Status | Why now | Validation |
-| --- | --- | --- | --- | --- |
-| `pricing-entitlement-copy.md` | pricing/subscriptions | open | Pricing copy can drift from entitlement logic | entitlement consistency check |
-```
-
-Each todo spec should be one file:
-
-```md
-# Pricing entitlement copy
-
-## Status
-
-Open
-
-## Why this exists
-
-Pricing copy can drift from entitlement logic. This was noticed while changing the pricing page, but fixing it is outside the current PR.
-
-## Scope
-
-- Audit pricing page feature text against subscription entitlements.
-- Update mismatches in the smallest owning module.
-
-## Start here
-
-| Task | Start here | Also inspect |
-| --- | --- | --- |
-| Compare plan copy to entitlement mapping | `apps/web/...` | `docs/domains/subscriptions/invariants.md` |
-
-## Invariants
-
-- Do not show plan features that are not backed by entitlement logic.
-
-## Validation
-
-| Change type | Required validation |
-| --- | --- |
-| Plan/feature text | entitlement consistency check |
-
-## Close when
-
-- The copy and entitlement mapping agree.
-- Required validation has passed.
-- This spec is deleted or moved to completed history only if the repo has one.
-```
-
-Keep todo specs small and actionable. If a note lacks a code route, invariant, validation path, or close condition, keep it in the PR/issue instead of committing it.
-
-### 7. Build domain docs
-
-Each domain folder should be boring and consistent:
-
-```text
-docs/domains/<domain>/
-├── INDEX.md
-├── code-map.md
-├── invariants.md
-└── test-map.md
-```
-
-`INDEX.md` should state ownership and nearest neighbors:
-
-```md
-# Pricing domain
-
-## Owns
-
-Pricing pages, plan display, discounts, checkout entry points, pricing experiments.
-
-## Start here
-
-- Code map: `code-map.md`
-- Invariants: `invariants.md`
-- Tests: `test-map.md`
-
-## Closely related domains
-
-- `subscriptions`
-- `auth`
-- `seo`
-- `design`
-```
-
-`code-map.md` should route tasks to starting points:
-
-```md
-# Pricing code map
-
-| Task | Start here | Also inspect |
-| --- | --- | --- |
-| Change pricing page layout | `apps/web/...` | `docs/design/page-patterns.md` |
-| Change displayed plan features | `packages/...` | `docs/domains/subscriptions/invariants.md` |
-| Change discount behavior | `services/...` | checkout tests |
-| Change SEO metadata | `apps/web/...` | `docs/domains/seo/test-map.md` |
-```
-
-`invariants.md` should contain current constraints only:
-
-```md
-# Pricing invariants
-
-- Do not show plan features that are not backed by entitlement logic.
-- Do not infer subscription access from pricing display state.
-- Pricing experiments must not change canonical checkout entitlement mapping.
-- SEO-visible pricing copy must remain consistent with checkout copy.
-```
-
-`test-map.md` should bind change types to validation:
-
-```md
-# Pricing validation
-
-| Change type | Required validation |
-| --- | --- |
-| Pricing UI | component tests + visual check |
-| Checkout link behavior | e2e checkout smoke |
-| Plan/feature text | entitlement consistency check |
-| SEO metadata | metadata snapshot / route check |
-```
-
-### 8. Treat design as a top-level control surface
-
-For agentic UI migrations, `docs/design/` is not an appendix. Build:
-
-```text
-docs/design/
-├── INDEX.md
-├── components.md
-├── page-patterns.md
-├── migration-patterns.md
-├── tokens.md
-├── accessibility.md
-└── anti-patterns.md
-```
-
-Prioritize `docs/design/migration-patterns.md`, because agents need translation rules:
-
-```md
-# Design migration patterns
-
-| Legacy pattern | New pattern | Notes |
-| --- | --- | --- |
-| Legacy quote card | `MarketQuoteCard` | Preserve live price refresh behavior |
-| Inline CSS spacing | design tokens | Do not invent one-off spacing |
-| Custom tab group | `Tabs` component | Use controlled mode for URL-driven tabs |
-| Desktop-only table | responsive data table pattern | Must validate mobile layout |
-```
-
-### 9. Leave scanner work to `harness:doctor`
-
-Harness Doctor is the React Doctor analogy for agent guidance. The scanner should live outside product repos and inspect stable repo docs plus agent guidance for deterministic gaps: missing files, stale links, incomplete domain docs, banned long-lived paths, and todo-spec shape.
-
-During docs work, product repos should contain only stable docs and optional thin config such as `harness-doctor.config.ts` with `docsContract: true`. Do not embed scanner packages, agent utility scripts, generated reports, or task outputs in every product repo.
-
-When the user asks to audit, score, run the scanner, triage findings, or apply the Keep / Move / Delete review, route to `doctor.md` instead of expanding this authoring workflow.
+Product repos contain stable docs, enforcement, and optionally a thin `harness-doctor.config.ts` (e.g. `docsContract: true`, rule disables). Never embed scanner packages, agent utility scripts, or generated reports. When the user asks to audit, score, run the scanner, or triage findings, route to `doctor.md`.
 
 ## Verification
 
-Run focused checks after editing:
+Run after editing:
 
 ```bash
-wc -l AGENTS.md
-rg -n "TODO|TBD|ask .*person|tribal|Slack|Google Doc|Notion|Figma|exec-plans|feature-registry" AGENTS.md CLAUDE.md docs || true
-rg -n "glossary|ubiquitous language|aliases to avoid|defined term" AGENTS.md CLAUDE.md docs UBIQUITOUS_LANGUAGE.md 2>/dev/null || true
-rg -n "\\[[^]]+\\]\\([^)]+\\)" AGENTS.md CLAUDE.md docs || true
-rg --files docs/domains 2>/dev/null | sort
-rg --files docs/todos 2>/dev/null | sort
+wc -l AGENTS.md 2>/dev/null                                    # warn past ~80 lines
+find . -name 'AGENTS.md' -not -path '*/node_modules/*' -print0 | xargs -0 cat | wc -c   # combined bytes, must stay under 32768
+rg -n "\\[[^]]+\\]\\([^)]+\\)" AGENTS.md CLAUDE.md docs || true       # then verify links resolve
+rg -n "TODO|TBD|tribal|Slack|Google Doc|Notion|exec-plans|feature-registry" AGENTS.md CLAUDE.md docs || true
+rg --files docs | sort
 ```
 
-Then inspect links and file paths you added or changed. If the repo has a markdown link checker or Harness Doctor config, run it.
+Then run every command you documented or created — `docs/engineering/commands.md`, the spec-contract proof menu, new tests/lints/scripts. A documented command you did not run is marked unverified in your report.
 
 ## Output shape
 
-End with a short report:
+Lead with a one-paragraph recommendation, then report:
 
-- Files created or changed.
-- What now lives in `AGENTS.md` versus `docs/`.
-- Glossary terms added or still missing.
-- Todo specs added or still missing.
-- Domain docs added or still missing.
-- Any stale, duplicated, or external knowledge still unresolved.
-- Verification run, including the `AGENTS.md` line count.
+- Files created, changed, deleted (concrete paths).
+- Keep / Move / Delete table.
+- Prose rules converted to enforcement (rule → surface), and rules deferred to `docs/todos` because the surface was missing.
+- Spec-contract proof menu rows and which commands were run to validate them.
+- What now lives in `AGENTS.md` (line count, combined byte count) versus `docs/`.
+- Earned surfaces created or intentionally skipped, with the need shown or absent.
+- Stale, duplicated, or external knowledge still unresolved.
 
-## Anti-patterns
-
-- One giant `AGENTS.md`.
-- `docs/` without an index.
-- Architecture docs that mix current structure with historical decision records.
-- Domain rules copied into the root agent guide.
-- Non-obvious project terms repeated without a glossary entry.
-- A glossary full of generic terms that do not reduce project-specific ambiguity.
-- Multiple canonical vocabulary files that drift from each other.
-- Deferred work trapped in PR notes when it should be a durable `docs/todos` spec.
-- Vague todo specs without start files, invariants, validation, or close conditions.
-- Design migration guidance hidden under generic references.
-- Long-lived task plans, product specs, feature registries, or vendor docs committed by default.
-- Scanner output committed instead of kept as external tooling output.
+When the report includes remediation work, order it Immediate / Near-term / Later — severity describes impact, tiers describe execution order, the same semantics `doctor.md` uses.
