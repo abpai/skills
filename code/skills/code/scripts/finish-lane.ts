@@ -25,8 +25,10 @@ files, and suggests review-pattern lenses. One compact stdout summary plus
 
 Options:
   --base REF   Override base detection (default: origin/HEAD -> origin/main ->
-               main -> HEAD).
-  --fix        Also run discovered fix/format commands.
+               origin/master -> main -> master -> HEAD).
+  --fix        Also run discovered fix/format commands. Cannot be combined with
+               --seal: fixes mutate files after the scope hash is computed, so
+               the sentinel would be stale the moment it was written.
   --arm        Arm the push gate for this repo (prepare-pr Phase 1). Writes the
                arm marker the gate-before-push hook checks. Needs CLAUDE_PLUGIN_DATA.
   --seal       Write the per-branch seal sentinel after gates/QA/review pass.
@@ -68,6 +70,14 @@ function parseArgs(args: string[]): Options {
         fail(`Unknown option: ${arg}\n\n${usage}`, 2)
     }
   }
+  // --fix mutates files AFTER the scope hash would be computed, so a sentinel
+  // written in the same run would be stale on arrival (the hook recomputes the
+  // hash over the formatter-modified tree). The documented flows never combine
+  // them (Phase 1 is --fix --arm, Phase 5 is plain --seal); refuse rather than
+  // silently writing a dead seal.
+  if (options.runFixes && options.seal) {
+    fail("--fix cannot be combined with --seal: run --fix first, re-validate, then --seal in a separate run.", 2)
+  }
   return options
 }
 
@@ -75,10 +85,16 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`
 }
 
-function run(command: string, cwd = process.cwd()): { output: string; status: number } {
+// `output` interleaves stdout+stderr for human-facing error messages. Anything
+// parsed or hashed must use `stdout`: the gate-before-push.sh hook recomputes
+// the scope hash from `git ... 2>/dev/null` pipelines (stdout only), so folding
+// a stray git stderr warning (ambiguous refname, CRLF advice) into the hash
+// would make a correctly sealed branch permanently stale to the hook.
+function run(command: string, cwd = process.cwd()): { output: string; stdout: string; status: number } {
   const result = spawnSync(command, { cwd, encoding: "utf8", shell: "/bin/bash" })
   return {
     output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
+    stdout: result.stdout ?? "",
     status: typeof result.status === "number" ? result.status : 1,
   }
 }
@@ -120,7 +136,7 @@ function detectBase(requested: string): string {
     }
     return requested
   }
-  const head = run("git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||'").output.trim()
+  const head = run("git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||'").stdout.trim()
   if (head && gitRefExists(`origin/${head}`)) return `origin/${head}`
   for (const candidate of ["origin/main", "origin/master", "main", "master", "HEAD"]) {
     if (gitRefExists(candidate)) return candidate
@@ -174,7 +190,11 @@ function committedDiff(rootDir: string, baseRef: string, extraArgs: string): str
       2,
     )
   }
-  return result.output
+  // stdout only: this feeds scopeHash and --name-only parsing. A successful
+  // `git diff` can still warn on stderr (e.g. an ambiguous refname); the hook
+  // hashes the same diff with `2>/dev/null`, so including stderr here would
+  // break seal parity, and a warning line is not a changed-file name.
+  return result.stdout
 }
 
 function scopeFiles(rootDir: string, baseRef: string): {
@@ -185,7 +205,7 @@ function scopeFiles(rootDir: string, baseRef: string): {
 } {
   const lines = (cmd: string) =>
     run(cmd, rootDir)
-      .output.split(/\r?\n/)
+      .stdout.split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean)
 
@@ -235,14 +255,14 @@ function scopeFiles(rootDir: string, baseRef: string): {
 // the seal.
 function scopeHash(rootDir: string, baseRef: string): string {
   const diffCommitted = committedDiff(rootDir, baseRef, "")
-  const diffUnstaged = run("git diff 2>/dev/null", rootDir).output
-  const diffStaged = run("git diff --cached 2>/dev/null", rootDir).output
+  const diffUnstaged = run("git diff 2>/dev/null", rootDir).stdout
+  const diffStaged = run("git diff --cached 2>/dev/null", rootDir).stdout
   const untracked = run("git ls-files --others --exclude-standard 2>/dev/null", rootDir)
-    .output.split("\n")
+    .stdout.split("\n")
     .filter((line) => line.length > 0 && !line.startsWith(".workflow/"))
     .sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b))) // LC_ALL=C byte order
   const untrackedStream = untracked
-    .map((p) => `${p} ${run(`git hash-object -- ${shellQuote(p)} 2>/dev/null`, rootDir).output.trim()}\n`)
+    .map((p) => `${p} ${run(`git hash-object -- ${shellQuote(p)} 2>/dev/null`, rootDir).stdout.trim()}\n`)
     .join("")
   return createHash("sha256").update(diffCommitted + diffUnstaged + diffStaged + untrackedStream).digest("hex")
 }
@@ -1055,6 +1075,11 @@ function runValidation(rootDir: string, pm: PackageManager, scripts: Record<stri
 
 // --- Seal ----------------------------------------------------------------
 
+// MUST stay byte-identical to the slug computed in code/hooks/gate-before-push.sh
+// (collapse each run of unsafe chars to one '-', strip leading/trailing '-',
+// fall back to "detached" for a detached HEAD or an all-unsafe name) — the hook
+// looks the sentinel up by this exact filename, so any divergence means a
+// correctly sealed branch never opens the gate.
 function branchSlug(branch: string): string {
   return (branch || "detached").replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "detached"
 }
@@ -1078,7 +1103,7 @@ function armMarkerPath(rootDir: string): string | null {
 
 function writeSeal(rootDir: string, baseRef: string, branch: string, hash: string): { slug: string; head: string; hash: string } {
   const slug = branchSlug(branch)
-  const head = run("git rev-parse HEAD 2>/dev/null", rootDir).output.trim()
+  const head = run("git rev-parse HEAD 2>/dev/null", rootDir).stdout.trim()
   const file = sealPath(rootDir, slug)
   mkdirSync(path.dirname(file), { recursive: true })
   writeFileSync(
@@ -1095,7 +1120,7 @@ function main(): void {
   const options = parseArgs(process.argv.slice(2))
   const rootResult = run("git rev-parse --show-toplevel 2>/dev/null")
   if (rootResult.status !== 0) fail("finish-lane must run inside a git checkout.")
-  const rootDir = rootResult.output.trim()
+  const rootDir = rootResult.stdout.trim()
   process.chdir(rootDir)
 
   // --disarm is a standalone terminal step (prepare-pr Phase 5, after push):
@@ -1116,7 +1141,7 @@ function main(): void {
   }
 
   const baseRef = detectBase(options.baseRef)
-  const branch = run("git branch --show-current 2>/dev/null", rootDir).output.trim()
+  const branch = run("git branch --show-current 2>/dev/null", rootDir).stdout.trim()
   const pm = packageManager(rootDir)
   const scripts = packageScripts(rootDir)
 
@@ -1197,7 +1222,13 @@ function main(): void {
   let sealRefused = false
   if (options.seal) {
     const failed = validationResults.filter((r) => r.status === "fail")
-    if (failed.length > 0) {
+    if (!gitRefExists("HEAD")) {
+      // An unborn HEAD has no commit to stamp: writeSeal would record an empty
+      // `head`, and the hook requires a non-empty stored head, so the sentinel
+      // would be dead on arrival. There is also nothing to push yet.
+      out.push("SEAL REFUSED: HEAD has no commits — there is no branch to push or PR yet; commit first, then re-run --seal.")
+      sealRefused = true
+    } else if (failed.length > 0) {
       out.push(`SEAL REFUSED: ${failed.length} validation command(s) failed — fix and re-run --seal; the push gate stays closed:`)
       for (const r of failed) out.push(`  ${r.cmd} -> fail`)
       sealRefused = true

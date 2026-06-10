@@ -211,12 +211,18 @@ fi
 
 # --- 4. seal freshness -----------------------------------------------------
 
-# Per-branch sentinel inside the target working tree. branch-slug = branch name
-# with '/' and unsafe chars replaced by '-'.
-BRANCH=$(git -C "$TOPLEVEL" rev-parse --abbrev-ref HEAD 2>/dev/null)
-# printf '%s' (no newline) so the trailing newline doesn't become a '-' in the
-# slug. branch-slug = branch name with '/' and other unsafe chars -> '-'.
-BRANCH_SLUG=$(printf '%s' "$BRANCH" | tr -C 'A-Za-z0-9._-' '-')
+# Per-branch sentinel inside the target working tree. The slug MUST stay
+# byte-identical to branchSlug() in finish-lane.ts — that script writes the
+# sentinel, this hook looks it up by filename, so any divergence means a
+# correctly sealed branch never opens the gate. Both sides: collapse each RUN
+# of unsafe chars to a single '-', strip leading/trailing '-', and fall back to
+# "detached" when there is no branch (detached HEAD; finish-lane.ts uses
+# `git branch --show-current`, which prints empty there) or when the name slugs
+# to empty. printf '%s' (no newline) so the trailing newline can't leak in.
+BRANCH=$(git -C "$TOPLEVEL" branch --show-current 2>/dev/null)
+[ -n "$BRANCH" ] || BRANCH="detached"
+BRANCH_SLUG=$(printf '%s' "$BRANCH" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//')
+[ -n "$BRANCH_SLUG" ] || BRANCH_SLUG="detached"
 SENTINEL="$TOPLEVEL/.workflow/finish-lane/seal/$BRANCH_SLUG.sealed"
 
 # No sentinel at all -> not sealed -> BLOCK.
@@ -272,7 +278,7 @@ fi
 # --- 5. BLOCK --------------------------------------------------------------
 
 # JSON deny carries the actionable reason to the model (preferred over exit 2).
-REASON="prepare-pr gate: run the finish-lane quality gates + source-grounded QA + independent review, then seal with \`finish-lane.ts --seal\`, before pushing or opening/editing the PR body. No fresh gates-sealed sentinel for this branch (new commits/changes since seal also invalidate it)."
+REASON="prepare-pr gate: run the finish-lane quality gates + source-grounded QA + independent review, then seal with \`finish-lane.ts --seal\`, before pushing or opening/editing the PR body. No fresh gates-sealed sentinel for this branch (new commits/changes since seal also invalidate it). If this push is NOT part of a prepare-pr run (a previous lane was abandoned after arming), disarm the stale gate with \`finish-lane.ts --disarm\` instead."
 
 jq -n --arg reason "$REASON" '{
   hookSpecificOutput: {
