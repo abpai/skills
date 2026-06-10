@@ -247,9 +247,9 @@ Deterministic structure checks live in the external `harness-doctor` CLI — the
 [ -x ./node_modules/.bin/harness-doctor ] && ./node_modules/.bin/harness-doctor --json --verbose
 ```
 
-With no pinned binary, confirm with the user first, then run `npx harness-doctor@latest --json --verbose`.
+With no pinned binary, confirm with the user first, then run `npx @andypai/harness-doctor@latest --json --verbose`.
 
-If the scanner is unavailable, say so in the report and recommend pinning `harness-doctor` as a devDependency — do not hand-run structure checks.
+If the scanner is unavailable, say so in the report and recommend pinning `@andypai/harness-doctor` as a devDependency — do not hand-run structure checks.
 
 Then run every command you documented or created — `docs/engineering/commands.md`, the spec-contract proof menu, new tests/lints/scripts. A documented command you did not run is marked unverified in your report.
 

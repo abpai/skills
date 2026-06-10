@@ -19,7 +19,7 @@ Do not add scanner scripts to product repos. A product repo may keep stable docs
 From the repo root, prefer a scanner already pinned in the repo (`./node_modules/.bin/harness-doctor`); otherwise:
 
 ```bash
-npx harness-doctor@latest --json --verbose --diff
+npx @andypai/harness-doctor@latest --json --verbose --diff
 ```
 
 `npx …@latest` executes whatever the registry serves at run time — confirm with the user before the first run in a session and record the resolved version in the proof section. If diff mode is unavailable or the user asks for a full audit, drop `--diff`.
@@ -113,7 +113,7 @@ Scope may vary by input (diff-only versus full repo) but there are no named audi
 
 When the `harness-doctor` CLI cannot run, do not substitute a hand-rolled checklist — a second implementation of the deterministic rules is exactly how the skill and the scanner drift apart. Instead:
 
-- Open the report with a prominent warning: deterministic checks (`docs-structure/*`) were NOT run, and the repo should pin `harness-doctor` as a devDependency so CI and future audits keep deterministic coverage.
+- Open the report with a prominent warning: deterministic checks (`docs-structure/*`) were NOT run, and the repo should pin `@andypai/harness-doctor` as a devDependency so CI and future audits keep deterministic coverage.
 - Mark D5 and D6 `unreviewed` and label the score provisional.
 - Continue with everything this module owns: the execution policy on documented commands, the spec-contract alignment check (when `docs/SPEC_CONTRACT.md` is present), Keep/Move/Delete candidates from semantic reading, the AGENTS line gate's semantic judgments, and feedback compounding.
 
