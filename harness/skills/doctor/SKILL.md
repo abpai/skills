@@ -13,7 +13,7 @@ argument-hint: "[repo audit goal]"
 Use the `doctor` module.
 
 1. Read `skills/harness/doctor.md`.
-2. Run `npx harness-doctor@latest --json --verbose --diff` or a full scan; fall back to the manual checks if unavailable.
+2. Run the deterministic scan: prefer a repo-pinned `harness-doctor`; run `npx harness-doctor@latest` only after confirming with the user. If the scanner is unavailable, warn, mark scanner-owned dimensions unreviewed, and label the score provisional — never hand-run the deterministic rule family.
 3. Execute the repo's validation commands per the execution policy; mark irreversible commands inspected-not-run.
 4. Check spec-contract supply/demand alignment and score the six dimensions.
 5. Report recommendation-first: findings with IDs and concrete paths, Immediate/Near-term/Later tiers referencing IDs, and proof of what actually ran.

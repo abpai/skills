@@ -16,6 +16,6 @@ Use the `docs` module.
 2. Inventory current guidance and validation surfaces (scripts, CI, tests, lints).
 3. Run the Keep/Move/Delete audit and convert prose rules to enforcement.
 4. Author `docs/SPEC_CONTRACT.md` with a proof menu derived from the validation inventory.
-5. Rewrite `AGENTS.md` as a tiny router; verify budgets and links, and run every documented command.
+5. Rewrite `AGENTS.md` as a tiny router; verify structure with the `harness-doctor` scanner, and run every documented command.
 
 User input: $ARGUMENTS

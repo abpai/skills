@@ -241,11 +241,13 @@ Product repos contain stable docs, enforcement, and optionally a thin `harness-d
 
 ## Verification
 
-Deterministic structure checks live in the external `harness-doctor` CLI — the single implementation this workflow never re-derives. Verify with it (prefer a repo-pinned install; confirm with the user before a first `npx …@latest` run):
+Deterministic structure checks live in the external `harness-doctor` CLI — the single implementation this workflow never re-derives. Verify with it following the same invocation recipe as `doctor.md`'s Fast path, without `--diff` (verification here is a full scan). Prefer a repo-pinned install:
 
 ```bash
-./node_modules/.bin/harness-doctor --json --verbose 2>/dev/null || npx harness-doctor@latest --json --verbose
+[ -x ./node_modules/.bin/harness-doctor ] && ./node_modules/.bin/harness-doctor --json --verbose
 ```
+
+With no pinned binary, confirm with the user first, then run `npx harness-doctor@latest --json --verbose`.
 
 If the scanner is unavailable, say so in the report and recommend pinning `harness-doctor` as a devDependency — do not hand-run structure checks.
 
