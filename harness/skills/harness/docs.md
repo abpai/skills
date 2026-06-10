@@ -174,7 +174,7 @@ Fill the proof menu with the repo's real commands. Every row must reference a co
 
 ### 6. Rewrite `AGENTS.md` as a router
 
-Keep it tiny: point outward, never teach the whole repo. Hard budgets: warn past ~80 lines or 6 KiB at root; the combined size of all `AGENTS.md` files must stay under 32 KiB or Codex silently drops the rest.
+Keep it tiny: point outward, never teach the whole repo. Budgets (enforced by the `harness-doctor` scanner, which owns the numbers): the root entry point stays under 150 non-blank lines, and the combined size of all `AGENTS.md` files stays under 32 KiB or Codex silently drops the rest.
 
 ```md
 # Agent guide
@@ -241,15 +241,13 @@ Product repos contain stable docs, enforcement, and optionally a thin `harness-d
 
 ## Verification
 
-Run after editing:
+Deterministic structure checks live in the external `harness-doctor` CLI — the single implementation this workflow never re-derives. Verify with it (prefer a repo-pinned install; confirm with the user before a first `npx …@latest` run):
 
 ```bash
-wc -l AGENTS.md 2>/dev/null                                    # warn past ~80 lines
-find . -name 'AGENTS.md' -not -path '*/node_modules/*' -print0 | xargs -0 cat | wc -c   # combined bytes, must stay under 32768
-rg -n "\\[[^]]+\\]\\([^)]+\\)" AGENTS.md CLAUDE.md docs || true       # then verify links resolve
-rg -n "TODO|TBD|tribal|Slack|Google Doc|Notion|exec-plans|feature-registry" AGENTS.md CLAUDE.md docs || true
-rg --files docs | sort
+./node_modules/.bin/harness-doctor --json --verbose 2>/dev/null || npx harness-doctor@latest --json --verbose
 ```
+
+If the scanner is unavailable, say so in the report and recommend pinning `harness-doctor` as a devDependency — do not hand-run structure checks.
 
 Then run every command you documented or created — `docs/engineering/commands.md`, the spec-contract proof menu, new tests/lints/scripts. A documented command you did not run is marked unverified in your report.
 
@@ -261,7 +259,7 @@ Lead with a one-paragraph recommendation, then report:
 - Keep / Move / Delete table.
 - Prose rules converted to enforcement (rule → surface), and rules deferred to `docs/todos` because the surface was missing.
 - Spec-contract proof menu rows and which commands were run to validate them.
-- What now lives in `AGENTS.md` (line count, combined byte count) versus `docs/`.
+- What now lives in `AGENTS.md` versus `docs/`, and the scanner result.
 - Earned surfaces created or intentionally skipped, with the need shown or absent.
 - Stale, duplicated, or external knowledge still unresolved.
 

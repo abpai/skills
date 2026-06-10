@@ -9,7 +9,7 @@ Readiness scoring of this kind is experimental — explanations matter more than
 ## Core split
 
 - `harness:docs` (`docs.md`) is the canonical source for the shared concepts: enforcement hierarchy, spec contract shape, AGENTS line gate, nested AGENTS decision test, Keep/Move/Delete verdicts, demonstrated-need evidence, budgets. This module applies them as audit dimensions — when judging, follow the `docs.md` definitions; deterministic symptom lists are kept local here for executability.
-- The external `harness-doctor` CLI checks deterministic facts only: files, links, byte/line budgets, banned paths, doc shapes, command existence.
+- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks (the `docs-structure/*` rule family): files, routes, spec-contract existence and sections, links, byte/line budgets, banned paths, `STRUCTURE.md`, the `CLAUDE.md` shim. This module never reimplements them — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
 - Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract.
 
 Do not add scanner scripts to product repos. A product repo may keep stable docs plus optional `harness-doctor.config.ts`; scanner output stays temporary.
@@ -22,7 +22,9 @@ From the repo root, prefer a scanner already pinned in the repo (`./node_modules
 npx harness-doctor@latest --json --verbose --diff
 ```
 
-`npx …@latest` executes whatever the registry serves at run time — confirm with the user before the first run in a session and record the resolved version in the proof section. If diff mode is unavailable or the user asks for a full audit, drop `--diff`. If the CLI is unavailable (no network, no `npx`), use the manual checks below and say the scanner was unavailable. The CLI does not yet cover every check in this module — run the spec-contract alignment, byte-budget, and execution checks manually regardless.
+`npx …@latest` executes whatever the registry serves at run time — confirm with the user before the first run in a session and record the resolved version in the proof section. If diff mode is unavailable or the user asks for a full audit, drop `--diff`.
+
+If the CLI is unavailable (no network, no `npx`), follow the Scanner unavailable section below — warn, degrade, and never hand-run the deterministic rule family. The scanner owns deterministic facts; this module adds command execution, spec-contract alignment, and semantic judgment on top.
 
 ## Execution policy
 
@@ -49,10 +51,10 @@ Score each reviewed dimension 0-4 against the `docs.md` bar:
 | D2 | E2E proof paths | 20 | Every major change type has a runnable end-to-end proof (e2e suite, screenshot diff, contract test). | No change type has one. |
 | D3 | Spec contract | 20 | `docs/SPEC_CONTRACT.md` exists, routed from `AGENTS.md`, aligned in both directions (below). | File missing. |
 | D4 | Enforcement coverage | 15 | Known invariants carried by tests/lints/CI gates, not prose; CI blocks merge on them. | Invariants live only in prose, or nothing blocks merge. |
-| D5 | Entry-point quality | 10 | `AGENTS.md` passes the line gate and budgets (~80 lines / 6 KiB root, 32 KiB combined); `CLAUDE.md` shim present (`@AGENTS.md`). | Entry point missing or grossly over budget. |
+| D5 | Entry-point quality | 10 | `AGENTS.md` passes the line gate and the scanner's budgets (150 non-blank lines at root, 32 KiB combined); `CLAUDE.md` shim present (`@AGENTS.md`). | Entry point missing or grossly over budget. |
 | D6 | Docs structure and routing | 10 | Index present, links resolve, no banned paths, earned surfaces complete, no default scaffolding. | No `docs/`, or routing broken throughout. |
 
-Intermediate scores: start at 4 and subtract roughly one point per named gap; every point lost must link to one or more finding IDs. D3, D5, and D6 are deterministically checkable by hand and are never `unreviewed`, even when the CLI is unavailable. Mark a genuinely unreviewed semantic dimension `unreviewed` — never guess.
+Intermediate scores: start at 4 and subtract roughly one point per named gap; every point lost must link to one or more finding IDs. D5 and D6 are scanner-owned: without a scanner run, mark them `unreviewed` rather than hand-deriving findings. D3 splits: its existence/routing facts are scanner-owned, but its supply/demand alignment is this module's own check — run it whenever `docs/SPEC_CONTRACT.md` is present. Mark a genuinely unreviewed semantic dimension `unreviewed` — never guess.
 
 Overall score: `round(100 × Σ(weightᵢ × dimᵢ/4) / Σ weightᵢ)`, summing only reviewed dimensions; print `–/4` for unreviewed dimensions in the header. When any dimension is unreviewed, label the score `provisional` and state the reviewed weight (e.g. `provisional — 80/100 weight reviewed`); never present a rescaled partial audit as a full score. Diff-scoped runs emit findings only — the score is computed only on a full audit.
 
@@ -107,30 +109,15 @@ Proof
 
 Scope may vary by input (diff-only versus full repo) but there are no named audit modes — one standard audit, always recommendation-first.
 
-## Manual checks
+## Scanner unavailable
 
-```bash
-wc -l AGENTS.md 2>/dev/null                                    # warn past ~80 lines or 6 KiB at root (docs.md budgets)
-find . -name 'AGENTS.md' -not -path '*/node_modules/*' -print0 | xargs -0 cat | wc -c   # combined bytes, must stay under 32768
-rg --files --hidden -g 'AGENTS.md' -g 'CLAUDE.md' -g 'docs/**' -g 'STRUCTURE.md' -g '.agent/**' -g '.cursor/**' -g 'scripts/agent/**' -g 'feature-registry.json' 2>/dev/null | sort
-rg -n "\\[[^]]+\\]\\([^)]+\\)" AGENTS.md CLAUDE.md docs 2>/dev/null || true
-rg --files docs/domains docs/todos 2>/dev/null | sort
-cat package.json 2>/dev/null | python3 -c "import json,sys; print('\n'.join(json.load(sys.stdin).get('scripts',{}).keys()))" 2>/dev/null || true
-rg --files --hidden -g '.github/workflows/*' -g 'Makefile' -g 'justfile' 2>/dev/null
-```
+When the `harness-doctor` CLI cannot run, do not substitute a hand-rolled checklist — a second implementation of the deterministic rules is exactly how the skill and the scanner drift apart. Instead:
 
-`--hidden` is required — without it ripgrep skips `.github/`, `.cursor/`, and `.agent/` entirely, and `rg --files` respects `.gitignore`; check those paths directly before concluding they are absent.
+- Open the report with a prominent warning: deterministic checks (`docs-structure/*`) were NOT run, and the repo should pin `harness-doctor` as a devDependency so CI and future audits keep deterministic coverage.
+- Mark D5 and D6 `unreviewed` and label the score provisional.
+- Continue with everything this module owns: the execution policy on documented commands, the spec-contract alignment check (when `docs/SPEC_CONTRACT.md` is present), Keep/Move/Delete candidates from semantic reading, the AGENTS line gate's semantic judgments, and feedback compounding.
 
-Then inspect against the `docs.md` bar:
-
-- `AGENTS.md` is a router passing the six-test line gate; `CLAUDE.md` shim present (single `@AGENTS.md` import line).
-- `docs/INDEX.md`, `docs/SPEC_CONTRACT.md`, and `docs/ARCHITECTURE.md` exist and are routed.
-- `docs/engineering/commands.md` and `testing.md` exist; run their commands per the execution policy.
-- Local markdown links and referenced repo paths resolve.
-- Banned default paths absent: `.agent/`, `scripts/agent/`, `.cursor/rules/`, `docs/product-specs/`, `docs/exec-plans/`, `docs/references/vendor-docs/`, `feature-registry.json`. (`docs/adr/` is flagged only if newly created by default; keep an existing maintained convention.)
-- `STRUCTURE.md` present → flag under `docs-structure/no-structure-md` unless the repo's `harness-doctor.config.ts` disables that rule (mid-migration or intentionally divergent repos).
-- Earned surfaces that exist are complete (domain folders have all four files; todo specs have status, scope, start points, invariants, validation, close condition) — and surfaces that exist without demonstrated need (per the `docs.md` evidence bar) are findings, not points.
-- Nested `AGENTS.md` symptoms: shorter than root, outward links, no duplicate root lines, valid local paths, combined byte budget holds. Whether the subtree truly needs its own contract stays semantic.
+Reading repo files for semantic judgment is expected; re-deriving scanner findings (link targets, byte budgets, banned paths, doc shapes) is not.
 
 ## Keep / Move / Delete candidates
 
