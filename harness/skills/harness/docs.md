@@ -119,6 +119,8 @@ Record verdicts as a table (`item | verdict | reason | destination`) with concre
 
 Execute the "move to enforcement" verdicts: for each prose rule, implement the highest surface on the enforcement hierarchy that fits — write the test, add the lint rule, add the CI gate, or create the validation script — then delete the prose. Validate every command you create or document by running it. A rule the agent already follows without the line gets the line deleted outright.
 
+Enforcement changes encode behavioral assumptions. Derive each test or lint from an explicitly stated rule — never invent the expected behavior — and when the user's request was docs-scoped, present the conversion plan (rule → surface → proposed file/command) for approval before implementing it.
+
 If the target surface does not exist (no test runner, no lint config, no CI), do not bootstrap project infrastructure inside this workflow: convert what fits existing surfaces, record the rest as `docs/todos` specs (a missing enforcement surface is demonstrated need), and surface the infra decision to the user. An unconverted rule keeps its prose line plus a todo route.
 
 ### 4. Author `docs/SPEC_CONTRACT.md`
@@ -162,7 +164,7 @@ Agents stop and surface instead of guessing when:
 - The spec's scope and the code's reality conflict.
 ```
 
-Fill the proof menu with the repo's real commands. Every row must reference a command that exists and runs. Monorepos keep a single root `SPEC_CONTRACT.md`; the change-type column carries the package/workspace dimension (e.g. `<pkg> logic | pnpm --filter <pkg> test | …`). Route to this file from `AGENTS.md`.
+Fill the proof menu with the repo's real commands. Every row must reference a command that exists and runs. Keep the menu compact — roughly ten rows, grouping related areas rather than enumerating every package. If the repo has no validation surfaces at all, do not invent commands: write the quality bar, mark the proof menu `provisional — validation not ready` with the gaps listed, and surface the infrastructure decision to the user; the operating model's runnable-validation-path rule is the target state this gap report works toward. Monorepos keep a single root `SPEC_CONTRACT.md`; the change-type column carries the package/workspace dimension (e.g. `<pkg> logic | pnpm --filter <pkg> test | …`). Route to this file from `AGENTS.md`.
 
 ### 5. Author the remaining core docs
 
