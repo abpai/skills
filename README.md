@@ -23,6 +23,7 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install distill@abpai-skills
 /plugin install lateral-thinking@abpai-skills
 /plugin install engineering@abpai-skills
+/plugin install harness@abpai-skills
 /plugin install code@abpai-skills
 /plugin install tutorial@abpai-skills
 /plugin install codex-exec@abpai-skills
@@ -87,6 +88,7 @@ research and review. The debate workflow now lives inside `pi` as
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
 | **capture-feedback** | Capture concise agent-behavior corrections into a local shared inbox for later trace review and skill or rule improvements |
 | **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and return the decisions |
+| **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; run a workflow with `/harness docs` (create progressive-disclosure repo docs) or `/harness doctor` (audit docs, `AGENTS.md`, glossary/todo specs, domain maps, validation routes, and Harness Doctor findings) |
 
 ### Tools
 
@@ -146,6 +148,13 @@ abpai/skills/
 │       │   ├── references/
 │       │   └── scripts/       ← bundled helpers (e.g. complexity scanner)
 │       └── <workflow>/        ← /engineering:<workflow> (one SKILL.md each)
+├── harness/                   ← grouped agent-harness workflows
+│   └── skills/
+│       ├── harness/           ← umbrella skill (/harness) + flat modules
+│       │   ├── docs.md        ← progressive-disclosure docs workflow
+│       │   └── doctor.md      ← Harness Doctor audit workflow
+│       ├── doctor/            ← /harness:doctor wrapper
+│       └── docs/              ← /harness:docs wrapper
 ├── pi/                        ← intentional Claude-only exception
 │   ├── .claude-plugin/plugin.json
 │   ├── agents/
@@ -282,10 +291,9 @@ there, and you install the Codex-compatible plugins from it (it is not a fully
 automatic install).
 
 `pi` stays Claude-only in this repo and therefore does not appear in the Codex
-marketplace list. The engineering-practice workflows (Matt Pocock-inspired)
-are Codex-compatible as the grouped `engineering` plugin. Codex sees a single
-`engineering` skill; Claude also gets the namespaced `/engineering:*` command
-wrappers.
+marketplace list. The grouped workflow packs, including `engineering` and
+`harness`, are Codex-compatible as single umbrella skills. Claude also gets the
+namespaced command wrappers such as `/engineering:*` and `/harness:*`.
 
 #### Personal installation
 

@@ -1,0 +1,10 @@
+{
+  "name": "harness",
+  "version": "1.1.0",
+  "description": "Agent harness workflow pack for making repos ergonomic for agent-driven development: spec contracts (docs/SPEC_CONTRACT.md), prose-to-enforcement conversion, tiny AGENTS.md routers, validation-path docs, and verification-first Harness Doctor readiness audits.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT"
+}
