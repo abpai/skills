@@ -43,6 +43,10 @@ jobs:
 
   wrapper-parity:
     runs-on: ubuntu-latest
+    # Belt-and-suspenders to the per-monitor outer timeout inside the script: if a
+    # monitor case ever fails to self-bound AND the in-script guard is somehow
+    # defeated, cap the job well below GitHub's 6h default so it fails fast.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -59,93 +63,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
       - name: Check version bumps for changed plugins
-        run: |
-          extract_skill_version() {
-            awk '
-              /^---$/ { fence++; next }
-              fence == 1 && /^metadata:/ { in_meta=1; next }
-              fence == 1 && in_meta && /^[^ ]/ { in_meta=0 }
-              fence == 1 && in_meta && /^  version:/ {
-                v = $0
-                sub(/^  version:[ ]*/, "", v)
-                gsub(/"/, "", v)
-                print v
-                exit
-              }
-              fence >= 2 { exit }
-            ' "$1"
-          }
-
-          extract_manifest_version() {
-            # Reads the top-level "version" string from a plugin.json on stdin.
-            python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",""))' 2>/dev/null
-          }
-
-          is_disabled_model_invocation() {
-            awk '
-              /^---$/ { fence++; next }
-              fence == 1 && /^disable-model-invocation:[ ]*true[ ]*$/ { found=1 }
-              fence >= 2 { exit }
-              END { exit found ? 0 : 1 }
-            ' "$1"
-          }
-
-          base_ref="origin/${{ github.base_ref }}"
-          changed_dirs=$(git diff --name-only "$base_ref...HEAD" | cut -d/ -f1 | sort -u)
-
-          failed=0
-          checked=0
-
-          for dir in $changed_dirs; do
-            # Skip non-plugin directories
-            [ -d "$dir/.claude-plugin" ] || continue
-
-            # Check if meaningful files changed
-            meaningful_changes=$(git diff --name-only "$base_ref...HEAD" \
-              -- "$dir/skills/" "$dir/agents/" "$dir/commands/" "$dir/hooks/" "$dir/internal/" \
-                 "$dir/.claude-plugin/plugin.json" "$dir/.codex-plugin/plugin.json")
-            [ -n "$meaningful_changes" ] || continue
-
-            # Resolve the version source: a model-invocable/versioned SKILL.md
-            # if the plugin has one, otherwise the plugin manifest (command-only
-            # plugins like pi, whose slash entries are disabled skill shims).
-            skill_md=""
-            while IFS= read -r candidate; do
-              is_disabled_model_invocation "$candidate" && continue
-              [ -n "$(extract_skill_version "$candidate")" ] || continue
-              skill_md="$candidate"
-              break
-            done < <(find "$dir/skills" -name SKILL.md -type f 2>/dev/null | sort)
-
-            if [ -n "$skill_md" ]; then
-              version_file="$skill_md"
-              current_version=$(extract_skill_version "$skill_md")
-              base_blob=$(git show "$base_ref:$skill_md" 2>/dev/null || true)
-              base_version=$([ -n "$base_blob" ] && printf '%s\n' "$base_blob" | extract_skill_version /dev/stdin || true)
-            else
-              version_file="$dir/.claude-plugin/plugin.json"
-              [ -f "$version_file" ] || continue
-              current_version=$(extract_manifest_version < "$version_file")
-              base_blob=$(git show "$base_ref:$version_file" 2>/dev/null || true)
-              base_version=$([ -n "$base_blob" ] && printf '%s\n' "$base_blob" | extract_manifest_version || true)
-            fi
-
-            checked=$((checked + 1))
-
-            if [ -n "$base_version" ] && [ "$current_version" = "$base_version" ]; then
-              echo "::error::$dir: version ($current_version) in $version_file was not bumped"
-              failed=1
-              continue
-            fi
-
-            echo "  [OK] $dir: ${base_version:-new} -> $current_version ($version_file)"
-          done
-
-          if [ $failed -ne 0 ]; then
-            echo ""
-            echo "Fix: bump metadata.version in the model-invocable SKILL.md, or version in .claude-plugin/plugin.json for command-only plugins."
-            exit 1
-          fi
-
-          echo "Checked $checked plugin(s). All changed plugins have proper version bumps."
+        run: bun scripts/skill-metadata.ts check-version-bump "origin/${{ github.base_ref }}"

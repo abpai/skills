@@ -55,6 +55,53 @@ sha256_stdin() {
   fi
 }
 
+# Normalize stdin (a raw Bash command string) for command-DETECTION matching.
+# The downstream matchers are line-oriented `grep -E`, so a verb split by a
+# shell line continuation defeats them: `git \<newline>push` executes as
+# `git push`, but a per-line matcher sees `git \` and `push` on separate lines
+# and matches NEITHER, BYPASSING the gate. We join `\<newline>` continuations so
+# the verb is seen on one logical line.
+#
+# This join is bypass-SAFE by construction: it only ever MERGES adjacent lines,
+# never drops one, so it can never hide a `git push`. (If a continuation joins
+# `git push` onto a preceding token without a separator, the verb is no longer
+# in command position — but neither would Bash run it as a command, so declining
+# to gate it is correct.)
+#
+# We deliberately do NOT try to strip heredoc bodies. A heredoc body line that
+# merely contains `git push` will FALSE-BLOCK — the gate over-blocks a benign
+# command. That is fail-SAFE and accepted: stripping heredoc bodies cannot be
+# done safely without a real shell parser, and ANY mis-detected opener (a
+# quoted/commented `<<WORD`, or an arithmetic shift like `$((a<<B))`) would
+# strip the FOLLOWING real command and silently BYPASS the gate. Over-blocking a
+# heredoc is recoverable; a silent bypass is not — so we choose the safe error.
+#
+# Non-goals (documented, not handled): nested shells (`bash -lc "git push"`),
+# path-qualified binaries (`/usr/bin/git push`), heredoc-body false blocks (see
+# above). This is a targeted hardening of one shape, not a shell parser.
+# Fail-open by design: on any awk error the caller falls back to the raw command
+# so existing single-line enforcement never regresses.
+normalize_cmd() {
+  # Join `\<newline>` continuations into one logical line. A trailing backslash
+  # is a continuation ONLY when it is itself unescaped — i.e. the line ends in an
+  # ODD number of backslashes. An EVEN run (e.g. `echo \\`) is escaped literal
+  # backslashes; Bash keeps the newline as a real command separator, so we must
+  # NOT join (joining would merge — and hide — the genuine command on the next
+  # line). On a real continuation we drop the single escaping backslash and
+  # append the next line directly (matching Bash, which removes `\<newline>`).
+  awk '
+    {
+      cur = $0
+      while (match(cur, /\\+$/) && (RLENGTH % 2 == 1)) {
+        cur = substr(cur, 1, length(cur) - 1)
+        if ((getline nxt) > 0) cur = cur nxt
+        else break
+      }
+      print cur
+    }
+  ' 2>/dev/null
+}
+
 # --- 0. preconditions ------------------------------------------------------
 
 # jq is required to read the event. If it's missing, we cannot safely inspect
@@ -110,6 +157,13 @@ ARM_MARKER="$CLAUDE_PLUGIN_DATA/prepare-pr/armed/$REPO_ID.armed"
 # "still block to be safe").
 GATED=0
 
+# Match against a NORMALIZED copy: unescaped `\<newline>` continuations joined so
+# a split verb (`git \<newline>push`) is still seen (no split-verb bypass). Fall
+# back to the raw command if normalization yields nothing, so a malformed/edge
+# input can never silently disable the single-line matchers below.
+MCMD=$(printf '%s' "$CMD" | normalize_cmd)
+[ -n "$MCMD" ] || MCMD="$CMD"
+
 # A command-position prefix: start-of-string, or immediately after a shell
 # separator (';', '&&', '||', '|', '(', '{', '&', newline). Any number of leading
 # inline assignments (`FOO=bar git push`) and env/sudo-style wrappers
@@ -134,7 +188,7 @@ TERM='([[:space:];&|)}<>]|$)'
 # invocation: disallow shell separators and '#' comments between git and push so
 # a trailing "# ready to push" comment can't smuggle a match. The optional
 # middle tokens cover global options like `git -C dir`.)
-if printf '%s' "$CMD" | grep -Eq "${CMDPOS}git([[:space:]]+[^|;&#]*)?[[:space:]]+push${TERM}"; then
+if printf '%s' "$MCMD" | grep -Eq "${CMDPOS}git([[:space:]]+[^|;&#]*)?[[:space:]]+push${TERM}"; then
   GATED=1
 fi
 
@@ -142,13 +196,13 @@ fi
 # `-R owner/repo` / `--repo owner/repo` between `gh` and `pr`. Disallow shell
 # separators and '#' comments between the tokens so comments can't smuggle a
 # match.)
-if printf '%s' "$CMD" | grep -Eq "${CMDPOS}gh([[:space:]]+[^|;&#]*)?[[:space:]]+pr([[:space:]]+[^|;&#]*)?[[:space:]]+create${TERM}"; then
+if printf '%s' "$MCMD" | grep -Eq "${CMDPOS}gh([[:space:]]+[^|;&#]*)?[[:space:]]+pr([[:space:]]+[^|;&#]*)?[[:space:]]+create${TERM}"; then
   GATED=1
 fi
 
 # gh ... pr edit ... --body / --body-file  (same global-flag tolerance as create)
-if printf '%s' "$CMD" | grep -Eq "${CMDPOS}gh([[:space:]]+[^|;&#]*)?[[:space:]]+pr([[:space:]]+[^|;&#]*)?[[:space:]]+edit${TERM}"; then
-  if printf '%s' "$CMD" | grep -Eq '(^|[[:space:]])--body(-file)?([[:space:]]|=|$)'; then
+if printf '%s' "$MCMD" | grep -Eq "${CMDPOS}gh([[:space:]]+[^|;&#]*)?[[:space:]]+pr([[:space:]]+[^|;&#]*)?[[:space:]]+edit${TERM}"; then
+  if printf '%s' "$MCMD" | grep -Eq '(^|[[:space:]])--body(-file)?([[:space:]]|=|$)'; then
     GATED=1
   fi
 fi

@@ -6,15 +6,9 @@ metadata:
   internal: true
 description: Delegate a bounded implementation task to Cursor Composer from a planner-written brief.
 argument-hint: "[implementation brief, branch/worktree, model, or PR instruction]"
-allowed-tools: >
-  Bash(composer/skills/composer/scripts/cursor-agent-doctor.sh *)
-  Bash(composer/skills/composer/scripts/composer-run.sh *)
-  Bash(cursor-agent *) Bash(git status *) Bash(git diff *)
-  Bash(git log *) Bash(git branch *) Bash(git worktree *)
-  Bash(git add *) Bash(git commit *) Bash(git push *)
-  Bash(gh pr create *) Bash(gh pr view *) Bash(gh pr edit *)
-  Bash(gh pr checks *) Bash(mkdir *) Bash(rm *) Bash(mktemp *)
-  Read Write Edit Grep Glob
+# No allowed-tools here: this wrapper is disable-model-invocation +
+# user-invocable: false, so it is never the active skill. The Composer umbrella
+# carries the union allowlist used by the routed /composer generate workflow.
 ---
 
 # /composer:generate

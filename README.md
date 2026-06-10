@@ -25,6 +25,7 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install engineering@abpai-skills
 /plugin install harness@abpai-skills
 /plugin install code@abpai-skills
+/plugin install tutorial@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install composer@abpai-skills
 /plugin install capture-feedback@abpai-skills
@@ -71,7 +72,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under `/code:*`: `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, commits, push, and PR update) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes explain, walkthrough (teach a system to verified mastery), understand, dead-code, scratch, secure-dependencies, handoff, and thermo-nuclear (strict baseline-to-PR structural audit) |
+| **code** | Groups common code workflows under one `/code` umbrella with subcommands (e.g. `/code prepare-pr`, `/code review-and-commit`): `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, commits, push, and PR update) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes walkthrough (teach a system to verified mastery), understand, dead-code, secure-dependencies, handoff, and thermo-nuclear (strict baseline-to-PR structural audit) |
 | **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
 
 ### Engineering Practices
@@ -106,6 +107,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
+| **tutorial** | Write hands-on, code-first tutorials where every step ends in a runnable action |
 | **improve-prompt** | Upgrade vague prompts into sharp, reusable prompts for planning, coding, review, and decision work |
 | **human-writer** | Edit prose to sound natural and human-written — deslop model-generated text |
 
@@ -358,9 +360,12 @@ This repo includes a comprehensive validator at `scripts/validate-skills.sh` tha
 - Claude and Codex plugin manifests (name, version, description, paths)
 - SKILL.md frontmatter (name, description, version metadata for
   model-invocable skills)
-- Agent and command frontmatter
+- Agent frontmatter and grouped-pack wrapper invariants (a wrapper with
+  `disable-model-invocation` must also set `metadata.internal`, and
+  `user-invocable: false` when its pack has an umbrella)
 - Both marketplace.json catalogs (completeness and consistency)
 - versions.json (all skills present with matching versions)
+- docs/index.html catalog cards, versions, and plugin counts
 
 ```bash
 bash scripts/validate-skills.sh

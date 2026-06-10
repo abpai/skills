@@ -1,15 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Structural + content validation lives in scripts/validate_skills.py (one strict
-# frontmatter parser, one process). This wrapper runs that, then layers on the
-# toolchain checks that genuinely need external tools (bun build/test, bash -n,
-# py_compile, bun build for TS), and prints the final pass/fail verdict.
+# Structural + content validation lives in scripts/validate_skills.py. Shared
+# version-source metadata lives in scripts/skill-metadata.ts and is reused by
+# validation, generation, manifest sync, and CI. This wrapper runs those checks,
+# then layers on toolchain checks that genuinely need external tools (bun
+# build/test, bash -n, py_compile, bun build for TS), and prints the final
+# pass/fail verdict.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 failed=0
+
+# --skip-versions is the bun-free structural contract: it skips every
+# version-derived surface (Python: versions.json + docs cards) AND, here, the
+# bun-dependent toolchain blocks below (metadata test, finish-lane build/test,
+# TS helper builds). With bun present we still run everything. Without bun and
+# WITHOUT --skip-versions we hard-fail, because a silent partial run would read
+# as a full pass.
+skip_versions=0
+for arg in "$@"; do
+  [[ "$arg" == "--skip-versions" ]] && skip_versions=1
+done
+
+have_bun=1
+if ! command -v bun >/dev/null 2>&1; then
+  have_bun=0
+  if [[ "$skip_versions" -ne 1 ]]; then
+    echo "[FAIL] scripts/validate-skills.sh: bun is required to validate skill metadata and TypeScript helpers; install bun, or pass --skip-versions for a bun-free structural-only run"
+    exit 1
+  fi
+  echo "  [SKIP] bun toolchain checks (bun not found; --skip-versions bun-free run: skipping metadata test, finish-lane build/test, and TS helper builds)"
+fi
 
 # ── Plugin / skill / agent / marketplace / versions validation (Python) ──
 # Passes through flags (e.g. --skip-versions) verbatim.
@@ -17,38 +40,48 @@ if ! python3 scripts/validate_skills.py "$@"; then
   failed=1
 fi
 
+# ── Validate shared metadata tooling ──
+
+metadata_test="scripts/skill-metadata.test.ts"
+if [[ "$have_bun" -eq 1 && -f "$metadata_test" ]]; then
+  if bun test "$metadata_test" >/tmp/skills-validate-metadata-test.log 2>&1; then
+    echo "  [OK] $metadata_test (bun test)"
+    rm -f /tmp/skills-validate-metadata-test.log
+  else
+    echo "[FAIL] $metadata_test: bun test failed"
+    cat /tmp/skills-validate-metadata-test.log
+    rm -f /tmp/skills-validate-metadata-test.log
+    failed=1
+  fi
+fi
+
 # ── Validate bundled TypeScript helpers ──
 
 finish_lane_script="code/skills/code/scripts/finish-lane.ts"
-if [[ -f "$finish_lane_script" ]]; then
-  if ! command -v bun >/dev/null 2>&1; then
-    # Finding 15: emit ONE actionable bun-required message and skip every
-    # bun-dependent step (build + test) so a missing bun does not spray repeated
-    # 'bun: command not found' noise.
-    echo "[FAIL] $finish_lane_script: bun is required to validate this helper (and to run its tests); install bun or skip these checks"
-    failed=1
+if [[ "$have_bun" -eq 1 && -f "$finish_lane_script" ]]; then
+  if bun build "$finish_lane_script" --target=bun --outfile /tmp/skills-validate-finish-lane.js >/tmp/skills-validate-finish-lane.log 2>&1; then
+    echo "  [OK] $finish_lane_script (bun build)"
+    rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
   else
-    if bun build "$finish_lane_script" --target=bun --outfile /tmp/skills-validate-finish-lane.js >/tmp/skills-validate-finish-lane.log 2>&1; then
-      echo "  [OK] $finish_lane_script (bun build)"
-      rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
-    else
-      echo "[FAIL] $finish_lane_script: bun build failed"
-      cat /tmp/skills-validate-finish-lane.log
-      rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
-      failed=1
-    fi
+    echo "[FAIL] $finish_lane_script: bun build failed"
+    cat /tmp/skills-validate-finish-lane.log
+    rm -f /tmp/skills-validate-finish-lane.js /tmp/skills-validate-finish-lane.log
+    failed=1
+  fi
 
-    finish_lane_test="code/skills/code/scripts/finish-lane.test.ts"
-    if [[ -f "$finish_lane_test" ]]; then
-      if bun test "$finish_lane_test" >/tmp/skills-validate-finish-lane-test.log 2>&1; then
-        echo "  [OK] $finish_lane_test (bun test)"
-        rm -f /tmp/skills-validate-finish-lane-test.log
-      else
-        echo "[FAIL] $finish_lane_test: bun test failed"
-        cat /tmp/skills-validate-finish-lane-test.log
-        rm -f /tmp/skills-validate-finish-lane-test.log
-        failed=1
-      fi
+  finish_lane_test="code/skills/code/scripts/finish-lane.test.ts"
+  if [[ -f "$finish_lane_test" ]]; then
+    # finish-lane tests spawn temp git repos and subprocesses. Bun's default
+    # 5s per-test timeout is tight on busy local/CI runners, so give this
+    # subprocess-heavy suite enough room while keeping a finite guardrail.
+    if bun test --timeout=30000 "$finish_lane_test" >/tmp/skills-validate-finish-lane-test.log 2>&1; then
+      echo "  [OK] $finish_lane_test (bun test)"
+      rm -f /tmp/skills-validate-finish-lane-test.log
+    else
+      echo "[FAIL] $finish_lane_test: bun test failed"
+      cat /tmp/skills-validate-finish-lane-test.log
+      rm -f /tmp/skills-validate-finish-lane-test.log
+      failed=1
     fi
   fi
 fi
@@ -66,7 +99,12 @@ fi
 SHELL_HELPERS=()
 while IFS= read -r f; do
   SHELL_HELPERS+=("$f")
-done < <(find . -path ./.git -prune -o -name '*.sh' -type f -print \
+done < <(find . -path ./.git -prune -o \
+           -path '*/__pycache__/*' -prune -o \
+           -path './.ruff_cache/*' -prune -o \
+           -path './.understand/*' -prune -o \
+           -path './.workflow/*' -prune -o \
+           -name '*.sh' -type f -print \
          | grep -vE '/scripts/validate-skills\.sh$' | sort)
 if [[ ${#SHELL_HELPERS[@]} -gt 0 ]]; then
   if ! command -v bash >/dev/null 2>&1; then
@@ -116,25 +154,26 @@ fi
 TS_HELPERS=()
 while IFS= read -r f; do
   TS_HELPERS+=("$f")
-done < <(find . -path ./.git -prune -o -name '*.ts' -type f -print \
+done < <(find . -path ./.git -prune -o \
+           -path '*/__pycache__/*' -prune -o \
+           -path './.ruff_cache/*' -prune -o \
+           -path './.understand/*' -prune -o \
+           -path './.workflow/*' -prune -o \
+           -name '*.ts' -type f -print \
          | grep -vE '/finish-lane(\.test)?\.ts$' \
          | grep -vE '\.test\.ts$' | sort)
-if [[ ${#TS_HELPERS[@]} -gt 0 ]]; then
-  if ! command -v bun >/dev/null 2>&1; then
-    echo "  [SKIP] other TypeScript helper builds (bun not found)"
-  else
-    for ts_file in "${TS_HELPERS[@]}"; do
-      if bun build "$ts_file" --target=bun --outfile /tmp/skills-validate-ts.js >/tmp/skills-validate-ts.log 2>&1; then
-        rm -f /tmp/skills-validate-ts.js
-      else
-        echo "[FAIL] $ts_file: bun build failed"
-        cat /tmp/skills-validate-ts.log
-        failed=1
-      fi
-    done
-    rm -f /tmp/skills-validate-ts.js /tmp/skills-validate-ts.log
-    echo "  [OK] other TypeScript helper builds (${#TS_HELPERS[@]} scripts, bun build)"
-  fi
+if [[ "$have_bun" -eq 1 && ${#TS_HELPERS[@]} -gt 0 ]]; then
+  for ts_file in "${TS_HELPERS[@]}"; do
+    if bun build "$ts_file" --target=bun --outfile /tmp/skills-validate-ts.js >/tmp/skills-validate-ts.log 2>&1; then
+      rm -f /tmp/skills-validate-ts.js
+    else
+      echo "[FAIL] $ts_file: bun build failed"
+      cat /tmp/skills-validate-ts.log
+      failed=1
+    fi
+  done
+  rm -f /tmp/skills-validate-ts.js /tmp/skills-validate-ts.log
+  echo "  [OK] other TypeScript helper builds (${#TS_HELPERS[@]} scripts, bun build)"
 fi
 
 if [[ $failed -ne 0 ]]; then

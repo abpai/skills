@@ -531,6 +531,34 @@ test("an invalid explicit --base fails fast and writes no scope/seal artifacts",
   expect(existsSync(path.join(repo, ".workflow/finish-lane/seal"))).toBe(false)
 })
 
+// An explicit --base that resolves to a commit but shares NO common history
+// with HEAD (an orphan/unrelated branch) makes `git diff base...HEAD` exit 128
+// with empty output. Suppressed by 2>/dev/null, that would silently yield an
+// empty committed scope and seal an incomplete PR. The merge-base guard must
+// fail fast and write no scope/seal artifacts.
+test("an explicit --base with no merge-base fails fast and writes no scope/seal artifacts", () => {
+  const repo = makeRepo()
+  // Mark the initial commit as the prospective base, then build an unrelated
+  // orphan branch whose only commit shares no ancestry with `basebranch`.
+  run("git", ["branch", "basebranch"], repo, { PATH: systemPath })
+  run("git", ["checkout", "--orphan", "feature", "-q"], repo, { PATH: systemPath })
+  run("git", ["rm", "-rf", "--quiet", "."], repo, { PATH: systemPath })
+  writeRepoFile(repo, "src/app.ts", "export const value = 1\n")
+  run("git", ["add", "src/app.ts"], repo, { PATH: systemPath })
+  run("git", ["commit", "-qm", "feature"], repo, { PATH: systemPath })
+
+  const result = spawnSync(process.execPath, [finishLaneScript, "--base", "basebranch", "--seal"], {
+    cwd: repo,
+    encoding: "utf8",
+    env: { ...process.env, PATH: systemPath },
+  })
+
+  expect(result.status).not.toBe(0)
+  expect(`${result.stdout ?? ""}${result.stderr ?? ""}`).toContain("no common history")
+  expect(existsSync(path.join(repo, ".workflow/finish-lane/changed-files.txt"))).toBe(false)
+  expect(existsSync(path.join(repo, ".workflow/finish-lane/seal"))).toBe(false)
+})
+
 // A valid explicit base still computes scope and seals as before.
 test("a valid explicit --base still computes scope and seals", () => {
   const repo = makeRepo()

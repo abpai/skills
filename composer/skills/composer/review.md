@@ -29,9 +29,9 @@ parseable final answer; the final text is in the `result` field. Use
 5. If the user wants "no findings left", run a repair pass separately and then
    review the updated diff again.
 6. The review itself is strictly read-only: Composer never writes, and the
-   write-capable tools in this command's `allowed-tools` are off-limits during
-   review. Only if the user explicitly asks to improve, update, or merge the PR
-   does the parent agent move to a separate write phase *after* the review
+   write-capable tools pre-approved on the Composer umbrella are off-limits
+   during review. Only if the user explicitly asks to improve, update, or merge
+   the PR does the parent agent move to a separate write phase *after* the review
    completes — and the parent agent, not Composer, performs those steps. Before
    merging, refresh the branch against the current base, check
    mergeability/conflicts, run repo validation, wait for required checks, and

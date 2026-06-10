@@ -66,10 +66,10 @@
     },
     {
       "name": "code",
-      "description": "Grouped coding workflows under /code:* commands. prepare-pr is full PR readiness through commit, push, and PR update; review-and-commit is quick local review plus commit.",
+      "description": "Grouped coding workflows under one /code umbrella with subcommands (e.g. /code prepare-pr). prepare-pr is full PR readiness through commit, push, and PR update; review-and-commit is quick local review plus commit.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "prepare-pr", "review", "commit", "qa", "manual-qa", "pr-prep", "browser", "explain", "walkthrough", "understand", "dead-code", "scratch", "dependency-security", "html", "handoff", "continuation"]
+      "keywords": ["code", "prepare-pr", "review", "commit", "qa", "manual-qa", "pr-prep", "browser", "walkthrough", "understand", "dead-code", "dependency-security", "html", "handoff", "continuation"]
     },
     {
       "name": "harness",
@@ -119,6 +119,13 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "pi" },
       "category": "productivity",
       "keywords": ["planning", "debate", "generator", "evaluator", "workflow", "ui", "layout", "review", "codex"]
+    },
+    {
+      "name": "tutorial",
+      "description": "Write hands-on, code-first tutorials where every step ends in a runnable action and the reader finishes able to do the thing.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "tutorial" },
+      "category": "writing",
+      "keywords": ["tutorial", "teaching", "step-by-step", "guide", "documentation"]
     },
     {
       "name": "visualize",
