@@ -87,7 +87,10 @@ it as the shared state for the rest of the workflow.
 `<repo-id>` exactly as the hook does, so do not hand-build the path). The
 always-on hook now blocks push/PR-create/PR-body-edit for this repo until the
 branch is sealed (Phase 5); it is disarmed only in Phase 5 after a successful
-push. The look-for `ARMED <path>` line in the summary confirms it. (Under Codex
+push. The look-for `ARMED <path>` line in the summary confirms it. **If you
+abandon the lane after arming** (user cancels, task changes), run `--disarm`
+before stopping — the marker is per-repo and persistent, so a stale arm keeps
+blocking pushes in future sessions until something disarms it. (Under Codex
 or a bare checkout there is no `CLAUDE_PLUGIN_DATA` and no enforcing hook, so
 `--arm` is a no-op and the gate stays inert — expected. Seal still works as your
 green check; you self-enforce gate-before-push there.)
@@ -138,12 +141,17 @@ review of the current diff — a reviewer with no memory of why you wrote the co
 because self-review reliably misses regressions your own fix just introduced. Use
 the path that fits the harness:
 
+The review must cover the **full PR scope** (`<base>...HEAD` plus uncommitted) —
+by Phase 4 the work is often already committed on a clean tree, so a review of
+only uncommitted changes sees an empty diff and passes vacuously.
+
 - **Under Claude Code:** spawn a fresh no-context sub-agent (the Task tool) under
-  a read-only sandbox to read the diff, or run `codex review --uncommitted` if
-  the Codex CLI is installed.
+  a read-only sandbox to read the full scope diff, or run `codex review` against
+  the detected base (e.g. `codex review --base <base>`) if the Codex CLI is
+  installed — not `codex review --uncommitted`, which misses committed scope.
 - **Under Codex:** run the review in a *separate* read-only `codex exec` session
-  over the diff — a fresh context, not your active one. Do **not** recursively
-  `codex review` your own running session.
+  over the full scope diff — a fresh context, not your active one. Do **not**
+  recursively `codex review` your own running session.
 
 Fold findings into `Review Findings` and triage them — do **not** auto-apply.
 Skip with a rationale only for trivial docs/metadata diffs.
@@ -249,8 +257,9 @@ exact blocker and leave the branch locally review-ready.
 On first use in a session, silently check for a newer version:
 
 1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
-2. Compare the version for `code` against `code/skills/code/SKILL.md`
-   `metadata.version`.
+2. Compare the version for `code` against the umbrella `SKILL.md`
+   `metadata.version` — `code/skills/code/SKILL.md` in the repo checkout,
+   `${CLAUDE_PLUGIN_ROOT}/skills/code/SKILL.md` when installed as a plugin.
 3. If the remote version is newer, pause before the main task and ask:
    > **code** update available (local {X.Y} → remote {A.B}).
    > Would you like me to update it for you first?
