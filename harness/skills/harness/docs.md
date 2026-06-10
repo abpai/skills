@@ -1,14 +1,15 @@
 # Docs Harness
 
-Make a repository ergonomic for agent-driven development. Verification loops are the product; docs are the routing layer that gets agents to them. Build the smallest system that lets an agent answer five questions quickly:
+Make a repository ergonomic for agent-driven development. Verification loops are the product; docs are the routing layer that gets agents to them. Build the smallest system that lets an agent answer six questions quickly:
 
-1. Where is the code?
-2. What owns this behavior?
-3. What must not be broken?
-4. How do I validate the change?
-5. How do I prove it works end-to-end?
+1. What is this part of the repo, and why does it exist?
+2. Where is the code?
+3. What owns this behavior?
+4. What must not be broken?
+5. How do I validate the change?
+6. How do I prove it works end-to-end?
 
-Everything else should be enforcement (tests, lints, CI gates, validation scripts), code, PR/issue context, durable todo specs under `docs/todos`, or temporary task scaffolding. Long prose scaffolding is the canonical anti-pattern: bloated agent files measurably degrade instruction adherence, and Codex silently truncates combined `AGENTS.md` content past 32 KiB (`project_doc_max_bytes` default).
+Everything else should be enforcement (tests, lints, CI gates, validation scripts), grounding context (below), code, PR/issue context, durable todo specs under `docs/todos`, or temporary task scaffolding. Long prose scaffolding is the canonical anti-pattern: bloated agent files measurably degrade instruction adherence, and Codex silently truncates combined `AGENTS.md` content past 32 KiB (`project_doc_max_bytes` default).
 
 ## Use when
 
@@ -49,6 +50,21 @@ When the same failure recurs, repair the smallest durable surface by walking the
 - Agents keep deferring the same work → write one `docs/todos` spec.
 - Only if nothing mechanical fits → one prose line, placed by the line gate.
 
+## Rules versus grounding
+
+Durable prose splits into two kinds, judged by different gates:
+
+- **Rules** change what the agent should do. They climb the enforcement hierarchy first; the survivors pass the AGENTS line gate.
+- **Grounding** tells the agent what a part of the repo is and how to read it: what a subtree implements, why it exists (the feature flag, AB test, or product intent behind it), what it looks like to the user, the data-model topology, and a key-files table (file → role). Grounding cannot become a test or lint — its value is orientation — so it is judged by the grounding gate instead. Every grounding line must pass all three tests:
+
+1. **Current-state-true** — describes the code as it is now and stays true after this PR.
+2. **Not derivable in minutes** — an agent reading the obvious files would not quickly reconstruct it: off-repo context (flags, AB tests, product intent), cross-layer data flow, what the result looks like on screen.
+3. **Anchored** — names concrete files, types, or identifiers, so staleness is detectable and the prose doubles as a route map.
+
+The canonical grounding vehicle is a nested `AGENTS.md` in the subtree it describes — tell the agent what it is working on, why it matters, and where to look, then get out of the way. A grounding file may be longer than the root router: depth belongs at the leaf, the root stays a tiny map, and the budget that binds is the combined byte chain, not symmetry with root.
+
+Stale grounding is worse than none — it is a misleading route. Whoever changes the data model or key files updates the grounding file in the same PR. And grounding never smuggles rules: a "do this / never that" line inside a grounding file climbs the enforcement hierarchy like any other rule.
+
 ## Target structure
 
 Default core — create this unless the repo has a stronger equivalent:
@@ -73,7 +89,7 @@ Earned surfaces — create only on demonstrated need, never as default scaffoldi
 | `docs/GLOSSARY.md` | A term is repeatedly misused or repeatedly takes too many words. Keep an existing `UBIQUITOUS_LANGUAGE.md` or `docs/reference/glossary.md` convention; never create a duplicate. |
 | `docs/todos/` (+ `INDEX.md`) | Real deferred work exists with a code route, invariant, validation, and close condition. |
 | `docs/domains/<domain>/` | A domain repeatedly misroutes agents and a nested `AGENTS.md` (below) is not enough. Shape: `INDEX.md`, `code-map.md`, `invariants.md`, `test-map.md`. |
-| Nested `AGENTS.md` | A subtree has materially different commands, invariants, validation, or ownership (see decision test below). Often the better vehicle than a `docs/domains/` entry. |
+| Nested `AGENTS.md` | A subtree has materially different commands, invariants, validation, or ownership — or needs grounding: a coherent feature whose intent or topology is not readable from the code (see decision test below). Often the better vehicle than a `docs/domains/` entry. Grounding is the one need that may be met when the feature ships, without waiting for the two-observation bar. |
 | `docs/design/` | The repo does agentic UI work and needs migration rules (`migration-patterns.md` first — legacy pattern → new pattern tables). |
 | `docs/engineering/observability.md`, `migrations.md`, `conventions.md` | Runtime debugging routes, frequent/high-risk migrations, or current conventions not enforceable in code. |
 | `docs/domains/<domain>/runbook.md` | Operational debugging flows are real and used. |
@@ -107,7 +123,7 @@ The validation-surface inventory (scripts, CI jobs, lint configs, test layout, e
 
 Give every durable guidance item an explicit verdict with a reason and a destination:
 
-- **Keep** — answers one of the five questions or defines a genuinely useful term, and already sits on the smallest correct surface.
+- **Keep** — answers one of the six questions (rules judged by the line gate, grounding by the grounding gate) or defines a genuinely useful term, and already sits on the smallest correct surface.
 - **Move** — belongs on a better surface. Preference order: test/lint/CI/script (enforcement beats prose — these moves are executed in step 3), then engineering docs, design docs, domain docs, glossary, `docs/todos`, code, tests, issue/PR context.
 - **Delete** — stale, duplicative, completed-task residue, or a vendor mirror without freshness policy.
 
@@ -209,7 +225,7 @@ Adapt sections to the repo (add earned-surface links only when those surfaces ex
 
 #### AGENTS line gate
 
-Every durable line must pass all six tests; otherwise move or delete it per step 2:
+Every durable **rule** line must pass all six tests; otherwise move or delete it per step 2. Grounding lines are judged by the grounding gate (Rules versus grounding, above) instead — do not delete grounding for failing the Operational test.
 
 1. **Universal** — applies to all agents entering the repo or subtree.
 2. **Operational** — changes what the agent should do.
@@ -220,7 +236,12 @@ Every durable line must pass all six tests; otherwise move or delete it per step
 
 #### Nested AGENTS decision test
 
-A nested `AGENTS.md` (nearest-file precedence) is the standard vehicle for subtree-specific guidance — often better than a parallel `docs/domains/` entry — but each one is another prose surface. Before adding one, require a justification: would putting this rule at root bloat the universal map or mislead agents working elsewhere? If yes, nest it; if no, move the detail to a narrower doc or delete it. A nested file must stay shorter than root, name the local boundary, point to local docs/tests, never restate generic repo rules, and count against the combined byte budget. Note: tool compliance with nested files is uneven (documented Copilot bugs), so keep root routes to critical subtree rules.
+A nested `AGENTS.md` (nearest-file precedence) is the standard vehicle for subtree-specific guidance — often better than a parallel `docs/domains/` entry — but each one is another prose surface. Two needs justify one:
+
+- **Rules** — the subtree has materially different commands, invariants, validation, or ownership. Justification test: would putting this rule at root bloat the universal map or mislead agents working elsewhere? If yes, nest it; if no, move the detail to a narrower doc or delete it.
+- **Grounding** — the subtree implements a coherent feature or subsystem whose intent or topology is not readable from the code (gated/AB-tested features, cross-layer data flow, a user-visible surface). Shape: what this implements → why it exists → what it looks like → data model → key files (file → role), every line passing the grounding gate. Create it when the feature ships — waiting for two misroutes here just taxes every future agent.
+
+A nested file names the local boundary, points to local docs/tests, never restates generic repo rules, gets a sibling `CLAUDE.md` shim (`@AGENTS.md`) exactly like the root, and counts against the combined byte budget. A grounding file may exceed the root router's length; the binding limits are the gates and the byte chain, not symmetry with root. Note: tool compliance with nested files is uneven (documented Copilot bugs), so keep root routes to critical subtree rules.
 
 ### 7. Create `docs/INDEX.md`
 

@@ -1,9 +1,9 @@
 ---
 name: harness
-description: "Grouped agent-harness workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'docs' (make a repo ergonomic for agent-driven development — author docs/SPEC_CONTRACT.md from real validation surfaces, convert prose rules into tests/lints/CI gates, keep AGENTS.md a tiny router, create earned doc surfaces only on demonstrated need), 'doctor' (verification-first readiness audit — runs the repo's validation commands, checks spec-contract alignment, scores six dimensions (0-4) into a 0-100 readiness score, reports recommendation-first with finding IDs and proof)."
+description: "Grouped agent-harness workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'docs' (make a repo ergonomic for agent-driven development — author docs/SPEC_CONTRACT.md from real validation surfaces, convert prose rules into tests/lints/CI gates, keep AGENTS.md a tiny router, write nested grounding files for features whose intent/topology is not readable from code, create earned doc surfaces only on demonstrated need), 'doctor' (verification-first readiness audit — runs the repo's validation commands, checks spec-contract alignment, scores six dimensions (0-4) into a 0-100 readiness score, reports recommendation-first with finding IDs and proof)."
 argument-hint: "[subcommand] [args] — e.g. docs, doctor, --docs docs overhaul"
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Harness Workflow Pack
