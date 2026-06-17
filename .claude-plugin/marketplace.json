@@ -38,7 +38,7 @@
     },
     {
       "name": "engineering",
-      "description": "Engineering-practice workflows under /engineering:* commands, including TDD, architecture, defined terms, and read-only complexity reports.",
+      "description": "Engineering-practice workflows under /engineering:* commands, including TDD, architecture, defined terms, read-only complexity reports, and a five-step plan-optimization algorithm.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "engineering" },
       "category": "productivity",
       "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out", "complexity", "performance"]
