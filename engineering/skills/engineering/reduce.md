@@ -1,6 +1,6 @@
-# The Algorithm
+# Reduce
 
-Workflow module for `/engineering:algorithm`.
+Workflow module for `/engineering:reduce`.
 
 Inspiration: Elon Musk's five-step design algorithm — question the requirements,
 delete, simplify/optimize, accelerate, automate. Applied to a plan so we never
