@@ -1,17 +1,10 @@
 ---
 name: distill
 description: >
-  Iteratively decompose complex systems into their essential primitives — the minimal
-  set of abstractions that capture the full essence. Use this skill whenever the user
-  wants to understand the "real building blocks" of something: a codebase, a research
-  paper, a collection of documents, a transcript, an architecture, or any complex
-  system. Trigger on phrases like "distill this", "what are the primitives",
-  "what's the essence of", "boil this down", "simplify this to its core",
-  "extract the key abstractions", "what are the real building blocks",
-  "give me the Karpathy version", "minimal representation", or any request
-  to compress a complex input into its fundamental components. Also trigger when
-  the user asks to "understand" or "analyze" a large codebase or document set
-  and seems to want a compressed mental model rather than a line-by-line walkthrough.
+  Decompose a complex system into essential primitives and a compressed mental model.
+  Use when the user asks to distill, boil down, find core abstractions, get the
+  "Karpathy version", or understand a codebase, architecture, paper, transcript, or
+  document set without a line-by-line walkthrough.
 allowed-tools:
   - Read
   - Glob
@@ -22,7 +15,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Distill

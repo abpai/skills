@@ -1,8 +1,8 @@
 ---
 name: hexagon-audit
-description: Audit Ports & Adapters (Hexagonal Architecture) compliance in a monorepo that separates interface packages under packages/ from provider implementations under adapters/. Use when asked to audit hexagon compliance, check ports/adapters separation, or verify inward-dependency invariants. Ships a deterministic scanner that reports package-to-adapter imports, peer-adapter imports, and vendor SDKs leaking into ports.
+description: Audit Ports & Adapters / hexagonal architecture boundaries in packages/ + adapters/ monorepos. Use for hexagon compliance, port/adapter separation, inward dependency flow, peer-adapter imports, and vendor SDK leaks.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Hexagon Audit

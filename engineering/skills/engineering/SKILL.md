@@ -1,9 +1,9 @@
 ---
 name: engineering
-description: "Grouped engineering-practice workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'grill-me' (stress-test plans), 'tdd' (test-first loops), 'zoom-out' (map unfamiliar code), 'improve-architecture' (deep modules/leverage), 'defined-terms' (DDD glossary), 'complexity-report' (read-only complexity report), 'reduce' (optimize a plan with Elon's five-step delete-first algorithm)."
+description: "Grouped engineering-practice workflow pack. Invoke via engineering <subcommand>; per-command skills are hidden wrappers. Routes grill-me, tdd, zoom-out, improve-architecture, defined-terms, complexity-report, and reduce."
 argument-hint: "[subcommand] [args] — e.g. tdd add retries, --grill-me, complexity-report src/, reduce ship onboarding"
 metadata:
-  version: "1.9.0"
+  version: "1.9.1"
 ---
 
 # Engineering Workflow Pack
