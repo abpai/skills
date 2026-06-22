@@ -1,6 +1,6 @@
 {
   "name": "engineering",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "Engineering-practice workflow pack as one self-contained skill, including read-only complexity reports and a five-step plan-optimization algorithm.",
   "author": {
     "name": "Andy Pai"
