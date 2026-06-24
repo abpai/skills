@@ -8,7 +8,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.5.4"
+  version: "1.5.5"
 ---
 
 # Codex CLI
@@ -40,8 +40,14 @@ Run the block above before launching a long Codex task and treat it as ground
 truth. If it shows `codex: not installed`, stop and report the setup issue instead of retrying.
 If it shows `codex exec: unavailable`, the installed Codex CLI is broken or its
 subcommand surface changed; stop and report that before launching a real task.
-If it shows `not a git repo`, note that `codex review --uncommitted` and
-similar git-dependent flows will not work.
+If it shows `not a git repo`, **do not launch `codex exec` from that directory
+as-is**: outside a Git repo (or any directory Codex has not been trusted in)
+`codex exec` does not fail fast — it blocks on a `Not inside a trusted
+directory` trust prompt and hangs indefinitely reading stdin. Either `cd` into
+the target Git repo first, or pass `--skip-git-repo-check` **and** close stdin
+(`< /dev/null` for argv prompts, `- < prompt.txt` for stdin prompts).
+Git-dependent flows such as `codex review --uncommitted` also will not work
+outside a repo.
 
 ## Default Stance
 
@@ -66,8 +72,10 @@ Unless the user asks for something else:
 - Expand to `workspace-write` only when Codex should edit files; use bypass flags only in externally sandboxed automation.
 - Use `--json` or `--output-schema` only when another tool will parse the result.
 
-Do not hide stderr by default, and do not add `--skip-git-repo-check` unless you
-are intentionally running outside a Git repo.
+Do not hide stderr by default. Do not add `--skip-git-repo-check` inside a
+normal Git repo; but when you intentionally run outside a Git repo (or in a
+directory Codex has not been trusted in), you **must** add it and close stdin —
+otherwise `codex exec` hangs on a trust prompt instead of failing fast.
 
 Keep shell usage scoped to the documented `codex`, read-only `git`, and wrapper
 commands below. Do not use this skill as general-purpose shell access.
@@ -312,7 +320,12 @@ restarting a fresh review because Codex can reuse the prior session context.
 - If `codex exec` receives both an argv prompt and piped stdin, stdin is appended as a `<stdin>` block after
   the argv prompt. Do this only when you want that extra context.
 - `codex exec resume --last` is the non-interactive continuation path; do not replace it with the top-level interactive `codex resume` command.
-- `--skip-git-repo-check` is a situational escape hatch, not a default.
+- `--skip-git-repo-check` is a situational escape hatch, not a default — but it
+  is **required** when running outside a Git repo or in a directory Codex has
+  not been trusted in. Without it `codex exec` does not error out; it blocks on
+  a `Not inside a trusted directory` prompt and hangs reading stdin. Always pair
+  it with a closed stdin. Known-good out-of-repo shape:
+  `codex exec --sandbox read-only --skip-git-repo-check "<short prompt>" < /dev/null`.
 - `--ephemeral` is useful for disposable runs when session persistence would add noise.
 
 ## First-Run Sanity Check
@@ -372,6 +385,9 @@ codex exec \
 - If a run prints `Reading additional input from stdin...`, that message alone is normal when Codex is
   consuming stdin. If it then produces no meaningful progress for more than about 30 seconds, kill it and
   rerun with either `- < prompt.txt` for stdin prompts or `< /dev/null` for short argv prompts.
+  A frequent silent cause is launching from a non-Git or untrusted directory (e.g. a scratch or
+  tmp dir): Codex is blocking on a `Not inside a trusted directory` trust prompt, not doing work.
+  Fix by running from inside the Git repo, or add `--skip-git-repo-check` with stdin closed.
 - If a prompt has newlines or is longer than about 500 characters, do not retry argv quoting. Use stdin.
 - If the task is review-oriented, use the wrapper for monitored/custom-instruction reviews and raw `codex review` for simple unprompted reviews.
 - If the task is "run and read the answer now", use direct `codex exec` with

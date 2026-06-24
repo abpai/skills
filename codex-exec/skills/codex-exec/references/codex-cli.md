@@ -25,7 +25,9 @@ flags belong to which non-interactive path.
 - `--ephemeral`: do not persist the session to disk
 - `--json`: stream JSONL events for machine parsing
 - `--output-schema <FILE>`: constrain final output to a JSON schema
-- `--skip-git-repo-check`: allow running outside a Git repo
+- `--skip-git-repo-check`: allow running outside a Git repo (required there and
+  in untrusted dirs — without it `codex exec` hangs on a trust prompt instead of
+  failing; pair with a closed stdin)
 
 For same-turn answers where the caller needs the text immediately, prefer raw
 stdout capture over the monitor wrapper:
@@ -129,7 +131,10 @@ scoped review flags together with a prompt argument.
 - Use argv prompts only for short simple text, and add `< /dev/null` so inherited stdin cannot be appended accidentally.
 - If both an argv prompt and piped stdin are provided to `codex exec`, Codex appends stdin as a
   `<stdin>` block after the prompt.
-- Keep `--skip-git-repo-check` rare; it is for intentional out-of-repo runs.
+- Keep `--skip-git-repo-check` rare; it is for intentional out-of-repo runs, but
+  it is mandatory there: without it `codex exec` blocks on a `Not inside a
+  trusted directory` prompt and hangs reading stdin rather than erroring. Always
+  pair it with a closed stdin (`< /dev/null` or `- < prompt.txt`).
 - Do not suppress stderr by default unless a specific automation path requires it.
 - If a wrapper shell exit and `status.env` disagree, trust `status.env` for the
   Codex child process result; shell exits like 143/144 usually mean wrapper or
