@@ -1,6 +1,6 @@
 ---
 name: code
-description: "Grouped coding workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'prepare-pr' (full PR readiness — diff, preflight, quality gates, QA, PR text, push), 'review-and-commit' (quick local review + commit), 'handoff' (create a self-contained continuation prompt for a new session), 'thermo-nuclear' (strict evidence-backed structural audit, findings only), 'walkthrough', 'understand', 'dead-code', 'secure-dependencies'."
+description: "Grouped coding workflow pack. Invoke via code <subcommand>; per-command skills are hidden wrappers. Routes prepare-pr, review-and-commit, handoff, thermo-nuclear, walkthrough, understand, dead-code, and secure-dependencies."
 argument-hint: "[subcommand] [args] — e.g. understand src/api, --prepare-pr, review-and-commit, thermo-nuclear"
 # allowed-tools lives on this umbrella, NOT on the per-workflow wrappers: the
 # wrappers set disable-model-invocation + user-invocable: false, so they are
@@ -18,7 +18,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob
 metadata:
-  version: "2.1.1"
+  version: "2.1.3"
 ---
 
 # Code Workflow Pack

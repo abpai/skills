@@ -4,7 +4,7 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: "Make a repository ergonomic for agent-driven development: author docs/SPEC_CONTRACT.md from real validation surfaces, convert prose rules into tests/lints/CI gates per the enforcement hierarchy, keep AGENTS.md a tiny router with a CLAUDE.md shim, and create earned doc surfaces (glossary, todos, domains, design) only on demonstrated need."
+description: "Make a repository ergonomic for agent-driven development: author docs/SPEC_CONTRACT.md from real validation surfaces, convert prose rules into tests/lints/CI gates per the enforcement hierarchy, keep AGENTS.md a tiny router with a CLAUDE.md shim, write nested grounding files (what a subtree implements, why, data model, key files) where a feature's intent is not readable from code, and create earned doc surfaces (glossary, todos, domains, design) only on demonstrated need."
 argument-hint: "[repo docs goal]"
 ---
 
@@ -14,8 +14,9 @@ Use the `docs` module.
 
 1. Read `skills/harness/docs.md`.
 2. Inventory current guidance and validation surfaces (scripts, CI, tests, lints).
-3. Run the Keep/Move/Delete audit and convert prose rules to enforcement.
+3. Run the Keep/Move/Delete audit and convert prose rules to enforcement (grounding lines are judged by the grounding gate, not the line gate).
 4. Author `docs/SPEC_CONTRACT.md` with a proof menu derived from the validation inventory.
-5. Rewrite `AGENTS.md` as a tiny router; verify structure with the `harness-doctor` scanner, and run every documented command.
+5. Rewrite `AGENTS.md` as a tiny router; add nested grounding files where a subtree's intent or topology is not readable from code.
+6. Verify structure with the `harness-doctor` scanner, and run every documented command.
 
 User input: $ARGUMENTS

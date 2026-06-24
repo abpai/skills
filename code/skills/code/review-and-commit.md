@@ -5,7 +5,7 @@ one clean commit. Use this when the user asks to "review and commit", "commit
 this", or wants a fast local finish without the full PR-prep lane.
 
 Use `prepare-pr.md` instead when the user asks for PR readiness, reviewer-facing
-PR text, manual QA evidence, broad quality gates, or a visual workflow artifact.
+PR text, manual QA evidence, broad quality gates, or a push/PR update.
 
 ## Working tree preflight
 
@@ -44,10 +44,10 @@ Prioritize:
 1. Broken project conventions or obvious maintainability problems.
 1. Low-risk cleanup that makes the commit easier to review.
 
-Do not turn this into PR prep by default. Skip the finish lane, PR body draft,
-workflow dashboard, broad quality-gate matrix, and subagent fan-out unless the
-user asks for PR readiness or the diff is risky enough that you explicitly
-escalate to `prepare-pr.md`.
+Do not turn this into PR prep by default. Skip the finish-lane preflight, PR
+body draft, quality-gate lenses, and independent review unless the user asks
+for PR readiness or the diff is risky enough that you explicitly escalate to
+`prepare-pr.md`.
 
 ## Targeted Validation
 

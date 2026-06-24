@@ -8,9 +8,9 @@ Readiness scoring of this kind is experimental — explanations matter more than
 
 ## Core split
 
-- `harness:docs` (`docs.md`) is the canonical source for the shared concepts: enforcement hierarchy, spec contract shape, AGENTS line gate, nested AGENTS decision test, Keep/Move/Delete verdicts, demonstrated-need evidence, budgets. This module applies them as audit dimensions — when judging, follow the `docs.md` definitions; deterministic symptom lists are kept local here for executability.
+- `harness:docs` (`docs.md`) is the canonical source for the shared concepts: enforcement hierarchy, spec contract shape, AGENTS line gate, grounding gate, nested AGENTS decision test, Keep/Move/Delete verdicts, demonstrated-need evidence, budgets. This module applies them as audit dimensions — when judging, follow the `docs.md` definitions; deterministic symptom lists are kept local here for executability.
 - The external `harness-doctor` CLI is the ONLY implementation of deterministic checks (the `docs-structure/*` rule family): files, routes, spec-contract existence and sections, links, byte/line budgets, banned paths, `STRUCTURE.md`, the `CLAUDE.md` shim. This module never reimplements them — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
-- Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract.
+- Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract, whether a nested grounding file still matches the code it describes (per the `docs.md` grounding gate).
 
 Do not add scanner scripts to product repos. A product repo may keep stable docs plus optional `harness-doctor.config.ts`; scanner output stays temporary.
 
@@ -74,8 +74,8 @@ Every finding gets an ID (`HD-1`, `HD-2`, … in report order, or the scanner ru
 
 Severity describes impact:
 
-- **Critical**: missing entry point, stale spec-contract proof menu, validation commands that fail or do not exist, stale local links, or misleading routes that send agents to the wrong code.
-- **High**: no e2e proof path for a major change type, invariants carried only as prose, giant or over-budget `AGENTS.md`, missing `docs/INDEX.md` or `SPEC_CONTRACT.md` routing, banned long-lived paths, incomplete earned surfaces.
+- **Critical**: missing entry point, stale spec-contract proof menu, validation commands that fail or do not exist, stale local links, stale grounding (a nested `AGENTS.md` whose data model or key-files table no longer matches the code), or misleading routes that send agents to the wrong code.
+- **High**: no e2e proof path for a major change type, invariants carried only as prose, giant or over-budget root `AGENTS.md` (length alone does not flag a nested grounding file — its limits are the grounding gate and the byte chain), missing `docs/INDEX.md` or `SPEC_CONTRACT.md` routing, banned long-lived paths, incomplete earned surfaces.
 - **Medium**: oversized docs, todo specs missing sections, duplicate vocabulary files, default scaffolding without demonstrated need, follow-up semantic review items.
 
 Anything below Medium is omitted, not reported — do not inflate trivia to Medium.

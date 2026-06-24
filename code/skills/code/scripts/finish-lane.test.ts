@@ -682,3 +682,151 @@ test("suggestLenses: an extensionless CHANGELOG routes prose-quality", () => {
   expect(suggestLenses(["CHANGELOG"])).toContain("prose-quality-pr-copy.md")
   expect(suggestLenses(["docs/HISTORY"])).toContain("prose-quality-pr-copy.md")
 })
+
+// --- seal <-> gate-before-push.sh parity -----------------------------------
+//
+// finish-lane.ts writes the seal sentinel; the hook decides push/PR access by
+// recomputing the branch slug and scope hash itself. These tests run the REAL
+// hook script against repos sealed by the real finish-lane, so any drift
+// between the two implementations (slug rules, hash inputs, stderr handling)
+// fails here instead of silently bricking the gate.
+
+const gateHook = path.join(import.meta.dir, "..", "..", "..", "hooks", "gate-before-push.sh")
+// The hook needs jq; it may live outside the stripped-down systemPath.
+const jqBin = spawnSync("sh", ["-c", "command -v jq"], { encoding: "utf8" }).stdout?.trim() ?? ""
+const hookPath = jqBin ? `${path.dirname(jqBin)}:${systemPath}` : systemPath
+const testIfJq = jqBin ? test : test.skip
+
+function makePluginData(): string {
+  const dir = mkdtempSync(path.join(tmpdir(), "finish-lane-plugin-data-"))
+  tempDirs.push(dir)
+  return dir
+}
+
+function runFinishLaneArgs(repo: string, args: string[], env: Record<string, string> = {}): { stdout: string; stderr: string; status: number | null } {
+  const result = spawnSync(process.execPath, [finishLaneScript, ...args], {
+    cwd: repo,
+    encoding: "utf8",
+    env: { ...process.env, PATH: systemPath, ...env },
+  })
+  return { stdout: result.stdout ?? "", stderr: result.stderr ?? "", status: result.status }
+}
+
+function runHook(repo: string, pluginData: string, command = "git push"): { status: number | null; stdout: string } {
+  const event = JSON.stringify({ tool_name: "Bash", tool_input: { command }, cwd: repo })
+  const result = spawnSync("sh", [gateHook], {
+    cwd: repo,
+    encoding: "utf8",
+    input: event,
+    env: { ...process.env, PATH: hookPath, CLAUDE_PLUGIN_DATA: pluginData },
+  })
+  return { status: result.status, stdout: result.stdout ?? "" }
+}
+
+// Branch names with runs of unsafe chars exercise the slug rules end-to-end:
+// both sides must collapse the run to one '-' and strip edge dashes, or the
+// hook looks up a sentinel filename finish-lane never wrote and a correctly
+// sealed branch stays blocked forever.
+testIfJq("hook parity: a sealed branch with slug-hostile name opens the gate, and goes stale on edit", () => {
+  const repo = makeRepo()
+  const pluginData = makePluginData()
+  run("git", ["checkout", "-q", "-b", "feat(scope)/x"], repo, { PATH: systemPath })
+  writeRepoFile(repo, "notes.txt", "in scope\n")
+
+  const arm = runFinishLaneArgs(repo, ["--base", "HEAD", "--arm"], { CLAUDE_PLUGIN_DATA: pluginData })
+  expect(arm.status).toBe(0)
+  expect(arm.stdout).toContain("ARMED")
+
+  // Armed but unsealed: the terminal action must be denied.
+  const blocked = runHook(repo, pluginData)
+  expect(blocked.status).toBe(0)
+  expect(blocked.stdout).toContain('"permissionDecision": "deny"')
+
+  const seal = runFinishLaneArgs(repo, ["--base", "HEAD", "--seal"], { CLAUDE_PLUGIN_DATA: pluginData })
+  expect(seal.status).toBe(0)
+  expect(seal.stdout).toContain("SEALED feat-scope-x ")
+
+  // Fresh seal: the hook recomputes slug + scope hash and must agree.
+  const allowed = runHook(repo, pluginData)
+  expect(allowed.status).toBe(0)
+  expect(allowed.stdout).toBe("")
+
+  // Any scope change after sealing re-blocks the push.
+  writeRepoFile(repo, "notes.txt", "edited after seal\n")
+  const stale = runHook(repo, pluginData)
+  expect(stale.status).toBe(0)
+  expect(stale.stdout).toContain('"permissionDecision": "deny"')
+})
+
+// An ambiguous refname (a branch AND a tag named the same) makes a successful
+// `git diff base...HEAD` warn on stderr. The hook hashes the diff with
+// 2>/dev/null, so finish-lane must hash stdout only — folding the warning in
+// would make every seal in such a repo permanently stale.
+testIfJq("hook parity: a git stderr warning during the scope diff does not poison the seal", () => {
+  const repo = makeRepo()
+  const pluginData = makePluginData()
+  run("git", ["branch", "ambig"], repo, { PATH: systemPath })
+  run("git", ["tag", "ambig"], repo, { PATH: systemPath })
+  run("git", ["checkout", "-q", "-b", "work"], repo, { PATH: systemPath })
+  writeRepoFile(repo, "src/app.ts", "export const value = 1\n")
+  run("git", ["add", "src/app.ts"], repo, { PATH: systemPath })
+  run("git", ["commit", "-qm", "feature"], repo, { PATH: systemPath })
+
+  const arm = runFinishLaneArgs(repo, ["--base", "ambig", "--arm"], { CLAUDE_PLUGIN_DATA: pluginData })
+  expect(arm.status).toBe(0)
+
+  const seal = runFinishLaneArgs(repo, ["--base", "ambig", "--seal"], { CLAUDE_PLUGIN_DATA: pluginData })
+  expect(seal.status).toBe(0)
+  expect(seal.stdout).toContain("SEALED")
+
+  const allowed = runHook(repo, pluginData)
+  expect(allowed.status).toBe(0)
+  expect(allowed.stdout).toBe("")
+})
+
+// Detached HEAD: finish-lane's `git branch --show-current` prints empty and it
+// seals as "detached"; the hook must derive the same name, not "HEAD".
+testIfJq("hook parity: a detached-HEAD seal opens the gate", () => {
+  const repo = makeRepo()
+  const pluginData = makePluginData()
+  run("git", ["checkout", "-q", "--detach"], repo, { PATH: systemPath })
+  writeRepoFile(repo, "notes.txt", "in scope\n")
+
+  const arm = runFinishLaneArgs(repo, ["--base", "HEAD", "--arm"], { CLAUDE_PLUGIN_DATA: pluginData })
+  expect(arm.status).toBe(0)
+
+  const seal = runFinishLaneArgs(repo, ["--base", "HEAD", "--seal"], { CLAUDE_PLUGIN_DATA: pluginData })
+  expect(seal.status).toBe(0)
+  expect(seal.stdout).toContain("SEALED detached ")
+
+  const allowed = runHook(repo, pluginData)
+  expect(allowed.status).toBe(0)
+  expect(allowed.stdout).toBe("")
+})
+
+// --fix mutates files after the scope hash is computed, so combining it with
+// --seal would always write an immediately-stale sentinel. Refuse up front.
+test("--fix combined with --seal is refused before any work", () => {
+  const repo = makeRepo()
+  const result = runFinishLaneArgs(repo, ["--fix", "--seal"])
+
+  expect(result.status).toBe(2)
+  expect(result.stderr).toContain("--fix cannot be combined with --seal")
+  expect(existsSync(path.join(repo, ".workflow"))).toBe(false)
+})
+
+// An unborn HEAD has no commit to stamp into the sentinel; the hook requires a
+// non-empty stored head, so a seal written there would be dead on arrival.
+// Refuse it instead (there is nothing to push yet either).
+test("--seal on an unborn HEAD is refused and writes no sentinel", () => {
+  const repo = mkdtempSync(path.join(tmpdir(), "finish-lane-unborn-"))
+  tempDirs.push(repo)
+  run("git", ["init", "-q"], repo, { PATH: systemPath })
+  writeRepoFile(repo, "notes.txt", "in scope\n")
+
+  const result = runFinishLaneArgs(repo, ["--seal"])
+
+  expect(result.status).toBe(2)
+  expect(result.stdout).toContain("SEAL REFUSED: HEAD has no commits")
+  expect(existsSync(path.join(repo, ".workflow/finish-lane/seal"))).toBe(false)
+})
