@@ -1,14 +1,16 @@
 ---
 name: claude
 description: >
-  Run Claude Code from Codex. Use when users ask to delegate work to Claude,
-  drive a Claude Code tmux/TUI session, continue or resume a Claude Code
-  session, manually take over Claude, run `claude -p`, or get machine-readable
-  output from Claude Code in the terminal.
+  Run, monitor, resume, or take over Claude Code from Codex. Use when users ask
+  to delegate work to Claude, drive a Claude Code tmux/TUI session, continue a
+  prior session, manually attach, run `claude -p`, or get machine-readable
+  terminal output from Claude Code. Also use when a Codex run needs explicit
+  external data-sharing approval context before sending prompts, diffs, plans,
+  or workspace content to Claude Code/Anthropic.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.6.3"
+  version: "1.6.4"
 ---
 
 # Claude Code CLI
@@ -17,6 +19,47 @@ Use this skill when you need the local `claude` CLI from a Codex-style harness.
 Bias toward tmux-backed Claude Code TUI sessions so the user can watch, attach,
 and take over. Use non-interactive `claude -p` only when the user explicitly
 wants a plain one-shot command, JSON output, or a pipe-friendly API-like call.
+
+## External Data-Sharing Approval
+
+Running Claude Code from Codex sends the prompt and any included diff, plan, or
+workspace context to Claude Code/Anthropic. This skill cannot grant user consent
+by itself. Before sending private repo content, verify the current user message
+explicitly authorizes all of:
+
+- destination: Claude Code/Anthropic
+- scope: the exact repo/path and data to share, such as the uncommitted diff,
+  staged diff, named files, plan, or broader workspace context
+- purpose: review, critique, planning, or implementation assistance
+- limits: whether secrets, `.env` files, credentials, or files outside the
+  named scope are excluded
+
+If the authorization is missing or vague, stop before running Claude and ask:
+
+```text
+Running Claude Code will send <scope> from <repo/path> to Claude Code/Anthropic
+for <purpose>. Do you approve that external data sharing? I will exclude secrets,
+.env files, credentials, and files outside the named scope unless you say
+otherwise.
+```
+
+If the authorization is present, carry it into the prompt or prompt file so the
+run is auditable and approval reviewers can see the user-approved scope:
+
+```text
+User-approved external data sharing:
+- Destination: Claude Code/Anthropic.
+- Scope: <exact repo/path and data>.
+- Purpose: <review/critique/planning/implementation assistance>.
+- Limits: <secret/file exclusions>.
+
+Task:
+...
+```
+
+For review tasks, prefer a scoped diff over a broad workspace review when it
+satisfies the request. If Claude needs more context than the approved scope,
+stop and ask the user before widening it.
 
 ## First Check
 
@@ -67,6 +110,10 @@ deciding it hung; under `phase=thinking` or `phase=responding` a large
 `stalled_for_seconds` is a stronger sign of a genuine stall. Do not add magic
 stop words to prompts; Claude Code's structured transcript and `turn_duration`
 event are the completion signal.
+
+The default tmux run is complete when the wrapper exits, `status.env` records
+the final phase and session id, `final.md` contains the useful answer, and the
+transcript path is available for follow-up.
 
 Use `--permission-mode auto` for tmux runs that should keep moving without
 interactive permission prompts. Claude Code's auto mode runs tool calls through
@@ -187,7 +234,7 @@ scripts/claude-tmux-run.sh run \
   --workspace "$PWD" \
   --effort medium \
   --permission-mode auto \
-  --prompt "Review the current uncommitted changes in this repo. Focus on concrete bugs, regressions, misleading docs, packaging issues, and risky assumptions. Output sections in this exact order: Findings, Open questions, Residual risks. Findings should come first with file references. If there are no findings, say 'No findings'."
+  --prompt "User-approved external data sharing: Destination: Claude Code/Anthropic. Scope: current uncommitted changes in this repo. Purpose: code review. Limits: exclude secrets, .env files, credentials, and files outside the approved scope. Task: Review the current uncommitted changes in this repo. Focus on concrete bugs, regressions, misleading docs, packaging issues, and risky assumptions. Output sections in this exact order: Findings, Open questions, Residual risks. Findings should come first with file references. If there are no findings, say 'No findings'."
 ```
 
 For long prompts, write a prompt file and use `--prompt-file`:
@@ -213,6 +260,12 @@ Example narrowed diff review:
 ```bash
 git diff --unified=3 -- path/to/file1 path/to/file2 > /tmp/review.diff
 cat > /tmp/claude-review.md <<'EOF'
+User-approved external data sharing:
+- Destination: Claude Code/Anthropic.
+- Scope: the diff included below only.
+- Purpose: code review.
+- Limits: exclude secrets, .env files, credentials, and files outside this diff.
+
 Review this diff only. Focus on concrete bugs, regressions, misleading docs,
 packaging issues, and risky assumptions. Findings first with file references.
 If there are no findings, say "No findings".
@@ -263,6 +316,18 @@ single next action listed here.
 `claude --version` or `claude auth status --text` fails.
 
 Next action: stop and report the setup or auth problem.
+
+### External sharing approval denied
+
+Codex, sandbox escalation, or an approval reviewer blocks the run because
+sending the prompt, diff, plan, or workspace content to Claude Code/Anthropic is
+external data sharing.
+
+Next action: do not retry the same command. Report that Claude preflight may be
+healthy but the run did not launch because explicit user approval for the
+scoped external sharing was missing or insufficient. Ask for approval using the
+template above, or narrow the scope to a diff, staged diff, named files, or a
+summary that avoids private content.
 
 ### Non-zero exit
 
@@ -351,17 +416,3 @@ Read [references/claude-cli.md](references/claude-cli.md) only when you need:
 - worktree mode
 - settings overrides
 - more detailed JSON behavior notes
-
-## Update Check
-
-On first use in a session, silently check:
-
-1. `https://raw.githubusercontent.com/abpai/skills/main/versions.json`
-2. Compare the remote `claude` version to this file's `metadata.version`
-3. If remote is newer, pause before the task and ask whether to run:
-
-```bash
-npx skills update claude
-```
-
-If the fetch fails, skip the check silently.

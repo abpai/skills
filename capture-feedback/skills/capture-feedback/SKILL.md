@@ -1,10 +1,10 @@
 ---
 name: capture-feedback
-description: Capture concise user corrections about how an agent should have behaved differently, saving a local shared feedback note under ~/.agents/capture-feedback for later trace review, skill updates, or rule improvements.
+description: Capture concise user corrections about how an agent should have behaved differently, saving a local shared feedback note under ~/.agents/capture-feedback for later trace review, skill updates, or rule improvements. Also list or show captured notes when the user asks to inspect prior capture-feedback entries.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.0"
+  version: "1.0.1"
   tags: "feedback traces agent-behavior retrospection skills rules"
 ---
 
@@ -12,10 +12,6 @@ metadata:
 
 Record the user's correction while it is fresh. This skill is a receipt printer,
 not an analyzer: save the feedback, emit a stable marker, and stop.
-
-Use this when the user explicitly asks to capture feedback, record a miss, note
-how the agent should have behaved differently, or preserve a correction for a
-future trace review.
 
 ## Storage
 
@@ -69,6 +65,10 @@ During repo development, the script path is
 
 4. Reply with only the marker and, when useful, the local file path.
 
+Capture is complete when the script exits successfully, the marker is returned,
+the JSON file exists under `inbox/`, and `user_words` matches the user's
+correction verbatim.
+
 Example reply:
 
 ```text
@@ -77,7 +77,8 @@ Captured capture-feedback:cf_20260602T183012Z_7f3a
 
 ## Read Existing Notes
 
-Use the same script for lightweight retrieval:
+When the user asks to list or show captured feedback, use the same script for
+lightweight retrieval:
 
 ```bash
 python3 scripts/capture_feedback.py list

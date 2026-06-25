@@ -7,6 +7,14 @@ and synthesis. Codex provides an independent critique via the CLI.
 This is an internal Pi module. Invoke it through `/pi:debate`; do not expose it
 as a standalone skill.
 
+Use this module for architecture, product workflow, UI layout, or technical
+decisions that need a proposal, independent critique, synthesis, and ADR. Skip
+it for ordinary implementation, routine code review, or questions that do not
+need an ADR-style decision.
+
+Expected inputs from `/pi:debate`: the decision question, any named repos or
+files, user constraints, and the command preflight snapshot.
+
 ## Process
 
 ### 1. Confirm the Question
@@ -96,6 +104,10 @@ Show the full synthesis to the user. Highlight:
 - The first concrete next step
 - For UI layout debates, the selected layout direction and any visual artifact
   or screenshot that should be produced next
+
+The debate is complete when the proposal has been shown, critique provenance is
+clear, synthesis includes an ADR, unresolved tensions and rejected options are
+named, and the first next step is explicit.
 
 ### 7. Additional Rounds (optional)
 

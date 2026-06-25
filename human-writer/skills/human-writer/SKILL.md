@@ -1,12 +1,12 @@
 ---
 name: human-writer
 description: >-
-  Edit prose so it sounds natural, specific, and human-written. Use when a draft
-  feels generic, over-polished, promotional, repetitive, or model-generated, or
-  when asked to humanize, deslop, or remove AI-sounding patterns.
+  Rewrite AI-sounding drafts into natural, specific prose. Use when asked to
+  humanize, deslop, or remove model-generated patterns, or when prose feels
+  generic, over-polished, promotional, repetitive, or too tidy.
 metadata:
   author: Andy Pai
-  version: "1.4"
+  version: "1.4.1"
   upstream_skill: "https://github.com/blader/humanizer"
   tags: "writing editing humanize voice anti-slop GEO"
 ---
@@ -15,7 +15,8 @@ metadata:
 
 Use this skill to make text sound like a person wrote it, not a model.
 
-Reference catalog: `references/patterns.md`.
+Read `references/patterns.md` only when diagnosing AI tells, doing a second
+pass, or explaining remaining patterns.
 
 ## Working stance
 
@@ -32,6 +33,10 @@ Reference catalog: `references/patterns.md`.
 3. Revise in a second pass using the pattern catalog as a checklist, not a script.
 4. Read aloud and trim anything that still feels synthetic.
 
+This flow is complete when the intended meaning and register are preserved,
+suspect spans have been handled, and the final read-aloud pass no longer sounds
+inflated, vague, or synthetic.
+
 ## Heuristics
 
 - Cut empty praise, grand claims, and fake certainty.
@@ -42,13 +47,5 @@ Reference catalog: `references/patterns.md`.
 
 ## Output
 
-Return the revised text. If helpful, add a brief note on the main fixes or any AI tell that remains.
-
-## Update Check
-
-On first use in a session, silently check for a newer version:
-
-1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
-2. Compare the `human-writer` version against this file's `metadata.version`.
-3. If the remote version is newer, pause and ask whether the user wants the skill updated first.
-4. If the fetch fails or web access is unavailable, skip silently.
+Return the revised text. Add notes only when the user asks, when meaning changed
+materially, or when an AI tell remains.

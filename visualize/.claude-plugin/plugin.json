@@ -1,6 +1,6 @@
 {
   "name": "visualize",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Generate a self-contained HTML visualization in an ivory/clay editorial gallery style for systems, plans, code flows, and concepts.",
   "author": {
     "name": "Andy Pai"

@@ -21,6 +21,29 @@ Four commands:
 - `/pi:debate` runs a structured propose -> critique -> synthesize loop for
   architecture, product workflow, or UI layout decisions
 
+## Start Here
+
+- Start with `/pi:plan` for new or resumed long-running build work that needs a
+  brief, rubric, and task slices.
+- Use `/pi:execute [task id/filter]` after the plan is approved; omit the filter
+  to run the first non-complete task.
+- Use `/pi:review` after execute has moved the run to review, or when checking a
+  completed run.
+- Use `/pi:debate` for standalone architecture, product, UI, or technical
+  decisions that need an ADR-style synthesis rather than a full Pi run.
+
+Command completion is:
+
+- `/pi:plan`: `brief.md`, `rubric.json`, `tasks/*.json`, `state.json`, and
+  `.agents/work/current.json` are written and the user has approved execution.
+- `/pi:execute`: all runnable tasks are `complete`, `failed`, or `blocked`, and
+  `state.json.phase` is `"review"`.
+- `/pi:review`: `evaluations/suite-results.json` and
+  `evaluations/review.json` exist, and `state.json.phase` is `"done"` or
+  returned to `"execute"` with a repair plan.
+- `/pi:debate`: proposal, critique/fallback, synthesis, ADR, unresolved
+  tensions, and first next step have been presented.
+
 ## Core Design
 
 1. Keep the coordinator simple. The main thread owns orchestration, writes state,
@@ -70,6 +93,27 @@ such as `internal/protocol/templates/task.json`.
 ## Agents
 
 See [AGENTS.md](AGENTS.md) for agent descriptions and roles.
+
+See [references/simulated-conversation.md](references/simulated-conversation.md)
+for an end-to-end example conversation. Use it only as example material after
+the command flow is understood.
+
+## Branch Matrix
+
+- **UI work**: create layout options, record the chosen direction, keep visual
+  verification in task checks, and require screenshot/browser evidence later.
+- **Non-UI work**: keep `visual_design.applicable=false` and skip layout
+  artifacts.
+- **Provider choice**: run Claude always; add Codex/Gemini only when selected
+  in `research_policy.providers`.
+- **Executor choice**: `primary_executor` chooses the builder. Missing selected
+  executors are hard blocks; `codex_policy` governs critics, not builders.
+- **Resume**: never restart automatically. Resolve the active run, read
+  `state.json`, then resume from the recorded phase and step.
+
+`STATE.md` is authoritative for state layout, selection rules, and policy
+semantics. Keep repeated state/policy prose here short and point back to it
+when details would duplicate.
 
 ## Phase 1: Plan
 

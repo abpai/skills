@@ -1,7 +1,7 @@
 ---
 name: composer
-description: "Grouped Cursor Composer workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'setup' (verify Cursor Agent/API key), 'generate' (delegate implementation to Composer), 'review' (strict read-only Composer review of a diff or PR)."
-argument-hint: "[subcommand] [args] — e.g. generate <brief>, --review <PR>, setup --smoke"
+description: "Route Cursor Composer workflows through one scoped /composer command. Use setup to verify Cursor Agent and API-key readiness, generate to delegate bounded implementation from a planner brief, and review for strict read-only Composer review of a diff or PR."
+argument-hint: "[subcommand] [args] - e.g. generate <brief>, --review <PR>, setup --smoke"
 license: MIT
 # allowed-tools lives on this umbrella, not on the per-workflow wrappers: the
 # wrappers set disable-model-invocation + user-invocable: false, so they are
@@ -39,7 +39,7 @@ allowed-tools:
   - Grep
   - Glob
 metadata:
-  version: "1.4.2"
+  version: "1.4.3"
 ---
 
 # Composer Workflow Pack
@@ -51,13 +51,8 @@ executes or reviews in a bounded workspace, and the parent agent inspects the
 result before shipping.
 
 This umbrella is the single scoped `/composer` command users see in the `/`
-menu. Each workflow also ships as its own `composer/skills/<name>/SKILL.md`, but
-those per-command skills set `disable-model-invocation: true`,
-`user-invocable: false`, and `metadata.internal: true`, so they stay out of the
-model's auto-invocation, out of the `/` menu (no unscoped `/<name>` duplicates
-of the umbrella), and out of flat-list installers like the `npx skills`
-installer used by Codex. Reach any workflow through this umbrella — the
-subcommand router below maps `/composer <name>` to the matching module.
+menu. Hidden wrappers stay out of model routing, menus, and flat-list
+installers; reach every workflow through `/composer <name>`.
 
 ## Subcommand invocation
 
@@ -71,9 +66,11 @@ namespace. Both forms are equivalent and supported:
 
 Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and
 match it (case-insensitive) against `setup`, `generate`, or `review`. On a
-match, load `skills/composer/<subcommand>.md` and treat the remaining tokens as
-that workflow's input. If the first token is not a known subcommand, treat the
-whole input as a natural-language request and route by intent.
+match, load the sibling module `./<subcommand>.md` and treat the remaining
+tokens as that workflow's input. Routing is complete when exactly one module is
+selected, loaded, and handed the remaining args. If the first token is not a
+known subcommand, treat the whole input as a natural-language request and route
+by intent.
 
 ## Routing
 

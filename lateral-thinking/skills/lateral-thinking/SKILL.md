@@ -2,13 +2,15 @@
 name: lateral-thinking
 description: >
   Generate non-obvious hypotheses by decomposing a problem to its mechanism and
-  raiding distant fields for transferable patterns. Use when the user asks
-  "what are we missing", wants to go deeper, needs cross-domain ideas, is stuck
-  in a local optimum, or wants brainstorming that goes beyond standard advice.
+  raiding distant fields for transferable patterns. Use when the user asks what
+  we are missing, wants to go deeper, needs cross-domain ideas, is stuck in a
+  local optimum, has repeated obvious fixes that fail, or wants mechanism-level
+  brainstorming beyond standard advice. Use distill first when the system itself
+  is still unclear.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1"
+  version: "1.1.1"
   upstream_skill: "https://github.com/ogiberstein/lateral-thinking-skill"
 ---
 
@@ -22,9 +24,9 @@ with a repo-native rewrite for portability and clearer boundaries with nearby sk
 Use this skill when ordinary analysis is already exhausted and the user needs a
 good second or third lens, not a recap of the obvious first one.
 
-## When To Use It
+## Invocation Choice
 
-Trigger on requests like:
+Use `lateral-thinking` for requests like:
 
 - "What are we missing?"
 - "Go deeper"
@@ -40,17 +42,12 @@ Typical fit:
 - research ideation
 - policy, operations, growth, or process problems that feel trapped in local optimization
 
-## When Not To Use It
+Use `distill` first if the user needs a clean explanation of what a system *is*.
+Answer directly for ordinary brainstorming, literature review, or standard
+best-practices requests.
 
-- If the user first needs a clean explanation of what a system *is*, use `distill`
-- If the task is ordinary brainstorming with no need for mechanism-level transfer,
-  a normal ideation pass is often enough
-- If the user needs a literature review or a standard best-practices answer, do that directly
-
-## Relationship To `distill`
-
-- `distill` compresses a system to its essential primitives
-- `lateral-thinking` uses those primitives to generate non-obvious hypotheses
+`distill` compresses a system to its essential primitives. `lateral-thinking`
+uses those primitives to generate non-obvious hypotheses.
 
 When both apply:
 
@@ -102,6 +99,9 @@ Ask:
 - What happens if the sign flips?
 - What is the dual or inverse?
 
+This step is complete when the skeleton names the main actors, constraints,
+feedback loops, and a likely regulator or missing variable.
+
 ### 3. Generate Ring 2 discoveries
 
 Produce 3-5 non-obvious observations about the parts themselves:
@@ -132,6 +132,9 @@ Search for the same mechanism in distant fields. Good source domains include:
 For each candidate analogy, name the mechanism that transfers. Avoid surface-level
 metaphors.
 
+This step is complete when every candidate names the source field, transferable
+mechanism, and reason it is not a decorative analogy.
+
 ### 5. Synthesize hypotheses
 
 For each promising mechanism transfer, write:
@@ -151,6 +154,9 @@ Look for combinations where two hypotheses reinforce or unlock each other.
 
 Sometimes the real insight is not one borrowed mechanism, but the interaction of
 two borrowed mechanisms.
+
+This step is complete when each surviving hypothesis has a falsifier or concrete
+test, and intersections are named separately from standalone ideas.
 
 ### 7. Kill weak ideas
 
@@ -214,7 +220,13 @@ Penalize:
 3. ...
 ```
 
-For workshops, strategy debates, or broad ideation sets, optionally create a self-contained HTML hypothesis board instead of a long Markdown report. Use cards for Ring 2 discoveries and Ring 3 hypotheses, show source fields as labels, make tests/falsifiers visible, and group intersections so the user can compare candidates side by side.
+## Output Choice
+
+Return Markdown by default. For workshops, strategy debates, or broad ideation
+sets, create a self-contained HTML hypothesis board instead of a long Markdown
+report. Use cards for Ring 2 discoveries and Ring 3 hypotheses, show source
+fields as labels, make tests/falsifiers visible, and group intersections so the
+user can compare candidates side by side.
 
 ## Guardrails
 
@@ -234,17 +246,3 @@ Stop when:
 - the skeleton stabilizes
 - a second pass adds little
 - the user has enough to test
-
-## Update Check
-
-On first use in a session, silently check for a newer version:
-
-1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`
-2. Compare the version for `lateral-thinking` against this file's `metadata.version`
-3. If the remote version is newer, pause before the main task and ask:
-   > **lateral-thinking** update available (local {X.Y} → remote {A.B}).
-   > Would you like me to update it for you first?
-   > I can run `npx skills update lateral-thinking` for you.
-4. If the user says yes, run the update before continuing
-5. If the user says no, continue with the current local version
-6. If the fetch fails or web access is unavailable, skip silently

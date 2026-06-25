@@ -1,14 +1,17 @@
 ---
 name: engineering
-description: "Grouped engineering-practice workflow pack. Invoke via engineering <subcommand>; per-command skills are hidden wrappers. Routes grill-me, tdd, zoom-out, improve-architecture, defined-terms, complexity-report, and reduce."
-argument-hint: "[subcommand] [args] — e.g. tdd add retries, --grill-me, complexity-report src/, reduce ship onboarding"
+description: "Route engineering-practice workflows through one scoped /engineering command. Use grill-me to stress-test a plan, tdd for behavior-first red/green/refactor, zoom-out for orientation, improve-architecture for deeper modules, defined-terms for DDD glossaries, complexity-report for read-only complexity findings, clean-code for TypeScript maintainability review, and reduce for plan simplification."
+argument-hint: "[subcommand] [args] - e.g. tdd add retries, clean-code src/, complexity-report src/, reduce ship onboarding"
 metadata:
-  version: "1.9.1"
+  version: "1.10.0"
 ---
 
 # Engineering Workflow Pack
 
-This umbrella skill is the model-invocable entry point for a family of engineering-practice workflows (inspired by Matt Pocock), and the single scoped `/engineering` command users see in the `/` menu. Each workflow also ships as its own `engineering/skills/<name>/SKILL.md`, but those per-command skills set `disable-model-invocation: true`, `user-invocable: false`, and `metadata.internal: true`, so they stay out of the model's auto-invocation, out of the `/` menu (no unscoped `/<name>` duplicates of the umbrella), and out of flat-list installers like the `npx skills` installer used by Codex. Reach any workflow through this umbrella — the subcommand router below maps `/engineering <name>` to the matching module. The workflow modules referenced below live beside this `SKILL.md` (with shared docs under `references/`) as flat support files.
+This umbrella skill is the model-invocable entry point for the engineering
+workflow pack and the single scoped `/engineering` command users see in the `/`
+menu. Hidden wrappers stay out of model routing, menus, and flat-list
+installers; reach every workflow through `/engineering <name>`.
 
 ## Subcommand invocation
 
@@ -17,7 +20,7 @@ Invoke a workflow by passing its name as the first argument to this umbrella —
 - `engineering <subcommand> <args>` — e.g. `engineering tdd add retries`
 - `engineering --<subcommand> <args>` — e.g. `engineering --tdd add retries`
 
-Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load `skills/engineering/<subcommand>.md` and treat the remaining tokens as that workflow's input. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `grill-me`, `tdd`, `zoom-out`, `improve-architecture`, `defined-terms`, `complexity-report`, `reduce`.
+Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `grill-me`, `tdd`, `zoom-out`, `improve-architecture`, `defined-terms`, `complexity-report`, `clean-code`, `reduce`.
 
 ## Routing
 
@@ -27,6 +30,7 @@ Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and m
 - Use `improve-architecture.md` for architecture improvement, deep modules, locality, leverage, testability, or AI-navigability.
 - Use `defined-terms.md` for extracting a DDD-style ubiquitous-language glossary from the conversation into `DEFINED_TERMS.md`, flagging ambiguities and synonyms.
 - Use `complexity-report.md` for read-only complexity and performance reports, evidence-ranked findings, stable finding IDs, proof obligations, and next-turn implementation guidance.
-- Use `reduce.md` to optimize a plan (or goal, or plan file) with Elon Musk's five-step first-principles algorithm — question the requirements, delete, simplify, accelerate, automate — gating on the question and delete steps, debating each step across two providers (Claude ⇄ Codex), and rendering the reworked plan via the `visualize` skill.
+- Use `clean-code.md` for clean-code and TypeScript maintainability reviews that split deterministic scanner leads from agent-owned semantic judgment, using principles derived from `labs42io/clean-code-typescript`.
+- Use `reduce.md` to optimize a plan, goal, or plan file with a gated five-step first-principles sequence.
 
 When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.

@@ -1,15 +1,14 @@
 ---
 name: bun-expert
 description: >
-  Expert guidance for JavaScript/TypeScript development with the Bun runtime.
-  Covers project setup, package management, HTTP servers, built-in APIs,
-  testing, bundling, and migration from Node.js. Use when starting Bun
-  projects, using Bun APIs (Bun.serve, sql/SQL, s3, redis, Bun.$), migrating
+  Bun runtime guidance for JavaScript and TypeScript projects. Use when
+  starting Bun projects, managing packages, building HTTP servers, using Bun
+  APIs (`Bun.serve`, SQL, S3, Redis, `Bun.$`), testing, bundling, migrating
   from Node.js, or troubleshooting Bun-specific behavior.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.4"
+  version: "1.4.1"
   upstream_skill: "https://bun.com/docs"
   tags: "bun javascript typescript runtime server bundler test"
 ---
@@ -227,6 +226,10 @@ JavaScript into the standalone HTML output, so the result stays single-file.
 4. Adopt Bun-native APIs where they simplify code (`Bun.serve`, `sql`, `redis`, `s3`, `Bun.$`).
 5. Run your full tests in CI on Bun before removing Node-specific fallbacks.
 
+Migration is complete when the lockfile is updated, the chosen Bun commands run
+locally, CI executes the same commands, and any retained Node fallback is named
+with its reason.
+
 ---
 
 ## Deep-Dive References
@@ -253,17 +256,3 @@ JavaScript into the standalone HTML output, so the result stays single-file.
 - https://bun.com/docs/runtime/cron
 - https://bun.com/docs/api/hashing
 - https://bun.com/docs/guides/ecosystem/migrate-from-nodejs
-
-## Update Check
-
-On first use in a session, silently check for a newer version:
-
-1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
-2. Compare the version for `bun-expert` against this file's `metadata.version`.
-3. If the remote version is newer, pause before the main task and ask:
-   > **bun-expert** update available (local {X.Y} → remote {A.B}).
-   > Would you like me to update it for you first?
-   > I can run `npx skills update bun-expert` for you.
-4. If the user says yes, run the update before continuing.
-5. If the user says no, continue with the current local version.
-6. If the fetch fails or web access is unavailable, skip silently.

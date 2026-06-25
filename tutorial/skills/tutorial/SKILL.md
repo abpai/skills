@@ -2,10 +2,9 @@
 name: tutorial
 description: >
   Write hands-on, code-first tutorials where every step ends in a runnable
-  action and the reader finishes able to do the thing. Trigger on: "write a
-  tutorial", "show me how to", "step-by-step guide", "teach me to build",
-  "how do I set up", "walk me through building", or any request for
-  instructions the reader follows along with.
+  action and the reader finishes able to do the thing. Use when the user asks
+  for a tutorial, "show me how to", a step-by-step guide, setup walkthrough, or
+  a teach-me-to-build path where the reader follows along.
 argument-hint: "[topic or concept to teach]"
 allowed-tools:
   - Read
@@ -17,7 +16,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Tutorial
@@ -49,11 +48,11 @@ The first working thing must appear no later than step 2. Don't defer visible re
 ## Voice
 
 - **Sentences: 5–12 words.** Rhythm is short-short-earned-long — two short declarative sentences, then a longer one when the concept demands it.
-- **Paragraphs: max 2 sentences.** More goes into code or a table.
-- **Everyday verbs** — run, wrap, pull, swap, check, build, set, add, read, find, make, start, stop.
-- **Contractions always.** First and second person only. Zero passive voice. No hedging.
+- **Keep paragraphs to 2 sentences max.** More goes into code or a table.
+- **Use everyday verbs** — run, wrap, pull, swap, check, build, set, add, read, find, make, start, stop.
+- **Use contractions.** First and second person only. Zero passive voice. No hedging.
 - **Show before tell.** Lead with the code snippet, then explain it. Never explain then show.
-- **Repetition is clarity.** If it's called a "handler," call it "handler" every time.
+- **Repeat names consistently.** If it's called a "handler," call it "handler" every time.
 - **Define terms inline on first use.** `"a JWT (JSON Web Token)"`. No footnotes, no forward references.
 
 ## Structure
@@ -65,6 +64,7 @@ The first working thing must appear no later than step 2. Don't defer visible re
   1. Code block first, complete and runnable as written.
   2. One short paragraph explaining what it does and why.
   3. A command to run, or output to verify the step worked.
+  4. A done-when check the reader can observe before moving on.
 - **Checkpoint every 2–3 steps.** One line showing what the reader should see. Lets readers self-diagnose before moving on.
 - **Closing: one sentence pointing forward.** Where does the reader go next? Never summarize what was just done.
 
@@ -110,8 +110,13 @@ Before returning, verify:
 4. No step teaches two things
 5. Checkpoints are present after every 2–3 steps
 6. No passive voice (is/was/been + past participle)
-7. No paragraph over 2 sentences, no step teaching two things
+7. No paragraph over 2 sentences
 
 ## Format
 
-Return Markdown by default. If the tutorial has many code files or exceeds 50 lines, write to a descriptive local path. For tutorials with visual structure (architecture diagrams, side-by-side comparisons, tabbed code), produce a self-contained HTML file instead — ivory background, serif headings, restrained borders, code panels with syntax theme.
+Choose the output format before writing. Return Markdown by default. If the
+tutorial has many code files or exceeds 50 lines, write to a descriptive local
+path. For tutorials with visual structure (architecture diagrams,
+side-by-side comparisons, tabbed code), produce a self-contained HTML file
+instead — ivory background, serif headings, restrained borders, code panels
+with syntax theme.

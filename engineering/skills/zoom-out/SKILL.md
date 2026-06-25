@@ -4,16 +4,18 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: Map an unfamiliar code area at a higher level before diving into details.
+description: Route unfamiliar-code orientation requests to the zoom-out module.
 argument-hint: "[code area or question]"
 ---
 
 # /engineering:zoom-out
 
-Use the Matt Pocock-inspired `zoom-out` module.
+Hidden wrapper for the `zoom-out` subcommand. Load the module and pass through
+the user input.
 
-1. Read `skills/engineering/zoom-out.md`.
-2. Explain the relevant modules, callers, and domain vocabulary one layer up.
-3. Keep the answer focused on orientation, not implementation changes.
+1. Read the sibling module `../engineering/zoom-out.md`.
+2. Treat `$ARGUMENTS` as the code area or question.
+3. Follow the module's workflow and stop if the module cannot be read.
+4. Preserve the wrapper invariant: return orientation sections, not implementation changes.
 
 User input: $ARGUMENTS

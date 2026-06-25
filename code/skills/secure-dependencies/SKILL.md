@@ -4,17 +4,18 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: Harden dependency resolution and supply-chain policy in the current repository.
+description: Route dependency and supply-chain hardening requests to the code workflow module.
 argument-hint: "[repo path or hardening request]"
 ---
 
 # /code:secure-dependencies
 
-Use the `secure-dependencies` module.
+Hidden wrapper for the `secure-dependencies` subcommand. Load the module and
+pass through the user input.
 
-1. Read `skills/code/secure-dependencies.md`.
-2. Inspect manifests, lockfiles, CI install commands, and dependency bot config.
-3. Apply only the ecosystem policies that match the repository.
-4. Validate with the relevant locked or frozen install commands.
+1. Read the sibling module `../code/secure-dependencies.md`.
+2. Treat `$ARGUMENTS` as the repository path or hardening request.
+3. Follow the module's Workflow, Stop Conditions, and Output Contract.
+4. Stop and report if the module cannot be read; do not reconstruct the workflow from memory.
 
 User input: $ARGUMENTS

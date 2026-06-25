@@ -4,7 +4,8 @@ description: >
   Decompose a complex system into essential primitives and a compressed mental model.
   Use when the user asks to distill, boil down, find core abstractions, get the
   "Karpathy version", or understand a codebase, architecture, paper, transcript, or
-  document set without a line-by-line walkthrough.
+  document set without a line-by-line walkthrough. Prefer lateral-thinking when
+  the user needs non-obvious hypotheses or cross-domain mechanism transfer.
 allowed-tools:
   - Read
   - Glob
@@ -15,7 +16,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2"
+  version: "1.2.1"
 ---
 
 # Distill
@@ -23,10 +24,6 @@ metadata:
 A skill for iteratively compressing complex systems down to their essential primitives —
 the minimal set of abstractions that captures the full behavioral essence while
 discarding accidental complexity.
-
-Use `distill` when the user needs a cleaner mental model of something complicated.
-If the real need is to generate non-obvious hypotheses, cross-domain analogies, or
-mechanism transfers, prefer `lateral-thinking` instead.
 
 Think of it like Andrej Karpathy reducing an automated research system to three files
 (`train.py`, `prepare.py`, `program.md`). The goal is not summarization — it's
@@ -114,6 +111,11 @@ Explicitly ask the user to challenge the decomposition:
 Based on feedback, propose a revised decomposition. Show what changed and why.
 Repeat until the user says it feels right.
 
+For one-shot asks, stop after a candidate decomposition when the primitive set
+is complete, orthogonal, minimal, and annotated with confidence flags. Ask
+another question only when the user's intended layer or use of the distillation
+is unclear enough to change the primitive set.
+
 ### Convergence Signals
 
 You're done when:
@@ -148,7 +150,7 @@ Given these primitives, here's how the full system works: [narrative]
 - [thing] — accidental complexity because [reason]
 ```
 
-### Minimal Implementation (default for codebases)
+### Minimal Implementation (only when requested or explicitly useful)
 A set of files (like Karpathy's 3 files) that capture the essential behavior.
 These should be:
 - Actually runnable (or close to it)
@@ -164,7 +166,7 @@ Useful when the distillation will be used to guide an agent or a rewrite.
 For complex systems, combine formats: a conceptual map plus a minimal implementation,
 or a behavioral spec with a reference implementation.
 
-### HTML Map
+### HTML Map (only when requested or when spatial comparison is the deliverable)
 Use a self-contained HTML artifact when the primitive set, relationships, and discarded complexity are easier to inspect spatially than as a linear document. Good fits include codebase maps, architecture primitives, research-paper concept graphs, and multi-document synthesis.
 
 The HTML map should include primitive cards, relationship arrows, confidence flags, and a "discarded as accidental" section. Keep the primitive names and reconstruction concise enough that the page can be read once.
@@ -224,17 +226,3 @@ Distillation often spans multiple turns. Keep a running state:
 
 If the session gets long, offer to write the current state to a file so the user
 can resume later or hand it to another agent session.
-
-## Update Check
-
-On first use in a session, silently check for a newer version:
-
-1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
-2. Compare the version for `distill` against this file's `metadata.version`.
-3. If the remote version is newer, pause before the main task and ask:
-   > **distill** update available (local {X.Y} → remote {A.B}).
-   > Would you like me to update it for you first?
-   > I can run `npx skills update distill` for you.
-4. If the user says yes, run the update before continuing.
-5. If the user says no, continue with the current local version.
-6. If the fetch fails or web access is unavailable, skip silently.

@@ -10,9 +10,10 @@ argument-hint: "[branch, package, path, subsystem, or scope]"
 
 # /code:thermo-nuclear
 
-Use the `thermo-nuclear` module.
+Hidden wrapper for the `thermo-nuclear` subcommand. Load the module and pass
+through the user input.
 
-1. Read `skills/code/thermo-nuclear.md`.
+1. Read the sibling module `../code/thermo-nuclear.md`.
 2. Define the review scope and protect the working tree before analysis.
 3. Gather concrete structural evidence from files, commands, and observed behavior.
 4. Report only evidence-backed findings, ordered by severity.

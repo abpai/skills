@@ -38,10 +38,10 @@
     },
     {
       "name": "engineering",
-      "description": "Engineering-practice workflows under /engineering:* commands, including TDD, architecture, defined terms, read-only complexity reports, and a five-step plan-optimization algorithm.",
+      "description": "Engineering-practice workflows under /engineering:* commands, including TDD, architecture, defined terms, clean-code reviews, read-only complexity reports, and a five-step plan-optimization algorithm.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "engineering" },
       "category": "productivity",
-      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out", "complexity", "performance"]
+      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out", "clean-code", "typescript", "complexity", "performance"]
     },
     {
       "name": "bun-expert",
@@ -52,10 +52,10 @@
     },
     {
       "name": "claude",
-      "description": "Run Claude Code CLI with tmux-backed TUI delegation, session continuation, manual takeover, and non-interactive fallback.",
+      "description": "Run Claude Code CLI with tmux-backed TUI delegation, external data-sharing approval handling, session continuation, manual takeover, and non-interactive fallback.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "claude" },
       "category": "tools",
-      "keywords": ["claude", "cli", "tmux", "tui", "delegation", "automation"]
+      "keywords": ["claude", "cli", "tmux", "tui", "delegation", "automation", "approval"]
     },
     {
       "name": "cli-design-expert",

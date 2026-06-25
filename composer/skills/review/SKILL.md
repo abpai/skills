@@ -13,13 +13,14 @@ argument-hint: "[diff scope, PR URL/number, or model hint]"
 
 # /composer:review
 
-Use the `review` module.
+Hidden wrapper for the `review` subcommand. Load the module and pass through
+the user input.
 
-1. Read the review module: `../composer/review.md` when installed as this
-   command wrapper, or `composer/skills/composer/review.md` in the repo.
-2. Resolve the review target and prepare a strict read-only review prompt.
-3. Run Composer review, verify findings, and return a findings-first verdict.
-4. Keep the review read-only — Composer never writes. The write-capable tools
+1. Read the sibling module `../composer/review.md`.
+2. Treat `$ARGUMENTS` as the diff scope, PR URL/number, or model hint.
+3. Follow the module's workflow and stop if the module cannot be read.
+4. Return a findings-first verdict after verifying Composer's findings.
+5. Keep the review read-only — Composer never writes. The write-capable tools
    above are reserved for a separate phase that runs only if the user explicitly
    asked to improve, update, or merge. In that case do those steps yourself
    after review; refresh against the current base and verify mergeability first.

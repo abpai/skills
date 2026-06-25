@@ -13,11 +13,12 @@ argument-hint: "[--smoke or env-file hint]"
 
 # /composer:setup
 
-Use the `setup` module.
+Hidden wrapper for the `setup` subcommand. Load the module and pass through
+the user input.
 
-1. Read the setup module: `../composer/setup.md` when installed as this command
-   wrapper, or `composer/skills/composer/setup.md` in the repo.
-2. Run the setup doctor, using `CURSOR_ENV_FILE` when the key lives outside the current worktree.
-3. Report Cursor, Composer model, and Codex readiness without printing secrets.
+1. Read the sibling module `../composer/setup.md`.
+2. Treat `$ARGUMENTS` as the smoke-test or env-file hint.
+3. Follow the module's workflow and stop if the module cannot be read.
+4. Report Cursor, Composer model, and Codex readiness without printing secrets.
 
 User input: $ARGUMENTS
