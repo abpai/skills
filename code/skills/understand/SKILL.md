@@ -4,17 +4,18 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: Trace a real code path into a browser-readable HTML module map and import skeleton.
+description: Route code-path understanding requests to the traced-map module.
 argument-hint: "[symbol, feature, or file/module path]"
 ---
 
 # /code:understand
 
-Use the `understand` module.
+Hidden wrapper for the `understand` subcommand. Load the module and pass
+through the user input.
 
-1. Read `skills/code/understand.md`.
-2. Resolve the requested symbol, feature, or file/module path.
-3. Disambiguate before tracing if multiple entry points are viable.
-4. Write the artifact to `.understand/<topic>.html`; do not render it in chat.
+1. Read the sibling module `../code/understand.md`.
+2. Treat `$ARGUMENTS` as the requested symbol, feature, or file/module path.
+3. Follow the module's workflow and stop if the module cannot be read.
+4. Preserve the wrapper invariant: write the artifact to `.understand/<topic>.html`; do not render it in chat.
 
 User input: $ARGUMENTS

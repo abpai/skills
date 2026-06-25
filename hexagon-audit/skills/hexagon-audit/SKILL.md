@@ -2,7 +2,7 @@
 name: hexagon-audit
 description: Audit Ports & Adapters / hexagonal architecture boundaries in packages/ + adapters/ monorepos. Use for hexagon compliance, port/adapter separation, inward dependency flow, peer-adapter imports, and vendor SDK leaks.
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Hexagon Audit
@@ -12,10 +12,6 @@ monorepo that separates interface packages from provider implementations —
 typically a top-level `packages/` (ports, shared kernel, inner-core code) and
 `adapters/` (provider implementations). This is a read-only audit unless the
 user explicitly asks for fixes.
-
-Use this skill when the user asks to audit hexagon compliance, check
-ports/adapters separation, or verify architecture invariants in a repo with
-that layout.
 
 ## Invariants
 
@@ -61,9 +57,12 @@ The script discovers workspace package names and dependency edges from
 - vendor SDK imports and dependency declarations found inside `packages/`.
 
 If the script reports package-to-adapter or adapter-to-peer-adapter imports,
-surface them as Tier 1 hard violations. Vendor SDK hits need human
-classification in step 3. If the repo does not have `packages/` and `adapters/`
+surface them as hard violations. Vendor SDK hits need human classification in
+step 3. If the repo does not have `packages/` and `adapters/`
 top-level directories, this skill does not apply — say so instead of guessing.
+
+This step is complete when the scanner command, package counts, dependency edge
+counts, and any hard-violation candidates are recorded.
 
 ### 2. Run focused source checks
 
@@ -77,6 +76,9 @@ rg -n "@modelcontextprotocol/sdk|@anthropic-ai/sdk|bun:sqlite|@google-cloud/|^im
 
 If the script reports an unexpected dependency edge, inspect the corresponding
 `package.json` and the source import that uses it.
+
+This step is complete when every deterministic scan hit has either a
+`file:line` source citation or an explicit "manifest-only" note.
 
 ### 3. Audit by domain group
 
@@ -96,6 +98,9 @@ For each group, answer:
 Adapters may import their port package, shared kernel/domain packages, inner-core
 packages, and vendor SDKs. They may not import peer adapters.
 
+This step is complete when every package/adapter group has been classified as
+hard violation, soft smell, or clean with cited evidence.
+
 ### 4. Classify findings
 
 Sort each finding into one bucket:
@@ -114,12 +119,12 @@ Sort each finding into one bucket:
 Produce a single markdown report with these sections:
 
 1. **Headline Result**: does the hexagon hold? Include the deterministic scan
-   counts and name any Tier 1 violations.
-2. **Hard Violations**: cite `file:line` for every Tier 1 finding.
+   counts and name any hard violations.
+2. **Hard Violations**: cite `file:line` for every hard violation.
 3. **Soft Smells**: cite `file:line` and explain why it is cleanup rather than
    a blocker.
 4. **Clean Groups**: summarize the groups that preserve the boundary.
-5. **Recommendations**: split into Tier 1 fixes and Tier 2 cleanup. Be concrete:
+5. **Recommendations**: split into hard-violation fixes and soft-smell cleanup. Be concrete:
    name the package, adapter directory, or file to move.
 6. **Verification**: include the script command and focused `rg` checks so the
    audit can be rerun later.

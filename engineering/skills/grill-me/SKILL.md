@@ -4,17 +4,18 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: Stress-test a plan or design by walking the decision tree one question at a time.
+description: Route plan and design stress-tests to the grill-me module.
 argument-hint: "[plan or design]"
 ---
 
 # /engineering:grill-me
 
-Use the Matt Pocock-inspired `grill-me` module.
+Hidden wrapper for the `grill-me` subcommand. Load the module and pass through
+the user input.
 
-1. Read `skills/engineering/grill-me.md`.
-2. Ask one question at a time.
-3. If a question can be answered by inspecting the codebase, inspect it instead
-   of asking the user.
+1. Read the sibling module `../engineering/grill-me.md`.
+2. Treat `$ARGUMENTS` as the plan or design input.
+3. Follow the module's workflow and stop if the module cannot be read.
+4. Preserve the wrapper invariant: ask one question at a time unless code inspection can answer it.
 
 User input: $ARGUMENTS

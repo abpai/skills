@@ -1,14 +1,14 @@
 ---
 name: codex-exec
 description: >
-  Run the Codex CLI for non-interactive coding work. Use when users ask to run
-  `codex exec`, `codex review`, or `codex exec resume`, continue a prior Codex
-  session, or delegate software engineering work to OpenAI Codex from the
-  terminal.
+  Run, review, resume, or delegate through the Codex CLI as a second-opinion
+  worker. Use for `codex exec`, `codex review`, monitored long-running Codex
+  runs, CLI continuation, or provider-diverse critique of plans, diffs, code,
+  tests, and architecture.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.5.5"
+  version: "1.5.6"
 ---
 
 # Codex CLI
@@ -82,6 +82,10 @@ commands below. Do not use this skill as general-purpose shell access.
 
 For the current flag surface and example command matrix, see
 `./references/codex-cli.md`.
+
+Preflight is complete when the Codex CLI surface, repository state, and stdin
+trust behavior are known, and any blocker is reported before launching the real
+task.
 
 ## Monitor-Friendly Wrapper
 
@@ -217,6 +221,10 @@ intentionally disposable.
 Use raw `codex` commands for very small manual checks or rare CLI flags the
 wrapper does not expose. For advanced cases, pass extra Codex arguments after
 `--`, but keep model selection explicit and user-requested.
+
+Wrapper runs are complete when `monitor.sh` exits, `status.env` records the
+Codex child exit code, and `final.md` or `events.jsonl` contains the usable
+result or the failure is summarized from `stderr.log`.
 
 ## Pick The Run Shape
 
@@ -401,17 +409,3 @@ codex exec \
   `xcodebuild` cache-write errors from developer tools. Treat them as benign
   sandbox noise when the run exit code is 0 and the requested analysis completed.
 - If output includes warnings or partial results, summarize what Codex completed and what remains uncertain.
-
-## Update Check
-
-On first use in a session, silently check for a newer version:
-
-1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
-2. Compare the version for `codex-exec` against this file's `metadata.version`.
-3. If the remote version is newer, pause before the main task and ask:
-   > **codex-exec** update available (local {X.Y} → remote {A.B}).
-   > Would you like me to update it for you first?
-   > I can run `npx skills update codex-exec` for you.
-4. If the user says yes, run the update before continuing.
-5. If the user says no, continue with the current local version.
-6. If the fetch fails or web access is unavailable, skip silently.

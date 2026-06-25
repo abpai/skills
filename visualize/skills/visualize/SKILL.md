@@ -1,14 +1,14 @@
 ---
 name: visualize
 description: >-
-  Generate a self-contained HTML visualization to explain a system, plan, code
-  flow, or concept. Use when the user asks to visualize, diagram, explain
-  visually, or walk through a system, architecture, plan, or code flow. Outputs
-  a single HTML file opened in the browser.
+  Generate self-contained HTML visualizations for systems, plans, code flows,
+  architectures, comparisons, timelines, and concepts. Use when the user asks
+  to visualize, diagram, make a visual explainer, or create an interactive
+  walkthrough where the visual artifact is the deliverable.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2.1"
+  version: "1.2.2"
   upstream_skill: https://github.com/nicobailon/visual-explainer
 ---
 
@@ -18,21 +18,18 @@ Generate a single, self-contained HTML file that visually explains a system, pla
 
 Default aesthetic: the "HTML effectiveness" editorial gallery style. Use an ivory page, serif display headings, clay accents, quiet card grids, simple SVG illustrations, and generous whitespace. The page should feel like something the user wants to read, not a dashboard skin.
 
-## When to Use
-
-- Visualize a complicated plan or proposal
-- Explain key primitives before implementing a plan
-- Visual explanation of steps from a third-party repo or blog post
-- Understand a module's code flow or execution path
-
 ## Workflow
 
-1. **Understand** what the user wants to see — the subject, the audience, the level of detail.
+1. **Define the visual job** — subject, audience, detail level, and the primary visual anchor.
 2. **Read `./templates/base.html`** to absorb the tech stack and HTML-effectiveness style. Read it each time, do not rely on memory.
-3. **Pick the format** (see Format Guide below).
-4. For Mermaid diagrams with 10+ nodes, also **read `./references/mermaid-tips.md`**.
+3. **Pick the format** from the Format Guide and record the choice before writing.
+4. For Mermaid diagrams with 10+ nodes, read `./references/mermaid-tips.md`, include Mermaid.js, and keep the graph definition in a plain constant.
 5. **Adapt** the base template for this specific visualization. Reuse the structure, swap the visual area content.
 6. **Write** to `~/.agent/diagrams/<descriptive-name>.html` and open in the browser.
+
+The workflow is complete when the file exists, the first screen has a meaningful
+visual without scrolling, browser console is clean, and the final response names
+the file path plus the visuals included.
 
 ## Format Guide
 
@@ -53,7 +50,7 @@ Every generated file uses:
 - **Preact + htm** — ESM CDN imports, no build step
 - **Plain CSS custom properties** — no build step or generated CSS
 - **System fonts** — serif display, sans body, mono metadata
-- **Mermaid.js CDN** — add only when diagrams are needed
+- **Mermaid.js CDN** — add only when the selected format requires a large graph
 
 No other dependencies. No build step.
 
@@ -81,6 +78,7 @@ The Write tool can corrupt JavaScript template literals, writing literal `\`` an
 
 - **First screen test**: is a meaningful visual visible without scrolling?
 - **File opens cleanly**: no console errors, no broken fonts?
+- **Format branch followed**: selected format, extra references, and dependencies match the artifact.
 
 ## Output
 
@@ -91,17 +89,3 @@ Open in browser:
 - Linux: `xdg-open ~/.agent/diagrams/filename.html`
 
 Tell the user the file path and name the visuals you included.
-
-## Update Check
-
-On first use in a session, silently check for a newer version:
-
-1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
-2. Compare the version for `visualize` against this file's `metadata.version`.
-3. If the remote version is newer, pause before the main task and ask:
-   > **visualize** update available (local {X.Y} → remote {A.B}).
-   > Would you like me to update it for you first?
-   > I can run `npx skills update visualize` for you.
-4. If the user says yes, run the update before continuing.
-5. If the user says no, continue with the current local version.
-6. If the fetch fails or web access is unavailable, skip silently.

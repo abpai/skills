@@ -1,12 +1,11 @@
 ---
 name: decision-worksheet
-description: Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet that lets the user ratify or override a recommended verdict per item and return the decisions.
-when_to_use: User wants to review and rule on many similar items one-by-one — unsubscribe candidates in an inbox, dead-code functions, PRs, files, rows, vendors, line items — and wants a fast ratify-or-override surface instead of deciding each from scratch. Any "go through X and let me decide keep/cut on each" task.
+description: Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet that lets the user ratify or override a recommended verdict per item and return the decisions. Use when the user wants to review many similar items one-by-one, triage unsubscribe candidates, dead-code functions, PRs, files, rows, vendors, or line items, or says "go through X and let me decide keep/cut on each."
 argument-hint: "[what to review, e.g. 'inbox for unsubscribe candidates']"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.0"
+  version: "1.0.1"
   tags: "decision review worksheet html triage ratify-override"
 ---
 
@@ -26,8 +25,8 @@ point that must be honestly reasoned, not the answer.
 ## 1. Pin the four variables
 
 Every worksheet is the same shape with four task-specific slots. Infer them from the
-request; only ask (via `AskUserQuestion`, max 2 questions) about what you genuinely
-can't:
+request; only ask at most two concise questions about what you genuinely can't
+infer:
 
 - **ITEM** — the unit being ruled on (sender, function, PR, file, row, vendor).
 - **SCOPE** — where they come from (the inbox, this directory, these PRs, this sheet).
@@ -40,6 +39,9 @@ can't:
 
 State the four back in one line before building, so the user can correct a wrong guess
 cheaply.
+
+This phase is complete when ITEM, SCOPE, VERDICTS, and FIELDS are named and any
+unknown slot is either inferred from evidence or explicitly asked.
 
 ## 2. Ground it first — real evidence only
 
@@ -57,6 +59,9 @@ Before generating anything, actually inventory the SCOPE: read the real emails /
 
 For large scopes, fan out the inventory across subagents (one per batch/area), then
 merge — but the merged set must still reconcile to one honest count (step 4).
+
+This phase is complete when every item has a stable id, evidence-backed fields,
+recommended verdict, confidence, and source anchor.
 
 ## 3. Build one self-contained HTML file
 
@@ -84,6 +89,10 @@ Decision output:
 - **persist marks to `localStorage`** so a reload never loses work.
 - after writing the file, **tell the user exactly what the decisions payload looks
   like** (show the shape) so they know what to paste back.
+
+This phase is complete when the file opens offline, every item is rendered once,
+the tally matches the rendered rows, `localStorage` survives a reload, and
+download/copy returns the schema below.
 
 ## 4. Reconcile before finishing
 
@@ -130,5 +139,5 @@ Per item, include enough for you to act on the decision *and* understand the rea
 }
 ```
 
-The `overrode` flag and `note` are the point: when the user hands the file back, you
-get their reasoning, not just their verdicts — so the follow-up action is informed.
+The `overrode` flag and `note` are the point: when the user hands the file back,
+you get their reasoning, not just their verdicts.

@@ -79,7 +79,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, or `/engineering reduce` |
+| **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, `/engineering clean-code`, or `/engineering reduce` |
 
 ### Developer Productivity
 
@@ -94,7 +94,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **claude** | Run Claude Code CLI with tmux-backed TUI delegation, session continuation, manual takeover, and non-interactive fallback |
+| **claude** | Run Claude Code CLI with tmux-backed TUI delegation, external data-sharing approval handling, session continuation, manual takeover, and non-interactive fallback |
 | **visualize** | Generate self-contained HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
 
 ### Languages & Platforms

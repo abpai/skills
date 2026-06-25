@@ -4,17 +4,18 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: Audit a codebase for dead code and produce a safe removal plan.
+description: Route dead-code reachability audits to the code workflow module.
 argument-hint: "[scope or codebase area]"
 ---
 
 # /code:dead-code
 
-Use the `dead-code` module.
+Hidden wrapper for the `dead-code` subcommand. Load the module and pass through
+the user input.
 
-1. Read `skills/code/dead-code.md`.
-2. Identify live entry points before listing candidates.
-3. Report confidence, external-consumer risk, and safe removal order.
-4. Delete code only when the user explicitly asks for removal.
+1. Read the sibling module `../code/dead-code.md`.
+2. Treat `$ARGUMENTS` as the scope or codebase area.
+3. Follow the module's workflow and stop if the module cannot be read.
+4. Preserve the wrapper invariant: identify live entry points before listing candidates.
 
 User input: $ARGUMENTS

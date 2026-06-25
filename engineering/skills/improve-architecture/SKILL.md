@@ -4,16 +4,18 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: Find deepening opportunities that improve locality, leverage, testability, and AI navigability.
+description: Route architecture-improvement requests to the deep-module review module.
 argument-hint: "[codebase area or goal]"
 ---
 
 # /engineering:improve-architecture
 
-Use the Matt Pocock-inspired `improve-architecture` module.
+Hidden wrapper for the `improve-architecture` subcommand. Load the module and
+pass through the user input.
 
-1. Read `skills/engineering/improve-architecture.md`.
-2. Load its references only as needed.
-3. Surface concrete deepening opportunities with the module's domain language.
+1. Read the sibling module `../engineering/improve-architecture.md`.
+2. Treat `$ARGUMENTS` as the codebase area or goal.
+3. Follow the module's workflow and load only the references it calls for.
+4. Stop before interface design unless the user selects a candidate for deeper work.
 
 User input: $ARGUMENTS

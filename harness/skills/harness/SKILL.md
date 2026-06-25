@@ -1,16 +1,18 @@
 ---
 name: harness
-description: "Grouped agent-harness workflow pack. Invoke with a subcommand argument — never call the subcommand skills directly (they have disable-model-invocation). Subcommands: 'docs' (make a repo ergonomic for agent-driven development — author docs/SPEC_CONTRACT.md from real validation surfaces, convert prose rules into tests/lints/CI gates, keep AGENTS.md a tiny router, write nested grounding files for features whose intent/topology is not readable from code, create earned doc surfaces only on demonstrated need), 'doctor' (verification-first readiness audit — runs the repo's validation commands, checks spec-contract alignment, scores six dimensions (0-4) into a 0-100 readiness score, reports recommendation-first with finding IDs and proof)."
-argument-hint: "[subcommand] [args] — e.g. docs, doctor, --docs docs overhaul"
+description: "Route agent-harness workflows through one scoped /harness command. Use docs to make a repo ergonomic for agent-driven development, and doctor to run a verification-first readiness audit with finding IDs and proof."
+argument-hint: "[subcommand] [args] - e.g. docs, doctor, --docs docs overhaul"
 metadata:
-  version: "1.2.0"
+  version: "1.2.1"
 ---
 
 # Harness Workflow Pack
 
 This umbrella skill is the model-invocable entry point for agent harness work: the designed repository environment that lets coding agents find the right code, owner, invariant, and validation path quickly — and prove their work end-to-end. Verification loops are the product; docs are the routing layer.
 
-Each workflow also ships as its own `skills/<name>/SKILL.md`, but those per-command skills set `disable-model-invocation: true`, `user-invocable: false`, and `metadata.internal: true`, so they stay out of the model's auto-invocation, out of the `/` menu (no unscoped `/<name>` duplicates of the umbrella), and out of flat-list installers like the `npx skills` installer used by Codex. Reach any workflow through this umbrella — the subcommand router below maps `/harness <name>` to the matching module. The workflow modules referenced below live beside this `SKILL.md` as flat support files.
+Hidden wrappers stay out of model routing, menus, and flat-list installers.
+Reach every workflow through this umbrella; the workflow modules referenced
+below live beside this `SKILL.md` as flat support files.
 
 ## Subcommand invocation
 
@@ -19,11 +21,9 @@ Invoke a workflow by passing its name as the first argument to this umbrella —
 - `harness <subcommand> <args>` — e.g. `harness docs`
 - `harness --<subcommand> <args>` — e.g. `harness --docs docs overhaul`
 
-Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it case-insensitively against the workflow names below. On a match, load `skills/harness/<subcommand>.md` and treat the remaining tokens as that workflow's input. If the first token is not a known subcommand, treat the whole input as a natural-language harness request and route by intent.
+Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it case-insensitively against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language harness request and route by intent.
 
 Known subcommands: `docs`, `doctor`.
-
-Reserved future workflows: `testing`, `reflect`. Do not route to them until their modules exist. Evals stay outside the docs structure unless a dedicated workflow is added later.
 
 ## Routing
 

@@ -3,7 +3,7 @@ name: plan
 disable-model-invocation: true
 metadata:
   internal: true
-description: Turn a project request into a brief, rubric, and ordered task slices. Interactive planner phase for long-running engineering work.
+description: Plan long-running engineering work through Pi Phase 1. Turn a project request into an approved brief, rubric, provider policy, and ordered task slices before execution.
 argument-hint: "[project goal]"
 allowed-tools: >
   Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
@@ -75,10 +75,10 @@ tool requires it when `message` is a string. Example:
      Tiebreaks surface when they disagree.
 
    Default to `Codex only` if the preflight showed Gemini is not installed.
-   Persist the choice in memory for this phase; it is written into
-   `rubric.json.research_policy.providers` during Phase E finalize. The
-   coordinator gates Phase B researchers, Phase D plan reviewers, the
-   Phase 2 build reviewer, and the Phase 3 final reviewer on this field.
+   Set `selected_providers` in coordinator state for this phase; write that
+   value into `rubric.json.research_policy.providers` during Phase E finalize.
+   The coordinator gates Phase B researchers, Phase D plan reviewers, the
+   Phase 2 build reviewer, and the Phase 3 final reviewer on this value.
 2. Spawn `planner` as a **foreground** subagent with the user's request and
    repo context. The planner runs steps 1-4: posture check, clarify, lateral
    thinking, and distill.
@@ -95,7 +95,7 @@ tool requires it when `message` is a string. Example:
 5. Update `state.json` in `state_root`: `current_step` = `"research_fanout"`.
 6. For each primitive, spawn researchers in parallel. Always spawn
    `claude-researcher`. Additionally, for each provider in
-   `research_policy.providers`:
+   `selected_providers`:
    - `codex` → spawn `codex-researcher`, output path
      `research/fanout/<primitive>-codex.json`
    - `gemini` → spawn `gemini-researcher`, output path
@@ -117,6 +117,10 @@ tool requires it when `message` is a string. Example:
 10. Present the matrix to the user and collect tiebreak decisions.
 11. Write `research/consensus-matrix.md` in `state_root`.
 
+Phase B is complete when every spawned researcher has written its result file,
+the consensus matrix records agreements and tiebreaks, and `state.json` points
+at the next step.
+
 ### Phase C — Task Proposal (foreground planner)
 
 12. Update `state.json` in `state_root`: `current_step` = `"propose_tasks"`.
@@ -136,12 +140,16 @@ tool requires it when `message` is a string. Example:
 15. Present the task slices (layout-adjusted, for UI work) and, for UI work,
     the layout options artifact, then wait for user confirmation.
 
+Phase C is complete when the user has confirmed the task slices, UI layout
+decisions are recorded when applicable, and each task has concrete verification
+criteria.
+
 ### Phase D — Iterative External Review (coordinator-driven)
 
 16. Update `state.json` in `state_root`: `current_step` = `"codex_review"`
     (name preserved for state compatibility; the step runs whichever critics
-    are in `research_policy.providers`).
-17. For each provider in the selection, run up to 3 iterative review passes
+    are in `selected_providers`).
+17. For each provider in `selected_providers`, run up to 3 iterative review passes
     against the brief + tasks. Save each pass as
     `reviews/<provider>-plan-pass-<N>.json` in `state_root` (e.g.
     `codex-plan-pass-1.json`, `gemini-plan-pass-1.json`).
@@ -154,7 +162,7 @@ tool requires it when `message` is a string. Example:
     parallel per pass and merge their `must_address` items before re-running.
     For UI work, include `artifacts/layout-options.html` and
     `research/ui-layout-decision.md` in the review context.
-18. If no providers are selected (`providers: []`), skip Phase D entirely.
+18. If no providers are selected (`selected_providers: []`), skip Phase D entirely.
 
 If a selected CLI is not available, check `execution_policy` from
 `rubric.json`. For Codex, `codex_policy` governs the fallback as before. For
@@ -170,10 +178,14 @@ block on required). Record the absence in the noted risks for Phase E.
     selected providers, selected builder, and for UI work, the chosen layout
     direction with the path to `artifacts/layout-options.html`.
 21. On approval, write `brief.md`, `rubric.json`, and `tasks/*.json` in
-    `state_root`. Set `rubric.json.research_policy.providers` from Phase A
-    step 1. Update `state.json` in `state_root` with `phase: "execute"`,
+    `state_root`. Set `rubric.json.research_policy.providers` from
+    `selected_providers`. Update `state.json` in `state_root` with `phase: "execute"`,
     `project_slug`, `title`, the resolved `state_root`, and refresh the
     `orchestrator.last_command_cli` field. Then refresh
     `.agents/work/current.json`.
+
+Phase E is complete when `brief.md`, `rubric.json`, `tasks/*.json`,
+`state.json`, and `.agents/work/current.json` are written and the user has the
+exact `/pi:execute` next step.
 
 Follow the protocol exactly. Do not skip the human checkpoints.

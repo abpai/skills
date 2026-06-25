@@ -1,11 +1,10 @@
 ---
 name: improve-prompt
-description: Improve a vague or under-specified prompt into a sharp, reusable one. Interviews the user briefly, then rewrites.
-when_to_use: User asks to improve, rewrite, or sharpen a prompt; turn a rough request into a reusable template; reduce vagueness, sycophancy, or success-theater in a planning, coding, review, eval, or decision prompt; or write a trustworthy end-of-session final summary or handoff.
+description: Improve, rewrite, or sharpen prompts into reusable instructions. Use when the user has a rough request, wants a prompt template, needs less vagueness, sycophancy, or success theater in a planning, coding, review, eval, or decision prompt, or asks for a trustworthy final-summary or handoff prompt. Do not use for light copyediting, grammar cleanup, or humanizing prose.
 argument-hint: "[draft prompt or rough goal]"
 metadata:
   author: Andy Pai
-  version: "1.3.0"
+  version: "1.3.1"
   tags: "prompting prompt-engineering rewriting agent-workflows handoff"
 ---
 
@@ -23,6 +22,9 @@ The goal is a **sharp prompt produced fast** via a short back-and-forth with the
 - **Rough goal** — missing deliverable, context, or constraints. Go to step 2.
 - **Already specialized** (decision memo, coding task, review, spec, final summary) — check `references/patterns.md` for a matching template, then go to step 2 or 3.
 
+This step is complete when the input is classified as clear, rough, or
+specialized, and any needed reference pattern has been selected.
+
 ### 2. Interview (only if needed)
 
 Use `AskUserQuestion` to ask **at most 2–3 questions**. Only ask about what you actually cannot infer. Typical gaps:
@@ -33,6 +35,9 @@ Use `AskUserQuestion` to ask **at most 2–3 questions**. Only ask about what yo
 
 Skip any question you can answer from context. If the draft is already clear, do not interview — just rewrite.
 
+This step is complete when each material gap is either answered, inferred with a
+stated assumption, or intentionally left as a variable in the prompt.
+
 ### 3. Rewrite
 
 Produce the improved prompt using the skeleton below, tailored to the deliverable. Then return:
@@ -42,6 +47,10 @@ Produce the improved prompt using the skeleton below, tailored to the deliverabl
 3. **Optional tighter version** — only if a shorter variant adds value
 
 Keep commentary minimal. Lead with the rewritten prompt.
+
+This step is complete when the improved prompt is paste-ready, preserves the
+user's intent, names constraints and failure modes, and includes the requested
+return shape.
 
 ---
 
@@ -99,10 +108,6 @@ Drop into any prompt as needed.
 - "you must / at all costs / don't fail" → "solve this if possible; if blocked, surface the blocker and propose a fallback"
 - "be nice / pleasant" → "accurate first, then polish tone — do not weaken caveats during polish"
 
-## Why this works (brief)
-
-Cornering language ("must", "at all costs", "don't fail") and pleasantness-seeking framing push the model into states correlated with reward hacking and agreement over accuracy. Calm framing, real off-ramps, and a two-channel accurate-first / polished-second structure are the knobs that move the needle. (Anthropic interpretability work on emotion-like internal variables.)
-
 ## Specialized patterns
 
 For decision memos, coding executors, reviews, specs, or final summaries, use templates in [references/patterns.md](references/patterns.md). Load it only when the deliverable matches one of those shapes.
@@ -112,7 +117,3 @@ For decision memos, coding executors, reviews, specs, or final summaries, use te
 When the prompt has many variables, examples, or output modes, create a throwaway HTML prompt tuner instead of only returning a rewritten prompt. Use it for side-by-side editing, highlighted variable slots, sample input previews, token/character counts, and a copy button that exports the final prompt.
 
 Keep the final improved prompt as copyable text. The HTML exists to help the user tune it.
-
-## Do not use this skill for
-
-Light copyediting, grammar cleanup, or making prose sound human — use `human-writer` instead.

@@ -4,16 +4,18 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: Use a vertical red-green-refactor loop with behavior-focused tests.
+description: Route behavior-first TDD requests to the engineering TDD module.
 argument-hint: "[feature or bug]"
 ---
 
 # /engineering:tdd
 
-Use the Matt Pocock-inspired `tdd` module.
+Hidden wrapper for the `tdd` subcommand. Load the module and pass through the
+user input.
 
-1. Read `skills/engineering/tdd.md`.
-2. Follow the vertical red-green-refactor workflow.
-3. Keep tests behavior-focused and avoid implementation-coupled mocks.
+1. Read the sibling module `../engineering/tdd.md`.
+2. Treat `$ARGUMENTS` as the feature or bug request.
+3. Follow the module's workflow and stop if the module cannot be read.
+4. Preserve the wrapper invariant: keep tests behavior-focused and avoid implementation-coupled mocks.
 
 User input: $ARGUMENTS

@@ -3,7 +3,7 @@ name: execute
 disable-model-invocation: true
 metadata:
   internal: true
-description: Execute the approved Pi brief. Runs the generator loop, optional simplification, evaluation, and focused repair passes until the build clears the bar or repair budget is exhausted.
+description: Run after /pi:plan approves a brief. Execute the approved Pi task slices with the selected builder, evaluator, external reviewers, and focused repair passes until the build clears the bar or repair budget is exhausted.
 argument-hint: "[optional task id or filter]"
 allowed-tools: >
   Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
@@ -28,11 +28,12 @@ timeout 3 codex --version 2>&1 || echo "codex: not installed"
 timeout 3 gemini --version 2>&1 || echo "gemini: not installed"
 ```
 
-The block above runs at skill-load time. Use its output as a fast sanity
-check on run discovery and which `codex_policy` branch to take. Do **not**
-skip re-reading the resolved run's `state.json`: preflight is a snapshot and
-may be stale (for example, if a prior run stopped mid-handoff). Always read
-`state.json` and `checkpoints/` in Phase 0/A before deciding the next step.
+The block above runs at skill-load time. Use its output as a fast sanity check
+on run discovery and CLI availability. Do **not** skip re-reading the resolved
+run's `state.json`: preflight is a snapshot and may be stale (for example, if a
+prior run stopped mid-handoff). Always read `state.json` and `checkpoints/` in
+Phase A before deciding the next step. Executor availability is a hard block;
+`codex_policy` only governs reviewer/critic availability.
 
 Read the Pi protocol module (`internal/protocol/README.md` in this plugin) and execute **Phase 2: Execute**.
 
@@ -61,7 +62,10 @@ subagents, so you own all agent orchestration.
    `orchestrator.updated_at` = current ISO-8601 time.
 2. Read `task_progress` from `state.json`. Skip any task with status `complete`
    or `blocked`.
-3. Find the first non-complete, non-blocked task. If resuming a failed task, read its
+3. Select the active task. If `$ARGUMENTS` names a task id or filter, choose
+   the first non-complete, non-blocked task that matches it; if no task matches,
+   stop and show the available task ids. Otherwise choose the first
+   non-complete, non-blocked task. If resuming a failed task, read its
    `action_on_resume` field from `task_progress` — it pre-computes the next
    step so the coordinator does not need to chase evaluation files. If
    `action_on_resume` is absent, read the prior evaluation from `evaluations/`.

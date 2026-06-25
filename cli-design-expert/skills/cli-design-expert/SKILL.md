@@ -1,10 +1,10 @@
 ---
 name: cli-design-expert
-description: "Design or review command-line interfaces for usability and automation: help text, args/flags, stdout vs stderr, exit codes, TTY behavior, config precedence, and safe handling of secrets and destructive actions."
+description: "Design, review, or refactor command-line interfaces for usability and automation. Use for help text, args/flags, stdout vs stderr, exit codes, TTY behavior, config precedence, and safe handling of secrets and destructive actions."
 license: CC-BY-SA-4.0
 compatibility: Works with any CLI language/framework. Best with an args parser library and POSIX conventions (stdout/stderr, exit codes, signals). See references/CLI_GUIDELINES.md.
 metadata:
-  version: "1.2.0"
+  version: "1.2.1"
   author: "cli-guidelines-community"
   upstream_guidelines: "https://clig.dev"
   reference_file: "references/CLI_GUIDELINES.md"
@@ -154,6 +154,10 @@ Deliverable:
 
 - Config keys + precedence + storage locations.
 
+Design is complete when the command model, help skeleton, output contract,
+exit-code behavior, config precedence, TTY behavior, and destructive-action
+safety path are all specified.
+
 ## Procedure: Review an existing CLI
 
 Produce two outputs.
@@ -178,6 +182,10 @@ Produce two outputs.
 - P0: correctness, safety, and scriptability failures
 - P1: usability and discoverability issues
 - P2: polish and consistency
+
+Review is complete when each P0/P1 finding cites command output, help text, or
+source evidence; names a concrete change; and includes a validation command or
+manual check.
 
 ## Optional HTML CLI Map
 
@@ -220,17 +228,3 @@ Fix: <exact next step / command / flag>.
 ## References
 
 - Full guideline text: `references/CLI_GUIDELINES.md`
-
-## Update Check
-
-On first use in a session, silently check for a newer version:
-
-1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
-2. Compare the version for `cli-design-expert` against this file's `metadata.version`.
-3. If the remote version is newer, pause before the main task and ask:
-   > **cli-design-expert** update available (local {X.Y} → remote {A.B}).
-   > Would you like me to update it for you first?
-   > I can run `npx skills update cli-design-expert` for you.
-4. If the user says yes, run the update before continuing.
-5. If the user says no, continue with the current local version.
-6. If the fetch fails or web access is unavailable, skip silently.

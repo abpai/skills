@@ -3,11 +3,11 @@ name: review
 disable-model-invocation: true
 metadata:
   internal: true
-description: Run final Pi review. Executes the full verification suite, performs holistic evaluation, and presents the scorecard with any remaining repair guidance.
+description: Review a Pi run after /pi:execute. Run the full verification suite, perform holistic evaluation, and present the final scorecard with any remaining repair guidance.
 argument-hint: "[optional task id or filter]"
 allowed-tools: >
   Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *)
-  Bash(git rev-parse *) Bash(git add *) Bash(git commit *)
+  Bash(git rev-parse *)
   Bash(codex *) Bash(gemini *) Bash(cat .agents/work/*) Bash(cat .agents/work/runs/*/*)
   Bash(cat .agents/work/runs/*/*/*) Bash(cat .agents/work/runs/*/*/*/*)
   Bash(ls .agents/work/*) Bash(ls .agents/work/runs/*)
@@ -132,6 +132,11 @@ subagents, so you own all agent orchestration.
 13. If the build passes:
     - Append durable project-specific learnings to `LEARNINGS.md`
     - Update `state.json`: `phase` -> `"done"`
+
+Review is complete when `evaluations/suite-results.json` and
+`evaluations/review.json` exist, every task verification has a pass/fail/blocked
+state, external-review skips are policy-labeled, and `state.json` is either
+returned to `"execute"` for repair or advanced to `"done"`.
 
 Follow the protocol exactly. Present the full scorecard, test results, and any
 remaining repair guidance to the human.
