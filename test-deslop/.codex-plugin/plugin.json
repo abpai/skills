@@ -1,0 +1,11 @@
+{
+  "name": "test-deslop",
+  "version": "1.0.0",
+  "description": "Opinionated test-suite deslopification — delete low-value tests and leave the survivors high-signal and easy to read. Use to prune redundant, brittle, tautological, or mock-only tests, or to standardize test naming.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}
