@@ -51,8 +51,9 @@ into `skills/<name>/SKILL.md`. Don't reintroduce `commands/`.
 - Give each umbrella a **subcommand router** so the pack still works where the
   `:` namespace does not exist (e.g. Codex): accept `<plugin> <workflow> …` and
   `<plugin> --<workflow> …`, strip a leading `--`, match the first token against
-  the workflow names, and load `skills/<plugin>/<workflow>.md`. Add a matching
-  `argument-hint` to the umbrella frontmatter. (A Claude-only pack like `pi`
+  the workflow names, and load the sibling module `./<workflow>.md` from beside
+  the umbrella `SKILL.md`. Add a matching `argument-hint` to the umbrella
+  frontmatter. (A Claude-only pack like `pi`
   needs no Codex router. `pi` also has **no umbrella** — its phase commands
   (`/pi:plan`, `/pi:execute`, …) are the primary interface with no router to fall
   back to, so they stay user-invocable and are exempt from the
@@ -64,6 +65,37 @@ into `skills/<name>/SKILL.md`. Don't reintroduce `commands/`.
   `user-invocable: false`. It fails CI (via `validate-pr.yml`) if a wrapper omits
   either, so neither the Codex-sprawl regression nor the unscoped-`/`-menu
   regression can silently recur.
+
+### Skill writing quality bar
+
+These rules keep skills compatible with the "writing great skills" rubric and
+avoid the drift that caused the June 2026 cleanup:
+
+- Put concrete trigger language in frontmatter `description`. It should answer
+  "use this when..." for the router/model without requiring the body to be read
+  first. Keep detailed rationale, examples, and edge cases in the body.
+- Give every routed workflow an `argument-hint` and make argument parsing local
+  to the route that uses it. Do not scatter provider/mode/phase selection across
+  distant sections with different field names.
+- State completion criteria for non-trivial phases. A step is not done because
+  prose says "review"; it is done when a module is loaded, a scope is selected,
+  evidence is gathered, a verdict is emitted, or a file/artifact is written.
+- Preserve progressive disclosure. Umbrellas should route to compact sibling
+  workflow modules; wrappers should only load those modules and pass arguments.
+  Avoid duplicating full workflow logic in wrappers.
+- Keep wrapper module paths relative to the wrapper's installed location:
+  `../<plugin>/<workflow>.md`. Keep umbrella module paths relative to the
+  umbrella: `./<workflow>.md`. Do not write checkout-relative paths like
+  `skills/<plugin>/<workflow>.md`; installed plugins are copied into runtime
+  caches and those paths go stale.
+- Do not add runtime self-update checks, network fetches, or package-installer
+  commands to ordinary skill bodies (`raw.githubusercontent.com`,
+  `npx skills update`, etc.). Installation/update behavior belongs in installer
+  skills or repo docs, not in a skill invocation that should perform the user's
+  requested workflow.
+- Prefer structured evidence channels in review skills: deterministic scanner
+  output, promoted findings, skipped/noise reasons, and agent-owned review
+  prompts. Scanner leads are not findings until surrounding code is inspected.
 
 ## Other conventions
 
@@ -85,6 +117,25 @@ into `skills/<name>/SKILL.md`. Don't reintroduce `commands/`.
   `metadata.version` when the plugin has one, and the root `versions.json` when
   you change a plugin, so users receive the update. Command-only plugins use the
   plugin manifest version as their version source.
+- Treat packaging surfaces as an atomic bundle. If a skill/frontmatter,
+  manifest, marketplace description, docs card, or version changes, sync all of:
+  `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`,
+  `.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json` when
+  applicable, `versions.json`, and `docs/index.html`.
+- Before opening or updating a PR for plugin changes, run the project gates:
+
+```bash
+scripts/sync-plugin-versions.sh
+scripts/generate-versions.sh
+scripts/validate-skills.sh
+scripts/validate-npx-install.sh
+git diff --check
+bun scripts/skill-metadata.ts check-version-bump origin/main
+```
+
+If `scripts/validate-skills.sh` reports only `docs/index.html` version drift,
+patch the card versions to match the metadata source; this repo does not have a
+separate docs generator.
 
 See the README section ["Why every namespaced command is a
 `skills/<name>/SKILL.md`"](README.md#why-every-namespaced-command-is-a-skillsnameskillmd)
