@@ -23,6 +23,7 @@ The repo serves a pipeline where humans specify intent, acceptance criteria, ris
 
 - Specs arrive from outside; `docs/SPEC_CONTRACT.md` defines what they must contain so this repo can verify them.
 - Every change type has a runnable validation path. Without a pass/fail check, the human becomes the verification loop.
+- One command brings the repo from a fresh checkout (or worktree) to seeded, testable state, and a health smoke command proves readiness before work starts. An environment that boots empty cannot be driven end-to-end.
 - Escalation boundaries are explicit: agents stop and surface (rather than guess) on irreversible actions, scope changes, and decisions the spec reserves for humans. Everything else they execute end-to-end.
 - Repeated agent failures are harness gaps. Repair the harness, do not append warnings.
 
@@ -35,9 +36,11 @@ When a rule must hold, put it on the highest surface that fits:
 1. **Failing test** — the rule is checked on every validation run.
 2. **Lint rule** — the rule is checked on every commit/CI run.
 3. **CI gate** — the rule blocks merge.
-4. **Validation script / clearer runtime error** — the rule fails loudly at the moment it is broken.
+4. **Validation script / clearer runtime error** — the rule fails loudly at the moment it is broken. A rule *you* author carries its own agent-legible failure message — what broke, where, which rule, and the fix — scoped to custom-authored enforcement (not compiler or library errors, which are already legible) and earned by recurrence: beautify the message on a rule that has actually burned a loop, never prophylactically on every assertion.
 5. **Docs routing** — a code map or invariant line that sends the agent to the right place.
 6. **Prose rule** — last resort, kept lean.
+
+Enforce boundaries, not implementations. You cannot — and should not — lint every line an agent writes; agents replicate whatever patterns already exist, so fence the yard (dependency directions, layer edges, interface validation) and leave the agent free inside it. Boundary enforcement is the minimal scaffolding a capable agent needs.
 
 Keep enforcement runtime-agnostic: tests, lints, CI, and scripts run no matter which agent harness executes the work. Claude Code hooks are an optional extra layer for repos also developed interactively with Claude — never the only enforcement. Prose remains valid (instruction-following keeps improving) but it is the only surface with measured negative returns when it bloats, so every prose rule must survive the line gate below.
 
@@ -46,7 +49,10 @@ When the same failure recurs, repair the smallest durable surface by walking the
 - Agents keep breaking the same invariant → add a test that fails when it breaks.
 - Agents keep running the wrong command → fix the script name or add a lint/CI check, then correct `docs/engineering/commands.md`.
 - Agents keep editing the wrong file → fix the code map line.
+- Agents keep searching too long before the first edit → fix the route (code-map line, nested grounding) so orientation is cheap; navigation is the dominant loop cost.
 - Agents keep misusing a term → add a glossary entry with aliases to avoid.
+- A test fails intermittently, so agents cannot tell a real bug from noise → quarantine the flake, add a determinism guard (seed, fake clock, bounded retry), then a test that pins it.
+- Agents keep hitting an illegible failure on a rule you wrote → rewrite that rule's message to name what broke, where, and the fix.
 - Agents keep deferring the same work → write one `docs/todos` spec.
 - Only if nothing mechanical fits → one prose line, placed by the line gate.
 
@@ -60,6 +66,8 @@ Durable prose splits into two kinds, judged by different gates:
 1. **Current-state-true** — describes the code as it is now and stays true after this PR.
 2. **Not derivable in minutes** — an agent reading the obvious files would not quickly reconstruct it: off-repo context (flags, AB tests, product intent), cross-layer data flow, what the result looks like on screen.
 3. **Anchored** — names concrete files, types, or identifiers, so staleness is detectable and the prose doubles as a route map.
+
+Topology an agent cannot reconstruct in minutes — a data-model or service map — may be drawn rather than written, but a diagram is grounding like any other line: format is the repo's choice (ASCII diagrams over Mermaid, since ASCII diffs and reviews cleanly), and it passes the same gate — anchored, current-state-true, updated in the same PR. A stale diagram is a misleading route with worse staleness economics than prose, so reach for one only when the topology genuinely needs it.
 
 The canonical grounding vehicle is a nested `AGENTS.md` in the subtree it describes — tell the agent what it is working on, why it matters, and where to look, then get out of the way. A grounding file may be longer than the root router: depth belongs at the leaf, the root stays a tiny map, and the budget that binds is the combined byte chain, not symmetry with root.
 
@@ -164,12 +172,20 @@ A spec is ready when it:
 
 ## Proof menu
 
-| Change type | Validation command | Proof artifact |
-| --- | --- | --- |
-| <area> logic | `<command>` | passing run output |
-| <area> UI | `<command>` + screenshot diff | screenshot pair |
-| API surface | `<contract/e2e command>` | passing run + response trace |
-| Cross-cutting | `<full check command>` | CI-green equivalent locally |
+Each command belongs to a lane: the **fast lane** (deterministic, runs in
+seconds) is the inner loop an agent runs after every edit; the **full lane**
+(slow unit, integration, e2e, browser) is the gate for done. Done = the full
+lane green; a green fast lane never certifies done. The **Sufficiency** column
+marks whether a passing run is sufficient evidence (`auto`) or the change still
+needs human sign-off (`human-gate`) — a false green on a `human-gate` row would
+merge broken work, the failure that is worse than a false red.
+
+| Change type | Validation command | Proof artifact | Sufficiency |
+| --- | --- | --- | --- |
+| <area> logic | `<command>` | passing run output | auto |
+| <area> UI | `<command>` + screenshot diff | screenshot pair | human-gate |
+| API surface | `<contract/e2e command>` | passing run + response trace | auto |
+| Cross-cutting | `<full check command>` | CI-green equivalent locally | auto |
 
 ## Escalation boundaries
 
@@ -178,6 +194,11 @@ Agents stop and surface instead of guessing when:
 - An acceptance criterion cannot be proven with the menu above.
 - The change requires an irreversible action (deploy, migration apply, data deletion).
 - The spec's scope and the code's reality conflict.
+
+Prefer reversibility by construction — idempotent migrations, flag-gated rollout,
+transactional changes — so the agent can proceed and roll back cleanly; escalate
+only the irreducibly irreversible. A documented rollback path is the fallback,
+not the first choice.
 ```
 
 Fill the proof menu with the repo's real commands. Every row must reference a command that exists and runs. Keep the menu compact — roughly ten rows, grouping related areas rather than enumerating every package. If the repo has no validation surfaces at all, do not invent commands: write the quality bar, mark the proof menu `provisional — validation not ready` with the gaps listed, and surface the infrastructure decision to the user; the operating model's runnable-validation-path rule is the target state this gap report works toward. Monorepos keep a single root `SPEC_CONTRACT.md`; the change-type column carries the package/workspace dimension (e.g. `<pkg> logic | pnpm --filter <pkg> test | …`). Route to this file from `AGENTS.md`.
@@ -216,7 +237,7 @@ Code, tests, and runtime behavior are the source of truth. Docs route you to the
 
 ## Done means
 
-- Required validation passed or the failure is explained.
+- The full validation lane passed (not just the fast lane), or the failure is explained.
 - End-to-end proof produced per the spec.
 - Durable knowledge landed on the smallest relevant surface; deferred work in `docs/todos` only if real and actionable.
 ```
