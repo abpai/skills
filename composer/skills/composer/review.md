@@ -9,8 +9,13 @@ branch diff, or PR diff.
    - current uncommitted diff
    - `BASE...HEAD`
    - a GitHub PR patch
-2. Gather the diff and enough surrounding context for review.
-3. Run Composer in read-only ask mode through the wrapper:
+2. If auth/model readiness is unknown, run the review readiness smoke from
+   `setup.md` before gathering any diff or sending repo content to Composer.
+   Prefer `composer-2.5-fast`; use `composer-2.5` for strict release gates.
+3. Gather the diff and only the surrounding context needed to judge changed
+   behavior. Avoid whole-repo dumps, generated artifacts, unrelated logs, and
+   setup transcripts.
+4. Run Composer in read-only ask mode through the wrapper:
 
 ```bash
 composer/skills/composer/scripts/composer-run.sh review \
@@ -24,11 +29,11 @@ strict release-gate review. Use `--output-format json` when you want a single
 parseable final answer; the final text is in the `result` field. Use
 `stream-json` only for progress monitoring.
 
-4. Treat Composer findings as input, not truth. Verify each finding against the
+5. Treat Composer findings as input, not truth. Verify each finding against the
    code before forwarding it to the user or asking an implementer to fix it.
-5. If the user wants "no findings left", run a repair pass separately and then
+6. If the user wants "no findings left", run a repair pass separately and then
    review the updated diff again.
-6. The review itself is strictly read-only: Composer never writes, and the
+7. The review itself is strictly read-only: Composer never writes, and the
    write-capable tools pre-approved on the Composer umbrella are off-limits
    during review. Only if the user explicitly asks to improve, update, or merge
    the PR does the parent agent move to a separate write phase *after* the review
@@ -49,6 +54,11 @@ Ask Composer to lead with findings and focus on:
 - risky behavior changes hidden inside refactors
 
 Ask it to avoid style-only feedback unless it blocks maintainability.
+
+For adversarial review, ask for the smallest useful answer: actionable findings
+only, concrete file/line evidence, and no implementation plan unless a finding
+needs a short fix sketch. Do not include Composer setup smoke output in the
+review prompt.
 
 ## Output
 
