@@ -9,7 +9,9 @@ branch diff, or PR diff.
    - current uncommitted diff
    - `BASE...HEAD`
    - a GitHub PR patch
-2. Gather the diff and enough surrounding context for review.
+2. Gather the diff and only the surrounding context needed to judge changed
+   behavior. Avoid whole-repo dumps, generated artifacts, unrelated logs, and
+   setup transcripts.
 3. Run Composer in read-only ask mode through the wrapper:
 
 ```bash
@@ -49,6 +51,11 @@ Ask Composer to lead with findings and focus on:
 - risky behavior changes hidden inside refactors
 
 Ask it to avoid style-only feedback unless it blocks maintainability.
+
+For adversarial review, ask for the smallest useful answer: actionable findings
+only, concrete file/line evidence, and no implementation plan unless a finding
+needs a short fix sketch. Do not include Composer setup smoke output in the
+review prompt.
 
 ## Output
 

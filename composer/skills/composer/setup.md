@@ -31,6 +31,19 @@ Use browser login only when the smoke proves it can run headless prompts:
 composer/skills/composer/scripts/cursor-agent-doctor.sh --auth login --smoke
 ```
 
+For adversarial review readiness without sending repo content, prefer the
+strict review model and skip Codex unless Codex is part of the workflow:
+
+```bash
+composer/skills/composer/scripts/cursor-agent-doctor.sh \
+  --skip-codex \
+  --smoke \
+  --model composer-2.5
+```
+
+If you need wrapper-level proof, run `composer-run.sh review` against an empty
+temporary workspace with a harmless prompt before preparing any project diff.
+
 ## What Good Looks Like
 
 - `cursor-agent` is installed.
@@ -40,6 +53,8 @@ composer/skills/composer/scripts/cursor-agent-doctor.sh --auth login --smoke
   `composer-2.5-fast`.
 - `codex login status` succeeds when OpenAI/Codex review is part of the loop.
 - The optional smoke returns `composer-smoke-ok`.
+- For review readiness, a `composer-2.5` smoke passes without sending repo
+  files or diffs.
 
 ## Setup Guidance
 

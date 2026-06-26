@@ -1,6 +1,6 @@
 ---
 name: composer
-description: "Route Cursor Composer workflows through one scoped /composer command. Use setup to verify Cursor Agent and API-key readiness, generate to delegate bounded implementation from a planner brief, and review for strict read-only Composer review of a diff or PR."
+description: "Route Cursor Composer workflows through one scoped /composer command. Use setup to verify Cursor Agent and API-key readiness, generate to delegate bounded implementation from a planner brief, and review for strict read-only or adversarial Composer review of a diff or PR."
 argument-hint: "[subcommand] [args] - e.g. generate <brief>, --review <PR>, setup --smoke"
 license: MIT
 # allowed-tools lives on this umbrella, not on the per-workflow wrappers: the
@@ -39,7 +39,7 @@ allowed-tools:
   - Grep
   - Glob
 metadata:
-  version: "1.4.3"
+  version: "1.4.4"
 ---
 
 # Composer Workflow Pack
@@ -81,6 +81,9 @@ by intent.
 - Use `review.md` to run strict read-only Composer review on a current diff or
   PR diff.
 
+Load only the selected sibling module. For review, read `setup.md` only when
+auth/model readiness is unknown; do not pre-load `generate.md`.
+
 ## Defaults
 
 - Prefer the Cursor CLI (`cursor-agent`) over the TypeScript SDK for this skill.
@@ -103,6 +106,8 @@ by intent.
   `cursor-agent-doctor.sh --auth login --smoke` passes. For unattended
   workflows, prefer `CURSOR_API_KEY`; `status` and `models` are not enough proof
   that headless `--print` prompts can run.
+- For review-readiness checks, prove the path with `setup.md` smoke commands
+  before sending repo code or diffs to Composer.
 - Keep Composer as an executor/reviewer. The parent agent still owns scope,
   PR quality, final validation, and user-facing judgment.
 - For machine-readable output, prefer `--output-format json` and read the final
