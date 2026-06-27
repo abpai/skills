@@ -40,7 +40,7 @@ allowed-tools:
   - Grep
   - Glob
 metadata:
-  version: "1.4.6"
+  version: "1.4.7"
 ---
 
 # Composer Workflow Pack
@@ -85,27 +85,30 @@ by intent.
 Load only the selected sibling module. For review, read `setup.md` only when
 auth/model readiness is unknown; do not pre-load `generate.md`.
 
-## Cursor Agent CLI auth (resolve before the first headless call)
+## Cursor Agent CLI auth
 
-When this skill needs Cursor Agent CLI, the invoking agent must pick an auth
-path before calling `composer-run.sh` or direct `agent -p` commands:
+**Browser login first, API key fallback, hard stop if neither.** The wrapper
+scripts implement exactly this as `--auth auto` (default), so routed
+`composer-run.sh` / `cursor-agent-doctor.sh` runs resolve auth for you — relay any
+hard stop they emit to the user. When you call `agent -p` directly, follow the
+same order:
 
 1. Confirm `agent` (or `cursor-agent`) is on `PATH`.
-2. Check browser auth with `agent status --format json` when supported; otherwise
-   `agent status`. Do not pass `CURSOR_API_KEY` for this check.
-3. If authenticated, use browser login and run headless commands with
-   `agent -p ...` — no API key ceremony.
-4. If not authenticated, check only for a non-empty `CURSOR_API_KEY` (or an
-   explicit `--env-file` / `CURSOR_ENV_FILE` when API-key mode is intentional).
-   Do not print, log, or echo the key. Do not run `agent login` with the key;
-   the CLI picks it up from the environment automatically.
-5. If neither browser auth nor `CURSOR_API_KEY` is available, stop immediately
-   and ask the user to run `agent login` or `export CURSOR_API_KEY=...`.
+2. Check browser auth with `agent status --format json` (else `agent status`),
+   with `CURSOR_API_KEY` unset for the probe.
+3. Authenticated → run headless with `agent -p ...`; no API-key ceremony.
+4. Not authenticated → use a non-empty `CURSOR_API_KEY` from the environment.
+   The CLI reads it automatically, so never run `agent login` with the key and
+   never print, log, or echo it.
+5. Neither → stop immediately and ask the user to run `agent login` or
+   `export CURSOR_API_KEY=...`.
 
-Best pattern: **browser login first, API key fallback, hard stop if neither**.
-
-The wrapper scripts implement this in `--auth auto` (default). Use `--auth login`
-to force browser login, or `--auth api-key` for unattended automation.
+`--auth login` forces browser login; `--auth api-key` is for unattended
+automation. `--auth` is a **wrapper option**, not a Cursor CLI flag — never run
+`agent --auth ...` (direct CLI auth is `agent login`). Set
+`CURSOR_ENV_FILE=/path/to/.env` (or `--env-file`) only when intentionally
+supplying an API key from a file; do not point it at a repo `.env` "just in
+case" — a repo env file without `CURSOR_API_KEY` must not block browser login.
 
 ## Defaults
 
@@ -126,9 +129,6 @@ to force browser login, or `--auth api-key` for unattended automation.
   hide useful findings in progress/thinking events.
 - Do not print, commit, or include secrets from `.env`. Report only whether
   `CURSOR_API_KEY` is present and whether the Cursor auth/model check passed.
-- `--auth` is a **wrapper option**, not a Cursor Agent CLI flag. Do not run
-  `agent --auth login`. Direct Cursor CLI auth uses `agent login`; headless
-  execution uses `agent -p ...`.
 - Default generate headless invocation (Run Everything equivalent):
 
   ```bash
@@ -162,7 +162,3 @@ to force browser login, or `--auth api-key` for unattended automation.
   auth fallback.
 - `scripts/composer-run.sh` resolves auth, then runs a headless generate/review
   prompt with `--trust` and generate defaults `--force --approve-mcps`.
-
-Set `CURSOR_ENV_FILE=/path/to/.env` only when intentionally using a Cursor API
-key from another location. Do not point it at a repo `.env` "just in case"; a
-repo env file without `CURSOR_API_KEY` should not block browser-login auth.

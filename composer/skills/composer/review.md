@@ -9,10 +9,10 @@ branch diff, or PR diff.
    - current uncommitted diff
    - `BASE...HEAD`
    - a GitHub PR patch
-2. Resolve Cursor auth before the first headless call (see `setup.md`). If auth
-   or model readiness is unknown, run the review readiness smoke from `setup.md`
-   before gathering any diff or sending repo content to Composer. Prefer
-   `composer-2.5-fast`; use `composer-2.5` for strict release gates.
+2. The wrapper resolves auth via `--auth auto` (see SKILL.md). If auth or model
+   readiness is unknown this session, run the readiness smoke from `setup.md`
+   before gathering any diff or sending repo content to Composer; never print the
+   key. Prefer `composer-2.5-fast`; use `composer-2.5` for strict release gates.
 3. Gather the diff and only the surrounding context needed to judge changed
    behavior. Avoid whole-repo dumps, generated artifacts, unrelated logs, and
    setup transcripts.
@@ -31,9 +31,7 @@ strict release-gate review. Use `--output-format json` when you want a single
 parseable final answer; the final text is in the `result` field. Use
 `stream-json` only for progress monitoring.
 
-Review runs use `--mode ask` and do **not** pass `--force` or
-`--approve-mcps`. `--auth` is a Composer wrapper option, not a Cursor Agent CLI
-parameter; direct Cursor CLI auth is `agent login`.
+Review runs use `--mode ask` and never pass `--force` or `--approve-mcps`.
 
 5. Treat Composer findings as input, not truth. Verify each finding against the
    code before forwarding it to the user or asking an implementer to fix it.

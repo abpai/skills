@@ -4,19 +4,13 @@ Verify that this machine can use Cursor Composer from headless agent workflows.
 OpenAI Codex login is optional and only matters when the workflow will also use
 Codex for review.
 
-## Auth resolution (do this before the first headless call)
+## Auth resolution
 
-The invoking agent should determine auth before running generate/review:
-
-1. Confirm `agent` (or `cursor-agent`) is installed.
-2. Run `agent status --format json` (or `agent status`) without `CURSOR_API_KEY`
-   in the environment.
-3. If authenticated → browser login is ready; use `agent -p ...` with no key.
-4. If not authenticated → check for `CURSOR_API_KEY` (never print it).
-5. If neither is available → stop and ask the user to run `agent login` or
-   `export CURSOR_API_KEY=...`.
-
-Best pattern: **browser login first, API key fallback, hard stop if neither**.
+`cursor-agent-doctor.sh` resolves auth via `--auth auto` — browser login →
+`CURSOR_API_KEY` → hard stop, the same rule SKILL.md states for direct
+`agent -p` calls. Run it with `CURSOR_API_KEY` unset to prove the browser-login
+path, or `--auth api-key` (with `CURSOR_ENV_FILE`/`--env-file`) to prove the key
+path. Never print the key; relay any hard stop to the user.
 
 ## Preflight
 
@@ -44,11 +38,6 @@ For browser-login-only proof:
 ```bash
 composer/skills/composer/scripts/cursor-agent-doctor.sh --auth login --smoke
 ```
-
-Direct Cursor CLI auth is `agent login`. Do **not** pass `--auth` to `agent`;
-that flag belongs to the Composer wrapper only. Headless runs use `agent -p ...`;
-the CLI reads `CURSOR_API_KEY` from the environment automatically — do not
-"log in" with the key.
 
 For adversarial review readiness without sending repo content, prefer
 `composer-2.5-fast` for the cheap smoke check and skip Codex unless Codex is
@@ -80,10 +69,8 @@ temporary workspace with a harmless prompt before preparing any project diff.
 
 ## Setup Guidance
 
-- Cursor auth can use browser login (`agent login`) or `CURSOR_API_KEY`.
 - Prefer browser login on local dev machines; prefer `CURSOR_API_KEY` for CI and
   unattended automation.
-- `--auth` is the Composer wrapper's auth selector, not a Cursor CLI flag.
 - `agent status` is advisory; trust the doctor smoke when deciding whether
   headless automation is ready.
 - Codex auth can use `codex login`, `codex login --device-auth`,

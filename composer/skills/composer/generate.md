@@ -7,11 +7,11 @@ planner, reviewer, and release coordinator.
 
 1. Confirm there is a concrete implementation brief. If the user gave only a
    vague request, write a short plan first and keep scope narrow.
-2. Resolve Cursor auth before the first headless call (see `setup.md`):
-   `agent status --format json` → browser login if authenticated → else
-   `CURSOR_API_KEY` → else stop and ask the user to log in or provide a key.
-   Run `composer/skills/composer/scripts/cursor-agent-doctor.sh --smoke` when
-   this session has not already proved headless readiness.
+2. The wrapper resolves auth via `--auth auto` (browser login → `CURSOR_API_KEY`
+   → hard stop; see SKILL.md). Run
+   `composer/skills/composer/scripts/cursor-agent-doctor.sh --smoke` first when
+   this session has not yet proved headless readiness; relay any auth hard stop
+   to the user and never print the key.
 3. Create or choose an isolated branch/worktree before handing work to
    Composer. Prefer one coherent task per branch.
 4. Write a prompt file that includes the exact task, files/areas in scope,
@@ -37,15 +37,8 @@ worktree under `~/.cursor/worktrees`.
 The wrapper uses Cursor's headless CLI (`agent -p`), not the TypeScript SDK.
 Generate runs default to `--force --trust --approve-mcps` (Run Everything
 equivalent). Use `--no-force` when the user only wants proposed changes, not
-applied edits. Use `--no-approve-mcps` when MCP auto-approval is not wanted.
-
-Direct headless flags are things like `-p`/`--print`, `--force`, `--trust`,
-`--approve-mcps`, `--workspace`, `--model`, and `--output-format`. Do not pass
-`--auth` to `agent`; it is wrapper-only.
-
-Only set `CURSOR_ENV_FILE` or `--env-file` when intentionally supplying a
-Cursor API-key file. If browser login is healthy, do not hunt unrelated project
-`.env` files for keys.
+applied edits, and `--no-approve-mcps` when MCP auto-approval is not wanted.
+`--auth` / `--env-file` are wrapper options, not Cursor CLI flags (see SKILL.md).
 
 6. Inspect Composer's changes yourself in the workspace Composer actually used:
    `git status`, `git diff`, tests, and the repo's existing validation gates.
