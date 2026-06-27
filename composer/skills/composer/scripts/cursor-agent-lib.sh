@@ -107,30 +107,41 @@ find_cursor_api_key() {
 
 check_browser_authenticated() {
   local bin="${1:-$CURSOR_AGENT_BIN}"
-  local status_output
+  local status_output text_status
 
   [[ -n "$bin" ]] || return 1
 
+  # Prefer the structured probe and treat valid JSON as authoritative. A
+  # logged-out CLI prints "Not logged in", whose substring "logged in" would
+  # otherwise pass a naive positive grep — so never fall through to text when
+  # JSON parsed cleanly.
   status_output="$(mktemp)"
-  if (unset CURSOR_API_KEY; "$bin" status --format json >"$status_output" 2>/dev/null); then
-    if command -v jq >/dev/null 2>&1 &&
-      jq -e '
-        (.authenticated == true)
-        or (.isAuthenticated == true)
-        or (.auth.authenticated == true)
-        or (.status == "authenticated")
-      ' "$status_output" >/dev/null 2>&1; then
+  if (unset CURSOR_API_KEY; "$bin" status --format json >"$status_output" 2>/dev/null) &&
+    command -v jq >/dev/null 2>&1 &&
+    jq -e 'type == "object"' "$status_output" >/dev/null 2>&1; then
+    if jq -e '
+      (.authenticated == true)
+      or (.isAuthenticated == true)
+      or (.auth.authenticated == true)
+      or (.status == "authenticated")
+    ' "$status_output" >/dev/null 2>&1; then
       rm -f "$status_output"
       return 0
     fi
-  fi
-
-  if (unset CURSOR_API_KEY; "$bin" status 2>/dev/null | grep -Eiq 'authenticated|logged in|signed in'); then
     rm -f "$status_output"
+    return 1
+  fi
+  rm -f "$status_output"
+
+  # Text fallback only when JSON/jq is unavailable. Reject explicit negatives
+  # before matching positives so "Not logged in" / "unauthenticated" don't pass.
+  text_status="$(unset CURSOR_API_KEY; "$bin" status 2>/dev/null)"
+  if printf '%s\n' "$text_status" | grep -Eiq 'not (logged in|signed in|authenticated)|unauthenticated|logged out|signed out'; then
+    return 1
+  fi
+  if printf '%s\n' "$text_status" | grep -Eiq 'logged in|signed in|authenticated'; then
     return 0
   fi
-
-  rm -f "$status_output"
   return 1
 }
 
@@ -142,7 +153,7 @@ Use one of:
 
   agent login
 
-or:
+or set a key in the environment (or a file via CURSOR_ENV_FILE / --env-file):
 
   export CURSOR_API_KEY=...
 
@@ -190,7 +201,8 @@ resolve_cursor_auth() {
       RESOLVED_CURSOR_AUTH="api-key"
       return 0
     fi
-    echo "[FAIL] CURSOR_API_KEY not found; set it, pass CURSOR_ENV_FILE/--env-file, or use --auth login" >&2
+    echo "[FAIL] CURSOR_API_KEY not found for --auth api-key." >&2
+    print_cursor_auth_help
     return 1
   fi
 
