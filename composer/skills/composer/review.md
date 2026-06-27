@@ -19,6 +19,7 @@ branch diff, or PR diff.
 
 ```bash
 composer/skills/composer/scripts/composer-run.sh review \
+  --auth login \
   --model composer-2.5 \
   --prompt-file /path/to/review-prompt.md \
   --workspace /path/to/repo
@@ -28,6 +29,10 @@ Use `composer-2.5-fast` for quick second opinions; use `composer-2.5` for
 strict release-gate review. Use `--output-format json` when you want a single
 parseable final answer; the final text is in the `result` field. Use
 `stream-json` only for progress monitoring.
+
+`--auth login` is a Composer wrapper option for using an existing Cursor browser
+login. It is not a Cursor Agent CLI parameter; direct Cursor CLI auth is
+`agent login` / `cursor-agent login`.
 
 5. Treat Composer findings as input, not truth. Verify each finding against the
    code before forwarding it to the user or asking an implementer to fix it.

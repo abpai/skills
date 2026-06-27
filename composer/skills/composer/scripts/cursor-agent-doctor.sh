@@ -23,7 +23,8 @@ Options:
   --model MODEL      Model to require/smoke (default: composer-2.5-fast).
   --timeout SECONDS  Timeout for Cursor/Codex probes (default: 60).
   --env-file PATH    Load CURSOR_API_KEY from this dotenv file.
-  --auth MODE        auto, api-key, or login (default: auto).
+  --auth MODE        Wrapper auth mode: auto, api-key, or login (default: auto).
+                     Wrapper-only; not a Cursor Agent CLI flag.
   --skip-codex       Skip Codex login status check.
 EOF
 }
@@ -109,7 +110,7 @@ load_env_file() {
 find_and_load_env() {
   CURSOR_KEY_VALUE=""
 
-  if [[ -n "$ENV_FILE" ]]; then
+  if [[ "$ENV_FILE_EXPLICIT" == "true" ]]; then
     if load_env_file "$ENV_FILE"; then
       echo "[OK] loaded CURSOR_API_KEY from explicit env file"
       return 0
@@ -122,6 +123,18 @@ find_and_load_env() {
     CURSOR_KEY_VALUE="$CURSOR_API_KEY"
     echo "[OK] CURSOR_API_KEY already present in environment"
     return 0
+  fi
+
+  if [[ -n "$ENV_FILE" ]]; then
+    if load_env_file "$ENV_FILE"; then
+      echo "[OK] loaded CURSOR_API_KEY from CURSOR_ENV_FILE"
+      return 0
+    fi
+    if [[ "$AUTH_MODE" == "api-key" ]]; then
+      echo "[FAIL] CURSOR_ENV_FILE did not contain CURSOR_API_KEY: $ENV_FILE"
+      return 1
+    fi
+    echo "[WARN] CURSOR_ENV_FILE did not contain CURSOR_API_KEY; trying other auth sources"
   fi
 
   local dir="$PWD"

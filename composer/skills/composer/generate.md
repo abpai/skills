@@ -17,6 +17,7 @@ planner, reviewer, and release coordinator.
 
 ```bash
 composer/skills/composer/scripts/composer-run.sh generate \
+  --auth login \
   --model composer-2.5-fast \
   --prompt-file /path/to/prompt.md \
   --workspace /path/to/worktree
@@ -27,8 +28,15 @@ and `--worktree-base REF` only when you want Cursor Agent to create its own
 worktree under `~/.cursor/worktrees`.
 
 The wrapper uses Cursor's headless CLI, not the TypeScript SDK. Use
-`--auth login` only after `cursor-agent-doctor.sh --auth login --smoke` passes;
-for unattended automation, prefer `CURSOR_API_KEY`.
+`--auth login` when `cursor-agent-doctor.sh --auth login --smoke` passes; for
+unattended automation, prefer `CURSOR_API_KEY` and `--auth api-key`. `--auth`
+is a wrapper flag. Do not pass it to `agent`/`cursor-agent`; direct Cursor
+headless flags are things like `-p`/`--print`, `--force`, `--trust`,
+`--workspace`, `--model`, and `--output-format`.
+
+Only set `CURSOR_ENV_FILE` or `--env-file` when intentionally supplying a
+Cursor API-key file. If the user is logged into Cursor and has usage remaining,
+do not search unrelated project `.env` files for keys.
 
 6. Inspect Composer's changes yourself in the workspace Composer actually used:
    `git status`, `git diff`, tests, and the repo's existing validation gates.

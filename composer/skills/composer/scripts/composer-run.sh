@@ -12,7 +12,8 @@ Options:
   --model MODEL           Cursor model (generate default: composer-2.5-fast; review default: composer-2.5).
   --output-format FORMAT  text, json, or stream-json (default: text).
   --mode MODE             Cursor read-only mode for this run: ask or plan (review default: ask).
-  --auth MODE             auto, api-key, or login (default: auto).
+  --auth MODE             Wrapper auth mode: auto, api-key, or login (default: auto).
+                          Wrapper-only; not a Cursor Agent CLI flag.
   --env-file PATH         Load CURSOR_API_KEY from this dotenv file.
   --timeout SECONDS       Timeout for the run (default: 1800).
   --worktree NAME         Let Cursor Agent create/use an isolated worktree.
@@ -175,28 +176,41 @@ if [[ "$AUTH_MODE" == "login" ]]; then
     exit 2
   fi
   CURSOR_KEY_VALUE=""
-elif [[ -n "$ENV_FILE" ]]; then
-  load_env_file "$ENV_FILE" || {
-    echo "[FAIL] explicit env file did not contain CURSOR_API_KEY: $ENV_FILE" >&2
-    exit 1
-  }
 elif [[ -n "${CURSOR_API_KEY:-}" ]]; then
   CURSOR_KEY_VALUE="$CURSOR_API_KEY"
 else
+  if [[ -n "$ENV_FILE" ]]; then
+    if load_env_file "$ENV_FILE"; then
+      :
+    elif [[ "$ENV_FILE_EXPLICIT" == "true" || "$AUTH_MODE" == "api-key" ]]; then
+      echo "[FAIL] env file did not contain CURSOR_API_KEY: $ENV_FILE" >&2
+      exit 1
+    else
+      # Ambient CURSOR_ENV_FILE is often inherited from another repo. In auto
+      # mode, do not let a repo .env without Cursor credentials block the
+      # documented browser-login path.
+      CURSOR_KEY_VALUE=""
+    fi
+  fi
+
   # Search ancestor .env files starting from the workspace. Canonicalize to an
   # absolute path first so a relative --workspace (e.g. '.') can't make
   # `dirname` spin forever, and guard the loop against a fixed point regardless.
-  dir="$(cd "$WORKSPACE" 2>/dev/null && pwd -P || printf '%s' "$WORKSPACE")"
-  loaded="false"
-  while :; do
-    if load_env_file "$dir/.env"; then
-      loaded="true"
-      break
-    fi
-    next="$(dirname "$dir")"
-    [[ "$next" == "$dir" ]] && break
-    dir="$next"
-  done
+  if [[ -z "$CURSOR_KEY_VALUE" ]]; then
+    dir="$(cd "$WORKSPACE" 2>/dev/null && pwd -P || printf '%s' "$WORKSPACE")"
+    loaded="false"
+    while :; do
+      if load_env_file "$dir/.env"; then
+        loaded="true"
+        break
+      fi
+      next="$(dirname "$dir")"
+      [[ "$next" == "$dir" ]] && break
+      dir="$next"
+    done
+  else
+    loaded="true"
+  fi
   if [[ "$loaded" != "true" && "$AUTH_MODE" == "api-key" ]]; then
     echo "[FAIL] CURSOR_API_KEY not found; set it, pass CURSOR_ENV_FILE/--env-file, or use --auth login" >&2
     exit 1
