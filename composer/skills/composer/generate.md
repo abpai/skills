@@ -9,7 +9,7 @@ planner, reviewer, and release coordinator.
    vague request, write a short plan first and keep scope narrow.
 2. The wrapper resolves auth via `--auth auto` (browser login → `CURSOR_API_KEY`
    → hard stop; see SKILL.md). Run
-   `composer/skills/composer/scripts/cursor-agent-doctor.sh --smoke` first when
+   `cursor-agent-doctor.sh --smoke` first when
    this session has not yet proved headless readiness; relay any auth hard stop
    to the user and never print the key.
 3. Create or choose an isolated branch/worktree before handing work to
@@ -23,7 +23,7 @@ planner, reviewer, and release coordinator.
    fallback):
 
 ```bash
-composer/skills/composer/scripts/composer-run.sh generate \
+composer-run.sh generate \
   --model composer-2.5-fast \
   --output-format stream-json \
   --prompt-file /path/to/prompt.md \

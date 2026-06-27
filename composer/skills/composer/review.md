@@ -15,11 +15,13 @@ branch diff, or PR diff.
    key. Prefer `composer-2.5-fast`; use `composer-2.5` for strict release gates.
 3. Gather the diff and only the surrounding context needed to judge changed
    behavior. Avoid whole-repo dumps, generated artifacts, unrelated logs, and
-   setup transcripts.
+   setup transcripts. Embed that diff in the review prompt file — it is the
+   authoritative review scope. `--workspace` only gives Composer read access to
+   resolve surrounding context, not the scope itself.
 4. Run Composer in read-only ask mode through the wrapper (default `--auth auto`):
 
 ```bash
-composer/skills/composer/scripts/composer-run.sh review \
+composer-run.sh review \
   --model composer-2.5 \
   --output-format json \
   --prompt-file /path/to/review-prompt.md \

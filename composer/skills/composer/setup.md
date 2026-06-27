@@ -14,29 +14,33 @@ path. Never print the key; relay any hard stop to the user.
 
 ## Preflight
 
+The commands below use the bare command name, which works when the plugin is
+installed (its `bin/` is on `PATH`). From the source checkout, prefix with the
+path: `composer/bin/cursor-agent-doctor.sh`.
+
 Run:
 
 ```bash
-composer/skills/composer/scripts/cursor-agent-doctor.sh
+cursor-agent-doctor.sh
 ```
 
 Default `--auth auto` follows the login-first fallback above. For API-key-only
 automation:
 
 ```bash
-CURSOR_ENV_FILE=/path/to/cursor-key.env composer/skills/composer/scripts/cursor-agent-doctor.sh --auth api-key
+CURSOR_ENV_FILE=/path/to/cursor-key.env cursor-agent-doctor.sh --auth api-key
 ```
 
 For an API-key end-to-end smoke:
 
 ```bash
-CURSOR_ENV_FILE=/path/to/cursor-key.env composer/skills/composer/scripts/cursor-agent-doctor.sh --auth api-key --smoke
+CURSOR_ENV_FILE=/path/to/cursor-key.env cursor-agent-doctor.sh --auth api-key --smoke
 ```
 
 For browser-login-only proof:
 
 ```bash
-composer/skills/composer/scripts/cursor-agent-doctor.sh --auth login --smoke
+cursor-agent-doctor.sh --auth login --smoke
 ```
 
 For adversarial review readiness without sending repo content, prefer
@@ -44,7 +48,7 @@ For adversarial review readiness without sending repo content, prefer
 part of the workflow:
 
 ```bash
-composer/skills/composer/scripts/cursor-agent-doctor.sh \
+cursor-agent-doctor.sh \
   --skip-codex \
   --smoke \
   --model composer-2.5-fast

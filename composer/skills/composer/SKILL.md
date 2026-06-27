@@ -8,11 +8,19 @@ license: MIT
 # never the active skill. Declared here, the union suppresses prompts during the
 # routed setup/generate/review workflows without depending on wrapper activation.
 allowed-tools:
-  - Bash(composer/skills/composer/scripts/cursor-agent-doctor.sh)
-  - Bash(composer/skills/composer/scripts/cursor-agent-doctor.sh:*)
-  - Bash(composer/skills/composer/scripts/composer-run.sh:*)
-  - Bash(bash composer/skills/composer/scripts/cursor-agent-doctor.sh:*)
-  - Bash(bash composer/skills/composer/scripts/composer-run.sh:*)
+  # Installed plugin: the plugin's bin/ is on PATH, so the scripts run as bare
+  # commands. (${CLAUDE_PLUGIN_ROOT} is NOT expanded in permission rules, so a
+  # ${CLAUDE_PLUGIN_ROOT}/bin/... rule would not match — the bin/ bare command is
+  # the prompt-free path.)
+  - Bash(cursor-agent-doctor.sh)
+  - Bash(cursor-agent-doctor.sh:*)
+  - Bash(composer-run.sh:*)
+  # Source checkout / non-PATH installs: invoke by path under the plugin bin/.
+  - Bash(composer/bin/cursor-agent-doctor.sh)
+  - Bash(composer/bin/cursor-agent-doctor.sh:*)
+  - Bash(composer/bin/composer-run.sh:*)
+  - Bash(bash composer/bin/cursor-agent-doctor.sh:*)
+  - Bash(bash composer/bin/composer-run.sh:*)
   - Bash(cursor-agent *)
   - Bash(agent *)
   - Bash(codex *)
@@ -40,7 +48,7 @@ allowed-tools:
   - Grep
   - Glob
 metadata:
-  version: "1.4.8"
+  version: "1.4.9"
 ---
 
 # Composer Workflow Pack
@@ -155,10 +163,17 @@ case" — a repo env file without `CURSOR_API_KEY` must not block browser login.
 
 ## Scripts
 
-- `scripts/cursor-agent-doctor.sh` checks local setup and can run a small
-  Composer smoke test.
-- `scripts/cursor-agent-lib.sh` resolves `agent` vs `cursor-agent`, checks
-  browser auth via `agent status --format json`, and implements the login-first
-  auth fallback.
-- `scripts/composer-run.sh` resolves auth, then runs a headless generate/review
-  prompt with `--trust` and generate defaults `--force --approve-mcps`.
+The scripts ship in the plugin's `bin/`. **When the plugin is installed, `bin/`
+is on `PATH`, so run them as bare commands** (`cursor-agent-doctor.sh`,
+`composer-run.sh`) — this is the prompt-free path. **From the source checkout (or
+any install where `bin/` is not on `PATH`), invoke them by path** instead:
+`composer/bin/cursor-agent-doctor.sh`. The module commands below show the bare
+form; substitute the path form when running from a checkout.
+
+- `cursor-agent-doctor.sh` checks local setup and can run a small Composer smoke
+  test.
+- `composer-run.sh` resolves auth, then runs a headless generate/review prompt
+  with `--trust` and generate defaults `--force --approve-mcps`.
+- `cursor-agent-lib.sh` (sourced, not run) resolves `agent` vs `cursor-agent`,
+  checks browser auth via `agent status --format json`, and implements the
+  login-first auth fallback.
