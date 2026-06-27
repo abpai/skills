@@ -4,6 +4,28 @@ Verify that this machine can use Cursor Composer from headless agent workflows.
 OpenAI Codex login is optional and only matters when the workflow will also use
 Codex for review.
 
+## Resolve wrapper scripts
+
+Codex flat installs copy only the skill folder (markdown + `bin/`), not plugin-root
+`composer/bin/` onto `PATH`. Before running wrappers, resolve `COMPOSER_BIN`:
+
+```bash
+COMPOSER_BIN=""
+if command -v composer-run.sh >/dev/null 2>&1; then
+  COMPOSER_BIN="$(dirname "$(command -v composer-run.sh)")"
+elif [[ -x "$HOME/.agents/skills/composer/bin/composer-run.sh" ]]; then
+  COMPOSER_BIN="$HOME/.agents/skills/composer/bin"
+elif [[ -x "./bin/composer-run.sh" ]]; then
+  COMPOSER_BIN="$(cd ./bin && pwd)"
+elif COMPOSER_BIN="$(composer-path.sh 2>/dev/null)"; then
+  :
+fi
+```
+
+Use `"$COMPOSER_BIN/cursor-agent-doctor.sh"` and
+`"$COMPOSER_BIN/composer-run.sh"` below. If `COMPOSER_BIN` is empty, fall back to
+direct `agent -p ...` (same auth order as SKILL.md).
+
 ## Auth resolution
 
 `cursor-agent-doctor.sh` resolves auth via `--auth auto` — browser login →
@@ -14,33 +36,29 @@ path. Never print the key; relay any hard stop to the user.
 
 ## Preflight
 
-The commands below use the bare command name, which works when the plugin is
-installed (its `bin/` is on `PATH`). From the source checkout, prefix with the
-path: `composer/bin/cursor-agent-doctor.sh`.
-
 Run:
 
 ```bash
-cursor-agent-doctor.sh
+"$COMPOSER_BIN/cursor-agent-doctor.sh"
 ```
 
 Default `--auth auto` follows the login-first fallback above. For API-key-only
 automation:
 
 ```bash
-CURSOR_ENV_FILE=/path/to/cursor-key.env cursor-agent-doctor.sh --auth api-key
+CURSOR_ENV_FILE=/path/to/cursor-key.env "$COMPOSER_BIN/cursor-agent-doctor.sh" --auth api-key
 ```
 
 For an API-key end-to-end smoke:
 
 ```bash
-CURSOR_ENV_FILE=/path/to/cursor-key.env cursor-agent-doctor.sh --auth api-key --smoke
+CURSOR_ENV_FILE=/path/to/cursor-key.env "$COMPOSER_BIN/cursor-agent-doctor.sh" --auth api-key --smoke
 ```
 
 For browser-login-only proof:
 
 ```bash
-cursor-agent-doctor.sh --auth login --smoke
+"$COMPOSER_BIN/cursor-agent-doctor.sh" --auth login --smoke
 ```
 
 For adversarial review readiness without sending repo content, prefer
@@ -48,7 +66,7 @@ For adversarial review readiness without sending repo content, prefer
 part of the workflow:
 
 ```bash
-cursor-agent-doctor.sh \
+"$COMPOSER_BIN/cursor-agent-doctor.sh" \
   --skip-codex \
   --smoke \
   --model composer-2.5-fast
@@ -57,12 +75,14 @@ cursor-agent-doctor.sh \
 Use `--model composer-2.5` instead when the review is a strict release gate or
 the user asks for the slower path.
 
-If you need wrapper-level proof, run `composer-run.sh review` against an empty
-temporary workspace with a harmless prompt before preparing any project diff.
+If you need wrapper-level proof, run `"$COMPOSER_BIN/composer-run.sh" review`
+against an empty temporary workspace with a harmless prompt before preparing
+any project diff.
 
 ## What Good Looks Like
 
 - `agent` or `cursor-agent` is installed.
+- Wrapper scripts resolve under `COMPOSER_BIN` (or you fall back to `agent -p`).
 - Cursor auth works through browser login after the smoke passes, or through
   `CURSOR_API_KEY` when API-key mode is intentional.
 - `agent models` succeeds and includes `composer-2.5` or `composer-2.5-fast`.
@@ -87,6 +107,7 @@ temporary workspace with a harmless prompt before preparing any project diff.
 Summarize:
 
 - Cursor CLI binary and version.
+- Wrapper bin directory used (`COMPOSER_BIN`) or direct `agent -p` fallback.
 - Auth path used (browser login or API key present) without printing the key.
 - Whether Composer models are available.
 - Whether Codex login is ready.

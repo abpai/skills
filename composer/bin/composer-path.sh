@@ -1,0 +1,1 @@
+../skills/composer/bin/composer-path.sh

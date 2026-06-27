@@ -9,10 +9,11 @@ branch diff, or PR diff.
    - current uncommitted diff
    - `BASE...HEAD`
    - a GitHub PR patch
-2. The wrapper resolves auth via `--auth auto` (see SKILL.md). If auth or model
-   readiness is unknown this session, run the readiness smoke from `setup.md`
-   before gathering any diff or sending repo content to Composer; never print the
-   key. Prefer `composer-2.5-fast`; use `composer-2.5` for strict release gates.
+2. Resolve `COMPOSER_BIN` (see `setup.md`). The wrapper resolves auth via
+   `--auth auto` (see SKILL.md). If auth or model readiness is unknown this
+   session, run the readiness smoke from `setup.md` before gathering any diff
+   or sending repo content to Composer; never print the key. Prefer
+   `composer-2.5-fast`; use `composer-2.5` for strict release gates.
 3. Gather the diff and only the surrounding context needed to judge changed
    behavior. Avoid whole-repo dumps, generated artifacts, unrelated logs, and
    setup transcripts. Embed that diff in the review prompt file — it is the
@@ -21,7 +22,7 @@ branch diff, or PR diff.
 4. Run Composer in read-only ask mode through the wrapper (default `--auth auto`):
 
 ```bash
-composer-run.sh review \
+"$COMPOSER_BIN/composer-run.sh" review \
   --model composer-2.5 \
   --output-format json \
   --prompt-file /path/to/review-prompt.md \
