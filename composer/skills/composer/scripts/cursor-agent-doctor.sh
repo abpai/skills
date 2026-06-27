@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=cursor-agent-lib.sh
+source "$SCRIPT_DIR/cursor-agent-lib.sh"
+
 MODEL="composer-2.5-fast"
 TIMEOUT_SECONDS="60"
 RUN_SMOKE="false"
 CHECK_CODEX="true"
 ENV_FILE="${CURSOR_ENV_FILE:-}"
 ENV_FILE_EXPLICIT="false"
-CURSOR_KEY_VALUE="${CURSOR_API_KEY:-}"
 AUTH_MODE="auto"
-ACTIVE_CURSOR_KEY=""
 SMOKE_ALREADY_RAN="false"
 
 usage() {
@@ -24,6 +26,7 @@ Options:
   --timeout SECONDS  Timeout for Cursor/Codex probes (default: 60).
   --env-file PATH    Load CURSOR_API_KEY from this dotenv file.
   --auth MODE        Wrapper auth mode: auto, api-key, or login (default: auto).
+                     auto = browser login first, then CURSOR_API_KEY, else hard stop.
                      Wrapper-only; not a Cursor Agent CLI flag.
   --skip-codex       Skip Codex login status check.
 EOF
@@ -68,96 +71,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-case "$AUTH_MODE" in
-  auto|api-key|login) ;;
-  *)
-    echo "[FAIL] --auth must be auto, api-key, or login" >&2
-    exit 2
-    ;;
-esac
-
-if [[ "$ENV_FILE_EXPLICIT" == "true" && "$AUTH_MODE" == "login" ]]; then
-  echo "[FAIL] --env-file cannot be combined with --auth login" >&2
-  exit 2
-fi
-
-strip_quotes() {
-  local value="$1"
-  value="${value%$'\r'}"
-  if [[ "$value" == \"*\" && "$value" == *\" ]]; then
-    value="${value:1:${#value}-2}"
-  elif [[ "$value" == \'*\' && "$value" == *\' ]]; then
-    value="${value:1:${#value}-2}"
-  fi
-  printf '%s' "$value"
-}
-
-load_env_file() {
-  local file="$1"
-  [[ -f "$file" ]] || return 1
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    case "$line" in
-      ''|'#'*) continue ;;
-    esac
-    if [[ "$line" == CURSOR_API_KEY=* ]]; then
-      CURSOR_KEY_VALUE="$(strip_quotes "${line#CURSOR_API_KEY=}")"
-      return 0
-    fi
-  done < "$file"
-  return 1
-}
-
-find_and_load_env() {
-  CURSOR_KEY_VALUE=""
-
-  if [[ "$ENV_FILE_EXPLICIT" == "true" ]]; then
-    if load_env_file "$ENV_FILE"; then
-      echo "[OK] loaded CURSOR_API_KEY from explicit env file"
-      return 0
-    fi
-    echo "[FAIL] explicit env file did not contain CURSOR_API_KEY: $ENV_FILE"
-    return 1
-  fi
-
-  if [[ -n "${CURSOR_API_KEY:-}" ]]; then
-    CURSOR_KEY_VALUE="$CURSOR_API_KEY"
-    echo "[OK] CURSOR_API_KEY already present in environment"
-    return 0
-  fi
-
-  if [[ -n "$ENV_FILE" ]]; then
-    if load_env_file "$ENV_FILE"; then
-      echo "[OK] loaded CURSOR_API_KEY from CURSOR_ENV_FILE"
-      return 0
-    fi
-    if [[ "$AUTH_MODE" == "api-key" ]]; then
-      echo "[FAIL] CURSOR_ENV_FILE did not contain CURSOR_API_KEY: $ENV_FILE"
-      return 1
-    fi
-    echo "[WARN] CURSOR_ENV_FILE did not contain CURSOR_API_KEY; trying other auth sources"
-  fi
-
-  local dir="$PWD"
-  while [[ "$dir" != "/" ]]; do
-    if load_env_file "$dir/.env"; then
-      echo "[OK] loaded CURSOR_API_KEY from .env"
-      return 0
-    fi
-    dir="$(dirname "$dir")"
-  done
-
-  echo "[WARN] CURSOR_API_KEY not found in environment or ancestor .env files"
-  return 1
-}
-
-redact() {
-  sed -E \
-    -e 's/(sk-[A-Za-z0-9_-]{8})[A-Za-z0-9_-]+/\1…/g' \
-    -e 's/(crsr_[A-Za-z0-9_-]{8})[A-Za-z0-9_-]+/\1…/g' \
-    -e 's/(CURSOR_API_KEY=)[^[:space:]]+/\1[redacted]/Ig' \
-    -e 's/(api[-_ ]?key[:=][[:space:]]*)[^[:space:]]+/\1[redacted]/Ig'
-}
-
 run_timeout() {
   if command -v timeout >/dev/null 2>&1; then
     timeout "$TIMEOUT_SECONDS" "$@"
@@ -179,22 +92,13 @@ run_timeout_15() {
 }
 
 run_cursor_models() {
-  local key="$1"
-  local output_file="$2"
-
-  if [[ -n "$key" ]]; then
-    CURSOR_API_KEY="$key" run_timeout cursor-agent models >"$output_file" 2>&1
-  else
-    (unset CURSOR_API_KEY; run_timeout cursor-agent models >"$output_file" 2>&1)
-  fi
+  local output_file="$1"
+  run_with_cursor_auth "$CURSOR_AGENT_BIN" models >"$output_file" 2>&1
 }
 
 model_list_has_name() {
   local output_file="$1"
   local wanted="$2"
-  # Scan every whitespace-delimited field, not just $1, so a leading marker
-  # (e.g. "* composer-2.5" for the active model, or a "- " bullet) doesn't hide
-  # the id. Field equality still avoids substring false positives.
   awk -v wanted="$wanted" '{ for (i = 1; i <= NF; i++) if ($i == wanted) found = 1 } END { exit(found ? 0 : 1) }' "$output_file"
 }
 
@@ -205,12 +109,11 @@ model_list_has_composer_25() {
 
 check_models() {
   local label="$1"
-  local key="$2"
   local models_output
   models_output="$(mktemp)"
 
-  if run_cursor_models "$key" "$models_output"; then
-    echo "[OK] cursor-agent models succeeded using $label"
+  if run_cursor_models "$models_output"; then
+    echo "[OK] $CURSOR_AGENT_BIN models succeeded using $label"
     if model_list_has_name "$models_output" "$MODEL"; then
       echo "[OK] required model available: $MODEL"
       rm -f "$models_output"
@@ -224,7 +127,7 @@ check_models() {
     echo "[WARN] no Composer 2.5 model found in model list for $label"
     redact <"$models_output" | tail -20
   else
-    echo "[WARN] cursor-agent models failed or timed out using $label"
+    echo "[WARN] $CURSOR_AGENT_BIN models failed or timed out using $label"
     redact <"$models_output" | tail -20
   fi
 
@@ -232,37 +135,8 @@ check_models() {
   return 1
 }
 
-run_cursor_prompt() {
-  local key="$1"
-  shift
-
-  if [[ -n "$key" ]]; then
-    CURSOR_API_KEY="$key" run_timeout cursor-agent "$@"
-  else
-    (unset CURSOR_API_KEY; run_timeout cursor-agent "$@")
-  fi
-}
-
-check_login_status() {
-  local status_output
-  status_output="$(mktemp)"
-
-  if (unset CURSOR_API_KEY; run_timeout cursor-agent status >"$status_output" 2>&1) &&
-    ! grep -qiE 'not logged in|not authenticated|authentication required' "$status_output"; then
-    echo "[OK] cursor-agent status succeeded using Cursor login"
-    rm -f "$status_output"
-    return 0
-  fi
-
-  echo "[FAIL] Cursor login is not ready; run cursor-agent login or use CURSOR_API_KEY"
-  redact <"$status_output" | tail -10
-  rm -f "$status_output"
-  return 1
-}
-
 smoke_probe() {
   local label="$1"
-  local key="$2"
   local smoke_dir
   local smoke_output
   local prompt
@@ -271,7 +145,7 @@ smoke_probe() {
   smoke_output="$(mktemp)"
   prompt='Reply with exactly: composer-smoke-ok'
 
-  if run_cursor_prompt "$key" -p --mode ask --trust --workspace "$smoke_dir" --model "$MODEL" --output-format text "$prompt" >"$smoke_output" 2>&1; then
+  if run_with_cursor_auth run_timeout "$CURSOR_AGENT_BIN" -p --mode ask --trust --workspace "$smoke_dir" --model "$MODEL" --output-format text "$prompt" >"$smoke_output" 2>&1; then
     if grep -q 'composer-smoke-ok' "$smoke_output"; then
       echo "[OK] composer smoke returned expected text using $label"
       rm -f "$smoke_output"
@@ -289,82 +163,46 @@ smoke_probe() {
   return 1
 }
 
-try_api_key_auth() {
-  if check_models "CURSOR_API_KEY" "$CURSOR_KEY_VALUE"; then
-    ACTIVE_CURSOR_KEY="$CURSOR_KEY_VALUE"
-    return 0
-  fi
-
-  echo "[WARN] model listing did not prove Composer availability; trying a tiny headless prompt with CURSOR_API_KEY"
-  if smoke_probe "CURSOR_API_KEY" "$CURSOR_KEY_VALUE"; then
-    ACTIVE_CURSOR_KEY="$CURSOR_KEY_VALUE"
-    SMOKE_ALREADY_RAN="true"
-    return 0
-  fi
-
-  return 1
-}
-
-try_login_auth() {
-  if ! check_login_status; then
-    return 1
-  fi
-
-  if check_models "Cursor login" ""; then
-    :
-  else
-    echo "[WARN] model listing did not prove Composer availability; continuing to the login smoke proof"
-  fi
-
-  if smoke_probe "Cursor login" ""; then
-    ACTIVE_CURSOR_KEY=""
-    SMOKE_ALREADY_RAN="true"
-    return 0
-  fi
-
-  return 1
-}
-
 failed=0
 
-if command -v cursor-agent >/dev/null 2>&1; then
-  echo "[OK] cursor-agent found: $(command -v cursor-agent)"
-  if version_output="$(cursor-agent --version 2>&1 | redact)"; then
-    echo "[OK] cursor-agent version: $version_output"
+if resolve_agent_bin; then
+  echo "[OK] Cursor Agent CLI found: $(command -v "$CURSOR_AGENT_BIN") ($CURSOR_AGENT_BIN)"
+  if version_output="$("$CURSOR_AGENT_BIN" --version 2>&1 | redact)"; then
+    echo "[OK] $CURSOR_AGENT_BIN version: $version_output"
   else
-    echo "[FAIL] cursor-agent --version failed"
+    echo "[FAIL] $CURSOR_AGENT_BIN --version failed"
     failed=1
   fi
 else
-  echo "[FAIL] cursor-agent not found on PATH"
+  echo "[FAIL] Cursor Agent CLI not found on PATH (expected agent or cursor-agent)"
   failed=1
 fi
 
 if [[ $failed -eq 0 ]]; then
-  if [[ "$AUTH_MODE" == "login" ]]; then
-    echo "[OK] using Cursor browser login/cache auth"
-    if ! try_login_auth; then
-      failed=1
-    fi
+  if ! resolve_cursor_auth "$AUTH_MODE" "$PWD" "$ENV_FILE" "$ENV_FILE_EXPLICIT"; then
+    failed=1
   else
-    if find_and_load_env; then
-      if try_api_key_auth; then
-        :
-      elif [[ "$AUTH_MODE" == "auto" ]]; then
-        echo "[WARN] CURSOR_API_KEY did not prove Composer availability; retrying with Cursor login"
-        if ! try_login_auth; then
-          failed=1
-        fi
-      else
-        failed=1
-      fi
-    elif [[ "$AUTH_MODE" == "api-key" ]]; then
-      failed=1
+    case "$RESOLVED_CURSOR_AUTH" in
+      login)
+        echo "[OK] using Cursor browser login auth"
+        auth_label="Cursor login"
+        ;;
+      api-key)
+        echo "[OK] using CURSOR_API_KEY auth"
+        auth_label="CURSOR_API_KEY"
+        ;;
+    esac
+
+    if check_models "$auth_label"; then
+      :
     else
-      echo "[OK] no CURSOR_API_KEY found; trying Cursor browser login/cache auth"
-      if ! try_login_auth; then
-        failed=1
-      fi
+      echo "[WARN] model listing did not prove Composer availability; continuing to smoke proof"
+    fi
+
+    if smoke_probe "$auth_label"; then
+      SMOKE_ALREADY_RAN="true"
+    else
+      failed=1
     fi
   fi
 fi
@@ -384,7 +222,7 @@ if [[ "$CHECK_CODEX" == "true" ]]; then
 fi
 
 if [[ "$RUN_SMOKE" == "true" && $failed -eq 0 && "$SMOKE_ALREADY_RAN" != "true" ]]; then
-  if ! smoke_probe "selected auth" "$ACTIVE_CURSOR_KEY"; then
+  if ! smoke_probe "selected auth"; then
     failed=1
   fi
 fi

@@ -40,7 +40,7 @@ allowed-tools:
   - Grep
   - Glob
 metadata:
-  version: "1.4.5"
+  version: "1.4.6"
 ---
 
 # Composer Workflow Pack
@@ -85,13 +85,35 @@ by intent.
 Load only the selected sibling module. For review, read `setup.md` only when
 auth/model readiness is unknown; do not pre-load `generate.md`.
 
+## Cursor Agent CLI auth (resolve before the first headless call)
+
+When this skill needs Cursor Agent CLI, the invoking agent must pick an auth
+path before calling `composer-run.sh` or direct `agent -p` commands:
+
+1. Confirm `agent` (or `cursor-agent`) is on `PATH`.
+2. Check browser auth with `agent status --format json` when supported; otherwise
+   `agent status`. Do not pass `CURSOR_API_KEY` for this check.
+3. If authenticated, use browser login and run headless commands with
+   `agent -p ...` — no API key ceremony.
+4. If not authenticated, check only for a non-empty `CURSOR_API_KEY` (or an
+   explicit `--env-file` / `CURSOR_ENV_FILE` when API-key mode is intentional).
+   Do not print, log, or echo the key. Do not run `agent login` with the key;
+   the CLI picks it up from the environment automatically.
+5. If neither browser auth nor `CURSOR_API_KEY` is available, stop immediately
+   and ask the user to run `agent login` or `export CURSOR_API_KEY=...`.
+
+Best pattern: **browser login first, API key fallback, hard stop if neither**.
+
+The wrapper scripts implement this in `--auth auto` (default). Use `--auth login`
+to force browser login, or `--auth api-key` for unattended automation.
+
 ## Defaults
 
-- Prefer the Cursor CLI (`cursor-agent`) over the TypeScript SDK for this skill.
-  The headless CLI is the scripting path for one-off repo generate/review work:
-  it supports `-p`/`--print`, `--workspace`, `--worktree`, `--model`,
-  `--output-format`, browser login, and optional `CURSOR_API_KEY` /
-  `--api-key`.
+- Prefer the Cursor Agent CLI (`agent`, falling back to `cursor-agent`) over the
+  TypeScript SDK for this skill. The headless CLI is the scripting path for
+  one-off repo generate/review work: it supports `-p`/`--print`, `--force`,
+  `--trust`, `--approve-mcps`, `--workspace`, `--worktree`, `--model`,
+  `--output-format`, browser login, and optional `CURSOR_API_KEY`.
 - Use the TypeScript SDK only when building a reusable orchestrator that needs
   local/cloud agent selection, hooks/tool gates, durable agents, artifacts, or
   parallel cloud workers. Do not switch ordinary `/composer:generate` or
@@ -104,17 +126,25 @@ auth/model readiness is unknown; do not pre-load `generate.md`.
   hide useful findings in progress/thinking events.
 - Do not print, commit, or include secrets from `.env`. Report only whether
   `CURSOR_API_KEY` is present and whether the Cursor auth/model check passed.
-- Cursor API keys are optional. If the user has already run `agent login` /
-  `cursor-agent login` and browser-login auth is healthy, run the wrapper with
-  `--auth login` instead of hunting for an API key. For unattended automation,
-  prefer `CURSOR_API_KEY`.
-- `--auth login` is a **wrapper option**, not a Cursor Agent CLI flag. Do not
-  run `agent --auth login` or `cursor-agent --auth login`; direct Cursor CLI
-  auth uses `agent login` / `cursor-agent login`, and headless execution uses
-  `agent -p ...` or `cursor-agent -p ...`.
+- `--auth` is a **wrapper option**, not a Cursor Agent CLI flag. Do not run
+  `agent --auth login`. Direct Cursor CLI auth uses `agent login`; headless
+  execution uses `agent -p ...`.
+- Default generate headless invocation (Run Everything equivalent):
+
+  ```bash
+  agent -p --force --trust --approve-mcps --output-format stream-json "$PROMPT"
+  ```
+
+  `composer-run.sh generate` adds `--force` and `--approve-mcps` by default.
+  Use `--no-force` when the user only wants proposed changes. Review stays
+  read-only (`--mode ask`, no `--force`).
+- Add a prompt rule for generate runs: do not ask clarifying questions; make
+  reasonable assumptions, apply changes, run relevant checks, and report what
+  changed. `--force` prevents approval stops; it does not stop the model from
+  asking questions unless the prompt forbids it.
 - Browser login is valid Cursor auth only after
-  `cursor-agent-doctor.sh --auth login --smoke` passes. `status` and `models`
-  are not enough proof that headless `-p` prompts can run.
+  `cursor-agent-doctor.sh --smoke` passes. `status` alone is not enough proof
+  that headless `-p` prompts can run.
 - For review-readiness checks, prove the path with `setup.md` smoke commands
   before sending repo code or diffs to Composer.
 - Keep Composer as an executor/reviewer. The parent agent still owns scope,
@@ -127,9 +157,11 @@ auth/model readiness is unknown; do not pre-load `generate.md`.
 
 - `scripts/cursor-agent-doctor.sh` checks local setup and can run a small
   Composer smoke test.
-- `scripts/composer-run.sh` loads `CURSOR_API_KEY` from env or `.env` when
-  requested, or falls back to Cursor browser-login auth in `auto`/`login` modes,
-  and runs a headless Composer generate/review prompt with safer defaults.
+- `scripts/cursor-agent-lib.sh` resolves `agent` vs `cursor-agent`, checks
+  browser auth via `agent status --format json`, and implements the login-first
+  auth fallback.
+- `scripts/composer-run.sh` resolves auth, then runs a headless generate/review
+  prompt with `--trust` and generate defaults `--force --approve-mcps`.
 
 Set `CURSOR_ENV_FILE=/path/to/.env` only when intentionally using a Cursor API
 key from another location. Do not point it at a repo `.env` "just in case"; a
