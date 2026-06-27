@@ -1,6 +1,6 @@
 ---
 name: composer
-description: "Route Cursor Composer workflows through one scoped /composer command. Use setup to verify Cursor Agent and API-key readiness, generate to delegate bounded implementation from a planner brief, and review for strict read-only or adversarial Composer review of a diff or PR."
+description: "Route Cursor Composer workflows through one scoped /composer command. Use setup to verify Cursor Agent login or API-key readiness, generate to delegate bounded implementation from a planner brief, and review for strict read-only or adversarial Composer review of a diff or PR."
 argument-hint: "[subcommand] [args] - e.g. generate <brief>, --review <PR>, setup --smoke"
 license: MIT
 # allowed-tools lives on this umbrella, not on the per-workflow wrappers: the
@@ -8,12 +8,21 @@ license: MIT
 # never the active skill. Declared here, the union suppresses prompts during the
 # routed setup/generate/review workflows without depending on wrapper activation.
 allowed-tools:
-  - Bash(composer/skills/composer/scripts/cursor-agent-doctor.sh)
-  - Bash(composer/skills/composer/scripts/cursor-agent-doctor.sh:*)
-  - Bash(composer/skills/composer/scripts/composer-run.sh:*)
-  - Bash(bash composer/skills/composer/scripts/cursor-agent-doctor.sh:*)
-  - Bash(bash composer/skills/composer/scripts/composer-run.sh:*)
+  # Installed plugin: the plugin's bin/ is on PATH, so the scripts run as bare
+  # commands. (${CLAUDE_PLUGIN_ROOT} is NOT expanded in permission rules, so a
+  # ${CLAUDE_PLUGIN_ROOT}/bin/... rule would not match — the bin/ bare command is
+  # the prompt-free path.)
+  - Bash(cursor-agent-doctor.sh)
+  - Bash(cursor-agent-doctor.sh:*)
+  - Bash(composer-run.sh:*)
+  # Source checkout / non-PATH installs: invoke by path under the plugin bin/.
+  - Bash(composer/bin/cursor-agent-doctor.sh)
+  - Bash(composer/bin/cursor-agent-doctor.sh:*)
+  - Bash(composer/bin/composer-run.sh:*)
+  - Bash(bash composer/bin/cursor-agent-doctor.sh:*)
+  - Bash(bash composer/bin/composer-run.sh:*)
   - Bash(cursor-agent *)
+  - Bash(agent *)
   - Bash(codex *)
   - Bash(git status:*)
   - Bash(git diff:*)
@@ -39,7 +48,7 @@ allowed-tools:
   - Grep
   - Glob
 metadata:
-  version: "1.4.4"
+  version: "1.4.9"
 ---
 
 # Composer Workflow Pack
@@ -74,8 +83,8 @@ by intent.
 
 ## Routing
 
-- Use `setup.md` to verify Cursor Agent, `CURSOR_API_KEY`, available Composer
-  models, and optional OpenAI Codex login.
+- Use `setup.md` to verify Cursor Agent browser-login or `CURSOR_API_KEY`
+  readiness, available Composer models, and optional OpenAI Codex login.
 - Use `generate.md` to delegate implementation to Cursor Composer in a branch
   or isolated worktree.
 - Use `review.md` to run strict read-only Composer review on a current diff or
@@ -84,12 +93,38 @@ by intent.
 Load only the selected sibling module. For review, read `setup.md` only when
 auth/model readiness is unknown; do not pre-load `generate.md`.
 
+## Cursor Agent CLI auth
+
+**Browser login first, API key fallback, hard stop if neither.** The wrapper
+scripts implement exactly this as `--auth auto` (default), so routed
+`composer-run.sh` / `cursor-agent-doctor.sh` runs resolve auth for you — relay any
+hard stop they emit to the user. When you call `agent -p` directly, follow the
+same order:
+
+1. Confirm `agent` (or `cursor-agent`) is on `PATH`.
+2. Check browser auth with `agent status --format json` (else `agent status`),
+   with `CURSOR_API_KEY` unset for the probe.
+3. Authenticated → run headless with `agent -p ...`; no API-key ceremony.
+4. Not authenticated → use a non-empty `CURSOR_API_KEY` from the environment.
+   The CLI reads it automatically, so never run `agent login` with the key and
+   never print, log, or echo it.
+5. Neither → stop immediately and ask the user to run `agent login` or
+   `export CURSOR_API_KEY=...`.
+
+`--auth login` forces browser login; `--auth api-key` is for unattended
+automation. `--auth` is a **wrapper option**, not a Cursor CLI flag — never run
+`agent --auth ...` (direct CLI auth is `agent login`). Set
+`CURSOR_ENV_FILE=/path/to/.env` (or `--env-file`) only when intentionally
+supplying an API key from a file; do not point it at a repo `.env` "just in
+case" — a repo env file without `CURSOR_API_KEY` must not block browser login.
+
 ## Defaults
 
-- Prefer the Cursor CLI (`cursor-agent`) over the TypeScript SDK for this skill.
-  The headless CLI is the scripting path for one-off repo generate/review work:
-  it supports `--print`, `--workspace`, `--worktree`, `--model`,
-  `--output-format`, browser login, and `CURSOR_API_KEY`.
+- Prefer the Cursor Agent CLI (`agent`, falling back to `cursor-agent`) over the
+  TypeScript SDK for this skill. The headless CLI is the scripting path for
+  one-off repo generate/review work: it supports `-p`/`--print`, `--force`,
+  `--trust`, `--approve-mcps`, `--workspace`, `--worktree`, `--model`,
+  `--output-format`, browser login, and optional `CURSOR_API_KEY`.
 - Use the TypeScript SDK only when building a reusable orchestrator that needs
   local/cloud agent selection, hooks/tool gates, durable agents, artifacts, or
   parallel cloud workers. Do not switch ordinary `/composer:generate` or
@@ -102,10 +137,22 @@ auth/model readiness is unknown; do not pre-load `generate.md`.
   hide useful findings in progress/thinking events.
 - Do not print, commit, or include secrets from `.env`. Report only whether
   `CURSOR_API_KEY` is present and whether the Cursor auth/model check passed.
+- Default generate headless invocation (Run Everything equivalent):
+
+  ```bash
+  agent -p --force --trust --approve-mcps --output-format stream-json "$PROMPT"
+  ```
+
+  `composer-run.sh generate` adds `--force` and `--approve-mcps` by default.
+  Use `--no-force` when the user only wants proposed changes. Review stays
+  read-only (`--mode ask`, no `--force`).
+- Add a prompt rule for generate runs: do not ask clarifying questions; make
+  reasonable assumptions, apply changes, run relevant checks, and report what
+  changed. `--force` prevents approval stops; it does not stop the model from
+  asking questions unless the prompt forbids it.
 - Browser login is valid Cursor auth only after
-  `cursor-agent-doctor.sh --auth login --smoke` passes. For unattended
-  workflows, prefer `CURSOR_API_KEY`; `status` and `models` are not enough proof
-  that headless `--print` prompts can run.
+  `cursor-agent-doctor.sh --smoke` passes. `status` alone is not enough proof
+  that headless `-p` prompts can run.
 - For review-readiness checks, prove the path with `setup.md` smoke commands
   before sending repo code or diffs to Composer.
 - Keep Composer as an executor/reviewer. The parent agent still owns scope,
@@ -116,10 +163,17 @@ auth/model readiness is unknown; do not pre-load `generate.md`.
 
 ## Scripts
 
-- `scripts/cursor-agent-doctor.sh` checks local setup and can run a small
-  Composer smoke test.
-- `scripts/composer-run.sh` loads `CURSOR_API_KEY` from env or `.env` and runs a
-  headless Composer generate/review prompt with safer defaults.
+The scripts ship in the plugin's `bin/`. **When the plugin is installed, `bin/`
+is on `PATH`, so run them as bare commands** (`cursor-agent-doctor.sh`,
+`composer-run.sh`) — this is the prompt-free path. **From the source checkout (or
+any install where `bin/` is not on `PATH`), invoke them by path** instead:
+`composer/bin/cursor-agent-doctor.sh`. The module commands below show the bare
+form; substitute the path form when running from a checkout.
 
-Set `CURSOR_ENV_FILE=/path/to/.env` when working from an isolated worktree whose
-real key file lives elsewhere.
+- `cursor-agent-doctor.sh` checks local setup and can run a small Composer smoke
+  test.
+- `composer-run.sh` resolves auth, then runs a headless generate/review prompt
+  with `--trust` and generate defaults `--force --approve-mcps`.
+- `cursor-agent-lib.sh` (sourced, not run) resolves `agent` vs `cursor-agent`,
+  checks browser auth via `agent status --format json`, and implements the
+  login-first auth fallback.

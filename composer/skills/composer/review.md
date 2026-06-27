@@ -9,17 +9,21 @@ branch diff, or PR diff.
    - current uncommitted diff
    - `BASE...HEAD`
    - a GitHub PR patch
-2. If auth/model readiness is unknown, run the review readiness smoke from
-   `setup.md` before gathering any diff or sending repo content to Composer.
-   Prefer `composer-2.5-fast`; use `composer-2.5` for strict release gates.
+2. The wrapper resolves auth via `--auth auto` (see SKILL.md). If auth or model
+   readiness is unknown this session, run the readiness smoke from `setup.md`
+   before gathering any diff or sending repo content to Composer; never print the
+   key. Prefer `composer-2.5-fast`; use `composer-2.5` for strict release gates.
 3. Gather the diff and only the surrounding context needed to judge changed
    behavior. Avoid whole-repo dumps, generated artifacts, unrelated logs, and
-   setup transcripts.
-4. Run Composer in read-only ask mode through the wrapper:
+   setup transcripts. Embed that diff in the review prompt file — it is the
+   authoritative review scope. `--workspace` only gives Composer read access to
+   resolve surrounding context, not the scope itself.
+4. Run Composer in read-only ask mode through the wrapper (default `--auth auto`):
 
 ```bash
-composer/skills/composer/scripts/composer-run.sh review \
+composer-run.sh review \
   --model composer-2.5 \
+  --output-format json \
   --prompt-file /path/to/review-prompt.md \
   --workspace /path/to/repo
 ```
@@ -28,6 +32,8 @@ Use `composer-2.5-fast` for quick second opinions; use `composer-2.5` for
 strict release-gate review. Use `--output-format json` when you want a single
 parseable final answer; the final text is in the `result` field. Use
 `stream-json` only for progress monitoring.
+
+Review runs use `--mode ask` and never pass `--force` or `--approve-mcps`.
 
 5. Treat Composer findings as input, not truth. Verify each finding against the
    code before forwarding it to the user or asking an implementer to fix it.
