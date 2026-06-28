@@ -8,17 +8,22 @@ license: MIT
 # never the active skill. Declared here, the union suppresses prompts during the
 # routed setup/generate/review workflows without depending on wrapper activation.
 allowed-tools:
-  # Installed plugin: the plugin's bin/ is on PATH, so the scripts run as bare
-  # commands. (${CLAUDE_PLUGIN_ROOT} is NOT expanded in permission rules, so a
-  # ${CLAUDE_PLUGIN_ROOT}/bin/... rule would not match — the bin/ bare command is
-  # the prompt-free path.)
+  # Claude plugin install: the plugin's bin/ (symlinks to skills/composer/bin/)
+  # is on PATH, so the wrappers run as bare commands. (${CLAUDE_PLUGIN_ROOT} and
+  # ~ are NOT expanded in permission rules, so the bare command and the
+  # checkout-relative paths below are the prompt-free forms.)
   - Bash(cursor-agent-doctor.sh)
   - Bash(cursor-agent-doctor.sh:*)
   - Bash(composer-run.sh:*)
-  # Source checkout / non-PATH installs: invoke by path under the plugin bin/.
+  # Source checkout: real scripts in skills/composer/bin/ and plugin-root symlinks.
+  - Bash(composer/skills/composer/bin/cursor-agent-doctor.sh)
+  - Bash(composer/skills/composer/bin/cursor-agent-doctor.sh:*)
+  - Bash(composer/skills/composer/bin/composer-run.sh:*)
   - Bash(composer/bin/cursor-agent-doctor.sh)
   - Bash(composer/bin/cursor-agent-doctor.sh:*)
   - Bash(composer/bin/composer-run.sh:*)
+  - Bash(bash composer/skills/composer/bin/cursor-agent-doctor.sh:*)
+  - Bash(bash composer/skills/composer/bin/composer-run.sh:*)
   - Bash(bash composer/bin/cursor-agent-doctor.sh:*)
   - Bash(bash composer/bin/composer-run.sh:*)
   - Bash(cursor-agent *)
@@ -48,7 +53,7 @@ allowed-tools:
   - Grep
   - Glob
 metadata:
-  version: "1.4.9"
+  version: "1.4.11"
 ---
 
 # Composer Workflow Pack
@@ -163,12 +168,23 @@ case" — a repo env file without `CURSOR_API_KEY` must not block browser login.
 
 ## Scripts
 
-The scripts ship in the plugin's `bin/`. **When the plugin is installed, `bin/`
-is on `PATH`, so run them as bare commands** (`cursor-agent-doctor.sh`,
-`composer-run.sh`) — this is the prompt-free path. **From the source checkout (or
-any install where `bin/` is not on `PATH`), invoke them by path** instead:
-`composer/bin/cursor-agent-doctor.sh`. The module commands below show the bare
-form; substitute the path form when running from a checkout.
+The wrappers ship in `bin/` beside this skill, so they travel with **both** the
+Claude plugin install and the Codex flat install. Locate them, then use that
+exact form in every wrapper command below (env vars do not persist across
+separate shell calls, so don't rely on a saved variable — substitute the
+resolved path inline):
+
+1. **Claude plugin** — on `PATH`; run the bare command (`composer-run.sh`,
+   `cursor-agent-doctor.sh`). Confirm with `command -v composer-run.sh`.
+2. **Codex flat install** — `~/.agents/skills/composer/bin/` (the installer
+   copies `bin/` next to `SKILL.md`).
+3. **Source checkout** — `composer/skills/composer/bin/`.
+4. **None present** — fall back to `agent -p ...` directly, resolving auth with
+   the order above.
+
+The module examples show the bare command; when it is not on `PATH`, prefix it
+with the directory from step 2 or 3 (e.g.
+`~/.agents/skills/composer/bin/cursor-agent-doctor.sh`).
 
 - `cursor-agent-doctor.sh` checks local setup and can run a small Composer smoke
   test.

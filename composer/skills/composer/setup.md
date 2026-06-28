@@ -14,9 +14,10 @@ path. Never print the key; relay any hard stop to the user.
 
 ## Preflight
 
-The commands below use the bare command name, which works when the plugin is
-installed (its `bin/` is on `PATH`). From the source checkout, prefix with the
-path: `composer/bin/cursor-agent-doctor.sh`.
+The commands below use the bare command name (works when the Claude plugin is
+installed — its `bin/` is on `PATH`). Otherwise prefix with the wrapper directory
+for your install per SKILL.md "Scripts" — Codex flat install:
+`~/.agents/skills/composer/bin/`; source checkout: `composer/skills/composer/bin/`.
 
 Run:
 
@@ -63,6 +64,8 @@ temporary workspace with a harmless prompt before preparing any project diff.
 ## What Good Looks Like
 
 - `agent` or `cursor-agent` is installed.
+- Wrapper scripts are found (bare command, or under the install's `bin/`) — or
+  you fall back to `agent -p`.
 - Cursor auth works through browser login after the smoke passes, or through
   `CURSOR_API_KEY` when API-key mode is intentional.
 - `agent models` succeeds and includes `composer-2.5` or `composer-2.5-fast`.
@@ -87,6 +90,8 @@ temporary workspace with a harmless prompt before preparing any project diff.
 Summarize:
 
 - Cursor CLI binary and version.
+- Wrapper location used (bare command / install `bin/`) or direct `agent -p`
+  fallback.
 - Auth path used (browser login or API key present) without printing the key.
 - Whether Composer models are available.
 - Whether Codex login is ready.
