@@ -7,11 +7,11 @@ planner, reviewer, and release coordinator.
 
 1. Confirm there is a concrete implementation brief. If the user gave only a
    vague request, write a short plan first and keep scope narrow.
-2. Resolve `COMPOSER_BIN` (see `setup.md`) and auth via `--auth auto` (browser
-   login → `CURSOR_API_KEY` → hard stop; see SKILL.md). Run
-   `"$COMPOSER_BIN/cursor-agent-doctor.sh" --smoke` first when
-   this session has not yet proved headless readiness; relay any auth hard stop
-   to the user and never print the key.
+2. Locate the wrapper for this install (see SKILL.md "Scripts") and resolve auth
+   via `--auth auto` (browser login → `CURSOR_API_KEY` → hard stop; see SKILL.md).
+   Run `cursor-agent-doctor.sh --smoke` first when this session has not yet
+   proved headless readiness; relay any auth hard stop to the user and never
+   print the key.
 3. Create or choose an isolated branch/worktree before handing work to
    Composer. Prefer one coherent task per branch.
 4. Write a prompt file that includes the exact task, files/areas in scope,
@@ -23,7 +23,7 @@ planner, reviewer, and release coordinator.
    fallback):
 
 ```bash
-"$COMPOSER_BIN/composer-run.sh" generate \
+composer-run.sh generate \
   --model composer-2.5-fast \
   --output-format stream-json \
   --prompt-file /path/to/prompt.md \
