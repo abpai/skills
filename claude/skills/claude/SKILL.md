@@ -4,13 +4,14 @@ description: >
   Run, monitor, resume, or take over Claude Code from Codex. Use when users ask
   to delegate work to Claude, drive a Claude Code tmux/TUI session, continue a
   prior session, manually attach, run `claude -p`, or get machine-readable
-  terminal output from Claude Code. Also use when a Codex run needs explicit
-  external data-sharing approval context before sending prompts, diffs, plans,
-  or workspace content to Claude Code/Anthropic.
+  terminal output from Claude Code, or choose between tmux, `claude -p`, and
+  Agent SDK paths under the user's current Claude auth/billing plan. Also use
+  when a Codex run needs explicit external data-sharing approval context before
+  sending prompts, diffs, plans, or workspace content to Claude Code/Anthropic.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.6.4"
+  version: "1.6.5"
 ---
 
 # Claude Code CLI
@@ -19,6 +20,27 @@ Use this skill when you need the local `claude` CLI from a Codex-style harness.
 Bias toward tmux-backed Claude Code TUI sessions so the user can watch, attach,
 and take over. Use non-interactive `claude -p` only when the user explicitly
 wants a plain one-shot command, JSON output, or a pipe-friendly API-like call.
+
+## Coverage And Billing
+
+Run `claude auth status --text` before making coverage or billing assumptions.
+If it reports `Login method: Claude Max account`, prefer that authenticated
+Claude plan for broad local Claude Code coverage.
+
+Billing caveat: Anthropic's Help Center page
+[Claude Agent SDK with your Claude plan](https://support.claude.com/en/articles/15036540-use-the-claude-agent-sdk-with-your-claude-plan)
+said on 2026-06-30 that the planned Agent SDK credit change is paused, so
+`claude -p`, Claude Agent SDK usage, and third-party Agent SDK app usage still
+draw from subscription limits for now. Treat this as billing policy that can
+change: re-check the Help Center before making current cost claims, and do not
+promise SDK or `claude -p` usage is separate from the plan.
+
+Choose tmux versus `claude -p` by operational needs, not by billing:
+
+- use the tmux wrapper for watchable, attachable, resumable, long-running work
+- use `claude -p` for one-shot, pipe-friendly, or machine-readable output
+- do not hand-roll raw tmux for ordinary delegation; the wrapper is the
+  simplification layer
 
 ## External Data-Sharing Approval
 
@@ -74,6 +96,22 @@ tmux -V
 If `claude` or auth fails, stop and report the setup problem. If `tmux` is
 missing, use the `claude -p` fallback only if the user accepts losing the TUI
 and manual takeover path.
+
+Do not introduce API-key setup just because `claude -p` or Agent SDK usage is
+mentioned. A healthy local Claude plan login is the first-choice auth path on a
+developer machine. If this session has not proven headless Claude after a CLI or
+auth change, and the next run would send private repo content, run a harmless
+smoke first only after the user accepts that it consumes subscription usage:
+
+```bash
+claude -p \
+  --permission-mode plan \
+  --no-session-persistence \
+  "Reply with exactly: claude-smoke-ok"
+```
+
+Do not run smoke prompts as ceremony when `claude auth status --text` and the
+requested workflow are already known-good.
 
 ## Default: Tmux Claude Code
 
@@ -181,6 +219,26 @@ scripts/claude-tmux-run.sh run \
 Narrow the working set first if the change is broad or the repo is noisy.
 For unattended edit modes, be explicit about whether Claude may commit, push, or
 run live side effects; otherwise assume it should only edit and report back.
+
+### Prompt Contract
+
+For delegated implementation, prefer a prompt file that states the task,
+approved sharing scope, files or areas in scope, non-goals, required validation,
+whether commits or PRs are allowed, and stop rules. Include: do not ask
+clarifying questions; make reasonable assumptions, state them in the final
+answer, apply the scoped change, run relevant checks, and report what changed.
+
+For reviews, keep the review prompt read-only and scope-bearing: embed the exact
+diff or paths being reviewed, ask for findings first with file references, and
+exclude setup logs, unrelated workspace noise, generated artifacts, and secrets.
+
+### Parent-Agent Responsibilities
+
+Treat Claude's output as input, not proof. The parent agent still owns the diff,
+repo validation, PR quality, merge decision, and user-facing judgment. Verify
+Claude findings against the code before forwarding them. If the user wants
+"no findings left," run repair as a separate write phase, then review the
+updated diff again.
 
 ### Continue Or Resume
 
