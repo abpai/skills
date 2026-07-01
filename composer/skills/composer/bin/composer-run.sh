@@ -11,7 +11,7 @@ usage() {
 Usage: composer-run.sh generate|review --prompt-file PATH [options]
 
 Options:
-  --prompt-file PATH      Prompt file to send to Cursor Agent.
+  --prompt-file PATH      Prompt file read by this wrapper and passed as Cursor's positional prompt.
   --workspace PATH        Workspace directory (default: current directory).
   --model MODEL           Cursor model (generate default: composer-2.5-fast; review default: composer-2.5).
   --output-format FORMAT  text, json, or stream-json (default: text).

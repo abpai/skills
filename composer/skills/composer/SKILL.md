@@ -53,7 +53,7 @@ allowed-tools:
   - Grep
   - Glob
 metadata:
-  version: "1.4.11"
+  version: "1.4.12"
 ---
 
 # Composer Workflow Pack
@@ -134,6 +134,13 @@ case" — a repo env file without `CURSOR_API_KEY` must not block browser login.
   local/cloud agent selection, hooks/tool gates, durable agents, artifacts, or
   parallel cloud workers. Do not switch ordinary `/composer:generate` or
   `/composer:review` runs to the SDK.
+- Prompt transport: Cursor Agent CLI takes the prompt as trailing positional
+  `prompt...` for `agent -p`. Do not assume stdin or a native Cursor
+  `--prompt-file` surface unless a local CLI smoke or current Cursor docs prove
+  it. `composer-run.sh --prompt-file` is a wrapper abstraction: it reads the
+  file and passes its contents as the final positional prompt argument. For very
+  large prompts, compact the prompt, split the task, or first verify a newly
+  documented Cursor transport before changing the wrapper.
 - Default implementation model: `composer-2.5-fast`.
 - Use `composer-2.5` when the user asks for the slower path or when the change
   is correctness-sensitive enough to justify it.
