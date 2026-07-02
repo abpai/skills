@@ -77,30 +77,43 @@ narrower sandbox, lighter reasoning, or a different parse contract.
 It never calls Codex or commits — it only manages worktrees and diff bundles,
 tracking each candidate by `--name` so you never pass paths around by hand.
 
+`--repo` is the **source repo you branch from** (defaults to the current dir).
+`prepare` **creates a new worktree** at `<repo>-<name>` beside that repo unless
+you pass `--path`; it does not write into `--repo`. Keep the two straight: you
+point `--repo` at an existing checkout, and the worktree the tool creates is a
+separate directory whose path it returns via `--run-dir-file`.
+
 ```bash
 ws="$skill_dir/scripts/codex-workspace.sh"
 rdf="$(mktemp -t codex-ws.XXXXXX)"
 
-# 1) Isolated worktree from a frozen base SHA; path lands in $rdf.
-"$ws" prepare --name candidate-a --repo "$PWD" --run-dir-file "$rdf"
+# 1) Create an isolated worktree from a frozen base SHA of the source repo.
+#    It lands at <repo>-candidate-a (override with --path); path is written to $rdf.
+"$ws" prepare --name candidate-a --repo /path/to/source-repo --run-dir-file "$rdf"
 worktree="$(cat "$rdf")"
 
-# 2) Normal generate run against that worktree.
+# 2) Normal generate run against the created worktree.
 "$skill_dir/scripts/codex-run.sh" generate \
   --workspace "$worktree" --run-dir-file "$run_dir_file" \
   --heartbeat 15 --prompt-file task-brief.txt
 
 # 3) Bundle the diff (vs the frozen base, untracked included) + Codex's report.
-"$ws" finalize --name candidate-a --repo "$PWD" --run-dir "$run_dir"
-# -> writes candidate.diff, candidate-diff.stat, changed-files.txt, report.md
+"$ws" finalize --name candidate-a --repo /path/to/source-repo --run-dir "$run_dir"
+# -> writes candidate.diff, candidate-diff.stat, changed-files.txt, and report.md
+#    (report.md is final.md's raw JSON copied verbatim, not a reformatted narrative)
 
 # 4) When the parent rejects this candidate, tear it down.
-"$ws" cleanup --name candidate-a --repo "$PWD"   # add --force if the tree is dirty
+#    The finalize bundle is KEPT by default so you can still compare/audit it
+#    after the worktree is gone; add --delete-bundle to remove it too.
+"$ws" cleanup --name candidate-a --repo /path/to/source-repo   # add --force if the tree is dirty
 ```
 
 `finalize` diffs against the base SHA captured at `prepare` time, so the bundle
-is stable even if the repo's branches move. Keep an accepted candidate's branch
-with `cleanup --keep-branch`. See `codex-workspace.sh --help` for all flags.
+is stable even if the repo's branches move, and it **survives `cleanup`** — the
+bundle is the durable comparison artifact, so teardown removes the worktree,
+branch, and state but leaves the bundle unless you pass `--delete-bundle`. Keep
+an accepted candidate's branch with `cleanup --keep-branch`. See
+`codex-workspace.sh --help` for all flags.
 
 ## Independence rule
 

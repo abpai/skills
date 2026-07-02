@@ -45,8 +45,10 @@ Ship the minimum contract an orchestrator can rely on:
 - `finalize --name candidate-a [--run-dir DIR]` → bundles `candidate.diff`
   (vs the frozen base, untracked included), `candidate-diff.stat`,
   `changed-files.txt`, and Codex's `report.md` for parent comparison
-- `cleanup --name candidate-a [--force] [--keep-branch]` → removes the disposable
-  worktree, branch, bundle, and state when the parent rejects a candidate
+- `cleanup --name candidate-a [--force] [--keep-branch] [--delete-bundle]` →
+  removes the disposable worktree, branch, and state when the parent rejects a
+  candidate; the finalize bundle is kept by default (it is the durable
+  comparison artifact) unless `--delete-bundle` is passed
 
 Candidates are tracked by `--name` in a per-repo state file, so orchestration
 prompts never pass raw git paths around. The helper never calls Codex or commits.

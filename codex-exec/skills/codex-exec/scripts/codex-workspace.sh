@@ -35,7 +35,9 @@ cleanup — tear down a rejected candidate worktree and its disposable branch:
   --repo PATH            Source repo used to locate state (default: current dir).
   --force                Remove the worktree even if it has uncommitted changes.
   --keep-branch          Keep the candidate branch (default: delete it).
-  --keep-bundle          Keep any finalize bundle (default: delete it).
+  --delete-bundle        Also remove any finalize bundle (default: keep it — the
+                         bundle is the durable comparison artifact and outlives
+                         the worktree on purpose).
 
 State lives under ${CODEX_EXEC_WORKSPACES_DIR:-$CODEX_HOME/codex-exec-workspaces}.
 This helper never commits, pushes, or calls Codex.
@@ -252,14 +254,14 @@ cmd_finalize() {
 }
 
 cmd_cleanup() {
-  local name="" repo="$PWD" force=false keep_branch=false keep_bundle=false
+  local name="" repo="$PWD" force=false keep_branch=false delete_bundle=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --name) require_value "$1" "${2:-}"; name="$2"; shift 2 ;;
       --repo) require_value "$1" "${2:-}"; repo="$2"; shift 2 ;;
       --force) force=true; shift ;;
       --keep-branch) keep_branch=true; shift ;;
-      --keep-bundle) keep_bundle=true; shift ;;
+      --delete-bundle) delete_bundle=true; shift ;;
       *) die "unknown cleanup option: $1" 2 ;;
     esac
   done
@@ -285,14 +287,21 @@ cmd_cleanup() {
     fi
   fi
 
-  if [[ "$keep_bundle" != true && -d "$BUNDLE_DEFAULT" ]]; then
+  # Keep the finalize bundle by default: it is the durable comparison artifact
+  # the parent inspects after rejecting a candidate, and it must outlive the
+  # worktree/branch it summarizes. Only remove it on explicit --delete-bundle.
+  local bundle_kept=true
+  if [[ "$delete_bundle" == true && -d "$BUNDLE_DEFAULT" ]]; then
     rm -rf "$BUNDLE_DEFAULT"
+    bundle_kept=false
+  elif [[ ! -d "$BUNDLE_DEFAULT" ]]; then
+    bundle_kept=false
   fi
 
   rm -f "$STATE_FILE"
 
-  printf '[codex-workspace] event=cleaned name=%q worktree_removed=%q branch=%q branch_removed=%q\n' \
-    "$name" "$removed_worktree" "$BRANCH" "$removed_branch"
+  printf '[codex-workspace] event=cleaned name=%q worktree_removed=%q branch=%q branch_removed=%q bundle_kept=%q bundle=%q\n' \
+    "$name" "$removed_worktree" "$BRANCH" "$removed_branch" "$bundle_kept" "$BUNDLE_DEFAULT"
 }
 
 case "$SUBCOMMAND" in
