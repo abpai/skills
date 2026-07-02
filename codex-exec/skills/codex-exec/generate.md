@@ -20,7 +20,16 @@ Codex is one independent candidate in a dual-candidate loop.
    Stop on `codex: not installed`, `codex exec: unavailable`, or trust-directory
    blockers.
 3. Create or choose an isolated branch or worktree before handing work to Codex.
-   Prefer one coherent task per candidate workspace.
+   Prefer one coherent task per candidate workspace. A worktree keeps the
+   candidate fully separate from your checkout, e.g.:
+
+   ```bash
+   git worktree add -b candidate-a ../myproj-candidate-a HEAD
+   ```
+
+   Do the `generate` run with `--workspace` pointed at that worktree. Codex is
+   told not to commit, so the result lands as an uncommitted diff there for you
+   to inspect.
 4. Write a prompt file that includes the exact task, files/areas in scope,
    validation expectations, and explicit stop rules. Say that Codex must not ask
    clarifying questions; make reasonable assumptions, state them in the final
@@ -51,7 +60,10 @@ narrower sandbox, lighter reasoning, or a different parse contract.
    - `$run_dir/changed-files.txt`
    - `$run_dir/workspace.diff` and `$run_dir/workspace-diff.stat`
    - `$run_dir/workspace-status.txt`
-   - `$run_dir/final.md` (structured JSON by default)
+   - `$run_dir/final.md` (structured JSON by default; empty if Codex exited
+     non-zero — read `$run_dir/stderr.log` for the error in that case)
+   - `$run_dir/user-prompt.txt` vs `$run_dir/prompt.txt` if you need to confirm
+     exactly what brief and scaffolding Codex received
 8. Re-run validation yourself in that workspace before presenting the candidate
    to the parent synthesis step. Codex-reported test outcomes are hints, not proof.
 9. Leave commit, push, and PR creation to the parent orchestrator unless the
@@ -61,6 +73,9 @@ narrower sandbox, lighter reasoning, or a different parse contract.
 
 - Give both candidates the same task brief.
 - Use separate workspaces (branch or worktree) per candidate.
+- Give each candidate its own scratch directory for brief and schema-override
+  files, not just its own git worktree — a shared scratch dir lets parallel
+  candidates collide on or reuse each other's files.
 - Do not show either candidate the other's diff or report until both are complete.
 - Let the parent orchestrator compare diffs and synthesize; do not merge
   candidates inside Codex.

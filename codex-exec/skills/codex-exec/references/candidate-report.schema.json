@@ -31,14 +31,17 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["command", "outcome"],
+        "required": ["command", "outcome", "notes"],
         "properties": {
           "command": { "type": "string" },
           "outcome": {
             "type": "string",
             "enum": ["passed", "failed", "skipped", "not_run"]
           },
-          "notes": { "type": "string" }
+          "notes": {
+            "type": ["string", "null"],
+            "description": "Optional detail; may be null. Required by OpenAI strict-schema (every property key must appear in required)."
+          }
         }
       }
     },

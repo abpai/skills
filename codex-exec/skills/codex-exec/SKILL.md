@@ -160,7 +160,11 @@ It writes each run under
   `workspace-diff.stat`,
   `workspace-status.txt`: written after `generate` runs in git workspaces.
 - `command.txt`: shell-quoted command without prompt text.
-- `prompt.txt`: prompt content sent through stdin.
+- `prompt.txt`: the full prompt sent through stdin (in `review`/`generate` mode
+  this includes the wrapper's scaffolding around your brief).
+- `user-prompt.txt`: your raw brief before wrapping, written in `review`/`generate`
+  mode when a custom prompt was supplied. Compare against `prompt.txt` to see
+  exactly what scaffolding the wrapper added.
 - `preflight.log`: Codex version and workspace git status.
 
 Example implementation candidate with diff capture:
@@ -193,24 +197,44 @@ scripts/codex-run.sh review \
   --workspace "$PWD" \
   --run-dir-file "$run_dir_file" \
   --heartbeat 15 \
+  --uncommitted \
   --prompt "Focus on bugs, regressions, and missing tests. Findings first."
 ```
 
-When Claude starts the wrapper as a background task, point MonitorTool at the
-printed `monitor.sh` path or run `bash "$run_dir/monitor.sh"`. That avoids
-fragile sleeps, raw task-output polling, and repeated `tail` loops.
+`--uncommitted` is already the review-mode default; it is passed explicitly here
+and in the examples below so the scope is self-documenting. Omitting it reviews
+the same uncommitted changes.
+
+The wrapper does **not** daemonize itself. To monitor a run concurrently you
+must launch it in the background with your harness's own mechanism: your Bash
+tool's background-task flag, or a trailing `&` with output redirected to a log
+(`"$skill_dir/scripts/codex-run.sh" generate … > launch.log 2>&1 &`). If you run
+it in the foreground it blocks your turn until Codex finishes and there is
+nothing to "monitor". Once it is backgrounded, point MonitorTool at the printed
+`monitor.sh` path or run `bash "$run_dir/monitor.sh"`. That avoids fragile
+sleeps, raw task-output polling, and repeated `tail` loops.
+
 Capture `run_dir` from the printed `event=paths` line or, for background
 launches, pass `--run-dir-file "$run_dir_file"` and read that file once it is
 non-empty. The wrapper writes it before any slow preflight, so poll instead of
 reading blindly — an immediate `cat` can otherwise race the write and leave
-`run_dir` empty:
+`run_dir` empty. Keep the poll **bounded** (do not use an unbounded `until`
+loop — if the launch failed, the file never appears and an unbounded loop hangs
+the turn):
 
 ```bash
-until [[ -s "$run_dir_file" ]]; do sleep 0.1; done
+for _ in $(seq 1 50); do [[ -s "$run_dir_file" ]] && break; sleep 0.2; done
 run_dir="$(cat "$run_dir_file")"
-[[ -n "$run_dir" ]] || { echo "run_dir_file is empty" >&2; exit 1; }
+[[ -n "$run_dir" ]] || { echo "run_dir_file still empty; check launch.log" >&2; exit 1; }
 bash "$run_dir/monitor.sh"
 ```
+
+`monitor.sh` blocks until the run is over and its exit code mirrors Codex's, so
+once it is backgrounded you do **not** need a second poll loop on `status.env`.
+If you must check `status.env` directly, the completion signal is
+`state=finished` (or `failed`/`interrupted`) — **not** the mere presence of an
+`exit_code=` line, which is written empty (`exit_code=`) while the run is still
+in progress. Match on `state=`, not on the `exit_code=` key existing.
 
 Do not pipe the wrapper launch through `tail`, `head`, or a similar truncating
 filter; that can hide the early `event=paths` line and push Claude back toward
@@ -425,7 +449,19 @@ codex exec \
 - If the preflight block above showed `codex exec: unavailable`, report a CLI install or version issue.
 - If `codex exec` or `codex review` exits non-zero, treat the run as failed.
 - If the wrapper exits non-zero, inspect `status.env`, `stderr.log`, and
-  `final.md` in the printed run directory before retrying.
+  `final.md` in the printed run directory before retrying. On a non-zero exit
+  `final.md` is left empty (the fallback only runs on exit 0), so the real error
+  lives in `stderr.log`, not `final.md`.
+- If `stderr.log` shows `invalid_json_schema` (for example `'required' is
+  required to be supplied and to be an array including every key in
+  properties. Missing '<field>'`), the `--output-schema` file violates OpenAI
+  strict-mode rules: every key in an object's `properties` must also appear in
+  that object's `required` array — mark truly-optional fields with a nullable
+  type (`"type": ["string", "null"]`) and still list them in `required`. This
+  fails fast (~5s) with no edits made; it is **not** a hang, so the "kill after
+  ~30s / trust-directory" recovery does not apply. Fix the schema file (the
+  bundled `candidate-report.schema.json` is validated in CI) or pass a corrected
+  copy via `--output-schema`.
 - If the wrapper's shell exit and `status.env` disagree, trust `status.env` for
   the Codex child process result; shell exits like 143/144 usually mean the
   wrapper or monitor process was interrupted during teardown.

@@ -733,6 +733,8 @@ if [[ "$MODE" == "generate" && "$HAS_PROMPT" == "true" ]]; then
     printf 'Implement the following task in workspace: %s\n\n' "$WORKSPACE"
     printf 'You may edit files in this workspace. Run validation commands named in the brief. '
     printf 'If none are named, run the smallest obvious focused check when practical; otherwise report not_run.\n'
+    printf 'Do not run git commit, git push, or any history-rewriting git command; leave your changes as an '
+    printf 'uncommitted working-tree diff for the orchestrator to review, unless the task brief explicitly says otherwise.\n'
     printf 'Do not ask clarifying questions; make reasonable assumptions, state them in the final report, and proceed.\n\n'
     printf 'End with a structured report covering changed files, design choices, tests run, failures, and risks.\n\n'
     printf 'Task brief:\n'
