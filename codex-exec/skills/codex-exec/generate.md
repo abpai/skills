@@ -20,8 +20,10 @@ Codex is one independent candidate in a dual-candidate loop.
    Stop on `codex: not installed`, `codex exec: unavailable`, or trust-directory
    blockers.
 3. Create or choose an isolated branch or worktree before handing work to Codex.
-   Prefer one coherent task per candidate workspace. A worktree keeps the
-   candidate fully separate from your checkout, e.g.:
+   Prefer one coherent task per candidate workspace. Either use
+   `scripts/codex-workspace.sh` (recommended — it freezes the base to a SHA,
+   tracks the candidate by name, and gives you `finalize`/`cleanup`; see
+   "Workspace helper" below), or a plain worktree:
 
    ```bash
    git worktree add -b candidate-a ../myproj-candidate-a HEAD
@@ -68,6 +70,37 @@ narrower sandbox, lighter reasoning, or a different parse contract.
    to the parent synthesis step. Codex-reported test outcomes are hints, not proof.
 9. Leave commit, push, and PR creation to the parent orchestrator unless the
    brief explicitly delegates that to Codex.
+
+## Workspace helper
+
+`scripts/codex-workspace.sh` removes the git-topology foot-guns from the loop.
+It never calls Codex or commits — it only manages worktrees and diff bundles,
+tracking each candidate by `--name` so you never pass paths around by hand.
+
+```bash
+ws="$skill_dir/scripts/codex-workspace.sh"
+rdf="$(mktemp -t codex-ws.XXXXXX)"
+
+# 1) Isolated worktree from a frozen base SHA; path lands in $rdf.
+"$ws" prepare --name candidate-a --repo "$PWD" --run-dir-file "$rdf"
+worktree="$(cat "$rdf")"
+
+# 2) Normal generate run against that worktree.
+"$skill_dir/scripts/codex-run.sh" generate \
+  --workspace "$worktree" --run-dir-file "$run_dir_file" \
+  --heartbeat 15 --prompt-file task-brief.txt
+
+# 3) Bundle the diff (vs the frozen base, untracked included) + Codex's report.
+"$ws" finalize --name candidate-a --repo "$PWD" --run-dir "$run_dir"
+# -> writes candidate.diff, candidate-diff.stat, changed-files.txt, report.md
+
+# 4) When the parent rejects this candidate, tear it down.
+"$ws" cleanup --name candidate-a --repo "$PWD"   # add --force if the tree is dirty
+```
+
+`finalize` diffs against the base SHA captured at `prepare` time, so the bundle
+is stable even if the repo's branches move. Keep an accepted candidate's branch
+with `cleanup --keep-branch`. See `codex-workspace.sh --help` for all flags.
 
 ## Independence rule
 

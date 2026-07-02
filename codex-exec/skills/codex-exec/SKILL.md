@@ -8,7 +8,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.6.0"
+  version: "1.7.0"
 ---
 
 # Codex CLI
@@ -21,7 +21,8 @@ user explicitly wants to stay inside it.
 
 - Use `./generate.md` when Codex is an **implementation candidate** in a
   planner-led loop. Prefer `scripts/codex-run.sh generate` with an isolated
-  branch or worktree.
+  branch or worktree, and `scripts/codex-workspace.sh` to prepare/finalize/clean
+  up that worktree (see the "Workspace helper" section of `generate.md`).
 - Use `scripts/codex-run.sh review` or `codex review` for read-only critique.
 - Use `scripts/codex-run.sh exec` for one-shot analysis or generation that does
   not need the implementation-candidate artifact bundle.

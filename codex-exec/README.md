@@ -83,10 +83,14 @@ codex exec --sandbox read-only --output-schema schema.json "Review the diff"
 When Codex is one independent candidate beside another worker (for example Opus):
 
 1. Use the same task brief for both candidates.
-2. Give each candidate its own branch or worktree.
+2. Give each candidate its own branch or worktree — `codex-workspace.sh prepare
+   --name <candidate>` mints one from a frozen base SHA and tracks it by name.
 3. Do not share either candidate's diff or report until both finish.
 4. Launch Codex with `generate`; inspect `$run_dir/workspace.diff`, not only `final.md`.
-5. Let the parent orchestrator synthesize, validate, commit, and open PRs.
+5. `codex-workspace.sh finalize --name <candidate> --run-dir <dir>` bundles the
+   diff (vs the frozen base) plus Codex's report for side-by-side comparison.
+6. Let the parent orchestrator synthesize, validate, commit, and open PRs, then
+   `codex-workspace.sh cleanup --name <candidate>` to tear down rejected ones.
 
 See `skills/codex-exec/references/implementation-candidate-plan.md` for the
 full phased roadmap.
