@@ -51,12 +51,21 @@ skill_dir="/path/to/codex-exec/skills/codex-exec"
   --prompt-file /path/to/task-brief.txt
 ```
 
-`generate` defaults to `--sandbox workspace-write`, `--reasoning high`, and the
-bundled `candidate-report.schema.json`. Override only when the brief calls for a
-narrower sandbox, lighter reasoning, or a different parse contract.
+`generate` defaults to `--sandbox workspace-write`, `--reasoning high`, the
+bundled `candidate-report.schema.json`, and `--timeout 1800`. Override only when
+the brief calls for a narrower sandbox, lighter reasoning, a different parse
+contract, or a different time cap (`--timeout 0` disables the cap — only do that
+when the parent supervises stalls itself).
 
 6. Monitor with the printed `monitor.sh` or poll `--run-dir-file` until the run
    finishes. Do not trust Codex prose without reading artifacts.
+   **Health-check the start**: a printed session id and prompt echo do NOT mean
+   the run is healthy. A field-observed failure mode is a silent post-start
+   stall — header and prompt echo in `stderr.log`, then zero further output
+   (`stdout_lines=0` in heartbeats, empty `events.jsonl`, no workspace changes,
+   idle CPU) for as long as you let it run. If a generate run shows no `codex`
+   event lines and no workspace changes within ~5 minutes, kill it and relaunch
+   the same command — the identical invocation typically succeeds on retry.
 7. Inspect candidate output in the workspace Codex actually used:
    - `$run_dir/workspace-baseline.txt`
    - `$run_dir/changed-files.txt`
@@ -134,7 +143,12 @@ Implementation prompts should say:
 - Why it matters.
 - Non-goals and files/areas to avoid.
 - Required validation commands.
-- Whether to commit or only leave a working diff.
+- Whether to commit or only leave a working diff. In a **worktree** candidate,
+  do not ask Codex to commit: the worktree's git metadata lives in the parent
+  repo's `.git/worktrees/<name>`, outside the `workspace-write` sandbox, so
+  `git commit` fails with `index.lock ... Operation not permitted`. Rely on the
+  uncommitted diff (`workspace.diff` / the finalize bundle); the parent commits
+  during synthesis.
 - That secrets and `.env` files must not be read aloud, committed, or logged.
 - That unrelated cleanup belongs in a follow-up note, not the patch.
 - Do not ask the user for clarification; make reasonable assumptions and proceed.
