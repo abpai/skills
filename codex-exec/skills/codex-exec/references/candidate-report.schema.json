@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CodexImplementationCandidateReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "summary",
+    "changed_files",
+    "design_choices",
+    "tests_run",
+    "failures",
+    "risks"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "description": "One-paragraph overview of what was implemented."
+    },
+    "changed_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Repo-relative paths touched by the candidate."
+    },
+    "design_choices": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Key implementation decisions and assumptions."
+    },
+    "tests_run": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "outcome"],
+        "properties": {
+          "command": { "type": "string" },
+          "outcome": {
+            "type": "string",
+            "enum": ["passed", "failed", "skipped", "not_run"]
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "failures": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Blockers, partial work, or validation failures."
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Residual concerns for the orchestrator to evaluate."
+    }
+  }
+}

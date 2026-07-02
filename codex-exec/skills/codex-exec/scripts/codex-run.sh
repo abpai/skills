@@ -6,7 +6,7 @@ MODE="${1:-}"
 
 usage() {
   cat >&2 <<'EOF'
-Usage: codex-run.sh exec|review|resume [options] [-- extra-codex-args...]
+Usage: codex-run.sh exec|generate|review|resume [options] [-- extra-codex-args...]
 
 Common options:
   --prompt TEXT          Prompt text to send through stdin.
@@ -27,6 +27,11 @@ Common options:
 exec options:
   --sandbox MODE         read-only, workspace-write, or danger-full-access (default: read-only).
   --output-schema PATH   JSON schema for Codex final output.
+
+generate options:
+  --sandbox MODE         Defaults to workspace-write when omitted.
+  --output-schema PATH   JSON schema for Codex final output (recommended: candidate-report.schema.json).
+  Writes workspace-status.txt, workspace.diff, workspace-diff.stat, and changed-files.txt after the run.
 
 review options:
   --uncommitted          Review staged, unstaged, and untracked changes (default).
@@ -51,7 +56,7 @@ EOF
 if [[ "$MODE" == "-h" || "$MODE" == "--help" ]]; then
   usage
   exit 0
-elif [[ "$MODE" == "exec" || "$MODE" == "review" || "$MODE" == "resume" ]]; then
+elif [[ "$MODE" == "exec" || "$MODE" == "generate" || "$MODE" == "review" || "$MODE" == "resume" ]]; then
   shift
 else
   usage
@@ -453,6 +458,13 @@ load_continue_defaults() {
 
 load_continue_defaults
 
+if [[ "$MODE" == "generate" && "$SANDBOX_SET" == "false" ]]; then
+  SANDBOX="workspace-write"
+fi
+if [[ "$MODE" == "generate" && "$REASONING_SET" == "false" ]]; then
+  REASONING="high"
+fi
+
 WORKSPACE="$(absolute_path "$WORKSPACE")"
 if [[ ! -d "$WORKSPACE" ]]; then
   echo "[FAIL] workspace does not exist: $WORKSPACE" >&2
@@ -657,6 +669,11 @@ else
   : > "$PROMPT_RUN_FILE"
 fi
 
+if [[ "$MODE" == "generate" && "$HAS_PROMPT" != "true" ]]; then
+  echo "[FAIL] generate mode requires --prompt or --prompt-file" >&2
+  exit 2
+fi
+
 review_scope_text() {
   if [[ -n "$REVIEW_BASE" ]]; then
     printf 'changes against base ref %s' "$REVIEW_BASE"
@@ -700,6 +717,19 @@ if [[ "$MODE" == "review" && "$HAS_PROMPT" == "true" ]]; then
   } > "$PROMPT_RUN_FILE"
 fi
 
+if [[ "$MODE" == "generate" && "$HAS_PROMPT" == "true" ]]; then
+  USER_PROMPT_FILE="$RUN_DIR/user-prompt.txt"
+  cp "$PROMPT_RUN_FILE" "$USER_PROMPT_FILE"
+  {
+    printf 'Implement the following task in workspace: %s\n\n' "$WORKSPACE"
+    printf 'You may edit files in this workspace. Run relevant validation when practical.\n'
+    printf 'Do not ask clarifying questions; make reasonable assumptions, state them in the final report, and proceed.\n\n'
+    printf 'End your final message with a structured report covering changed files, design choices, tests run, failures, and risks.\n\n'
+    printf 'Task brief:\n'
+    cat "$USER_PROMPT_FILE"
+  } > "$PROMPT_RUN_FILE"
+fi
+
 codex_cmd=(codex exec --cd "$WORKSPACE" -c "model_reasoning_effort=\"$REASONING\"")
 if (( ${#CONFIG_ARGS[@]} > 0 )); then
   codex_cmd+=("${CONFIG_ARGS[@]}")
@@ -716,7 +746,7 @@ if [[ -n "$MODEL" ]]; then
   codex_cmd+=(--model "$MODEL")
 fi
 
-if [[ "$MODE" == "exec" ]]; then
+if [[ "$MODE" == "exec" || "$MODE" == "generate" ]]; then
   codex_cmd+=(--sandbox "$SANDBOX")
   if [[ "$JSON_OUTPUT" == "true" ]]; then
     codex_cmd+=(--json)
@@ -938,6 +968,41 @@ last_output_line() {
   printf '%s' "$line"
 }
 
+capture_workspace_artifacts() {
+  if [[ "$MODE" != "generate" ]]; then
+    return 0
+  fi
+
+  local status_file diff_file stat_file files_file
+  status_file="$RUN_DIR/workspace-status.txt"
+  diff_file="$RUN_DIR/workspace.diff"
+  stat_file="$RUN_DIR/workspace-diff.stat"
+  files_file="$RUN_DIR/changed-files.txt"
+
+  if ! git -C "$WORKSPACE" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf '[codex-exec] event=workspace-artifacts skipped=not-a-git-repo\n'
+    return 0
+  fi
+
+  git -C "$WORKSPACE" status --short > "$status_file" 2>/dev/null || : > "$status_file"
+  {
+    git -C "$WORKSPACE" diff 2>/dev/null || true
+    git -C "$WORKSPACE" diff --cached 2>/dev/null || true
+  } > "$diff_file"
+  {
+    git -C "$WORKSPACE" diff --stat 2>/dev/null || true
+    git -C "$WORKSPACE" diff --cached --stat 2>/dev/null || true
+  } > "$stat_file"
+  {
+    git -C "$WORKSPACE" diff --name-only 2>/dev/null || true
+    git -C "$WORKSPACE" diff --cached --name-only 2>/dev/null || true
+    git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null || true
+  } | awk 'NF && !seen[$0]++' > "$files_file"
+
+  printf '[codex-exec] event=workspace-artifacts status=%q diff=%q stat=%q files=%q\n' \
+    "$status_file" "$diff_file" "$stat_file" "$files_file"
+}
+
 populate_final_message_fallback() {
   if (( EXIT_CODE != 0 )) || [[ -s "$FINAL_MESSAGE" ]]; then
     FINAL_SOURCE="output-last-message"
@@ -1096,6 +1161,7 @@ if [[ "$EPHEMERAL" != "true" ]]; then
   fi
 fi
 populate_final_message_fallback
+capture_workspace_artifacts
 write_run_env
 write_status "$FINAL_STATE" "$EXIT_CODE" "$ELAPSED"
 

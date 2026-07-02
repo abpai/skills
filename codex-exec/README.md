@@ -1,12 +1,13 @@
 # codex-exec
 
-Run the Codex CLI from Claude Code for second opinions, code review, and
-multi-model consensus.
+Run the Codex CLI from Claude Code for second opinions, code review,
+implementation candidates, and multi-model consensus.
 
 ## Modes
 
 ```
 /codex-exec
+  ├── generate ── implementation candidate (workspace-write + diff artifacts)
   ├── exec ────── one-shot task (analysis, generation, structured output)
   ├── review ──── code review (uncommitted changes or specific files)
   └── resume ──── continue the most recent saved session
@@ -15,6 +16,16 @@ multi-model consensus.
 ## Quick Reference
 
 ```bash
+# Implementation candidate for dual-candidate orchestration
+run_dir_file="$(mktemp -t codex-exec-run-dir.XXXXXX)"
+schema="skills/codex-exec/references/candidate-report.schema.json"
+skills/codex-exec/scripts/codex-run.sh generate \
+  --workspace "$PWD" \
+  --run-dir-file "$run_dir_file" \
+  --heartbeat 15 \
+  --prompt-file task-brief.txt \
+  --output-schema "$schema"
+
 # Monitor-friendly one-shot run for Claude/MonitorTool
 skills/codex-exec/scripts/codex-run.sh exec --workspace "$PWD" --prompt-file prompt.txt
 
@@ -51,10 +62,11 @@ codex exec --sandbox read-only --output-schema schema.json "Review the diff"
 ## Key Defaults
 
 - Model: use the user's configured Codex default; pass `--model` only when explicitly requested
-- Sandbox: `read-only` for analysis, `workspace-write` when edits needed
-- Reasoning: `medium` (ordinary), `high` (hard tasks), `low` (quick checks)
+- Sandbox: `read-only` for analysis/review, `workspace-write` for `generate`
+- Reasoning: `medium` (ordinary), `high` (generate and hard tasks), `low` (quick checks)
 - Monitoring: prefer `skills/codex-exec/scripts/codex-run.sh` when Claude starts the run and tracks it with MonitorTool
 - Run artifacts: wrapper logs live under `${CODEX_EXEC_RUNS_DIR:-${CODEX_HOME:-~/.codex}/codex-exec-runs}` and include `run.env`, `status.env`, `monitor.sh`, `continue.sh`, `stdout.log`, `stderr.log`, `final.md`, `prompt.txt`, and `command.txt`
+- Generate artifacts: also writes `changed-files.txt`, `workspace.diff`, `workspace-diff.stat`, and `workspace-status.txt`
 - Run discovery: capture the printed `event=paths run_dir=...`; avoid `ls -t`
   "latest" lookups because another workspace may have a newer run; for
   background launches, pass `--run-dir-file` and read that file instead of
@@ -66,6 +78,18 @@ codex exec --sandbox read-only --output-schema schema.json "Review the diff"
 - Same-turn reads: use raw `codex exec ... > result.md 2> stderr.log` when the
   caller needs to consume the answer immediately; use the wrapper for monitored
   long runs and resumable follow-ups
+
+## Dual-candidate orchestration
+
+When Codex is one independent candidate beside another worker (for example Opus):
+
+1. Use the same task brief for both candidates.
+2. Give each candidate its own branch or worktree.
+3. Launch Codex with `generate`; inspect `$run_dir/workspace.diff`, not only `final.md`.
+4. Let the parent orchestrator synthesize, validate, commit, and open PRs.
+
+See `skills/codex-exec/references/implementation-candidate-plan.md` for the
+full phased roadmap.
 
 ## Troubleshooting Hints
 

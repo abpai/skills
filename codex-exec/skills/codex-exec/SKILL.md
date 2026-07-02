@@ -2,13 +2,13 @@
 name: codex-exec
 description: >
   Run, review, resume, or delegate through the Codex CLI as a second-opinion
-  worker. Use for `codex exec`, `codex review`, monitored long-running Codex
-  runs, CLI continuation, or provider-diverse critique of plans, diffs, code,
-  tests, and architecture.
+  worker. Use for `codex exec`, `codex review`, implementation candidates via
+  `generate`, monitored long-running Codex runs, CLI continuation, or
+  provider-diverse critique of plans, diffs, code, tests, and architecture.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.5.6"
+  version: "1.6.0"
 ---
 
 # Codex CLI
@@ -16,6 +16,36 @@ metadata:
 Use this skill when you need the local `codex` CLI from a terminal harness.
 Bias toward non-interactive runs. Use the interactive Codex UI only when the
 user explicitly wants to stay inside it.
+
+## Workflow routing
+
+- Use `./generate.md` when Codex is an **implementation candidate** in a
+  planner-led loop. Prefer `scripts/codex-run.sh generate` with an isolated
+  branch or worktree.
+- Use `scripts/codex-run.sh review` or `codex review` for read-only critique.
+- Use `scripts/codex-run.sh exec` for one-shot analysis or generation that does
+  not need the implementation-candidate artifact bundle.
+- Use `./references/implementation-candidate-plan.md` for the phased roadmap
+  when extending dual-candidate support.
+
+Load only the module that matches the task. For implementation delegation, read
+`generate.md`; do not pre-load review-only guidance unless the next step is
+comparison or critique.
+
+## Dual-candidate orchestration
+
+When a parent agent runs Codex as one of two independent implementation
+candidates:
+
+1. Give both candidates the same task brief.
+2. Use separate workspaces (branch or worktree) per candidate.
+3. Launch Codex with `scripts/codex-run.sh generate` and `--sandbox
+   workspace-write` (the generate default).
+4. Do not show either candidate the other's diff or report until both finish.
+5. Compare using run artifacts (`changed-files.txt`, `workspace.diff`,
+   `final.md`) plus your own validation reruns.
+6. Let the parent synthesize, integrate, commit, and open PRs. Codex does not
+   own final integration.
 
 ## Environment (preflight)
 
@@ -54,8 +84,11 @@ outside a repo.
 Unless the user asks for something else:
 
 - Prefer `scripts/codex-run.sh` when Claude starts a run that it will monitor,
-  especially for long reviews, generated prompt files, or any task where
-  progress visibility matters.
+  especially for long reviews, generated prompt files, implementation candidates,
+  or any task where progress visibility matters.
+- Use `scripts/codex-run.sh generate` for implementation candidates; it defaults
+  to `workspace-write`, captures workspace diff artifacts, and wraps the task
+  brief with a stable report contract.
 - Use `codex exec` for one-shot work.
 - Use `scripts/codex-run.sh review` for monitored code reviews; use
   `codex review` for short raw CLI review requests.
@@ -124,9 +157,24 @@ It writes each run under
 - `events.jsonl`: mirror of stdout when `--json` is enabled.
 - `final.md`: the `--output-last-message` capture, or the successful-run
   fallback recorded in `status.env`'s `final_source`.
+- `changed-files.txt`, `workspace.diff`, `workspace-diff.stat`,
+  `workspace-status.txt`: written after `generate` runs in git workspaces.
 - `command.txt`: shell-quoted command without prompt text.
 - `prompt.txt`: prompt content sent through stdin.
 - `preflight.log`: Codex version and workspace git status.
+
+Example implementation candidate with diff capture:
+
+```bash
+run_dir_file="$(mktemp -t codex-exec-run-dir.XXXXXX)"
+schema="/path/to/skills/codex-exec/references/candidate-report.schema.json"
+scripts/codex-run.sh generate \
+  --workspace "$PWD" \
+  --run-dir-file "$run_dir_file" \
+  --heartbeat 15 \
+  --prompt-file task-brief.txt \
+  --output-schema "$schema"
+```
 
 Example one-shot run:
 
