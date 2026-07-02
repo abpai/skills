@@ -27,11 +27,13 @@ Ship the minimum contract an orchestrator can rely on:
 
 1. **`generate` wrapper mode** in `codex-run.sh`
    - Defaults: `workspace-write`, `reasoning=high`
+   - Uses the bundled candidate report schema unless callers pass a custom one
    - Composes an implementation prompt wrapper (assumptions OK, no clarifying questions)
-   - Captures post-run artifacts: `workspace-status.txt`, `workspace.diff`,
-     `workspace-diff.stat`, `changed-files.txt`
+   - Captures baseline/post-run artifacts: `workspace-baseline.txt`,
+     `workspace-status.txt`, `workspace.diff`, `workspace-diff.stat`,
+     `changed-files.txt`
 2. **`generate.md` workflow module** — parallel to Composer's generate path
-3. **`candidate-report.schema.json`** — optional structured final output
+3. **`candidate-report.schema.json`** — default structured final output
 4. **SKILL.md + README** — routing, dual-candidate orchestration notes, artifact list
 
 ### Phase 2 — Worktree helper (future)

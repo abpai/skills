@@ -1,8 +1,16 @@
 # Codex Generate
 
 Delegate implementation to the Codex CLI while the parent agent remains the
-orchestrator, comparator, and release coordinator. Use this path when Codex is
-one independent candidate in a dual-candidate loop.
+orchestrator, comparator, validator, and release coordinator. Use this path when
+Codex is one independent candidate in a dual-candidate loop.
+
+## Runtime contract
+
+1. Parent prepares an isolated workspace and one concrete task brief.
+2. Parent runs `scripts/codex-run.sh generate`.
+3. Wrapper applies implementation defaults and captures candidate artifacts.
+4. Parent inspects the artifacts and reruns validation.
+5. Parent synthesizes the final implementation; Codex never owns integration.
 
 ## Workflow
 
@@ -12,44 +20,44 @@ one independent candidate in a dual-candidate loop.
    Stop on `codex: not installed`, `codex exec: unavailable`, or trust-directory
    blockers.
 3. Create or choose an isolated branch or worktree before handing work to Codex.
-   Prefer one coherent task per candidate workspace. Record the base ref the
-   parent will compare against later.
+   Prefer one coherent task per candidate workspace.
 4. Write a prompt file that includes the exact task, files/areas in scope,
    validation expectations, and explicit stop rules. Say that Codex must not ask
    clarifying questions; make reasonable assumptions, state them in the final
-   report, apply changes, run relevant checks, and report what changed.
+   report, apply changes, and report what changed. If validation commands are
+   named, Codex should run them; otherwise it should run the smallest obvious
+   focused check when practical or report `not_run`.
 5. Launch Codex through the wrapper in `generate` mode:
 
 ```bash
 run_dir_file="$(mktemp -t codex-exec-run-dir.XXXXXX)"
-schema="$(dirname "$0")/references/candidate-report.schema.json"
+skill_dir="/path/to/codex-exec/skills/codex-exec"
 
-scripts/codex-run.sh generate \
+"$skill_dir/scripts/codex-run.sh" generate \
   --workspace /path/to/candidate-worktree \
   --run-dir-file "$run_dir_file" \
   --heartbeat 15 \
-  --prompt-file /path/to/task-brief.txt \
-  --output-schema "$schema"
+  --prompt-file /path/to/task-brief.txt
 ```
 
-`generate` defaults to `--sandbox workspace-write` and `--reasoning high`.
-Override only when the brief calls for a narrower sandbox or lighter reasoning.
+`generate` defaults to `--sandbox workspace-write`, `--reasoning high`, and the
+bundled `candidate-report.schema.json`. Override only when the brief calls for a
+narrower sandbox, lighter reasoning, or a different parse contract.
 
 6. Monitor with the printed `monitor.sh` or poll `--run-dir-file` until the run
    finishes. Do not trust Codex prose without reading artifacts.
 7. Inspect candidate output in the workspace Codex actually used:
+   - `$run_dir/workspace-baseline.txt`
    - `$run_dir/changed-files.txt`
    - `$run_dir/workspace.diff` and `$run_dir/workspace-diff.stat`
    - `$run_dir/workspace-status.txt`
-   - `$run_dir/final.md` (or structured JSON when `--output-schema` was used)
+   - `$run_dir/final.md` (structured JSON by default)
 8. Re-run validation yourself in that workspace before presenting the candidate
    to the parent synthesis step. Codex-reported test outcomes are hints, not proof.
 9. Leave commit, push, and PR creation to the parent orchestrator unless the
    brief explicitly delegates that to Codex.
 
-## Dual-candidate independence
-
-When Codex is one of two parallel candidates:
+## Independence rule
 
 - Give both candidates the same task brief.
 - Use separate workspaces (branch or worktree) per candidate.
@@ -70,7 +78,7 @@ Implementation prompts should say:
 - That unrelated cleanup belongs in a follow-up note, not the patch.
 - Do not ask the user for clarification; make reasonable assumptions and proceed.
 
-## Parent-agent responsibilities
+## Parent responsibilities
 
 - Do not trust Codex summaries without reading `$run_dir/workspace.diff`.
 - Do not integrate a candidate branch until synthesis and validation are done.

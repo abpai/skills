@@ -37,15 +37,14 @@ comparison or critique.
 When a parent agent runs Codex as one of two independent implementation
 candidates:
 
-1. Give both candidates the same task brief.
-2. Use separate workspaces (branch or worktree) per candidate.
-3. Launch Codex with `scripts/codex-run.sh generate` and `--sandbox
-   workspace-write` (the generate default).
-4. Do not show either candidate the other's diff or report until both finish.
-5. Compare using run artifacts (`changed-files.txt`, `workspace.diff`,
-   `final.md`) plus your own validation reruns.
-6. Let the parent synthesize, integrate, commit, and open PRs. Codex does not
-   own final integration.
+1. Same task brief.
+2. Separate workspaces.
+3. No peer diff/report visibility until both candidates finish.
+4. Parent inspects artifacts, reruns validation, and synthesizes.
+
+The runtime workflow lives in `./generate.md`. Keep Fable, Opus, Composer, or
+other workers as examples only; the stable vocabulary is parent orchestrator,
+Codex candidate, and peer candidate.
 
 ## Environment (preflight)
 
@@ -87,8 +86,8 @@ Unless the user asks for something else:
   especially for long reviews, generated prompt files, implementation candidates,
   or any task where progress visibility matters.
 - Use `scripts/codex-run.sh generate` for implementation candidates; it defaults
-  to `workspace-write`, captures workspace diff artifacts, and wraps the task
-  brief with a stable report contract.
+  to `workspace-write`, `high` reasoning, and the bundled candidate-report
+  schema while capturing workspace diff artifacts.
 - Use `codex exec` for one-shot work.
 - Use `scripts/codex-run.sh review` for monitored code reviews; use
   `codex review` for short raw CLI review requests.
@@ -103,7 +102,7 @@ Unless the user asks for something else:
 - Use `medium` reasoning for ordinary work, `high` for harder tasks, and `low` for tiny checks.
 - Use `--sandbox read-only` for `codex exec` analysis runs, and use the wrapper or `codex review` for review tasks.
 - Expand to `workspace-write` only when Codex should edit files; use bypass flags only in externally sandboxed automation.
-- Use `--json` or `--output-schema` only when another tool will parse the result.
+- Use `--json` or a custom `--output-schema` only when another tool will parse the result.
 
 Do not hide stderr by default. Do not add `--skip-git-repo-check` inside a
 normal Git repo; but when you intentionally run outside a Git repo (or in a
@@ -157,7 +156,8 @@ It writes each run under
 - `events.jsonl`: mirror of stdout when `--json` is enabled.
 - `final.md`: the `--output-last-message` capture, or the successful-run
   fallback recorded in `status.env`'s `final_source`.
-- `changed-files.txt`, `workspace.diff`, `workspace-diff.stat`,
+- `workspace-baseline.txt`, `changed-files.txt`, `workspace.diff`,
+  `workspace-diff.stat`,
   `workspace-status.txt`: written after `generate` runs in git workspaces.
 - `command.txt`: shell-quoted command without prompt text.
 - `prompt.txt`: prompt content sent through stdin.
@@ -167,13 +167,12 @@ Example implementation candidate with diff capture:
 
 ```bash
 run_dir_file="$(mktemp -t codex-exec-run-dir.XXXXXX)"
-schema="/path/to/skills/codex-exec/references/candidate-report.schema.json"
-scripts/codex-run.sh generate \
+skill_dir="/path/to/codex-exec/skills/codex-exec"
+"$skill_dir/scripts/codex-run.sh" generate \
   --workspace "$PWD" \
   --run-dir-file "$run_dir_file" \
   --heartbeat 15 \
-  --prompt-file task-brief.txt \
-  --output-schema "$schema"
+  --prompt-file task-brief.txt
 ```
 
 Example one-shot run:

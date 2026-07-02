@@ -30,8 +30,9 @@ exec options:
 
 generate options:
   --sandbox MODE         Defaults to workspace-write when omitted.
-  --output-schema PATH   JSON schema for Codex final output (recommended: candidate-report.schema.json).
-  Writes workspace-status.txt, workspace.diff, workspace-diff.stat, and changed-files.txt after the run.
+  --output-schema PATH   JSON schema for Codex final output (default: candidate-report.schema.json).
+  Writes workspace-baseline.txt, workspace-status.txt, workspace.diff,
+  workspace-diff.stat, and changed-files.txt around the run.
 
 review options:
   --uncommitted          Review staged, unstaged, and untracked changes (default).
@@ -63,7 +64,9 @@ else
   exit 2
 fi
 
-SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/$(basename "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
+DEFAULT_GENERATE_SCHEMA="$SCRIPT_DIR/../references/candidate-report.schema.json"
 PROMPT_TEXT=""
 PROMPT_FILE=""
 WORKSPACE="$PWD"
@@ -102,6 +105,8 @@ REASONING_SET="false"
 MODEL_SET="false"
 SESSION_SET="false"
 SANDBOX_SET="false"
+BASE_BRANCH=""
+BASE_HEAD=""
 
 require_value() {
   local option="$1"
@@ -464,6 +469,9 @@ fi
 if [[ "$MODE" == "generate" && "$REASONING_SET" == "false" ]]; then
   REASONING="high"
 fi
+if [[ "$MODE" == "generate" && -z "$OUTPUT_SCHEMA" ]]; then
+  OUTPUT_SCHEMA="$DEFAULT_GENERATE_SCHEMA"
+fi
 
 WORKSPACE="$(absolute_path "$WORKSPACE")"
 if [[ ! -d "$WORKSPACE" ]]; then
@@ -520,6 +528,7 @@ COMMAND_FILE="$RUN_DIR/command.txt"
 PREFLIGHT_LOG="$RUN_DIR/preflight.log"
 MONITOR_SCRIPT="$RUN_DIR/monitor.sh"
 CONTINUE_SCRIPT="$RUN_DIR/continue.sh"
+BASELINE_FILE="$RUN_DIR/workspace-baseline.txt"
 
 : > "$STDOUT_LOG"
 : > "$STDERR_LOG"
@@ -722,9 +731,10 @@ if [[ "$MODE" == "generate" && "$HAS_PROMPT" == "true" ]]; then
   cp "$PROMPT_RUN_FILE" "$USER_PROMPT_FILE"
   {
     printf 'Implement the following task in workspace: %s\n\n' "$WORKSPACE"
-    printf 'You may edit files in this workspace. Run relevant validation when practical.\n'
+    printf 'You may edit files in this workspace. Run validation commands named in the brief. '
+    printf 'If none are named, run the smallest obvious focused check when practical; otherwise report not_run.\n'
     printf 'Do not ask clarifying questions; make reasonable assumptions, state them in the final report, and proceed.\n\n'
-    printf 'End your final message with a structured report covering changed files, design choices, tests run, failures, and risks.\n\n'
+    printf 'End with a structured report covering changed files, design choices, tests run, failures, and risks.\n\n'
     printf 'Task brief:\n'
     cat "$USER_PROMPT_FILE"
   } > "$PROMPT_RUN_FILE"
@@ -870,8 +880,12 @@ write_run_env() {
     printf 'EVENTS_LOG=%q\n' "$EVENTS_LOG"
     printf 'FINAL_MESSAGE=%q\n' "$FINAL_MESSAGE"
     printf 'FINAL_SOURCE=%q\n' "$FINAL_SOURCE"
+    printf 'OUTPUT_SCHEMA=%q\n' "$OUTPUT_SCHEMA"
     printf 'COMMAND_FILE=%q\n' "$COMMAND_FILE"
     printf 'PREFLIGHT_LOG=%q\n' "$PREFLIGHT_LOG"
+    printf 'BASELINE_FILE=%q\n' "$BASELINE_FILE"
+    printf 'BASE_BRANCH=%q\n' "$BASE_BRANCH"
+    printf 'BASE_HEAD=%q\n' "$BASE_HEAD"
     printf 'SESSION_ID=%q\n' "$SESSION_ID"
     printf 'RESUME_LAST=%q\n' "$RESUME_LAST"
     printf 'REASONING=%q\n' "$REASONING"
@@ -905,8 +919,10 @@ write_status() {
     printf 'events_log=%q\n' "$EVENTS_LOG"
     printf 'final_message=%q\n' "$FINAL_MESSAGE"
     printf 'final_source=%q\n' "$FINAL_SOURCE"
+    printf 'output_schema=%q\n' "$OUTPUT_SCHEMA"
     printf 'command_file=%q\n' "$COMMAND_FILE"
     printf 'preflight_log=%q\n' "$PREFLIGHT_LOG"
+    printf 'baseline_file=%q\n' "$BASELINE_FILE"
     printf 'monitor_script=%q\n' "$MONITOR_SCRIPT"
     printf 'continue_script=%q\n' "$CONTINUE_SCRIPT"
   } > "$STATUS_FILE"
@@ -968,6 +984,39 @@ last_output_line() {
   printf '%s' "$line"
 }
 
+capture_workspace_baseline() {
+  if [[ "$MODE" != "generate" ]]; then
+    return 0
+  fi
+
+  if ! git -C "$WORKSPACE" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    : > "$BASELINE_FILE"
+    return 0
+  fi
+
+  BASE_BRANCH="$(git -C "$WORKSPACE" branch --show-current 2>/dev/null || true)"
+  BASE_HEAD="$(git -C "$WORKSPACE" rev-parse --verify HEAD 2>/dev/null || true)"
+  {
+    printf 'workspace=%s\n' "$WORKSPACE"
+    printf 'branch=%s\n' "${BASE_BRANCH:-"(detached or unnamed)"}"
+    printf 'head=%s\n' "${BASE_HEAD:-"(no HEAD)"}"
+    printf 'status_before:\n'
+    git -C "$WORKSPACE" status --short 2>/dev/null || true
+  } > "$BASELINE_FILE"
+}
+
+append_untracked_diff_artifacts() {
+  local mode="$1"
+  git -C "$WORKSPACE" ls-files --others --exclude-standard -z 2>/dev/null |
+    while IFS= read -r -d '' file_path; do
+      if [[ "$mode" == "stat" ]]; then
+        git -C "$WORKSPACE" diff --no-index --stat -- /dev/null "$file_path" 2>/dev/null || true
+      else
+        git -C "$WORKSPACE" diff --no-index -- /dev/null "$file_path" 2>/dev/null || true
+      fi
+    done
+}
+
 capture_workspace_artifacts() {
   if [[ "$MODE" != "generate" ]]; then
     return 0
@@ -985,19 +1034,36 @@ capture_workspace_artifacts() {
   fi
 
   git -C "$WORKSPACE" status --short > "$status_file" 2>/dev/null || : > "$status_file"
-  {
-    git -C "$WORKSPACE" diff 2>/dev/null || true
-    git -C "$WORKSPACE" diff --cached 2>/dev/null || true
-  } > "$diff_file"
-  {
-    git -C "$WORKSPACE" diff --stat 2>/dev/null || true
-    git -C "$WORKSPACE" diff --cached --stat 2>/dev/null || true
-  } > "$stat_file"
-  {
-    git -C "$WORKSPACE" diff --name-only 2>/dev/null || true
-    git -C "$WORKSPACE" diff --cached --name-only 2>/dev/null || true
-    git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null || true
-  } | awk 'NF && !seen[$0]++' > "$files_file"
+  if [[ -n "$BASE_HEAD" ]]; then
+    {
+      git -C "$WORKSPACE" diff "$BASE_HEAD" 2>/dev/null || true
+      append_untracked_diff_artifacts diff
+    } > "$diff_file"
+    {
+      git -C "$WORKSPACE" diff --stat "$BASE_HEAD" 2>/dev/null || true
+      append_untracked_diff_artifacts stat
+    } > "$stat_file"
+    {
+      git -C "$WORKSPACE" diff --name-only "$BASE_HEAD" 2>/dev/null || true
+      git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null || true
+    } | awk 'NF && !seen[$0]++' > "$files_file"
+  else
+    {
+      git -C "$WORKSPACE" diff 2>/dev/null || true
+      git -C "$WORKSPACE" diff --cached 2>/dev/null || true
+      append_untracked_diff_artifacts diff
+    } > "$diff_file"
+    {
+      git -C "$WORKSPACE" diff --stat 2>/dev/null || true
+      git -C "$WORKSPACE" diff --cached --stat 2>/dev/null || true
+      append_untracked_diff_artifacts stat
+    } > "$stat_file"
+    {
+      git -C "$WORKSPACE" diff --name-only 2>/dev/null || true
+      git -C "$WORKSPACE" diff --cached --name-only 2>/dev/null || true
+      git -C "$WORKSPACE" ls-files --others --exclude-standard 2>/dev/null || true
+    } | awk 'NF && !seen[$0]++' > "$files_file"
+  fi
 
   printf '[codex-exec] event=workspace-artifacts status=%q diff=%q stat=%q files=%q\n' \
     "$status_file" "$diff_file" "$stat_file" "$files_file"
@@ -1074,6 +1140,7 @@ heartbeat_loop() {
   git -C "$WORKSPACE" status --short 2>/dev/null | head -40 || true
 } > "$PREFLIGHT_LOG"
 
+capture_workspace_baseline
 write_run_env
 write_status "planned" "" 0
 printf '[codex-exec] event=start run_id=%s mode=%s workspace=%q\n' "$RUN_ID" "$MODE" "$WORKSPACE"
