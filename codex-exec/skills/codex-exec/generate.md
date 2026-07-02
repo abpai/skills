@@ -64,8 +64,11 @@ when the parent supervises stalls itself).
    stall — header and prompt echo in `stderr.log`, then zero further output
    (`stdout_lines=0` in heartbeats, empty `events.jsonl`, no workspace changes,
    idle CPU) for as long as you let it run. If a generate run shows no `codex`
-   event lines and no workspace changes within ~5 minutes, kill it and relaunch
-   the same command — the identical invocation typically succeeds on retry.
+   event lines and no workspace changes within ~5 minutes, kill it (the child
+   pid is on the `event=spawn` line) and relaunch the same command in a fresh
+   run dir — the identical invocation typically succeeds on retry. Retry once;
+   if the second attempt stalls the same way, stop and report the CLI fault
+   instead of looping.
 7. Inspect candidate output in the workspace Codex actually used:
    - `$run_dir/workspace-baseline.txt`
    - `$run_dir/changed-files.txt`
