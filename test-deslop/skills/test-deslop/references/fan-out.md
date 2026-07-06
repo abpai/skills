@@ -55,8 +55,8 @@ area note. Paste the KILL/KEEP/PROTECT rubric from `rubric.md` into the prompt.
 OPINIONATED test deslopification on ONE slice. Work inside: <REPO/WORKTREE ROOT>.
 Do not create/switch branches or commit.
 
-YOUR SLICE = exactly the files in: <path/to/batch_N.txt>  (cat it). Modify ONLY
-those *.test.ts files; touch nothing else.
+YOUR SLICE = exactly the test files in: <path/to/batch_N.txt>  (cat it).
+Modify ONLY those files; touch nothing else.
 
 GOAL: (1) delete low-value tests; (2) make survivors a joy to read.
 
@@ -67,8 +67,10 @@ GOAL: (1) delete low-value tests; (2) make survivors a joy to read.
   default to KEEP" ]
 
 HARD CONSTRAINTS:
-- Edit ONLY the *.test.ts in your list. Never edit source, code-under-test, or shared
-  helpers (if a helper goes unused after a deletion, leave it and note it).
+- Edit ONLY the test files in your list, using the repo's own convention
+  (`*.test.ts`, `*.spec.ts`, `*.test.tsx`, etc.). Never edit source,
+  code-under-test, or shared helpers (if a helper goes unused after a deletion,
+  leave it and note it).
 - Whole-file delete: plain `rm <path>` (NOT `git rm` — staging is central). In-file
   prune: Edit tool; fall back to a Bash rewrite if Edit fails.
 - Bias to DELETION over rewriting. Survivor edits must keep tests passing — never
@@ -102,8 +104,8 @@ Why these constraints:
 5. Safety sweep:
    ```bash
    git add -A
-   # no non-test source files should appear:
-   git status --porcelain | awk '{print $NF}' | grep -E '\.ts$' | grep -v '\.test\.ts$'
+   # inspect every changed path; no source file or shared helper should appear:
+   git status --porcelain | awk '{print $NF}'
    ```
 
 ## Ship

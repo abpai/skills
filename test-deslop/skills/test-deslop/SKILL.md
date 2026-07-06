@@ -38,8 +38,9 @@ taste before scale, protect the load-bearing tests explicitly, and make
 
 ## Confirm the contract first
 
-Before touching anything, settle three decisions with the user (`AskUserQuestion`).
-They change the whole shape of the work:
+Before touching anything, settle three decisions with the user. Use
+`AskUserQuestion` when that tool is available; otherwise ask directly before
+editing. These choices change the whole shape of the work:
 
 - **Deletion bar** — *conservative* (only delete clearly worthless tests; when in
   doubt keep/rewrite) vs *opinionated* (delete anything that doesn't earn its keep,
@@ -111,13 +112,15 @@ would mean*.
 6. **Fan out.** Parallel subagents, each owning a disjoint slice, all under **one
    shared rubric verbatim** (consistency depends on this). Whole-file deletion via
    plain `rm` with central staging — not `git rm` per-agent — to avoid git-index
-   contention across concurrent agents. Agents edit only `*.test.ts`; never source,
-   the code-under-test, or shared helpers. Template in `references/fan-out.md`.
+   contention across concurrent agents. Agents edit only the test files assigned
+   to their slice, using the repo's convention (`*.test.ts`, `*.spec.ts`,
+   `*.test.tsx`, etc.); never source, the code-under-test, or shared helpers.
+   Template in `references/fan-out.md`.
 7. **Clean up orphans.** Snapshot files with no remaining `toMatchSnapshot` calls;
    fixtures left unused by deletions.
 8. **Verify.** Formatter check, typecheck (catches imports orphaned by prunes), then
-   the full suite vs the baseline. Safety sweep: confirm only `*.test.ts` changed and
-   **no source files were touched**.
+   the full suite vs the baseline. Safety sweep: confirm only intended test files
+   changed and **no source files were touched**.
 9. **Ship.** One commit / PR. Put the per-case rationale and the before/after test
    counts in the body so the human can review the taste, not just the line count.
 
