@@ -1,9 +1,9 @@
 ---
 name: harness
-description: "Route agent-harness workflows through one scoped /harness command. Use docs to make a repo ergonomic for agent-driven development, and doctor to run a verification-first readiness audit with finding IDs and proof."
+description: "Route agent-harness workflows through one scoped /harness command. Use docs to make a repo ergonomic for agent-driven development, and doctor to run a verification-first readiness audit with finding IDs, proof, and a loop-readiness verdict."
 argument-hint: "[subcommand] [args] - e.g. docs, doctor, --docs docs overhaul"
 metadata:
-  version: "1.2.1"
+  version: "1.3.0"
 ---
 
 # Harness Workflow Pack

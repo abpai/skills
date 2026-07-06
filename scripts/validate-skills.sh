@@ -176,6 +176,29 @@ if [[ "$have_bun" -eq 1 && ${#TS_HELPERS[@]} -gt 0 ]]; then
   echo "  [OK] other TypeScript helper builds (${#TS_HELPERS[@]} scripts, bun build)"
 fi
 
+# ── Codex output schemas: OpenAI strict-mode compliance ──
+#
+# codex-exec ships JSON schemas used as `codex exec --output-schema`. OpenAI's
+# Structured Outputs strict mode requires that every object's `required` array
+# list *every* key in its `properties` (optional fields are expressed with a
+# nullable type, not by omission from `required`). A schema that violates this
+# fails ~5s into every run with `invalid_json_schema` — a class of regression
+# that shipped once (the default candidate-report schema left `notes` out of
+# `required`) because the dry-run test path never calls the API. Guard it.
+CODEX_SCHEMAS=()
+while IFS= read -r f; do
+  CODEX_SCHEMAS+=("$f")
+done < <(find codex-exec -name '*.schema.json' -type f 2>/dev/null | sort)
+if [[ ${#CODEX_SCHEMAS[@]} -gt 0 ]]; then
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "  [SKIP] codex output schema strict-mode check (python3 not found)"
+  elif python3 scripts/check_strict_schema.py "${CODEX_SCHEMAS[@]}"; then
+    echo "  [OK] codex output schemas strict-mode (${#CODEX_SCHEMAS[@]} files)"
+  else
+    failed=1
+  fi
+fi
+
 if [[ $failed -ne 0 ]]; then
   echo "Validation failed."
   exit 1

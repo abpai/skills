@@ -1,0 +1,1 @@
+../skills/composer/bin/cursor-agent-doctor.sh

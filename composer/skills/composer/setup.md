@@ -4,61 +4,95 @@ Verify that this machine can use Cursor Composer from headless agent workflows.
 OpenAI Codex login is optional and only matters when the workflow will also use
 Codex for review.
 
+## Auth resolution
+
+`cursor-agent-doctor.sh` resolves auth via `--auth auto` — browser login →
+`CURSOR_API_KEY` → hard stop, the same rule SKILL.md states for direct
+`agent -p` calls. Run it with `CURSOR_API_KEY` unset to prove the browser-login
+path, or `--auth api-key` (with `CURSOR_ENV_FILE`/`--env-file`) to prove the key
+path. Never print the key; relay any hard stop to the user.
+
 ## Preflight
+
+The commands below use the bare command name (works when the Claude plugin is
+installed — its `bin/` is on `PATH`). Otherwise prefix with the wrapper directory
+for your install per SKILL.md "Scripts" — Codex flat install:
+`~/.agents/skills/composer/bin/`; source checkout: `composer/skills/composer/bin/`.
 
 Run:
 
 ```bash
-composer/skills/composer/scripts/cursor-agent-doctor.sh
+cursor-agent-doctor.sh
 ```
 
-If the repo-local worktree does not contain the `.env` file with
-`CURSOR_API_KEY`, pass it explicitly:
+Default `--auth auto` follows the login-first fallback above. For API-key-only
+automation:
 
 ```bash
-CURSOR_ENV_FILE=/path/to/.env composer/skills/composer/scripts/cursor-agent-doctor.sh
+CURSOR_ENV_FILE=/path/to/cursor-key.env cursor-agent-doctor.sh --auth api-key
 ```
 
-For an end-to-end smoke:
+For an API-key end-to-end smoke:
 
 ```bash
-CURSOR_ENV_FILE=/path/to/.env composer/skills/composer/scripts/cursor-agent-doctor.sh --smoke
+CURSOR_ENV_FILE=/path/to/cursor-key.env cursor-agent-doctor.sh --auth api-key --smoke
 ```
 
-Use browser login only when the smoke proves it can run headless prompts:
+For browser-login-only proof:
 
 ```bash
-composer/skills/composer/scripts/cursor-agent-doctor.sh --auth login --smoke
+cursor-agent-doctor.sh --auth login --smoke
 ```
+
+For adversarial review readiness without sending repo content, prefer
+`composer-2.5-fast` for the cheap smoke check and skip Codex unless Codex is
+part of the workflow:
+
+```bash
+cursor-agent-doctor.sh \
+  --skip-codex \
+  --smoke \
+  --model composer-2.5-fast
+```
+
+Use `--model composer-2.5` instead when the review is a strict release gate or
+the user asks for the slower path.
+
+If you need wrapper-level proof, run `composer-run.sh review` against an empty
+temporary workspace with a harmless prompt before preparing any project diff.
 
 ## What Good Looks Like
 
-- `cursor-agent` is installed.
-- Cursor auth works through `CURSOR_API_KEY`, or through browser login after the
-  login smoke passes.
-- `cursor-agent models` succeeds and includes `composer-2.5` or
-  `composer-2.5-fast`.
+- `agent` or `cursor-agent` is installed.
+- Wrapper scripts are found (bare command, or under the install's `bin/`) — or
+  you fall back to `agent -p`.
+- Cursor auth works through browser login after the smoke passes, or through
+  `CURSOR_API_KEY` when API-key mode is intentional.
+- `agent models` succeeds and includes `composer-2.5` or `composer-2.5-fast`.
 - `codex login status` succeeds when OpenAI/Codex review is part of the loop.
-- The optional smoke returns `composer-smoke-ok`.
+- The smoke returns `composer-smoke-ok`.
+- For review readiness, a `composer-2.5-fast` or `composer-2.5` smoke passes
+  without sending repo files or diffs.
 
 ## Setup Guidance
 
-- Cursor auth can use `CURSOR_API_KEY` or `cursor-agent login`.
-- `cursor-agent status` and `cursor-agent models` can be advisory only; trust
-  the smoke test when deciding whether login auth is ready for automation.
+- Prefer browser login on local dev machines; prefer `CURSOR_API_KEY` for CI and
+  unattended automation.
+- `agent status` is advisory; trust the doctor smoke when deciding whether
+  headless automation is ready.
 - Codex auth can use `codex login`, `codex login --device-auth`,
   `codex login --with-api-key`, or existing cached login.
-- Do not paste secrets into chat. Ask the user to place them in `.env`,
-  shell env, or their platform credential store.
-- If `cursor-agent status` hangs, prefer the API-key path and rely on
-  `cursor-agent models` plus the smoke test as the real proof.
+- Do not paste secrets into chat. Ask the user to place them in shell env or a
+  dedicated key file referenced by `CURSOR_ENV_FILE` / `--env-file`.
 
 ## Report
 
 Summarize:
 
-- Cursor CLI version.
-- Whether API-key auth was found, without printing the key.
+- Cursor CLI binary and version.
+- Wrapper location used (bare command / install `bin/`) or direct `agent -p`
+  fallback.
+- Auth path used (browser login or API key present) without printing the key.
 - Whether Composer models are available.
 - Whether Codex login is ready.
 - Smoke status if run.

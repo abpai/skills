@@ -2,13 +2,13 @@
 name: codex-exec
 description: >
   Run, review, resume, or delegate through the Codex CLI as a second-opinion
-  worker. Use for `codex exec`, `codex review`, monitored long-running Codex
-  runs, CLI continuation, or provider-diverse critique of plans, diffs, code,
-  tests, and architecture.
+  worker. Use for `codex exec`, `codex review`, implementation candidates via
+  `generate`, monitored long-running Codex runs, CLI continuation, or
+  provider-diverse critique of plans, diffs, code, tests, and architecture.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.5.6"
+  version: "1.7.0"
 ---
 
 # Codex CLI
@@ -16,6 +16,36 @@ metadata:
 Use this skill when you need the local `codex` CLI from a terminal harness.
 Bias toward non-interactive runs. Use the interactive Codex UI only when the
 user explicitly wants to stay inside it.
+
+## Workflow routing
+
+- Use `./generate.md` when Codex is an **implementation candidate** in a
+  planner-led loop. Prefer `scripts/codex-run.sh generate` with an isolated
+  branch or worktree, and `scripts/codex-workspace.sh` to prepare/finalize/clean
+  up that worktree (see the "Workspace helper" section of `generate.md`).
+- Use `scripts/codex-run.sh review` or `codex review` for read-only critique.
+- Use `scripts/codex-run.sh exec` for one-shot analysis or generation that does
+  not need the implementation-candidate artifact bundle.
+- Use `./references/implementation-candidate-plan.md` for the phased roadmap
+  when extending dual-candidate support.
+
+Load only the module that matches the task. For implementation delegation, read
+`generate.md`; do not pre-load review-only guidance unless the next step is
+comparison or critique.
+
+## Dual-candidate orchestration
+
+When a parent agent runs Codex as one of two independent implementation
+candidates:
+
+1. Same task brief.
+2. Separate workspaces.
+3. No peer diff/report visibility until both candidates finish.
+4. Parent inspects artifacts, reruns validation, and synthesizes.
+
+The runtime workflow lives in `./generate.md`. Keep Fable, Opus, Composer, or
+other workers as examples only; the stable vocabulary is parent orchestrator,
+Codex candidate, and peer candidate.
 
 ## Environment (preflight)
 
@@ -54,8 +84,12 @@ outside a repo.
 Unless the user asks for something else:
 
 - Prefer `scripts/codex-run.sh` when Claude starts a run that it will monitor,
-  especially for long reviews, generated prompt files, or any task where
-  progress visibility matters.
+  especially for long reviews, generated prompt files, implementation candidates,
+  or any task where progress visibility matters.
+- Use `scripts/codex-run.sh generate` for implementation candidates; it defaults
+  to `workspace-write`, `high` reasoning, a `1800`-second timeout (`--timeout 0`
+  disables), and the bundled candidate-report schema while capturing workspace
+  diff artifacts.
 - Use `codex exec` for one-shot work.
 - Use `scripts/codex-run.sh review` for monitored code reviews; use
   `codex review` for short raw CLI review requests.
@@ -70,7 +104,7 @@ Unless the user asks for something else:
 - Use `medium` reasoning for ordinary work, `high` for harder tasks, and `low` for tiny checks.
 - Use `--sandbox read-only` for `codex exec` analysis runs, and use the wrapper or `codex review` for review tasks.
 - Expand to `workspace-write` only when Codex should edit files; use bypass flags only in externally sandboxed automation.
-- Use `--json` or `--output-schema` only when another tool will parse the result.
+- Use `--json` or a custom `--output-schema` only when another tool will parse the result.
 
 Do not hide stderr by default. Do not add `--skip-git-repo-check` inside a
 normal Git repo; but when you intentionally run outside a Git repo (or in a
@@ -124,9 +158,28 @@ It writes each run under
 - `events.jsonl`: mirror of stdout when `--json` is enabled.
 - `final.md`: the `--output-last-message` capture, or the successful-run
   fallback recorded in `status.env`'s `final_source`.
+- `workspace-baseline.txt`, `changed-files.txt`, `workspace.diff`,
+  `workspace-diff.stat`,
+  `workspace-status.txt`: written after `generate` runs in git workspaces.
 - `command.txt`: shell-quoted command without prompt text.
-- `prompt.txt`: prompt content sent through stdin.
+- `prompt.txt`: the full prompt sent through stdin (in `review`/`generate` mode
+  this includes the wrapper's scaffolding around your brief).
+- `user-prompt.txt`: your raw brief before wrapping, written in `review`/`generate`
+  mode when a custom prompt was supplied. Compare against `prompt.txt` to see
+  exactly what scaffolding the wrapper added.
 - `preflight.log`: Codex version and workspace git status.
+
+Example implementation candidate with diff capture:
+
+```bash
+run_dir_file="$(mktemp -t codex-exec-run-dir.XXXXXX)"
+skill_dir="/path/to/codex-exec/skills/codex-exec"
+"$skill_dir/scripts/codex-run.sh" generate \
+  --workspace "$PWD" \
+  --run-dir-file "$run_dir_file" \
+  --heartbeat 15 \
+  --prompt-file task-brief.txt
+```
 
 Example one-shot run:
 
@@ -146,24 +199,44 @@ scripts/codex-run.sh review \
   --workspace "$PWD" \
   --run-dir-file "$run_dir_file" \
   --heartbeat 15 \
+  --uncommitted \
   --prompt "Focus on bugs, regressions, and missing tests. Findings first."
 ```
 
-When Claude starts the wrapper as a background task, point MonitorTool at the
-printed `monitor.sh` path or run `bash "$run_dir/monitor.sh"`. That avoids
-fragile sleeps, raw task-output polling, and repeated `tail` loops.
+`--uncommitted` is already the review-mode default; it is passed explicitly here
+and in the examples below so the scope is self-documenting. Omitting it reviews
+the same uncommitted changes.
+
+The wrapper does **not** daemonize itself. To monitor a run concurrently you
+must launch it in the background with your harness's own mechanism: your Bash
+tool's background-task flag, or a trailing `&` with output redirected to a log
+(`"$skill_dir/scripts/codex-run.sh" generate … > launch.log 2>&1 &`). If you run
+it in the foreground it blocks your turn until Codex finishes and there is
+nothing to "monitor". Once it is backgrounded, point MonitorTool at the printed
+`monitor.sh` path or run `bash "$run_dir/monitor.sh"`. That avoids fragile
+sleeps, raw task-output polling, and repeated `tail` loops.
+
 Capture `run_dir` from the printed `event=paths` line or, for background
 launches, pass `--run-dir-file "$run_dir_file"` and read that file once it is
 non-empty. The wrapper writes it before any slow preflight, so poll instead of
 reading blindly — an immediate `cat` can otherwise race the write and leave
-`run_dir` empty:
+`run_dir` empty. Keep the poll **bounded** (do not use an unbounded `until`
+loop — if the launch failed, the file never appears and an unbounded loop hangs
+the turn):
 
 ```bash
-until [[ -s "$run_dir_file" ]]; do sleep 0.1; done
+for _ in $(seq 1 50); do [[ -s "$run_dir_file" ]] && break; sleep 0.2; done
 run_dir="$(cat "$run_dir_file")"
-[[ -n "$run_dir" ]] || { echo "run_dir_file is empty" >&2; exit 1; }
+[[ -n "$run_dir" ]] || { echo "run_dir_file still empty; check launch.log" >&2; exit 1; }
 bash "$run_dir/monitor.sh"
 ```
+
+`monitor.sh` blocks until the run is over and its exit code mirrors Codex's, so
+once it is backgrounded you do **not** need a second poll loop on `status.env`.
+If you must check `status.env` directly, the completion signal is
+`state=finished` (or `failed`/`interrupted`) — **not** the mere presence of an
+`exit_code=` line, which is written empty (`exit_code=`) while the run is still
+in progress. Match on `state=`, not on the `exit_code=` key existing.
 
 Do not pipe the wrapper launch through `tail`, `head`, or a similar truncating
 filter; that can hide the early `event=paths` line and push Claude back toward
@@ -378,7 +451,19 @@ codex exec \
 - If the preflight block above showed `codex exec: unavailable`, report a CLI install or version issue.
 - If `codex exec` or `codex review` exits non-zero, treat the run as failed.
 - If the wrapper exits non-zero, inspect `status.env`, `stderr.log`, and
-  `final.md` in the printed run directory before retrying.
+  `final.md` in the printed run directory before retrying. On a non-zero exit
+  `final.md` is left empty (the fallback only runs on exit 0), so the real error
+  lives in `stderr.log`, not `final.md`.
+- If `stderr.log` shows `invalid_json_schema` (for example `'required' is
+  required to be supplied and to be an array including every key in
+  properties. Missing '<field>'`), the `--output-schema` file violates OpenAI
+  strict-mode rules: every key in an object's `properties` must also appear in
+  that object's `required` array — mark truly-optional fields with a nullable
+  type (`"type": ["string", "null"]`) and still list them in `required`. This
+  fails fast (~5s) with no edits made; it is **not** a hang, so the "kill after
+  ~30s / trust-directory" recovery does not apply. Fix the schema file (the
+  bundled `candidate-report.schema.json` is validated in CI) or pass a corrected
+  copy via `--output-schema`.
 - If the wrapper's shell exit and `status.env` disagree, trust `status.env` for
   the Codex child process result; shell exits like 143/144 usually mean the
   wrapper or monitor process was interrupted during teardown.
@@ -396,6 +481,11 @@ codex exec \
   A frequent silent cause is launching from a non-Git or untrusted directory (e.g. a scratch or
   tmp dir): Codex is blocking on a `Not inside a trusted directory` trust prompt, not doing work.
   Fix by running from inside the Git repo, or add `--skip-git-repo-check` with stdin closed.
+- A run can also stall silently AFTER a clean start: header, session id, and prompt echo appear in
+  `stderr.log`, then nothing — `stdout_lines=0` heartbeats, empty `events.jsonl`, no workspace
+  changes, idle CPU. This is a Codex-side stall, not the trust prompt (the header already printed).
+  Kill it and relaunch the identical command; retries typically succeed. `generate` mode caps this
+  at 1800 seconds by default; other modes run uncapped unless you pass `--timeout`.
 - If a prompt has newlines or is longer than about 500 characters, do not retry argv quoting. Use stdin.
 - If the task is review-oriented, use the wrapper for monitored/custom-instruction reviews and raw `codex review` for simple unprompted reviews.
 - If the task is "run and read the answer now", use direct `codex exec` with
