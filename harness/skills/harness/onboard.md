@@ -1,18 +1,18 @@
 # Harness Onboard
 
 Turn an audited repo into a machine-readable **`autonomous-ready` manifest** that
-an autonomous factory (GarageBand) can consume to decide whether it may point an
+a downstream software factory can consume to decide whether it may point an
 unsupervised loop at the repo. This is the handoff step after the repo has been
 made ergonomic (`docs`) and audited (`doctor`): it projects the audit's prose
 verdict into the data contract another system reads.
 
-Use this workflow when the user wants to onboard a repo into GarageBand (or any
-autonomous runner), emit an `autonomous-ready` manifest, or check what a repo
-still needs before it can be driven unattended.
+Use this workflow when the user wants to onboard a repo into an autonomous
+runner, emit an `autonomous-ready` manifest, or check what a repo still needs
+before it can be driven unattended.
 
 The manifest schema and its field provenance are defined in `harness/INTERFACES.md`
 (the proof-row format used below lives there too). This module emits that
-contract; the consumer that reads it is built on the GarageBand side — do not
+contract; the consumer that reads it is built on the factory side — do not
 assume a reader exists yet.
 
 ## Process

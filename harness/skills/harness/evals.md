@@ -11,7 +11,7 @@ gradeable agent tests.
 
 This module produces **seed specs** in the shape the factory's eval system
 consumes; it does not run or grade evals — the runner and graders live on the
-GarageBand side. The proof-row format and the eval-seed field mapping are defined
+factory side. The proof-row format and the eval-seed field mapping are defined
 in `harness/INTERFACES.md`.
 
 ## Process

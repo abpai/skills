@@ -16,7 +16,7 @@ Harness owns being the **patchable target** of the outer loop: the skill, prompt
 doc, and tool surfaces the loop edits, plus an append-only evidence ledger of
 observed friction. It does **not** own the feedback-ingestion pipeline — pulling
 signals from PR comments, failed evals, DataDog alerts, or support tickets and
-routing them to repairs is the factory's (GarageBand's) job. This module is the
+routing them to repairs is the downstream factory's job. This module is the
 hands-on dogfood loop; the automated ingestion that feeds it at scale lives
 outside the harness.
 
