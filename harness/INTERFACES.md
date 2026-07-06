@@ -81,6 +81,21 @@ executes and records, `proofArtifact` → expected evidence/artifacts,
 `sufficiency` → whether a passing grader is enough or a human gate is required,
 `lane` → deterministic-vs-live grading tier.
 
+An eval seed is exactly those five fields carried over from the proof row:
+
+```ts
+interface EvalSeed {
+  changeType: string;                 // ProofRow.changeType — capability the eval exercises
+  commands: string[];                 // ProofRow.commands — validation the runner executes and records
+  proofArtifact: string;              // ProofRow.proofArtifact — expected evidence the grader checks
+  sufficiency: "auto" | "human-gate"; // grader gate: auto passes on grader success; human-gate needs sign-off
+  lane: "fast" | "full";              // grading tier
+}
+```
+
+`AutonomousReadyManifest.evalSeeds` (§2) is `EvalSeed[]`, derived one-to-one from
+`proofMenu` rows.
+
 ## 2. `autonomous-ready` onboard manifest
 
 ### Why it is needed
