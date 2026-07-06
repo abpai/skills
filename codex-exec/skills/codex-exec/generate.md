@@ -94,6 +94,8 @@ tracking each candidate by `--name` so you never pass paths around by hand.
 you pass `--path`; it does not write into `--repo`. Keep the two straight: you
 point `--repo` at an existing checkout, and the worktree the tool creates is a
 separate directory whose path it returns via `--run-dir-file`.
+If you pass `--no-worktree`, the helper switches the source checkout itself onto
+the candidate branch, so it refuses to run unless that checkout is clean.
 
 ```bash
 ws="$skill_dir/scripts/codex-workspace.sh"

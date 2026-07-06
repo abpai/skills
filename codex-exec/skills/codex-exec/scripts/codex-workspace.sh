@@ -21,7 +21,8 @@ prepare — mint an isolated candidate worktree (or branch) from a frozen base:
   --base REF             Base ref to branch from (default: HEAD); frozen to a SHA.
   --branch BRANCH        Branch name (default: codex-candidate-<name>).
   --path PATH            Worktree path (default: <repo>-<name> beside the repo).
-  --no-worktree          Create the branch in place; do not add a worktree.
+  --no-worktree          Switch this checkout to the branch in place; requires a
+                         clean source repo because no separate worktree is made.
   --run-dir-file PATH    Write the prepared worktree path to this file immediately.
 
 finalize — bundle the candidate diff (vs the frozen base) + report for comparison:
@@ -138,6 +139,11 @@ cmd_prepare() {
     die "branch already exists: $branch (choose --branch or clean up first)"
   fi
 
+  local original_ref="" original_sha=""
+  original_ref="$(git -C "$top" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  original_sha="$(git -C "$top" rev-parse --verify HEAD 2>/dev/null)" \
+    || die "cannot resolve current HEAD for repo: $top"
+
   local sdir key state_file
   sdir="$(state_dir)"; mkdir -p "$sdir"
   key="$(state_key "$top" "$name")"
@@ -155,8 +161,11 @@ cmd_prepare() {
       || die "git worktree add failed for $path"
     final_worktree="$path"
   else
-    git -C "$top" branch "$branch" "$base_sha" >/dev/null 2>&1 \
-      || die "git branch create failed for $branch"
+    if [[ -n "$(git -C "$top" status --porcelain)" ]]; then
+      die "--no-worktree requires a clean source repo because it switches the checkout in place"
+    fi
+    git -C "$top" switch -c "$branch" "$base_sha" >/dev/null 2>&1 \
+      || die "git switch failed for branch $branch"
     final_worktree="$top"
   fi
 
@@ -168,6 +177,8 @@ cmd_prepare() {
     printf 'BRANCH=%q\n' "$branch"
     printf 'WORKTREE=%q\n' "$final_worktree"
     printf 'IS_WORKTREE=%q\n' "$worktree"
+    printf 'ORIGINAL_REF=%q\n' "$original_ref"
+    printf 'ORIGINAL_SHA=%q\n' "$original_sha"
   } > "$state_file"
 
   if [[ -n "$run_dir_file" ]]; then
@@ -278,6 +289,33 @@ cmd_cleanup() {
       removed_worktree=true
     else
       die "worktree has uncommitted changes; re-run with --force to discard: $WORKTREE"
+    fi
+  fi
+
+  if [[ "$IS_WORKTREE" != true && "$keep_branch" != true ]]; then
+    local current_branch=""
+    current_branch="$(git -C "$REPO" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+    if [[ "$current_branch" == "$BRANCH" ]]; then
+      if [[ -n "$(git -C "$REPO" status --porcelain)" ]]; then
+        if [[ "$force" != true ]]; then
+          die "branch has uncommitted changes; re-run with --force to discard: $WORKTREE"
+        fi
+        git -C "$REPO" reset --hard >/dev/null 2>&1 \
+          || die "failed to reset dirty branch before cleanup: $BRANCH"
+        git -C "$REPO" clean -fd >/dev/null 2>&1 \
+          || die "failed to clean dirty branch before cleanup: $BRANCH"
+      fi
+
+      if [[ -n "${ORIGINAL_REF:-}" && "${ORIGINAL_REF:-}" != "$BRANCH" ]] &&
+        git -C "$REPO" show-ref --verify --quiet "refs/heads/${ORIGINAL_REF:-}"; then
+        git -C "$REPO" switch "${ORIGINAL_REF:-}" >/dev/null 2>&1 \
+          || die "failed to switch back to original branch: ${ORIGINAL_REF:-}"
+      elif [[ -n "${ORIGINAL_SHA:-}" ]]; then
+        git -C "$REPO" switch --detach "${ORIGINAL_SHA:-}" >/dev/null 2>&1 \
+          || die "failed to switch back to original commit: ${ORIGINAL_SHA:-}"
+      else
+        die "cannot delete checked-out branch without ORIGINAL_REF or ORIGINAL_SHA in state"
+      fi
     fi
   fi
 
