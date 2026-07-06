@@ -137,6 +137,8 @@ Give every durable guidance item an explicit verdict with a reason and a destina
 
 A Move destination may be a planned core file from the Target structure (created in later steps). A Move targeting an earned surface that does not yet exist is itself demonstrated-need evidence — record it in the verdict's reason; if it is a single observation, the item stays in PR/issue context instead.
 
+**Stale vs. reformat triage (pre-existing content).** When an item is malformed against the current shape — a todo spec missing required sections, a doc in a retired layout — decide *why* before assigning a verdict. If its substance is obsolete (it references a shipped or abandoned milestone, a deleted code path, a dead branch), it is **Delete**, not a reformat: do not spend effort restructuring content that should not exist. If the substance is still live but only the shape is wrong, it is **Reformat** — a Keep whose destination is the same surface in the current structure, preserving the substance and fixing only the form. A malformed-but-relevant file is not automatically a reshape task; confirm the content still describes reality first, because a tidy reformat of a stale spec just launders obsolete guidance into a trusted-looking surface.
+
 Record verdicts as a table (`item | verdict | reason | destination`) with concrete file paths. Vague areas ("docs", "auth code") are banned when a concrete path exists.
 
 ### 3. Convert prose rules to enforcement
@@ -279,7 +281,7 @@ When the need from the Target structure table is demonstrated, use these shapes 
 
 ### 9. Leave scanning to `harness:doctor`
 
-Product repos contain stable docs, enforcement, and optionally a thin `harness-doctor.config.ts` (e.g. `docsContract: true`, rule disables). Never embed scanner packages, agent utility scripts, or generated reports. When the user asks to audit, score, run the scanner, or triage findings, route to `doctor.md`.
+Product repos contain stable docs, enforcement, and optionally a thin `harness.config.ts` (e.g. `docsContract: true`, rule disables). Never embed scanner packages, agent utility scripts, or generated reports. When the user asks to audit, score, run the scanner, or triage findings, route to `doctor.md`.
 
 ## Verification
 

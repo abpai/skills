@@ -1,9 +1,9 @@
 ---
 name: harness
-description: "Route agent-harness workflows through one scoped /harness command. Use docs to make a repo ergonomic for agent-driven development, and doctor to run a verification-first readiness audit with finding IDs, proof, and a loop-readiness verdict."
-argument-hint: "[subcommand] [args] - e.g. docs, doctor, --docs docs overhaul"
+description: "Route agent-harness workflows through one scoped /harness command. Use docs to make a repo ergonomic for agent-driven development, doctor to run a verification-first readiness audit with finding IDs, proof, and a loop-readiness verdict, and compliant to overhaul a repo end-to-end (audit, remediate, re-verify)."
+argument-hint: "[subcommand] [args] - e.g. docs, doctor, compliant, --docs docs overhaul"
 metadata:
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # Harness Workflow Pack
@@ -23,11 +23,12 @@ Invoke a workflow by passing its name as the first argument to this umbrella —
 
 Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it case-insensitively against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language harness request and route by intent.
 
-Known subcommands: `docs`, `doctor`.
+Known subcommands: `docs`, `doctor`, `compliant`.
 
 ## Routing
 
 - Use `docs.md` to make a repo ergonomic for agent-driven execution: the spec contract (`docs/SPEC_CONTRACT.md`), prose-to-enforcement conversion, a tiny `AGENTS.md` router with a `CLAUDE.md` shim, and earned doc surfaces. The module defines the full process. Per-task intake (interview-to-SPEC.md) happens outside the repo and is out of scope.
-- Use `doctor.md` for readiness audits: it runs the external `harness-doctor` CLI when available, executes the repo's validation commands per its execution policy, checks spec-contract alignment, scores the six dimensions, and reports recommendation-first with finding IDs, tiers, and proof of what actually ran.
+- Use `doctor.md` for readiness audits: it runs the external `harness-doctor` CLI when available, executes the repo's validation commands per its execution policy, checks spec-contract alignment, scores the seven dimensions (D1-D7, including D7 safety/blast-radius), and reports recommendation-first with finding IDs, tiers, and proof of what actually ran.
+- Use `compliant.md` (aliases: `overhaul`; natural-language "make this repo harness compliant") for an end-to-end pass that chains both modules: audit with `doctor.md`, remediate the findings with `docs.md`, then re-audit to verify. This is the route for "bring this repo up to standard" requests that map to neither audit-only nor author-only.
 
 When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.
