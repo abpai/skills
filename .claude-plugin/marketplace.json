@@ -133,6 +133,13 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "visualize" },
       "category": "tools",
       "keywords": ["visualization", "html", "diagrams", "explanation"]
+    },
+    {
+      "name": "test-deslop",
+      "description": "Opinionated test-suite deslopification — delete low-value tests and leave the survivors high-signal and easy to read. Use to prune redundant, brittle, tautological, or mock-only tests, or to standardize test naming.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "test-deslop" },
+      "category": "code-quality",
+      "keywords": ["testing", "tests", "deslop", "pruning", "code-quality", "refactoring", "monorepo"]
     }
   ]
 }
