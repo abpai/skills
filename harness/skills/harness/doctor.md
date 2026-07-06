@@ -12,7 +12,7 @@ Readiness scoring of this kind is experimental — explanations matter more than
 - The external `harness-doctor` CLI is the ONLY implementation of deterministic checks (the `docs-structure/*` rule family): files, routes, spec-contract existence and sections, links, byte/line budgets, banned paths, `STRUCTURE.md`, the `CLAUDE.md` shim. This module never reimplements them — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
 - Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract, whether a nested grounding file still matches the code it describes (per the `docs.md` grounding gate).
 
-Do not add scanner scripts to product repos. A product repo may keep stable docs plus optional `harness-doctor.config.ts`; scanner output stays temporary.
+Do not add scanner scripts to product repos. A product repo may keep stable docs plus optional `harness.config.ts`; scanner output stays temporary.
 
 ## Fast path
 
@@ -25,6 +25,8 @@ npx @andypai/harness-doctor@latest --json --verbose --diff
 `npx …@latest` executes whatever the registry serves at run time — confirm with the user before the first run in a session and record the resolved version in the proof section. If diff mode is unavailable or the user asks for a full audit, drop `--diff`.
 
 If the CLI is unavailable (no network, no `npx`), follow the Scanner unavailable section below — warn, degrade, and never hand-run the deterministic rule family. The scanner owns deterministic facts; this module adds command execution, spec-contract alignment, and semantic judgment on top.
+
+The scanner also emits its own numeric `score`/`scoreLabel` (a penalty count, `100 − 2·errors − 1·warnings`). That is **not** the readiness score and shares its 0-100 scale by coincidence only — a raw pre-scoping run is dominated by false-positive noise and is unreliable as a verdict. Until the two converge (the scanner is slated to emit per-dimension deterministic sub-signals this module's D1-D7 rubric consumes), treat the scanner number as a noise indicator, and report the **weighted D1-D7 score below** as the readiness number. Never surface the scanner's raw penalty score to the user as "readiness."
 
 ## Execution policy
 
@@ -47,14 +49,15 @@ Score each reviewed dimension 0-4 against the `docs.md` bar:
 
 | # | Dimension | Weight | 4 means | 0 means |
 | --- | --- | --- | --- | --- |
-| D1 | Validation commands | 25 | Documented commands cover the discovered validation inventory (package scripts, CI jobs, test layout), and all run and pass; none unverified. | No commands documented anywhere (`commands.md`, README, proof menu) — regardless of what `package.json` contains. Undocumented-but-working validation is a D1 finding (supply without routing). |
+| D1 | Validation commands | 20 | Documented commands cover the discovered validation inventory (package scripts, CI jobs, test layout), and all run and pass; none unverified. | No commands documented anywhere (`commands.md`, README, proof menu) — regardless of what `package.json` contains. Undocumented-but-working validation is a D1 finding (supply without routing). |
 | D2 | E2E proof paths | 20 | Every major change type has a runnable end-to-end proof (e2e suite, screenshot diff, contract test). | No change type has one. |
-| D3 | Spec contract | 20 | `docs/SPEC_CONTRACT.md` exists, routed from `AGENTS.md`, aligned in both directions (below). | File missing. |
+| D3 | Spec contract | 15 | `docs/SPEC_CONTRACT.md` exists, routed from `AGENTS.md`, aligned in both directions (below). | File missing. |
 | D4 | Enforcement coverage | 15 | Known invariants carried by tests/lints/CI gates, not prose; CI blocks merge on them. | Invariants live only in prose, or nothing blocks merge. |
-| D5 | Entry-point quality | 10 | `AGENTS.md` passes the line gate and the scanner's budgets (150 non-blank lines at root, 32 KiB combined); `CLAUDE.md` shim present (`@AGENTS.md`). | Entry point missing or grossly over budget. |
-| D6 | Docs structure and routing | 10 | Index present, links resolve, no banned paths, earned surfaces complete, no default scaffolding. | No `docs/`, or routing broken throughout. |
+| D5 | Entry-point quality | 8 | `AGENTS.md` passes the line gate and the scanner's budgets (150 non-blank lines at root, 32 KiB combined); `CLAUDE.md` shim present (`@AGENTS.md`). | Entry point missing or grossly over budget. |
+| D6 | Docs structure and routing | 7 | Index present, links resolve, no banned paths, earned surfaces complete, no default scaffolding. | No `docs/`, or routing broken throughout. |
+| D7 | Safety & blast-radius | 15 | Secrets are never exposed to the agent (no plaintext credentials in files or env the agent reads; secret access is brokered or mocked); the agent's write scope is bounded (sandbox/worktree, no ambient production credentials); tests and tasks run hermetically without touching production data or shared services; and irreversible or production-mutating actions are gated behind explicit human steps an unattended agent cannot trigger. | Plaintext secrets sit in files the agent reads, or an unattended agent holds ambient credentials to mutate production or shared data with nothing gating it. |
 
-Intermediate scores: start at 4 and subtract roughly one point per named gap; every point lost must link to one or more finding IDs. D5 and D6 are scanner-owned: without a scanner run, mark them `unreviewed` rather than hand-deriving findings. D3 splits: its existence/routing facts are scanner-owned, but its supply/demand alignment is this module's own check — run it whenever `docs/SPEC_CONTRACT.md` is present. Mark a genuinely unreviewed semantic dimension `unreviewed` — never guess.
+Intermediate scores: start at 4 and subtract roughly one point per named gap; every point lost must link to one or more finding IDs. D5 and D6 are scanner-owned: without a scanner run, mark them `unreviewed` rather than hand-deriving findings. D3 splits: its existence/routing facts are scanner-owned, but its supply/demand alignment is this module's own check — run it whenever `docs/SPEC_CONTRACT.md` is present. D7 is this module's own judgment from reading how the repo handles secrets, credentials, and write scope — never scanner-derived — so mark it `unreviewed` only when you genuinely did not inspect those surfaces. Mark a genuinely unreviewed semantic dimension `unreviewed` — never guess.
 
 Overall score: `round(100 × Σ(weightᵢ × dimᵢ/4) / Σ weightᵢ)`, summing only reviewed dimensions; print `–/4` for unreviewed dimensions in the header. When any dimension is unreviewed, label the score `provisional` and state the reviewed weight (e.g. `provisional — 80/100 weight reviewed`); never present a rescaled partial audit as a full score. Diff-scoped runs emit findings only — the score is computed only on a full audit.
 
@@ -62,14 +65,17 @@ Overall score: `round(100 × Σ(weightᵢ × dimᵢ/4) / Σ weightᵢ)`, summing
 
 Alongside the score, emit one coarse triage label — the answer to "can an agent run unattended in this repo yet?" — so a fleet migration can sort many repos at a glance:
 
-- **autonomous-ready** — an agent can be pointed here unsupervised: a one-command bootstrap plus health smoke exists, the full validation lane is green-able locally, every major change type has a machine-gradeable proof with declared sufficiency, recovery is reversible by construction, and parallel runs are hazard-free (fresh-worktree safe, no shared-port or shared-DB collisions).
+- **autonomous-ready** — an agent can be pointed here unsupervised: a one-command bootstrap plus health smoke exists, the full validation lane is green-able locally, every major change type has a machine-gradeable proof with declared sufficiency, recovery is reversible by construction, parallel runs are hazard-free (fresh-worktree safe, no shared-port or shared-DB collisions), and the agent's blast radius is bounded (D7 — secrets not exposed to the agent, write scope sandboxed, no ambient production credentials).
 - **supervised-only** — proofs exist but at least one major change type is `human-gate` (a passing grader is not sufficient evidence for done), or recovery is documentation-only, or parallel-safety is unproven. An agent can do the work, but a human must clear the merge.
+- **supervised-only (by-design)** — a repo that meets every other autonomous-ready precursor but keeps a human merge gate as a deliberate, permanent product decision (the review gate *is* the product), not a missing precursor. Mark it explicitly and name which change types are human-gate-by-design, so a fleet migration reads it as a settled choice rather than an unfixed gap; do not keep recommending the same "promotion" that will never be taken.
 - **not-yet** — a load-bearing precursor is missing: no bootstrap, the full lane cannot go green locally, or invariants live only in prose. Fix these before pointing an autonomous loop here.
 
 Derive it honestly, separating the two input classes and naming any gate left unreviewed:
 
 - **Deterministic precursors (scanner-owned):** entry point present, spec contract and its required sections present, AGENTS byte budget met, no banned paths. Missing any one caps the verdict at `not-yet`.
-- **Semantic gates (this module):** full lane green-able, proofs machine-gradeable with sufficiency declared, recovery reversible, parallel-safe, bootstrap+smoke real. These separate `autonomous-ready` from `supervised-only`.
+- **Semantic gates (this module):** full lane green-able, proofs machine-gradeable with sufficiency declared, recovery reversible, parallel-safe, bootstrap+smoke real, blast radius bounded (D7). These separate `autonomous-ready` from `supervised-only`.
+
+**Safety cap:** a material D7 gap — exposed secrets the agent can read, or unbounded ambient access to mutate production or shared data — caps the verdict at `supervised-only` regardless of the numeric score. D7 is scored (it moves the number), but you cannot run unattended *through* a blast-radius hole; you can only supervise around it. Name the specific safety gap in the promotion path.
 
 State the one or two gaps that would promote a repo to the next tier — the verdict is a triage tool, so its value is the promotion path, not the label. When the scanner did not run or a semantic gate is genuinely unreviewed, say so and withhold `autonomous-ready` rather than guessing it.
 
@@ -83,7 +89,7 @@ The spec contract is the demand side; the repo's validation surfaces are the sup
 - Every major change type evident in the repo (from CI jobs, test layout, package scripts) has a proof-menu row. Missing rows mean intake will produce specs this repo cannot verify.
 - Escalation boundaries are stated, and prefer reversibility by construction over a documentation-only rollback.
 
-A missing `SPEC_CONTRACT.md` is D3 = 0 — Critical when the repo opted into the contract (`harness-doctor.config.ts` with `docsContract: true`), High otherwise (finding: the repo has not adopted the contract). A stale proof menu (rows referencing dead commands) is Critical, because it silently breaks the intake → execution pipeline.
+A missing `SPEC_CONTRACT.md` is D3 = 0 — Critical when the repo opted into the contract (`harness.config.ts` with `docsContract: true`), High otherwise (finding: the repo has not adopted the contract). A stale proof menu (rows referencing dead commands) is Critical, because it silently breaks the intake → execution pipeline.
 
 ## Findings
 
@@ -91,7 +97,7 @@ Every finding gets an ID (`HD-1`, `HD-2`, … in report order, or the scanner ru
 
 Severity describes impact:
 
-- **Critical**: missing entry point, stale spec-contract proof menu, validation commands that fail or do not exist, stale local links, stale grounding (a nested `AGENTS.md` whose data model or key-files table no longer matches the code), or misleading routes that send agents to the wrong code.
+- **Critical**: missing entry point, stale spec-contract proof menu, validation commands that fail or do not exist, stale local links, stale grounding (a nested `AGENTS.md` whose data model or key-files table no longer matches the code), misleading routes that send agents to the wrong code, or a D7 blast-radius failure (plaintext secrets an unattended agent can read, or ambient credentials letting it mutate production/shared data unchecked).
 - **High**: no e2e proof path for a major change type, invariants carried only as prose, an enforced test with no determinism guard (a flake an agent cannot distinguish from a real failure), giant or over-budget root `AGENTS.md` (length alone does not flag a nested grounding file — its limits are the grounding gate and the byte chain), missing `docs/INDEX.md` or `SPEC_CONTRACT.md` routing, banned long-lived paths, incomplete earned surfaces.
 - **Medium**: oversized docs, todo specs missing sections, duplicate vocabulary files, a proof-menu row that does not declare grader sufficiency (`auto`/`human-gate`), default scaffolding without demonstrated need, follow-up semantic review items.
 
@@ -102,8 +108,8 @@ Tiers describe execution order, reference finding IDs, and never restate finding
 ## Report shape
 
 ```text
-Harness Readiness: <score>/100 (D1 <n>/4 · D2 <n>/4 · D3 <n>/4 · D4 <n>/4 · D5 <n>/4 · D6 <n>/4; unreviewed shown as –/4)
-Loop-readiness: <autonomous-ready | supervised-only | not-yet> — <one-line promotion path>
+Harness Readiness: <score>/100 (D1 <n>/4 · D2 <n>/4 · D3 <n>/4 · D4 <n>/4 · D5 <n>/4 · D6 <n>/4 · D7 <n>/4; unreviewed shown as –/4)
+Loop-readiness: <autonomous-ready | supervised-only | supervised-only (by-design) | not-yet> — <one-line promotion path>
 
 Recommendation
 <one short paragraph>
