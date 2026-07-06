@@ -54,6 +54,8 @@ run and then monitors it. It wraps `codex exec`, `codex exec review`, and
 - `status.env`, `monitor.sh`, `stdout.log`, `stderr.log`, `events.jsonl`,
   `command.txt`, `prompt.txt`, `run.env`, `continue.sh`, and `preflight.log` in
   a printed run directory
+- for `generate`, `workspace-baseline.txt`, `workspace.diff`,
+  `workspace-diff.stat`, `workspace-status.txt`, and `changed-files.txt`
 
 When Claude starts the wrapper in the background, the follow-up MonitorTool
 command can be `bash "$run_dir/monitor.sh"`. The generated monitor emits
@@ -90,6 +92,8 @@ there, filtering out the benign environmental noise listed below (the
 captured verdict stays clean. JSON stdout is not copied into `final.md`; when
 `final_source=empty-json-stdout`, read `events.jsonl` instead. Inspect
 `status.env`'s `final_source` field to see which artifact supplied `final.md`.
+Generate mode defaults to the bundled candidate-report schema unless a custom
+`--output-schema` is passed.
 
 For follow-up review, prefer:
 
