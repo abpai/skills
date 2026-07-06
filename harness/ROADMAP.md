@@ -3,11 +3,12 @@
 Where the `harness` skill and the `harness-doctor` scanner go next, and why. This
 is a planning doc, not a spec — it routes work, it does not gate it.
 
-Harness prepares repos for autonomous agent loops. GarageBand runs and evaluates
-those loops. Harness Doctor proves repo shape and obvious hazards deterministically.
-Today the skill covers repo-readiness + docs-routing well; the rest of that
-pipeline — behavior capture, GarageBand onboarding, eval seeding, the outer
-learning loop — is still unbuilt. This roadmap sequences the gap.
+Harness prepares repos for autonomous agent loops. A downstream software factory
+runs and evaluates those loops. Harness Doctor proves repo shape and obvious
+hazards deterministically. Today the skill covers repo-readiness + docs-routing
+well; the rest of that pipeline — behavior capture, factory onboarding, eval
+seeding, the outer learning loop — is still unbuilt. This roadmap sequences the
+gap.
 
 ## Verdict
 
@@ -16,14 +17,15 @@ Two truths drive the ordering:
 1. **The vision is mostly unbuilt.** The skill covers docs-routing and a
    readiness audit. The transcript's larger arc — capture → onboard → evals →
    outer loop — does not exist yet as workflows.
-2. **The one adoption we have was not smooth.** In a live dogfood (garage-band,
-   session `725ae783`; figures below are read from that transcript, not from
-   either repo), ~34 of 55 shell calls were spent fighting or reverse-engineering
-   `harness-doctor`, and the first scan reported a score of **0 / "At risk" that
-   the operating agent judged to be mostly noise** — throwaway trees plus
-   dead-code false-flagging dynamically-loaded fixtures. These are dogfood-derived
-   judgments from a single session, not measured facts about the general case;
-   the friction items in Phase 1 are hypotheses to confirm, not settled bugs.
+2. **The one adoption we have was not smooth.** In a live dogfood against an
+   internal software-factory repo (session `725ae783`; figures below are read
+   from that transcript, not from either repo), ~34 of 55 shell calls were spent
+   fighting or reverse-engineering `harness-doctor`, and the first scan reported
+   a score of **0 / "At risk" that the operating agent judged to be mostly
+   noise** — throwaway trees plus dead-code false-flagging dynamically-loaded
+   fixtures. These are dogfood-derived judgments from a single session, not
+   measured facts about the general case; the friction items in Phase 1 are
+   hypotheses to confirm, not settled bugs.
 
 So the roadmap fixes the friction observed in that session before it builds the
 vision on top: vision work layered on a scanner an operator distrusts compounds
@@ -45,8 +47,8 @@ is partly "verify/extend what exists," not "build from scratch."
 - **Dogfooding is a concrete mechanism:** sub-agent uses the skill → orchestrator
   reviews the transcript → patches the skill → loop until confident. (This
   roadmap's adoption findings were produced exactly this way.)
-- **Evals are e2e tests for agents** — GarageBand owns them; harness can seed them
-  from a repo's spec-contract proof menu.
+- **Evals are e2e tests for agents** — the downstream factory owns them; harness
+  can seed them from a repo's spec-contract proof menu.
 - **Deterministic vs. fuzzy split is deliberate:** Harness Doctor does anything
   checkable deterministically; the skill/agent keeps the fuzzy judgment.
 
@@ -71,7 +73,7 @@ that the pre-repo workflows do not exist at all.
 | Loop-readiness verdict | no | yes | prose only |
 | **Behavior capture** | no | no | **missing** |
 | **Safety / blast-radius** (secrets hidden from agent, bounded write scope, sandbox/isolation) | no | no | **missing** |
-| **Onboard → GarageBand gate** | no | no | **missing** |
+| **Onboard → software-factory gate** | no | no | **missing** |
 | **Eval seeding** | no | no | **missing** |
 | **Dogfood loop** | no | no | **missing** |
 | **Outer-loop feedback ingestion** | no | no | **missing** |
@@ -118,7 +120,7 @@ scored (not an absolute gate), a repo can carry a D7 gap into a high overall sco
 so the loop-readiness verdict must also name any material D7 shortfall in its
 promotion path rather than letting a strong score mask it.
 
-## Adoption learnings (garage-band dogfood)
+## Adoption learnings (internal dogfood)
 
 These are observations from the one dogfood session, not measured general facts —
 each is a cheap thing to confirm-and-fix that, if real, taxes future adoptions:
@@ -133,7 +135,7 @@ each is a cheap thing to confirm-and-fix that, if real, taxes future adoptions:
 4. **`docs/todos/INDEX.md` is case-load-bearing** — lowercase `index.md` was
    graded as a malformed spec.
 5. **The readiness ladder has no terminal state for human-gate-by-design repos.**
-   garage-band correctly landed `supervised-only` — but permanently, by design
+   The pilot repo correctly landed `supervised-only` — but permanently, by design
    ("the human merge gate is the product"), which reads as an unfixed gap.
 6. **No combined route.** "Make this repo harness compliant" maps to neither
    `docs` nor `doctor`, forcing a clarifying round-trip.
@@ -156,13 +158,13 @@ trustworthy; 3-6 build the vision. Cost is rough T-shirt size.
 
 | Phase | Theme | Deliverables | Repo | Cost |
 | --- | --- | --- | --- | --- |
-| 0 | Drift & parity + interface design | Fix `harness.config.ts` filename in `docs.md`/`doctor.md`; update harness-doctor's own `SPEC_CONTRACT.md` to fast/full + Sufficiency shape (dogfood parity); reconcile `--diff` vs full-audit wording; document the two-scores distinction as interim (converges in Phase 4). **Design-only (paper, no code) but do it now because Phases 4-5 both block on it:** draft the `autonomous-ready` onboard manifest schema (the handshake GarageBand consumes) and a machine-readable proof-menu row format (see Phase 4). Agreeing these early is near-free; discovering them late forces a cross-team renegotiation mid-build. | both | XS (design notes S) |
+| 0 | Drift & parity + interface design | Fix `harness.config.ts` filename in `docs.md`/`doctor.md`; update harness-doctor's own `SPEC_CONTRACT.md` to fast/full + Sufficiency shape (dogfood parity); reconcile `--diff` vs full-audit wording; document the two-scores distinction as interim (converges in Phase 4). **Design-only (paper, no code) but do it now because Phases 4-5 both block on it:** draft the `autonomous-ready` onboard manifest schema (the handshake a downstream factory consumes) and a machine-readable proof-menu row format (see Phase 4). Agreeing these early is near-free; discovering them late forces a cross-team renegotiation mid-build. | both | XS (design notes S) |
 | 1 | Kill scanner noise | **Fix the ignore-set per rule family — there is no single global ignore contract:** dead-code and source-listing already fold `.gitignore`/`--exclude-standard` (`check-dead-code.ts`, `list-source-files.ts`), but `docs-structure` recursively scans Markdown skipping only hardcoded dirs (`checks/docs-structure.ts`) — that recursion, not the source path, is the likely first-run noise source, so confirm `.scratch`/`.understand`/worktrees are excluded *there*. Dead-code opt-in or gated with a dynamic-loading caveat; `doctor.md` "raw pre-scoping scores are unreliable" warning + false-positive triage section; confirm and fix `rules`-without-TTY and count instability; document `HarnessDoctorConfig` schema + plugin-prefixed rule-key format; accept lowercase `index.md` or emit a rename hint. **Exit gate (this is what unblocks Phase 3): a second dogfood on a different repo scores with zero manual noise-suppression.** That measured result — not operator judgment — is the definition of "scanner is trustworthy." | mostly harness-doctor | S |
 | 2 | Routing & verdict fit + D7 safety | Combined `harness compliant`/`overhaul` route (doctor → docs → re-scan); `human-gate-by-design` terminal verdict state; stale-vs-reformat triage in the todos path; **add D7 safety/blast-radius as a scored dimension** (secrets hidden from agent, bounded write scope, sandbox/isolation, production-data reach) and reweight the rubric D1-D7. | skill | M |
 | 3 | Behavior capture | `harness capture` workflow: characterize current behavior (unit/e2e/API snapshots) before changes; output a behavior ledger + coverage-gap report. | skill | M |
 | 4 | Mechanize the prose gates (deterministic sub-signals only) | **Discover & present (safe, deterministic):** parse `package.json` scripts / `.github/workflows` / Make/just into a **signals menu** (JSON); statically verify every proof-menu row references a command that exists (execution stays in the skill, per `doctor.md`) — *requires the machine-readable proof-row format from Phase 0; today the menu is free-form Markdown with compound rows like `cmd + screenshot diff` that cannot be parsed*. Emit per-dimension deterministic sub-signals for D5/D6 + D3-existence for the skill's rubric to consume, and retire the rival penalty score behind a schema-version bump. **Do NOT move to the scanner** the heuristic gates — bootstrap/smoke *judgment*, parallel-safety hazard *inference* (shared DB, non-hermetic tests). Statically deciding a test is non-hermetic is content-inference, and every false positive lands as a warning that re-inflates the exact noise Phase 1 killed. The scanner may at most surface *presence signals* (a `db`/port string appears) for the skill to judge; the flag/verdict stays semantic. | harness-doctor + skill | L |
-| 5 | Onboard + evals | `harness onboard` (readiness → GarageBand-consumable `autonomous-ready` gate + checklist); `harness evals` seeding eval cases from the spec-contract proof menu. | skill + GarageBand seam | L |
-| 6 | Outer loop (**harness owns the *target*, not the pipeline**) | `harness dogfood` (sub-agent uses skill → orchestrator reviews transcript → patches skill) is harness's own loop and fully in scope. For GarageBand's outer loop, the transcript says "harness is what the outer loop edits" — so harness's job is to be *patchable by* it: expose repair hooks and an append-only JSONL evidence ledger + hill-climb hook so the outer loop can edit the substrate (harness/prompt/tool/doc). The feedback-**ingestion** pipeline (PR comments, failed evals, DataDog P1s, tickets → repairs) is GarageBand's, not harness's — cut it from harness scope here. | skill (+ GarageBand seam) | L |
+| 5 | Onboard + evals | `harness onboard` (readiness → factory-consumable `autonomous-ready` gate + checklist); `harness evals` seeding eval cases from the spec-contract proof menu. | skill + factory interface | L |
+| 6 | Outer loop (**harness owns the *target*, not the pipeline**) | `harness dogfood` (sub-agent uses skill → orchestrator reviews transcript → patches skill) is harness's own loop and fully in scope. For a downstream factory's outer loop, the transcript says "harness is what the outer loop edits" — so harness's job is to be *patchable by* it: expose repair hooks and an append-only JSONL evidence ledger + hill-climb hook so the outer loop can edit the substrate (harness/prompt/tool/doc). The feedback-**ingestion** pipeline (PR comments, failed evals, DataDog P1s, tickets → repairs) is the factory's, not harness's — cut it from harness scope here. | skill (+ factory interface) | L |
 
 Ordering notes vs. an intuitive vision-first plan:
 
@@ -200,4 +202,4 @@ Ordering notes vs. an intuitive vision-first plan:
 This continues the v1.3 (universal readiness, shipped) / v1.4 (autonomous
 substrate, deferred) cut. Phases 0-2 are v1.3 hardening; Phase 4's signals menu,
 parallel-safety scan, plus Phase 6's evidence ledger, are the v1.4 items; Phases 3, 5, 6 are
-the GarageBand-facing extensions beyond that.
+the factory-facing extensions beyond that.
