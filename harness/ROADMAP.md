@@ -70,6 +70,7 @@ that the pre-repo workflows do not exist at all.
 | Reversibility / rollback | no | yes | prose only |
 | Loop-readiness verdict | no | yes | prose only |
 | **Behavior capture** | no | no | **missing** |
+| **Safety / blast-radius** (secrets hidden from agent, bounded write scope, sandbox/isolation) | no | no | **missing** |
 | **Onboard → GarageBand gate** | no | no | **missing** |
 | **Eval seeding** | no | no | **missing** |
 | **Dogfood loop** | no | no | **missing** |
@@ -81,7 +82,17 @@ Two correctness notes:
   `100 − 2·errors − 1·warnings` (every rule defaults to `warn`, so effectively
   `100 − warning_count`); the skill computes a weighted D1-D6 readiness score.
   Same scale, different meaning — a live footgun. **Decided end state: the scanner
-  emits the D1-D6 readiness band** (Phase 4), deterministic where possible.
+  stops emitting a rival 0-100 number and instead emits the *deterministic
+  sub-signals* the skill's D1-D6 rubric consumes** (Phase 4). The scanner cannot
+  emit the band itself: verified against source, its deterministic rule set is
+  `docs-structure/*` + `pnpm-hardening/*` only, with no validation-command
+  execution (`packages/core/src/run-inspect.ts`, `rule-catalog.ts`), so D1
+  (commands run & pass), D2 (e2e proof), D4 (enforcement gating), and D3's
+  supply/demand alignment stay skill-owned. Scanner-ownable: D5, D6, and D3's
+  *existence/sections* half. Note also that `score`/`scoreLabel` are a public JSON
+  contract and `--score` a public CLI flag (`schemas.ts`, `cli/index.ts`), so
+  "retire or subsume the penalty score" is a schema-versioned deprecation, not an
+  internal edit.
 - **Config-filename drift.** The skill still says `harness-doctor.config.ts`
   (`docs.md:282`, `doctor.md:15`, `doctor.md:86`), but the tool no longer loads
   that name: `harness-doctor` reads `harness.config.{ts,mts,cts,js,mjs,cjs,json,jsonc}`
@@ -91,6 +102,21 @@ Two correctness notes:
   reference is simply wrong and the fix stands regardless of history. In the live
   session the agent had to recover the schema from `dist/index.d.ts` in the npx
   cache.
+
+Open design decision — **safety / blast-radius has no gate.** The transcript's
+autonomy thread is as much about *safe* unattended execution (read-only access,
+Docker isolation, hiding secrets from the LLM) as about proofs, yet neither D1-D6
+nor the loop-readiness verdict asks whether a repo is safe to point an unsupervised
+agent at: secret exposure, bounded write scope, sandbox/isolation, production-data
+reach. `doctor.md`'s execution policy inspects credential/Docker/production effects,
+but that guards the *audit's own* command runs — it is not a repo-readiness gate.
+An `autonomous-ready` verdict that ignores blast radius is the most dangerous kind
+of false green. **Decided: safety becomes a scored 7th dimension, D7** — secrets
+hidden from the agent, bounded write scope, sandbox/isolation, production-data
+reach — added to the readiness rubric in `doctor.md` in Phase 2. Because it is
+scored (not an absolute gate), a repo can carry a D7 gap into a high overall score,
+so the loop-readiness verdict must also name any material D7 shortfall in its
+promotion path rather than letting a strong score mask it.
 
 ## Adoption learnings (garage-band dogfood)
 
@@ -130,13 +156,13 @@ trustworthy; 3-6 build the vision. Cost is rough T-shirt size.
 
 | Phase | Theme | Deliverables | Repo | Cost |
 | --- | --- | --- | --- | --- |
-| 0 | Drift & parity | Fix `harness.config.ts` filename in `docs.md`/`doctor.md`; update harness-doctor's own `SPEC_CONTRACT.md` to fast/full + Sufficiency shape (dogfood parity); reconcile `--diff` vs full-audit wording; document the two-scores distinction as interim (converges in Phase 4). | both | XS |
-| 1 | Kill scanner noise | Verify/extend the default ignore-set (`dist` + `.gitignore` already handled; confirm `.scratch`/`.understand`/worktrees); dead-code opt-in or gated with a dynamic-loading caveat; `doctor.md` "raw pre-scoping scores are unreliable" warning + false-positive triage section; confirm and fix `rules`-without-TTY and count instability; document `HarnessDoctorConfig` schema + plugin-prefixed rule-key format; accept lowercase `index.md` or emit a rename hint. | mostly harness-doctor | S |
-| 2 | Routing & verdict fit | Combined `harness compliant`/`overhaul` route (doctor → docs → re-scan); `human-gate-by-design` terminal verdict state; stale-vs-reformat triage in the todos path. | skill | S |
+| 0 | Drift & parity + interface design | Fix `harness.config.ts` filename in `docs.md`/`doctor.md`; update harness-doctor's own `SPEC_CONTRACT.md` to fast/full + Sufficiency shape (dogfood parity); reconcile `--diff` vs full-audit wording; document the two-scores distinction as interim (converges in Phase 4). **Design-only (paper, no code) but do it now because Phases 4-5 both block on it:** draft the `autonomous-ready` onboard manifest schema (the handshake GarageBand consumes) and a machine-readable proof-menu row format (see Phase 4). Agreeing these early is near-free; discovering them late forces a cross-team renegotiation mid-build. | both | XS (design notes S) |
+| 1 | Kill scanner noise | **Fix the ignore-set per rule family — there is no single global ignore contract:** dead-code and source-listing already fold `.gitignore`/`--exclude-standard` (`check-dead-code.ts`, `list-source-files.ts`), but `docs-structure` recursively scans Markdown skipping only hardcoded dirs (`checks/docs-structure.ts`) — that recursion, not the source path, is the likely first-run noise source, so confirm `.scratch`/`.understand`/worktrees are excluded *there*. Dead-code opt-in or gated with a dynamic-loading caveat; `doctor.md` "raw pre-scoping scores are unreliable" warning + false-positive triage section; confirm and fix `rules`-without-TTY and count instability; document `HarnessDoctorConfig` schema + plugin-prefixed rule-key format; accept lowercase `index.md` or emit a rename hint. **Exit gate (this is what unblocks Phase 3): a second dogfood on a different repo scores with zero manual noise-suppression.** That measured result — not operator judgment — is the definition of "scanner is trustworthy." | mostly harness-doctor | S |
+| 2 | Routing & verdict fit + D7 safety | Combined `harness compliant`/`overhaul` route (doctor → docs → re-scan); `human-gate-by-design` terminal verdict state; stale-vs-reformat triage in the todos path; **add D7 safety/blast-radius as a scored dimension** (secrets hidden from agent, bounded write scope, sandbox/isolation, production-data reach) and reweight the rubric D1-D7. | skill | M |
 | 3 | Behavior capture | `harness capture` workflow: characterize current behavior (unit/e2e/API snapshots) before changes; output a behavior ledger + coverage-gap report. | skill | M |
-| 4 | Mechanize the prose gates | Teach harness-doctor to discover, not just check existence: parse `package.json` scripts / `.github/workflows` / Make/just into a **signals menu** (JSON); statically verify every proof-menu row references a command that exists (execution stays in the skill workflow, per `doctor.md`); detect bootstrap/smoke presence; parallel-safety hazard scan (ports, shared DB, non-hermetic tests); **emit the D1-D6 readiness band** (retire or subsume the penalty score). | harness-doctor | L |
+| 4 | Mechanize the prose gates (deterministic sub-signals only) | **Discover & present (safe, deterministic):** parse `package.json` scripts / `.github/workflows` / Make/just into a **signals menu** (JSON); statically verify every proof-menu row references a command that exists (execution stays in the skill, per `doctor.md`) — *requires the machine-readable proof-row format from Phase 0; today the menu is free-form Markdown with compound rows like `cmd + screenshot diff` that cannot be parsed*. Emit per-dimension deterministic sub-signals for D5/D6 + D3-existence for the skill's rubric to consume, and retire the rival penalty score behind a schema-version bump. **Do NOT move to the scanner** the heuristic gates — bootstrap/smoke *judgment*, parallel-safety hazard *inference* (shared DB, non-hermetic tests). Statically deciding a test is non-hermetic is content-inference, and every false positive lands as a warning that re-inflates the exact noise Phase 1 killed. The scanner may at most surface *presence signals* (a `db`/port string appears) for the skill to judge; the flag/verdict stays semantic. | harness-doctor + skill | L |
 | 5 | Onboard + evals | `harness onboard` (readiness → GarageBand-consumable `autonomous-ready` gate + checklist); `harness evals` seeding eval cases from the spec-contract proof menu. | skill + GarageBand seam | L |
-| 6 | Outer loop | `harness dogfood` (sub-agent uses skill → orchestrator reviews transcript → patches skill); feedback ingestion (PR comments, failed evals, DataDog P1s, support tickets → harness/prompt/tool/doc repairs); append-only JSONL evidence ledger + hill-climb hook. | skill + GarageBand | XL |
+| 6 | Outer loop (**harness owns the *target*, not the pipeline**) | `harness dogfood` (sub-agent uses skill → orchestrator reviews transcript → patches skill) is harness's own loop and fully in scope. For GarageBand's outer loop, the transcript says "harness is what the outer loop edits" — so harness's job is to be *patchable by* it: expose repair hooks and an append-only JSONL evidence ledger + hill-climb hook so the outer loop can edit the substrate (harness/prompt/tool/doc). The feedback-**ingestion** pipeline (PR comments, failed evals, DataDog P1s, tickets → repairs) is GarageBand's, not harness's — cut it from harness scope here. | skill (+ GarageBand seam) | L |
 
 Ordering notes vs. an intuitive vision-first plan:
 
@@ -144,8 +170,16 @@ Ordering notes vs. an intuitive vision-first plan:
   have, a first `doctor` run was hard to trust; onboarding on a score an operator
   distrusts teaches them to ignore it.
 - **Capture (3) precedes proof-inventory mechanization (4)** — it is the
-  transcript's named first job and it is a skill-only workflow (cheap), vs. the
-  engine work of teaching the scanner to discover commands.
+  transcript's named first job and it is a skill-only workflow (cheaper to *author*
+  than scanner-engine work), vs. teaching the scanner to discover commands. Caveat:
+  "skill-only" is authoring cost, not quality risk — characterizing existing
+  behavior well (what to snapshot, how much, not freezing bugs as intended
+  behavior) is genuinely hard, so treat Phase 3's M as author-effort, not
+  done-when-written. Open call: the whole friction-first ordering (Phases 1-2 ahead
+  of the transcript's named first job) rests on n=1. If vision-value is weighted
+  over adoption-friction, a minimal `capture` could be pulled ahead of Phase 2's
+  routing polish — the argument here is one-directional only because we have one
+  session.
 
 ## Best first PRs
 
