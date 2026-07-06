@@ -59,7 +59,7 @@ Score each reviewed dimension 0-4 against the `docs.md` bar:
 
 Intermediate scores: start at 4 and subtract roughly one point per named gap; every point lost must link to one or more finding IDs. D5 and D6 are scanner-owned: without a scanner run, mark them `unreviewed` rather than hand-deriving findings. D3 splits: its existence/routing facts are scanner-owned, but its supply/demand alignment is this module's own check — run it whenever `docs/SPEC_CONTRACT.md` is present. D7 is this module's own judgment from reading how the repo handles secrets, credentials, and write scope — never scanner-derived — so mark it `unreviewed` only when you genuinely did not inspect those surfaces. Mark a genuinely unreviewed semantic dimension `unreviewed` — never guess.
 
-Overall score: `round(100 × Σ(weightᵢ × dimᵢ/4) / Σ weightᵢ)`, summing only reviewed dimensions; print `–/4` for unreviewed dimensions in the header. When any dimension is unreviewed, label the score `provisional` and state the reviewed weight (e.g. `provisional — 80/100 weight reviewed`); never present a rescaled partial audit as a full score. Diff-scoped runs emit findings only — the score is computed only on a full audit.
+Overall score: `round(100 × Σ(weightᵢ × dimᵢ/4) / Σ weightᵢ)`, summing only reviewed dimensions; print `–/4` for unreviewed dimensions in the header. When any dimension is unreviewed, label the score `provisional` and state the reviewed weight (e.g. `provisional — 85/100 weight reviewed` when the scanner-owned D5+D6 are unreviewed); never present a rescaled partial audit as a full score. Diff-scoped runs emit findings only — the score is computed only on a full audit.
 
 ## Loop-readiness verdict
 
