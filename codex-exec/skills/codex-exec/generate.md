@@ -20,8 +20,10 @@ Codex is one independent candidate in a dual-candidate loop.
    Stop on `codex: not installed`, `codex exec: unavailable`, or trust-directory
    blockers.
 3. Create or choose an isolated branch or worktree before handing work to Codex.
-   Prefer one coherent task per candidate workspace. A worktree keeps the
-   candidate fully separate from your checkout, e.g.:
+   Prefer one coherent task per candidate workspace. Either use
+   `scripts/codex-workspace.sh` (recommended — it freezes the base to a SHA,
+   tracks the candidate by name, and gives you `finalize`/`cleanup`; see
+   "Workspace helper" below), or a plain worktree:
 
    ```bash
    git worktree add -b candidate-a ../myproj-candidate-a HEAD
@@ -49,12 +51,24 @@ skill_dir="/path/to/codex-exec/skills/codex-exec"
   --prompt-file /path/to/task-brief.txt
 ```
 
-`generate` defaults to `--sandbox workspace-write`, `--reasoning high`, and the
-bundled `candidate-report.schema.json`. Override only when the brief calls for a
-narrower sandbox, lighter reasoning, or a different parse contract.
+`generate` defaults to `--sandbox workspace-write`, `--reasoning high`, the
+bundled `candidate-report.schema.json`, and `--timeout 1800`. Override only when
+the brief calls for a narrower sandbox, lighter reasoning, a different parse
+contract, or a different time cap (`--timeout 0` disables the cap — only do that
+when the parent supervises stalls itself).
 
 6. Monitor with the printed `monitor.sh` or poll `--run-dir-file` until the run
    finishes. Do not trust Codex prose without reading artifacts.
+   **Health-check the start**: a printed session id and prompt echo do NOT mean
+   the run is healthy. A field-observed failure mode is a silent post-start
+   stall — header and prompt echo in `stderr.log`, then zero further output
+   (`stdout_lines=0` in heartbeats, empty `events.jsonl`, no workspace changes,
+   idle CPU) for as long as you let it run. If a generate run shows no `codex`
+   event lines and no workspace changes within ~5 minutes, kill it (the child
+   pid is on the `event=spawn` line) and relaunch the same command in a fresh
+   run dir — the identical invocation typically succeeds on retry. Retry once;
+   if the second attempt stalls the same way, stop and report the CLI fault
+   instead of looping.
 7. Inspect candidate output in the workspace Codex actually used:
    - `$run_dir/workspace-baseline.txt`
    - `$run_dir/changed-files.txt`
@@ -68,6 +82,52 @@ narrower sandbox, lighter reasoning, or a different parse contract.
    to the parent synthesis step. Codex-reported test outcomes are hints, not proof.
 9. Leave commit, push, and PR creation to the parent orchestrator unless the
    brief explicitly delegates that to Codex.
+
+## Workspace helper
+
+`scripts/codex-workspace.sh` removes the git-topology foot-guns from the loop.
+It never calls Codex or commits — it only manages worktrees and diff bundles,
+tracking each candidate by `--name` so you never pass paths around by hand.
+
+`--repo` is the **source repo you branch from** (defaults to the current dir).
+`prepare` **creates a new worktree** at `<repo>-<name>` beside that repo unless
+you pass `--path`; it does not write into `--repo`. Keep the two straight: you
+point `--repo` at an existing checkout, and the worktree the tool creates is a
+separate directory whose path it returns via `--run-dir-file`.
+If you pass `--no-worktree`, the helper switches the source checkout itself onto
+the candidate branch, so it refuses to run unless that checkout is clean.
+
+```bash
+ws="$skill_dir/scripts/codex-workspace.sh"
+rdf="$(mktemp -t codex-ws.XXXXXX)"
+
+# 1) Create an isolated worktree from a frozen base SHA of the source repo.
+#    It lands at <repo>-candidate-a (override with --path); path is written to $rdf.
+"$ws" prepare --name candidate-a --repo /path/to/source-repo --run-dir-file "$rdf"
+worktree="$(cat "$rdf")"
+
+# 2) Normal generate run against the created worktree.
+"$skill_dir/scripts/codex-run.sh" generate \
+  --workspace "$worktree" --run-dir-file "$run_dir_file" \
+  --heartbeat 15 --prompt-file task-brief.txt
+
+# 3) Bundle the diff (vs the frozen base, untracked included) + Codex's report.
+"$ws" finalize --name candidate-a --repo /path/to/source-repo --run-dir "$run_dir"
+# -> writes candidate.diff, candidate-diff.stat, changed-files.txt, and report.md
+#    (report.md is final.md's raw JSON copied verbatim, not a reformatted narrative)
+
+# 4) When the parent rejects this candidate, tear it down.
+#    The finalize bundle is KEPT by default so you can still compare/audit it
+#    after the worktree is gone; add --delete-bundle to remove it too.
+"$ws" cleanup --name candidate-a --repo /path/to/source-repo   # add --force if the tree is dirty
+```
+
+`finalize` diffs against the base SHA captured at `prepare` time, so the bundle
+is stable even if the repo's branches move, and it **survives `cleanup`** — the
+bundle is the durable comparison artifact, so teardown removes the worktree,
+branch, and state but leaves the bundle unless you pass `--delete-bundle`. Keep
+an accepted candidate's branch with `cleanup --keep-branch`. See
+`codex-workspace.sh --help` for all flags.
 
 ## Independence rule
 
@@ -88,7 +148,12 @@ Implementation prompts should say:
 - Why it matters.
 - Non-goals and files/areas to avoid.
 - Required validation commands.
-- Whether to commit or only leave a working diff.
+- Whether to commit or only leave a working diff. In a **worktree** candidate,
+  do not ask Codex to commit: the worktree's git metadata lives in the parent
+  repo's `.git/worktrees/<name>`, outside the `workspace-write` sandbox, so
+  `git commit` fails with `index.lock ... Operation not permitted`. Rely on the
+  uncommitted diff (`workspace.diff` / the finalize bundle); the parent commits
+  during synthesis.
 - That secrets and `.env` files must not be read aloud, committed, or logged.
 - That unrelated cleanup belongs in a follow-up note, not the patch.
 - Do not ask the user for clarification; make reasonable assumptions and proceed.

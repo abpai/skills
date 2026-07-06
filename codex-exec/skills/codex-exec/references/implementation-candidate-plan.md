@@ -36,15 +36,23 @@ Ship the minimum contract an orchestrator can rely on:
 3. **`candidate-report.schema.json`** — default structured final output
 4. **SKILL.md + README** — routing, dual-candidate orchestration notes, artifact list
 
-### Phase 2 — Worktree helper (future)
+### Phase 2 — Worktree helper (v1.7.0, shipped)
 
-Add `scripts/codex-workspace.sh` (or extend wrapper):
+`scripts/codex-workspace.sh` is live:
 
-- `prepare --base REF --name candidate-a` → creates branch + optional worktree
-- `finalize --run-dir DIR` → bundles diff + report for parent comparison
-- `cleanup --name candidate-a` → removes disposable worktree when parent rejects candidate
+- `prepare --name candidate-a [--base REF]` → branch + optional worktree from a
+  frozen base SHA; writes the path to `--run-dir-file`
+- `finalize --name candidate-a [--run-dir DIR]` → bundles `candidate.diff`
+  (vs the frozen base, untracked included), `candidate-diff.stat`,
+  `changed-files.txt`, and Codex's `report.md` for parent comparison
+- `cleanup --name candidate-a [--force] [--keep-branch] [--delete-bundle]` →
+  removes the disposable worktree, branch, and state when the parent rejects a
+  candidate; the finalize bundle is kept by default (it is the durable
+  comparison artifact) unless `--delete-bundle` is passed
 
-Keeps git topology out of orchestration prompts and reduces foot-guns.
+Candidates are tracked by `--name` in a per-repo state file, so orchestration
+prompts never pass raw git paths around. The helper never calls Codex or commits.
+Documented in `generate.md` ("Workspace helper").
 
 ### Phase 3 — Dual-candidate orchestration kit (future)
 

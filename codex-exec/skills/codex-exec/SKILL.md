@@ -8,7 +8,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.6.0"
+  version: "1.7.0"
 ---
 
 # Codex CLI
@@ -21,7 +21,8 @@ user explicitly wants to stay inside it.
 
 - Use `./generate.md` when Codex is an **implementation candidate** in a
   planner-led loop. Prefer `scripts/codex-run.sh generate` with an isolated
-  branch or worktree.
+  branch or worktree, and `scripts/codex-workspace.sh` to prepare/finalize/clean
+  up that worktree (see the "Workspace helper" section of `generate.md`).
 - Use `scripts/codex-run.sh review` or `codex review` for read-only critique.
 - Use `scripts/codex-run.sh exec` for one-shot analysis or generation that does
   not need the implementation-candidate artifact bundle.
@@ -86,8 +87,9 @@ Unless the user asks for something else:
   especially for long reviews, generated prompt files, implementation candidates,
   or any task where progress visibility matters.
 - Use `scripts/codex-run.sh generate` for implementation candidates; it defaults
-  to `workspace-write`, `high` reasoning, and the bundled candidate-report
-  schema while capturing workspace diff artifacts.
+  to `workspace-write`, `high` reasoning, a `1800`-second timeout (`--timeout 0`
+  disables), and the bundled candidate-report schema while capturing workspace
+  diff artifacts.
 - Use `codex exec` for one-shot work.
 - Use `scripts/codex-run.sh review` for monitored code reviews; use
   `codex review` for short raw CLI review requests.
@@ -479,6 +481,11 @@ codex exec \
   A frequent silent cause is launching from a non-Git or untrusted directory (e.g. a scratch or
   tmp dir): Codex is blocking on a `Not inside a trusted directory` trust prompt, not doing work.
   Fix by running from inside the Git repo, or add `--skip-git-repo-check` with stdin closed.
+- A run can also stall silently AFTER a clean start: header, session id, and prompt echo appear in
+  `stderr.log`, then nothing — `stdout_lines=0` heartbeats, empty `events.jsonl`, no workspace
+  changes, idle CPU. This is a Codex-side stall, not the trust prompt (the header already printed).
+  Kill it and relaunch the identical command; retries typically succeed. `generate` mode caps this
+  at 1800 seconds by default; other modes run uncapped unless you pass `--timeout`.
 - If a prompt has newlines or is longer than about 500 characters, do not retry argv quoting. Use stdin.
 - If the task is review-oriented, use the wrapper for monitored/custom-instruction reviews and raw `codex review` for simple unprompted reviews.
 - If the task is "run and read the answer now", use direct `codex exec` with

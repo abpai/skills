@@ -31,6 +31,7 @@ exec options:
 generate options:
   --sandbox MODE         Defaults to workspace-write when omitted.
   --output-schema PATH   JSON schema for Codex final output (default: candidate-report.schema.json).
+  --timeout SECONDS      Defaults to 1800 for generate runs; pass --timeout 0 to disable.
   Writes workspace-baseline.txt, workspace-status.txt, workspace.diff,
   workspace-diff.stat, and changed-files.txt around the run.
 
@@ -471,6 +472,13 @@ if [[ "$MODE" == "generate" && "$REASONING_SET" == "false" ]]; then
 fi
 if [[ "$MODE" == "generate" && -z "$OUTPUT_SCHEMA" ]]; then
   OUTPUT_SCHEMA="$DEFAULT_GENERATE_SCHEMA"
+fi
+# generate runs are long-lived and unattended; a Codex-side stall after the
+# prompt echo otherwise runs forever (observed in the field: session id
+# assigned, then zero output for 45+ minutes). Default to a hard cap; pass
+# --timeout 0 to opt out explicitly.
+if [[ "$MODE" == "generate" && "$TIMEOUT_SET" == "false" && "$TIMEOUT_SECONDS" == "0" ]]; then
+  TIMEOUT_SECONDS="1800"
 fi
 
 WORKSPACE="$(absolute_path "$WORKSPACE")"
