@@ -10,8 +10,8 @@ Use this workflow when the user wants to onboard a repo into an autonomous
 runner, emit an `autonomous-ready` manifest, or check what a repo still needs
 before it can be driven unattended.
 
-The manifest schema and its field provenance are defined in `harness/INTERFACES.md`
-(the proof-row format used below lives there too). This module emits that
+The manifest schema and its field provenance are defined in the plugin-root
+`../../INTERFACES.md` (the proof-row format used below lives there too). This module emits that
 contract; the consumer that reads it is built on the factory side — do not
 assume a reader exists yet.
 
@@ -33,9 +33,12 @@ field to look ready):
 - **Verdict + score + dimensions + gaps** — straight from the `doctor.md` audit.
 - **bootstrap** — the one-command bring-up + health smoke from
   `docs/engineering/commands.md`; if none exists, this is a gap, not a guess.
-- **validation lanes** — fast/full/live command lists from the proof menu.
+- **validation lanes** — fast/full/live command lists from
+  `docs/engineering/commands.md` and the signals menu (the proof-menu `Lane`
+  column only distinguishes `fast`|`full`; a `live` lane, if any, comes from the
+  commands doc, not the proof menu).
 - **proofMenu** — the rows in the machine-readable proof-row format
-  (`harness/INTERFACES.md`); if the menu is free-form, fix its shape first.
+  (`../../INTERFACES.md`); if the menu is free-form, fix its shape first.
 - **humanGates / escalation / mergePolicy** — human-gate-by-design change types
   and escalation boundaries from the spec contract and the loop-readiness verdict.
 - **safety (D7)** — secrets-exposed, write-scope-bounded, sandboxed,

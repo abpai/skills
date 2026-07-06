@@ -12,14 +12,14 @@ gradeable agent tests.
 This module produces **seed specs** in the shape the factory's eval system
 consumes; it does not run or grade evals — the runner and graders live on the
 factory side. The proof-row format and the eval-seed field mapping are defined
-in `harness/INTERFACES.md`.
+in the plugin-root `../../INTERFACES.md`.
 
 ## Process
 
 ### 1. Require a machine-readable proof menu
 
 Read `docs/SPEC_CONTRACT.md`. Its proof menu must be in the constrained proof-row
-format (`harness/INTERFACES.md`): fixed columns, commands as backtick spans,
+format (`../../INTERFACES.md`): fixed columns, commands as backtick spans,
 `Lane` ∈ fast/full, `Sufficiency` ∈ auto/human-gate. If it is free-form, fix its
 shape (via `docs.md`) before seeding — you cannot seed reliable evals from prose.
 

@@ -182,12 +182,18 @@ marks whether a passing run is sufficient evidence (`auto`) or the change still
 needs human sign-off (`human-gate`) — a false green on a `human-gate` row would
 merge broken work, the failure that is worse than a false red.
 
-| Change type | Validation command | Proof artifact | Sufficiency |
-| --- | --- | --- | --- |
-| <area> logic | `<command>` | passing run output | auto |
-| <area> UI | `<command>` + screenshot diff | screenshot pair | human-gate |
-| API surface | `<contract/e2e command>` | passing run + response trace | auto |
-| Cross-cutting | `<full check command>` | CI-green equivalent locally | auto |
+Keep the table in the machine-readable proof-row shape (`../../INTERFACES.md`) so
+tooling can parse it: fixed columns in the order below, the **Lane** cell holding
+only `fast` or `full`, and the **Validation command** cell holding only
+backtick-wrapped commands — put a proof artifact like a screenshot diff in the
+**Proof artifact** column, never as prose in the command cell.
+
+| Change type | Lane | Validation command | Proof artifact | Sufficiency |
+| --- | --- | --- | --- | --- |
+| <area> logic | full | `<command>` | passing run output | auto |
+| <area> UI | full | `<command>` | screenshot pair | human-gate |
+| API surface | full | `<contract/e2e command>` | passing run + response trace | auto |
+| Cross-cutting | full | `<full check command>` | CI-green equivalent locally | auto |
 
 ## Escalation boundaries
 
