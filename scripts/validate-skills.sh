@@ -199,6 +199,33 @@ if [[ ${#CODEX_SCHEMAS[@]} -gt 0 ]]; then
   fi
 fi
 
+# ── Mirrored interface contracts: plugin-root ↔ installed-skill copy ──
+#
+# Some plugins ship an INTERFACES.md at the plugin root (for source-checkout
+# readers) AND mirror it into skills/<name>/ so installed skills can read it via
+# a sibling `./INTERFACES.md` path (the plugin root is not copied into the
+# runtime skill cache). The two copies MUST stay byte-identical, but the
+# SKILL.md-only validators above never discover a loose support file, so a
+# future edit to one copy would silently drift. Enforce parity here.
+MIRRORED_IFACES=()
+while IFS= read -r f; do
+  MIRRORED_IFACES+=("$f")
+done < <(find . -path ./.git -prune -o \
+           -path '*/__pycache__/*' -prune -o \
+           -path '*/skills/*/INTERFACES.md' -type f -print | sort)
+for skill_iface in "${MIRRORED_IFACES[@]}"; do
+  # ./<plugin>/skills/<name>/INTERFACES.md → ./<plugin>/INTERFACES.md
+  plugin_root="${skill_iface%/skills/*}"
+  root_iface="$plugin_root/INTERFACES.md"
+  [[ -f "$root_iface" ]] || continue
+  if cmp -s "$root_iface" "$skill_iface"; then
+    echo "  [OK] mirrored interface contract in sync ($skill_iface == $root_iface)"
+  else
+    echo "[FAIL] $skill_iface drifted from its plugin-root mirror $root_iface (must be byte-identical)"
+    failed=1
+  fi
+done
+
 if [[ $failed -ne 0 ]]; then
   echo "Validation failed."
   exit 1

@@ -18,7 +18,7 @@ re-verify against any concrete consumer before implementing a reader.
 
 ### Problem
 
-Today the proof menu (`harness/skills/harness/docs.md`, `docs/SPEC_CONTRACT.md`) is
+Today the proof menu (the harness `docs.md` module, `docs/SPEC_CONTRACT.md`) is
 a free-form Markdown table with compound cells like `` `<command>` + screenshot
 diff ``. A scanner cannot reliably extract "the command this row asserts," so
 Phase 4's "statically verify every proof-menu row references a command that

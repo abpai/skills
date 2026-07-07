@@ -94,7 +94,7 @@ State the one or two gaps that would promote a repo to the next tier — the ver
 
 The spec contract is the demand side; the repo's validation surfaces are the supply side. Check both directions:
 
-- Every proof-menu row references a command that exists — and run it (per the execution policy).
+- Every proof-menu row references a command ID that resolves against the discovered signals menu (package script IDs, Make/just targets, CI jobs) — resolve the ID to its shell invocation, then run that resolved command (per the execution policy). A bare row ID such as `lint` is not a shell command; running it verbatim is a false failure.
 - Every proof-menu row declares grader sufficiency (`auto` vs `human-gate`). A row with no sufficiency marker is a false-green risk: intake cannot tell when a passing grader is enough to merge versus when a human must sign off.
 - Commands separate a fast lane (deterministic, seconds) from a full lane (the gate for done). "Done" must bind to full-lane green, never fast-lane green.
 - Every major change type evident in the repo (from CI jobs, test layout, package scripts) has a proof-menu row. Missing rows mean intake will produce specs this repo cannot verify.
