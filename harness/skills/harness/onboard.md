@@ -10,10 +10,10 @@ Use this workflow when the user wants to onboard a repo into an autonomous
 runner, emit an `autonomous-ready` manifest, or check what a repo still needs
 before it can be driven unattended.
 
-The manifest schema and its field provenance are defined in the plugin-root
-`../../INTERFACES.md` (the proof-row format used below lives there too). This module emits that
-contract; the consumer that reads it is built on the factory side — do not
-assume a reader exists yet.
+The manifest schema and its field provenance are defined in `./INTERFACES.md`
+in installed skills. In the source checkout, the same contract is mirrored at
+`../../INTERFACES.md`. This module emits that contract; the consumer that reads
+it is built on the factory side — do not assume a reader exists yet.
 
 ## Process
 
@@ -38,7 +38,9 @@ field to look ready):
   column only distinguishes `fast`|`full`; a `live` lane, if any, comes from the
   commands doc, not the proof menu).
 - **proofMenu** — the rows in the machine-readable proof-row format
-  (`../../INTERFACES.md`); if the menu is free-form, fix its shape first.
+  (`./INTERFACES.md`); if the menu is free-form, fix its shape first. Resolve
+  command IDs through the signals menu before presenting executable shell
+  commands to a runner.
 - **humanGates / escalation / mergePolicy** — human-gate-by-design change types
   and escalation boundaries from the spec contract and the loop-readiness verdict.
 - **safety (D7)** — secrets-exposed, write-scope-bounded, sandboxed,
