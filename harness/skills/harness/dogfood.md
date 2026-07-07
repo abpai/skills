@@ -28,6 +28,12 @@ Spawn a sub-agent and have it use the target skill on a real, representative tas
 — not a toy. The orchestrator does not help mid-run; the point is to see the skill
 perform unaided, exactly as it would for any user.
 
+If the task or environment is explicitly read-only, run an **observed dogfood**
+pass instead: the sub-agent still performs the representative task unaided, but
+the orchestrator records friction and recommended repairs without patching
+files. Label the result `observed-only`, not `hardened`, and follow it with a
+normal repair pass once the target surface is patchable.
+
 ### 2. Review the transcript for friction
 
 Read the full sub-agent transcript and locate where the skill — not the task —
@@ -60,3 +66,7 @@ smallest durable repair was applied per the enforcement hierarchy; and a re-run
 confirms the friction is gone (or you report the remaining friction and why it
 was not yet fixable). Do not claim the skill is hardened from one run or from
 intent — claim it when the loop converged and the ledger shows what changed and why.
+
+For an observed-only pass, completion is narrower: transcript reviewed, friction
+ledger emitted, and each repair mapped to the smallest durable surface. It does
+not count as a hardened skill until those repairs are applied and re-run.

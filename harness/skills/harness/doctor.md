@@ -32,12 +32,23 @@ The scanner also emits its own numeric `score`/`scoreLabel` (a penalty count, `1
 
 This audit **runs the repo's validation commands** — documented commands, spec-contract proof-menu rows, test suites, lints, builds, and e2e paths — and records pass/fail and runtime for each. A command that exists but was not run is reported `unverified`, never as passing. Rules:
 
+- Record the audit snapshot before work starts: `git rev-parse HEAD` when
+  available plus `git status --short --branch`. Record it again before the final
+  verdict. If HEAD, branch, or dirty state changed during the audit, either
+  re-run the scanner/affected commands on the final snapshot or scope the
+  verdict explicitly to the earlier snapshot. Never blend evidence from two
+  repo states as one readiness verdict.
 - Resolve what a command actually does before running it: read script bodies one hop deep (`package.json` scripts, Make/just targets, the shell scripts they call) and classify effects — filesystem outside the repo, network, credentials, databases, production. A benign name (`test`, `check`) proves nothing; ambiguous commands are `inspected-not-run`.
 - Run only commands that terminate. Dev servers and watch modes (`dev`, `start`, `watch`, `serve`) are `not-applicable`, not validation commands.
 - Long suites still run — this is a full audit. Launch them in the background, continue other checks meanwhile, and record runtimes.
 - A command that fails because the local environment is missing (services, credentials, Docker) is `env-blocked`, not `fail`, and counts as neither a passing nor failing data point.
 - Suites that hit paid or external APIs: confirm with the user before running; otherwise mark `inspected-not-run`.
 - Never execute irreversible or environment-mutating commands — deploys, releases, migration applies, data deletion, anything touching production. Verify by inspection and mark `inspected-not-run`.
+- In an explicitly read-only audit, commands that only write ordinary build or
+  coverage artifacts inside the repo may be run in a disposable copy or with
+  temporary output paths when the command supports it. If neither is practical,
+  mark them `inspected-not-run: write-producing under read-only`; do not treat
+  that as a pass.
 
 `inspected-not-run` blocks a top score unless a recent passing CI run for that command is cited as evidence; without that citation, cap the affected dimension at 3.
 
@@ -83,7 +94,7 @@ State the one or two gaps that would promote a repo to the next tier — the ver
 
 The spec contract is the demand side; the repo's validation surfaces are the supply side. Check both directions:
 
-- Every proof-menu row references a command that exists — and run it (per the execution policy).
+- Every proof-menu row references a command ID that resolves against the discovered signals menu (package script IDs, Make/just targets, CI jobs) — resolve the ID to its shell invocation, then run that resolved command (per the execution policy). A bare row ID such as `lint` is not a shell command; running it verbatim is a false failure.
 - Every proof-menu row declares grader sufficiency (`auto` vs `human-gate`). A row with no sufficiency marker is a false-green risk: intake cannot tell when a passing grader is enough to merge versus when a human must sign off.
 - Commands separate a fast lane (deterministic, seconds) from a full lane (the gate for done). "Done" must bind to full-lane green, never fast-lane green.
 - Every major change type evident in the repo (from CI jobs, test layout, package scripts) has a proof-menu row. Missing rows mean intake will produce specs this repo cannot verify.
@@ -156,6 +167,8 @@ Treat repeated failures as harness gaps and route repairs through the `docs.md` 
 End every audit with what was actually checked:
 
 - Scanner command, resolved version, and result — or why it was unavailable.
+- Initial and final git snapshot, and whether any repo state changed during the
+  audit.
 - Every validation command executed, with pass/fail and runtime; commands marked `inspected-not-run`, `env-blocked`, `not-applicable`, or `unverified`, each with the reason.
 - Manual commands run and files inspected.
 - Link/path failures verified.

@@ -182,18 +182,22 @@ marks whether a passing run is sufficient evidence (`auto`) or the change still
 needs human sign-off (`human-gate`) — a false green on a `human-gate` row would
 merge broken work, the failure that is worse than a false red.
 
-Keep the table in the machine-readable proof-row shape (`../../INTERFACES.md`) so
+Keep the table in the machine-readable proof-row shape (`./INTERFACES.md` in
+installed skills, mirrored at `../../INTERFACES.md` in the source checkout) so
 tooling can parse it: fixed columns in the order below, the **Lane** cell holding
 only `fast` or `full`, and the **Validation command** cell holding only
-backtick-wrapped commands — put a proof artifact like a screenshot diff in the
-**Proof artifact** column, never as prose in the command cell.
+backtick-wrapped command IDs from the repo's signals menu — put a proof artifact
+like a screenshot diff in the **Proof artifact** column, never as prose in the
+command cell. For package scripts, use the script ID (`test`, `ui:build`) rather
+than the shell invocation (`bun test`, `pnpm run ui:build`) so Harness Doctor can
+resolve the row deterministically.
 
 | Change type | Lane | Validation command | Proof artifact | Sufficiency |
 | --- | --- | --- | --- | --- |
-| <area> logic | full | `<command>` | passing run output | auto |
-| <area> UI | full | `<command>` | screenshot pair | human-gate |
-| API surface | full | `<contract/e2e command>` | passing run + response trace | auto |
-| Cross-cutting | full | `<full check command>` | CI-green equivalent locally | auto |
+| <area> logic | full | `<script-or-target-id>` | passing run output | auto |
+| <area> UI | full | `<script-or-target-id>` | screenshot pair | human-gate |
+| API surface | full | `<contract-script-id>` | passing run + response trace | auto |
+| Cross-cutting | full | `<full-check-script-id>` | CI-green equivalent locally | auto |
 
 ## Escalation boundaries
 
