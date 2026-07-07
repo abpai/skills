@@ -1,7 +1,7 @@
 {
   "name": "visualize",
-  "version": "1.2.2",
-  "description": "Generate a self-contained HTML visualization in an ivory/clay editorial gallery style for systems, plans, code flows, and concepts.",
+  "version": "1.3.0",
+  "description": "Generate a self-contained HTML explainer in an ivory/clay editorial gallery style that teaches systems, plans, code flows, and concepts in layers: plain-English gist, stepwise walkthrough, collapsed depth, recap.",
   "author": {
     "name": "Andy Pai"
   },
