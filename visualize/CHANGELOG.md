@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.3.0] - 2026-07-07
+
+### Explainer Arc — learning-first outputs
+
+Outputs were technically correct but hard to learn from: jargon before context, everything visible at once, no narrative progression. This release makes the skill teach.
+
+- **Explainer Arc** as the default structure for teaching pages: Gist (whole idea in plain English + one ≤5-element anchor visual, first screen) → Walkthrough (one idea per step, captions state takeaways) → Depth (real detail, collapsed by default) → Recap (takeaways + glossary). Working surfaces (tuners, editors, review queues) are explicitly exempt.
+- **Jargon gate**: plain-words meaning must precede any term of art; every introduced term lands in the glossary.
+- **Visual density budget**: ≤7 primary elements per visual, ≥13px text in visuals, exactly one clay-accented element per visual.
+- **Audience-first workflow**: name the reader in one line, write the gist sentence first, outline the arc before writing HTML.
+- **Expanded pre-delivery checks**: gist test, jargon scan, hierarchy test, density check.
+- Base template rebuilt to demonstrate the full arc (step-through walkthrough, collapsed depth sections, recap + glossary) in the HTML-effectiveness style.
+
+Benchmarked against the previous version on 3 test cases (proposal explainer, git rebase vs merge, OAuth for a PM): learning-focused assertion pass rate 33% → 100%, ~equal token cost.
+
 ## [1.2] - 2026-05-11
 
 ### HTML Effectiveness Style
