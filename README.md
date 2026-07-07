@@ -101,7 +101,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **bun-expert** | Expert Bun runtime guidance: setup, servers, APIs, testing, Node.js migration |
+| **bun-expert** | Expert Bun runtime guidance: setup, package management, servers, latest built-in APIs, testing, bundling, and Node.js migration |
 
 ### Writing
 
