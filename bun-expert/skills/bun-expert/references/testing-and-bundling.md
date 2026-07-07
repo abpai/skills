@@ -62,6 +62,10 @@ Notes:
 - `--changed[=<ref>]` filters to tests affected by local git changes or by a
   specific commit/branch diff.
 - In parallel runs, Bun sets both `JEST_WORKER_ID` and `BUN_TEST_WORKER_ID`.
+- For browser-level checks where experimental status is acceptable, consider
+  `Bun.WebView` before adding a full Puppeteer/Playwright dependency. Validate
+  the target platform because Linux/Windows require an installed Chromium-family
+  browser.
 
 ### Matchers (selected)
 
@@ -163,6 +167,21 @@ When the entrypoint is HTML, file-loader assets imported from JavaScript are
 inlined as `data:` URIs in the standalone output, so the final `index.html`
 does not need sidecar asset files.
 
+For `--target=bun`, Bun preserves native `using` and `await using` resource
+management syntax. Browser and Node targets still lower that syntax.
+
+### Frontend and Markdown entrypoints
+
+```bash
+bun --hot index.html
+bun --watch index.html
+bun README.md
+```
+
+Use HTML entrypoints for Bun's zero-config frontend dev server. Use Markdown
+entrypoints when you want terminal rendering without adding a separate Markdown
+CLI.
+
 ### JavaScript API
 
 ```typescript
@@ -187,3 +206,6 @@ if (!result.success) {
 - https://bun.com/docs/test
 - https://bun.com/docs/cli/build
 - https://bun.com/docs/bundler
+- https://bun.com/docs/bundler/standalone-html
+- https://bun.com/docs/runtime/webview
+- https://bun.com/docs/runtime/markdown

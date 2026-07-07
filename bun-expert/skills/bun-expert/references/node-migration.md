@@ -16,6 +16,12 @@ Use Bun's compatibility pages as source of truth:
 Notable Bun behavior for migration:
 - Bun exposes Node globals like `process`, `Buffer`, and friends.
 - In ESM, Bun also provides `__dirname`, `__filename`, and `require()` for compatibility.
+- Modern Bun has first-party `process.execve()` on POSIX, improved
+  `fs.watch()` behavior on POSIX platforms, and `Bun.Terminal` PTY support on
+  Windows through ConPTY.
+- TLS-heavy libraries and pools, including Postgres/MySQL via `Bun.SQL`,
+  MongoDB/Mongoose-style connection churn, Redis/Valkey, `new WebSocket()`, and
+  `node:tls`, benefit from shared native TLS context caching in recent Bun.
 
 ---
 
@@ -84,6 +90,9 @@ Use these as migration defaults:
 | dotenv bootstrap | Bun automatic `.env` loading |
 | child_process shell snippets | `Bun.$` |
 | Custom HTTP framework for simple APIs | `Bun.serve()` |
+| Sharp-style image transforms | `Bun.Image` |
+| Puppeteer/Playwright for simple page automation | `Bun.WebView` if experimental status is acceptable |
+| Markdown parsing/rendering | `Bun.markdown.*` |
 
 For databases/storage:
 - SQL: `sql` / `SQL` from `bun`
@@ -111,6 +120,23 @@ If your Node app used `dotenv`, remove duplicate loading to avoid confusion.
 2. Migrating runtime and package manager in one large step without checkpoints.
 3. Keeping old Jest/Vitest-specific assumptions in test scripts.
 4. Forgetting to pin/verify Bun version in CI during rollout.
+5. Treating experimental APIs (`Bun.WebView`, HTTP/3, HTTP/2/3 fetch paths) as
+   production defaults without validating current release status.
+6. Passing untrusted path strings directly into `new Bun.Image()`.
+
+## Modern Bun Checks Before Adding Dependencies
+
+Before adding or keeping a dependency, check whether Bun now has a native API:
+
+- Image processing: `Bun.Image`
+- Browser automation: `Bun.WebView`
+- Markdown rendering: `Bun.markdown.*`
+- Archive creation/extraction: `Bun.Archive`
+- Glob matching: `Bun.Glob`
+- JSON variants: `Bun.JSONC`, `Bun.JSON5`, `Bun.JSONL`
+- CSRF tokens, semver, CSS color conversion, ANSI width/wrapping, HTML escaping:
+  `Bun.CSRF`, `Bun.semver`, `Bun.color`, `Bun.stringWidth`, `Bun.wrapAnsi`,
+  `Bun.escapeHTML`
 
 ---
 
@@ -123,3 +149,7 @@ If your Node app used `dotenv`, remove duplicate loading to avoid confusion.
 - https://bun.com/docs/cli/pm
 - https://bun.com/docs/cli/test
 - https://bun.com/docs/cli/build
+- https://bun.com/docs/runtime/image
+- https://bun.com/docs/runtime/webview
+- https://bun.com/docs/runtime/markdown
+- https://bun.com/docs/runtime/child-process
