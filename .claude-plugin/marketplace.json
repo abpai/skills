@@ -122,7 +122,7 @@
     },
     {
       "name": "tutorial",
-      "description": "Write hands-on, code-first tutorials where every step ends in a runnable action and the reader finishes able to do the thing.",
+      "description": "Write hands-on, self-verified tutorials where every step ends in a runnable action and the reader finishes able to do the thing.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "tutorial" },
       "category": "writing",
       "keywords": ["tutorial", "teaching", "step-by-step", "guide", "documentation"]
