@@ -107,7 +107,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **tutorial** | Write hands-on, code-first tutorials where every step ends in a runnable action |
+| **tutorial** | Write hands-on, self-verified tutorials where every step ends in a runnable action |
 | **improve-prompt** | Upgrade vague prompts into sharp, reusable prompts for planning, coding, review, and decision work |
 | **human-writer** | Edit prose to sound natural and human-written — deslop model-generated text |
 
