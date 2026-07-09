@@ -3,7 +3,7 @@ name: engineering
 description: "Route engineering-practice workflows through one scoped /engineering command. Use grill-me to stress-test a plan, tdd for behavior-first red/green/refactor, zoom-out for orientation, improve-architecture for deeper modules, defined-terms for DDD glossaries, complexity-report for read-only complexity findings, clean-code for TypeScript maintainability review, and reduce for plan simplification."
 argument-hint: "[subcommand] [args] - e.g. tdd add retries, clean-code src/, complexity-report src/, reduce ship onboarding"
 metadata:
-  version: "1.10.0"
+  version: "1.10.1"
 ---
 
 # Engineering Workflow Pack
