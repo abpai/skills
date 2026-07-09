@@ -3,22 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CODEX_RUN="$ROOT_DIR/codex-exec/skills/codex-exec/scripts/codex-run.sh"
-CLAUDE_RUN="$ROOT_DIR/claude/skills/claude/scripts/claude-tmux-run.sh"
-
-# Resolve an outer-timeout binary once (GNU coreutils `timeout`, or `gtimeout`
-# from brew coreutils on macOS). Empty if neither exists — monitor calls then
-# run unguarded, bounded only by their internal TIMEOUT_SECONDS. The monitor
-# cases below self-bound (returning 124), but if one ever fails to, the whole
-# suite would otherwise hang until the CI job ceiling (GitHub's 6h default);
-# the guard turns that into a fast, useful failure. CI (Linux) always has it.
-TIMEOUT_CMD=""
-if command -v timeout >/dev/null 2>&1; then
-  TIMEOUT_CMD="timeout"
-elif command -v gtimeout >/dev/null 2>&1; then
-  TIMEOUT_CMD="gtimeout"
-fi
-MONITOR_OUTER_TIMEOUT="${MONITOR_OUTER_TIMEOUT:-60}"
-MONITOR_STATUS=0
+CLAUDE_RUN="$ROOT_DIR/claude/skills/claude/scripts/claude-run.sh"
 
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/skills-wrapper-parity.XXXXXX")"
 cleanup() {
@@ -79,33 +64,6 @@ assert_empty_file() {
 
 assert_not_exists() {
   [[ ! -e "$1" ]] || fail "unexpected file exists: $1"
-}
-
-# Run the claude wrapper's `monitor` under the outer-timeout guard, capturing
-# combined output to <outfile> and setting MONITOR_STATUS to the wrapper's exit.
-# Pass env via `env KEY=VAL ...` so the assignments survive the timeout prefix.
-# GNU `timeout` also exits 124 on fire (colliding with the monitor's own 124
-# self-timeout), so a genuine hang is disambiguated by wall-clock: a run lasting
-# >= the outer bound means the guard fired, and we hard-fail with the output
-# rather than let an assertion mistake a hang for the expected self-timeout.
-# Usage: run_monitor <outfile> env [KEY=VAL ...] bash "$CLAUDE_RUN" monitor ...
-run_monitor() {
-  local outfile="$1"
-  shift
-  local start="$SECONDS"
-  set +e
-  if [[ -n "$TIMEOUT_CMD" ]]; then
-    "$TIMEOUT_CMD" "$MONITOR_OUTER_TIMEOUT" "$@" > "$outfile" 2>&1
-  else
-    "$@" > "$outfile" 2>&1
-  fi
-  MONITOR_STATUS=$?
-  set -e
-  if [[ -n "$TIMEOUT_CMD" && $(( SECONDS - start )) -ge "$MONITOR_OUTER_TIMEOUT" ]]; then
-    echo "---- monitor output (outer ${MONITOR_OUTER_TIMEOUT}s guard fired) ----" >&2
-    cat "$outfile" >&2
-    fail "monitor exceeded ${MONITOR_OUTER_TIMEOUT}s outer guard (internal TIMEOUT_SECONDS failed to bound it): $*"
-  fi
 }
 
 extract_run_dir() {
@@ -234,44 +192,68 @@ if [[ "${1:-}" == "auth" && "${2:-}" == "status" ]]; then
   exit 0
 fi
 
-echo "fake claude invoked"
+session_id=""
+previous=""
+for arg in "$@"; do
+  if [[ "$previous" == "--session-id" || "$previous" == "--resume" ]]; then
+    session_id="$arg"
+  fi
+  previous="$arg"
+done
+[[ -n "$session_id" ]] || session_id="00000000-0000-4000-8000-000000000001"
+cat > "${FAKE_CLAUDE_PROMPT_FILE:-/dev/null}"
+[[ -z "${FAKE_CLAUDE_ARGV_FILE:-}" ]] || printf '%s\n' "$*" > "$FAKE_CLAUDE_ARGV_FILE"
+
+project_key="$(printf '%s' "$PWD" | sed 's/[^A-Za-z0-9-]/-/g')"
+claude_home="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+project_dir="$claude_home/projects/$project_key"
+parent_transcript="$project_dir/$session_id.jsonl"
+child_dir="$project_dir/$session_id/subagents"
+mkdir -p "$project_dir" "$child_dir"
+printf '{"type":"user","message":{"role":"user","content":"fake prompt"}}\n' > "$parent_transcript"
+printf '{"type":"system","subtype":"init","session_id":"%s"}\n' "$session_id"
+
+if [[ -n "${FAKE_CLAUDE_MUTATE_FILE:-}" ]]; then
+  printf 'mutated by fake Claude\n' > "$FAKE_CLAUDE_MUTATE_FILE"
+fi
+
+if [[ "${FAKE_CLAUDE_CHILD_MODE:-}" == "active" ]]; then
+  child="$child_dir/agent-active.jsonl"
+  for step in 1 2 3; do
+    printf '{"type":"assistant","message":{"role":"assistant","stop_reason":null,"content":[{"type":"text","text":"child step %s"}]}}\n' "$step" >> "$child"
+    sleep 1
+  done
+  printf '{"type":"assistant","message":{"role":"assistant","stop_reason":"end_turn","content":[{"type":"text","text":"child active final"}]}}\n' >> "$child"
+  printf '{"type":"user","message":{"role":"user","content":"child consumed"}}\n' >> "$parent_transcript"
+elif [[ "${FAKE_CLAUDE_CHILD_MODE:-}" == "pending" ]]; then
+  child="$child_dir/agent-pending.jsonl"
+  # Outrun coarse filesystem mtime granularity (ext4 stamps from a ~1-4ms
+  # clock): the wrapper's report_pending needs child mtime strictly newer than
+  # the parent transcript, as it always is for real runs.
+  sleep 0.1
+  printf '{"type":"assistant","message":{"role":"assistant","stop_reason":"end_turn","content":[{"type":"text","text":"salvage this child report"}]}}\n' > "$child"
+  sleep 60
+fi
+
+if [[ "${FAKE_CLAUDE_HANG:-}" == "1" ]]; then
+  sleep 60
+fi
+
+if [[ "${FAKE_CLAUDE_BACKGROUND_WRITER:-}" == "1" ]]; then
+  (
+    trap '' TERM
+    while :; do
+      printf 'background writer still owns stdout\n'
+      sleep 1
+    done
+  ) &
+fi
+
+printf '{"type":"assistant","message":{"role":"assistant","stop_reason":"end_turn","content":[{"type":"text","text":"fake claude final"}]}}\n' >> "$parent_transcript"
+printf '{"type":"result","subtype":"success","result":"fake claude final","session_id":"%s"}\n' "$session_id"
 EOF
 
-  cat > "$fakebin/tmux" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-case "${1:-}" in
-  -V)
-    echo "tmux fake 3.4"
-    ;;
-  list-sessions)
-    echo "fake-session: 1 windows"
-    ;;
-  has-session)
-    [[ "${FAKE_TMUX_HAS_SESSION:-1}" == "1" ]] || exit 1
-    ;;
-  capture-pane)
-    # When a counter file is set, emit per-call-changing content so a test can
-    # mimic Claude Code's TUI animating its "esc to interrupt - Ns" line every
-    # capture. Otherwise behave like the catch-all (no stdout) so other tests
-    # keep getting an empty pane.
-    if [[ -n "${FAKE_TMUX_PANE_COUNTER:-}" ]]; then
-      _pane_n="$(cat "$FAKE_TMUX_PANE_COUNTER" 2>/dev/null || printf 0)"
-      _pane_n=$((_pane_n + 1))
-      printf '%s' "$_pane_n" > "$FAKE_TMUX_PANE_COUNTER"
-      printf 'working - %ss esc to interrupt\n' "$_pane_n"
-    else
-      echo "fake tmux $*" >> "${FAKE_TMUX_LOG:-/dev/null}"
-    fi
-    ;;
-  *)
-    echo "fake tmux $*" >> "${FAKE_TMUX_LOG:-/dev/null}"
-    ;;
-esac
-EOF
-
-  chmod +x "$fakebin/codex" "$fakebin/claude" "$fakebin/tmux"
+  chmod +x "$fakebin/codex" "$fakebin/claude"
 }
 
 setup_workspace() {
@@ -556,9 +538,11 @@ data = json.loads(path.read_text())
 data.update(state="running", health="active", exit_code=None, wrapper_pid=99999999)
 path.write_text(json.dumps(data))
 PY
-  run_monitor "$monitor_output" \
-    env CODEX_EXEC_MONITOR_POLL_SECONDS=1 bash "$run_dir/monitor.sh"
-  [[ "$MONITOR_STATUS" == "1" ]] || fail "expected abandoned monitor exit 1, got $MONITOR_STATUS"
+  set +e
+  CODEX_EXEC_MONITOR_POLL_SECONDS=1 bash "$run_dir/monitor.sh" > "$monitor_output" 2>&1
+  local status=$?
+  set -e
+  [[ "$status" == "1" ]] || fail "expected abandoned monitor exit 1, got $status"
   assert_contains "$monitor_output" "monitor=abandoned"
 
   python3 - "$run_dir/status.json" "$$" <<'PY'
@@ -569,10 +553,12 @@ data = json.loads(path.read_text())
 data.update(state="running", health="active", exit_code=None, wrapper_pid=int(sys.argv[2]))
 path.write_text(json.dumps(data))
 PY
-  run_monitor "$timeout_output" \
-    env CODEX_EXEC_MONITOR_TIMEOUT_SECONDS=1 CODEX_EXEC_MONITOR_POLL_SECONDS=1 \
-    bash "$run_dir/monitor.sh"
-  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected monitor self-timeout 124, got $MONITOR_STATUS"
+  set +e
+  CODEX_EXEC_MONITOR_TIMEOUT_SECONDS=1 CODEX_EXEC_MONITOR_POLL_SECONDS=1 \
+    bash "$run_dir/monitor.sh" > "$timeout_output" 2>&1
+  status=$?
+  set -e
+  [[ "$status" == "124" ]] || fail "expected monitor self-timeout 124, got $status"
   assert_contains "$timeout_output" "monitor=timed-out"
 
   pass "codex-exec monitor stops for abandoned wrappers and its own deadline"
@@ -913,285 +899,266 @@ test_codex_review_stderr_session_only_keeps_final_empty() {
   pass "codex-exec review stderr fallback ignores session-only stderr"
 }
 
-test_claude_dry_run_continue_contract() {
+test_claude_stream_and_continue_contract() {
   local fakebin="$TMP_DIR/fakebin"
   local workspace="$TMP_DIR/workspace-claude"
+  local claude_home="$TMP_DIR/claude-home"
   local prompt="$TMP_DIR/claude-prompt.txt"
+  local prompt_capture="$TMP_DIR/claude-prompt-capture.txt"
   local output="$TMP_DIR/claude-output.txt"
   local monitor_output="$TMP_DIR/claude-monitor.txt"
   local continue_output="$TMP_DIR/claude-continue.txt"
-  local resume_output="$TMP_DIR/claude-resume-continue.txt"
+  local direct_continue_output="$TMP_DIR/claude-direct-continue.txt"
+  local run_dir_pointer="$TMP_DIR/claude-run-dir.txt"
 
   setup_workspace "$workspace"
+  printf 'original\n' > "$workspace/mutable.txt"
+  git -C "$workspace" add mutable.txt
+  git -C "$workspace" commit -qm "add Claude fixture"
   printf 'claude prompt secret should stay out of command.txt\n' > "$prompt"
 
-  PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" run \
-    --workspace "$workspace" \
-    --run-root "$TMP_DIR/claude-runs" \
-    --session-id "claude-session-123" \
-    --tmux-session "claude-test" \
-    --prompt-file "$prompt" \
-    --startup-wait 0 \
-    --paste-settle 0 \
-    --submit-key C-j \
-    --dry-run \
-    > "$output" 2>&1
+  CLAUDE_CONFIG_DIR="$claude_home" FAKE_CLAUDE_PROMPT_FILE="$prompt_capture" \
+    FAKE_CLAUDE_MUTATE_FILE="$workspace/mutable.txt" PATH="$fakebin:$PATH" \
+    bash "$CLAUDE_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/claude-runs" \
+      --run-dir-file "$run_dir_pointer" \
+      --prompt-file "$prompt" \
+      --heartbeat 1 \
+      --stall-timeout 5 \
+      --timeout 10 \
+      > "$output" 2>&1
 
-  local run_dir
+  local run_dir session_id
   run_dir="$(extract_run_dir "$output")"
-  assert_file "$run_dir/run.env"
-  assert_file "$run_dir/status.env"
+  [[ "$(cat "$run_dir_pointer")" == "$run_dir" ]] || fail "Claude run-dir pointer did not match"
+  session_id="$(jq -r .session_id "$run_dir/status.json")"
+  assert_private_file "$run_dir/status.json"
   assert_private_file "$run_dir/prompt.txt"
-  assert_private_file "$run_dir/prompt-to-send.txt"
   assert_private_file "$run_dir/command.txt"
   assert_executable_private "$run_dir/monitor.sh"
   assert_executable_private "$run_dir/continue.sh"
-  assert_executable_private "$run_dir/submit.sh"
-  assert_executable_private "$run_dir/resend.sh"
-  assert_contains "$run_dir/status.env" "state=dry-run"
-  assert_contains "$run_dir/run.env" "SESSION_ID=claude-session-123"
-  assert_contains "$run_dir/run.env" "TMUX_SESSION=claude-test"
-  assert_contains "$run_dir/command.txt" "--permission-mode auto"
+  assert_contains "$run_dir/status.json" '"state": "finished"'
+  assert_contains "$run_dir/status.json" "\"run_dir_file\": \"$run_dir_pointer\""
+  assert_contains "$run_dir/status.env" "run_dir_file=$run_dir_pointer"
+  assert_contains "$run_dir/run.env" "RUN_DIR_FILE=$run_dir_pointer"
+  assert_contains "$output" "run_dir_file=$run_dir_pointer"
+  assert_contains "$run_dir/final.md" "fake claude final"
+  assert_contains "$run_dir/command.txt" "claude -p --output-format stream-json"
   assert_not_contains "$run_dir/command.txt" "claude prompt secret"
-  assert_contains "$run_dir/prompt-to-send.txt" "claude prompt secret"
+  assert_not_contains "$run_dir/command.txt" "tmux"
+  assert_contains "$run_dir/workspace.diff" "mutated by fake Claude"
+  cmp "$prompt" "$prompt_capture" >/dev/null || fail "Claude prompt transport changed content"
 
-  PATH="$fakebin:$PATH" bash "$run_dir/monitor.sh" > "$monitor_output" 2>&1
-  assert_contains "$monitor_output" "event=finish state=dry-run exit_code=0"
+  CLAUDE_CONFIG_DIR="$claude_home" bash "$run_dir/monitor.sh" > "$monitor_output" 2>&1
+  assert_contains "$monitor_output" "monitor=done state=finished"
 
-  PATH="$fakebin:$PATH" bash "$run_dir/continue.sh" \
-    --prompt "continue in same fake Claude session" \
+  CLAUDE_CONFIG_DIR="$claude_home" PATH="$fakebin:$PATH" bash "$run_dir/continue.sh" \
+    --prompt "continue exact fake Claude session" \
     --dry-run \
     > "$continue_output" 2>&1
-
   local continue_dir
   continue_dir="$(extract_run_dir "$continue_output")"
-  assert_contains "$continue_dir/run.env" "SESSION_ID=claude-session-123"
-  assert_contains "$continue_dir/run.env" "TMUX_SESSION=claude-test"
-  assert_contains "$continue_dir/command.txt" "--permission-mode auto"
-  assert_contains "$continue_dir/prompt-to-send.txt" "continue in same fake Claude session"
+  assert_contains "$continue_dir/command.txt" "--resume $session_id"
+  assert_contains "$continue_dir/run.env" "SESSION_ID=$session_id"
 
-  FAKE_TMUX_HAS_SESSION=0 PATH="$fakebin:$PATH" bash "$run_dir/continue.sh" \
-    --prompt "resume in a fresh fake tmux session" \
+  CLAUDE_CONFIG_DIR="$claude_home" PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" run \
+    --continue-run "$run_dir" \
+    --prompt "direct continuation must resume" \
     --dry-run \
-    > "$resume_output" 2>&1
+    > "$direct_continue_output" 2>&1
+  local direct_continue_dir
+  direct_continue_dir="$(extract_run_dir "$direct_continue_output")"
+  assert_contains "$direct_continue_dir/command.txt" "--resume $session_id"
 
-  local resume_dir
-  resume_dir="$(extract_run_dir "$resume_output")"
-  assert_contains "$resume_dir/command.txt" "--resume claude-session-123"
-  assert_contains "$resume_dir/run.env" "RESUME_SESSION_ID=claude-session-123"
-  assert_contains "$resume_dir/run.env" "TMUX_SESSION=claude-test"
-  assert_contains "$resume_dir/prompt-to-send.txt" "resume in a fresh fake tmux session"
-
-  pass "Claude tmux wrapper preserves prompt transport, artifacts, monitor, and session continuation"
+  pass "Claude headless runner preserves streams, artifacts, and exact continuation"
 }
 
-test_claude_monitor_tracks_transcript_phase() {
+test_claude_monitor_detects_abandoned_wrapper() {
   local fakebin="$TMP_DIR/fakebin"
-  local workspace="$TMP_DIR/workspace-claude-monitor"
-  local run_dir="$TMP_DIR/claude-active-monitor"
-  local transcript="$run_dir/transcript.jsonl"
-  local tool_running_output="$TMP_DIR/claude-tool-running-monitor-output.txt"
-  local partial_result_output="$TMP_DIR/claude-partial-result-monitor-output.txt"
-  local thinking_output="$TMP_DIR/claude-thinking-monitor-output.txt"
-  local responding_output="$TMP_DIR/claude-responding-monitor-output.txt"
-  local done_output="$TMP_DIR/claude-done-monitor-output.txt"
+  local workspace="$TMP_DIR/workspace-claude-monitor-abandoned"
+  local output="$TMP_DIR/claude-monitor-abandoned-output.txt"
+  local monitor_output="$TMP_DIR/claude-monitor-abandoned-monitor.txt"
+  local timeout_output="$TMP_DIR/claude-monitor-timeout-monitor.txt"
 
   setup_workspace "$workspace"
-  mkdir -p "$run_dir"
-  : > "$run_dir/final.md"
-  cat > "$transcript" <<'EOF'
-{"type":"user","message":{"role":"user","content":"Old prompt."}}
-{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Old final."}]}}
-{"type":"system","subtype":"turn_duration"}
-{"type":"user","message":{"role":"user","content":"Review this."}}
-{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I'll inspect."},{"type":"tool_use","id":"toolu_1","name":"Bash","input":{"command":"printf hi"}},{"type":"tool_use","id":"toolu_2","name":"Read","input":{"file_path":"README.md"}}]}}
-EOF
-  {
-    printf 'RUN_ID=active-monitor\n'
-    printf 'SESSION_ID=claude-active-session\n'
-    printf 'TMUX_SESSION=claude-active-tmux\n'
-    printf 'WORKSPACE=%q\n' "$workspace"
-    printf 'RUN_ROOT=%q\n' "$TMP_DIR/claude-runs"
-    printf 'RUN_DIR=%q\n' "$run_dir"
-    printf 'STATUS_FILE=%q\n' "$run_dir/status.env"
-    printf 'FINAL_FILE=%q\n' "$run_dir/final.md"
-    printf 'PANE_FILE=%q\n' "$run_dir/pane.txt"
-    printf 'TRANSCRIPT_FILE=%q\n' "$transcript"
-    printf 'BASE_TRANSCRIPT_LINES=3\n'
-    printf 'HEARTBEAT_SECONDS=1\n'
-    printf 'TIMEOUT_SECONDS=1\n'
-    printf 'STARTUP_WAIT_SECONDS=0\n'
-    printf 'PASTE_SETTLE_SECONDS=0\n'
-    printf 'SUBMIT_KEY=C-m\n'
-  } > "$run_dir/run.env"
+  CLAUDE_CONFIG_DIR="$TMP_DIR/claude-monitor-abandoned-home" PATH="$fakebin:$PATH" \
+    bash "$CLAUDE_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/claude-monitor-abandoned-runs" \
+      --prompt "prepare monitor fixture" \
+      --dry-run \
+      > "$output" 2>&1
 
-  run_monitor "$tool_running_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
-  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected tool-running monitor timeout, got $MONITOR_STATUS"
-  assert_contains "$tool_running_output" "phase=tool-running"
-  assert_contains "$tool_running_output" "last_event=tool_use"
-  assert_contains "$tool_running_output" "last_tool=Read"
-  assert_contains "$tool_running_output" "transcript_lines=5"
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  python3 - "$run_dir/status.json" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+data = json.loads(path.read_text())
+data.update(state="running", health="active", exit_code=None, wrapper_pid=99999999)
+path.write_text(json.dumps(data))
+PY
+  set +e
+  CLAUDE_MONITOR_POLL_SECONDS=1 bash "$run_dir/monitor.sh" > "$monitor_output" 2>&1
+  local status=$?
+  set -e
+  [[ "$status" == "1" ]] || fail "expected abandoned monitor exit 1, got $status"
+  assert_contains "$monitor_output" "monitor=abandoned"
 
-  cat >> "$transcript" <<'EOF'
-{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"hi"}]}}
-EOF
+  python3 - "$run_dir/status.json" "$$" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+data = json.loads(path.read_text())
+data.update(state="running", health="active", exit_code=None, wrapper_pid=int(sys.argv[2]))
+path.write_text(json.dumps(data))
+PY
+  set +e
+  CLAUDE_MONITOR_TIMEOUT_SECONDS=1 CLAUDE_MONITOR_POLL_SECONDS=1 \
+    bash "$run_dir/monitor.sh" > "$timeout_output" 2>&1
+  status=$?
+  set -e
+  [[ "$status" == "124" ]] || fail "expected monitor self-timeout 124, got $status"
+  assert_contains "$timeout_output" "monitor=timed-out"
 
-  run_monitor "$partial_result_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
-  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected partial-result monitor timeout, got $MONITOR_STATUS"
-  assert_contains "$partial_result_output" "phase=tool-running"
-  assert_contains "$partial_result_output" "last_event=tool_result"
-  assert_contains "$partial_result_output" "last_tool=Read"
-  assert_contains "$partial_result_output" "transcript_lines=6"
-
-  cat >> "$transcript" <<'EOF'
-{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_2","content":"README"}]}}
-EOF
-
-  run_monitor "$thinking_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
-  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected thinking monitor timeout, got $MONITOR_STATUS"
-  assert_contains "$thinking_output" "phase=thinking"
-  assert_contains "$thinking_output" "last_event=tool_result"
-  assert_contains "$thinking_output" "last_tool=Read"
-  assert_contains "$thinking_output" "transcript_lines=7"
-  assert_contains "$run_dir/status.env" "state=timeout"
-  assert_contains "$run_dir/status.env" "phase=thinking"
-  assert_contains "$run_dir/status.env" "last_event=tool_result"
-
-  cat >> "$transcript" <<'EOF'
-{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Final from Claude."}]}}
-EOF
-
-  run_monitor "$responding_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
-  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected responding monitor timeout, got $MONITOR_STATUS"
-  assert_contains "$responding_output" "phase=responding"
-  assert_contains "$responding_output" "last_event=assistant_text"
-  assert_contains "$responding_output" "transcript_lines=8"
-  assert_contains "$run_dir/status.env" "assistant_text_seen=true"
-
-  cat >> "$transcript" <<'EOF'
-{"type":"system","subtype":"turn_duration"}
-EOF
-
-  run_monitor "$done_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
-  assert_contains "$done_output" "event=finish state=done exit_code=0 phase=done"
-  assert_contains "$run_dir/status.env" "state=done"
-  assert_contains "$run_dir/status.env" "phase=done"
-  assert_contains "$run_dir/final.md" "Final from Claude."
-
-  pass "Claude tmux monitor reports transcript phase and completion"
+  pass "Claude monitor stops for abandoned wrappers and its own deadline"
 }
 
-test_claude_monitor_stall_excludes_pane() {
+test_claude_reused_run_dir_clears_stale_state() {
   local fakebin="$TMP_DIR/fakebin"
-  local workspace="$TMP_DIR/workspace-claude-stall"
-  local run_dir="$TMP_DIR/claude-stall-monitor"
-  local transcript="$run_dir/transcript.jsonl"
-  local stall_output="$TMP_DIR/claude-stall-monitor-output.txt"
+  local workspace="$TMP_DIR/workspace-claude-reused-run-dir"
+  local run_dir="$TMP_DIR/claude-reused-run-dir"
+  local output="$TMP_DIR/claude-reused-run-dir-output.txt"
 
   setup_workspace "$workspace"
-  mkdir -p "$run_dir"
-  : > "$run_dir/final.md"
-  # A frozen, in-progress turn: a tool_use is pending and never completes, so the
-  # monitor keeps looping (phase=tool-running) until it times out. The transcript
-  # never changes during the run, so the ONLY thing moving is the tmux pane.
-  cat > "$transcript" <<'EOF'
-{"type":"user","message":{"role":"user","content":"Old prompt."}}
-{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Old final."}]}}
-{"type":"system","subtype":"turn_duration"}
-{"type":"user","message":{"role":"user","content":"Run the slow build."}}
-{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_slow","name":"Bash","input":{"command":"make"}}]}}
-EOF
-  {
-    printf 'RUN_ID=stall-monitor\n'
-    printf 'SESSION_ID=claude-stall-session\n'
-    printf 'TMUX_SESSION=claude-stall-tmux\n'
-    printf 'WORKSPACE=%q\n' "$workspace"
-    printf 'RUN_ROOT=%q\n' "$TMP_DIR/claude-runs"
-    printf 'RUN_DIR=%q\n' "$run_dir"
-    printf 'STATUS_FILE=%q\n' "$run_dir/status.env"
-    printf 'FINAL_FILE=%q\n' "$run_dir/final.md"
-    printf 'PANE_FILE=%q\n' "$run_dir/pane.txt"
-    printf 'TRANSCRIPT_FILE=%q\n' "$transcript"
-    printf 'BASE_TRANSCRIPT_LINES=3\n'
-    printf 'HEARTBEAT_SECONDS=1\n'
-    printf 'TIMEOUT_SECONDS=5\n'
-    printf 'STARTUP_WAIT_SECONDS=0\n'
-    printf 'PASTE_SETTLE_SECONDS=0\n'
-    printf 'SUBMIT_KEY=C-m\n'
-  } > "$run_dir/run.env"
+  mkdir -p "$run_dir/child-reports"
+  printf 'stale\n' > "$run_dir/.stalled"
+  printf 'stale\n' > "$run_dir/.hard-timeout"
+  printf 'stale\n' > "$run_dir/child-reports/stale.md"
+  mkfifo "$run_dir/.stdout.pipe" "$run_dir/.stderr.pipe"
 
-  run_monitor "$stall_output" \
-    env "FAKE_TMUX_PANE_COUNTER=$run_dir/pane-counter" "PATH=$fakebin:$PATH" \
-    bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
-  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected stall monitor timeout, got $MONITOR_STATUS"
-  assert_contains "$stall_output" "phase=tool-running"
+  CLAUDE_CONFIG_DIR="$TMP_DIR/claude-reused-run-dir-home" PATH="$fakebin:$PATH" \
+    bash "$CLAUDE_RUN" run \
+      --workspace "$workspace" \
+      --run-dir "$run_dir" \
+      --prompt "fresh run in reused artifact directory" \
+      --heartbeat 1 \
+      --timeout 10 \
+      > "$output" 2>&1
 
-  # The pane must have actually churned across heartbeats, otherwise the test is
-  # not exercising the regression it guards.
-  local pane_ticks
-  pane_ticks="$(cat "$run_dir/pane-counter" 2>/dev/null || printf 0)"
-  [[ "$pane_ticks" -ge 2 ]] || fail "expected pane to churn across heartbeats, got $pane_ticks captures"
+  assert_contains "$run_dir/status.json" '"state": "finished"'
+  assert_not_exists "$run_dir/.stalled"
+  assert_not_exists "$run_dir/.hard-timeout"
+  assert_not_exists "$run_dir/child-reports/stale.md"
 
-  # Despite the churning pane, stalled_for_seconds must climb because the
-  # transcript stopped growing. If the pane ever re-enters the stall fingerprint,
-  # last_progress_at resets every tick and this stays 0.
-  local stalled
-  stalled="$(sed -n 's/.*stalled_for=\([0-9][0-9]*\)s.*/\1/p' "$stall_output" | tail -1)"
-  [[ -n "$stalled" && "$stalled" -ge 1 ]] || \
-    fail "expected stalled_for to grow with a frozen transcript, got '${stalled:-}'"
-
-  pass "Claude tmux monitor stall ignores pane churn and tracks transcript progress"
+  pass "Claude reused run directories clear stale markers, pipes, and child reports"
 }
 
-test_claude_monitor_noid_tool_result_keeps_pending() {
+test_claude_background_writer_does_not_hold_wrapper_open() {
   local fakebin="$TMP_DIR/fakebin"
-  local workspace="$TMP_DIR/workspace-claude-noid"
-  local run_dir="$TMP_DIR/claude-noid-monitor"
-  local transcript="$run_dir/transcript.jsonl"
-  local noid_output="$TMP_DIR/claude-noid-monitor-output.txt"
+  local workspace="$TMP_DIR/workspace-claude-background-writer"
+  local output="$TMP_DIR/claude-background-writer-output.txt"
 
   setup_workspace "$workspace"
-  mkdir -p "$run_dir"
-  : > "$run_dir/final.md"
-  # A tool is pending, then a tool_result arrives with NO tool_use_id. The fix
-  # must NOT clear an arbitrary pending tool: the phase has to stay tool-running
-  # because toolu_a is still outstanding. (Before the fix, the empty id popped a
-  # random pending id and the phase flipped to thinking.)
-  cat > "$transcript" <<'EOF'
-{"type":"user","message":{"role":"user","content":"Old prompt."}}
-{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Old final."}]}}
-{"type":"system","subtype":"turn_duration"}
-{"type":"user","message":{"role":"user","content":"Do work."}}
-{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_a","name":"Bash","input":{"command":"true"}}]}}
-{"type":"user","message":{"role":"user","content":[{"type":"tool_result","content":"finished, but no id"}]}}
-EOF
-  {
-    printf 'RUN_ID=noid-monitor\n'
-    printf 'SESSION_ID=claude-noid-session\n'
-    printf 'TMUX_SESSION=claude-noid-tmux\n'
-    printf 'WORKSPACE=%q\n' "$workspace"
-    printf 'RUN_ROOT=%q\n' "$TMP_DIR/claude-runs"
-    printf 'RUN_DIR=%q\n' "$run_dir"
-    printf 'STATUS_FILE=%q\n' "$run_dir/status.env"
-    printf 'FINAL_FILE=%q\n' "$run_dir/final.md"
-    printf 'PANE_FILE=%q\n' "$run_dir/pane.txt"
-    printf 'TRANSCRIPT_FILE=%q\n' "$transcript"
-    printf 'BASE_TRANSCRIPT_LINES=3\n'
-    printf 'HEARTBEAT_SECONDS=1\n'
-    printf 'TIMEOUT_SECONDS=1\n'
-    printf 'STARTUP_WAIT_SECONDS=0\n'
-    printf 'PASTE_SETTLE_SECONDS=0\n'
-    printf 'SUBMIT_KEY=C-m\n'
-  } > "$run_dir/run.env"
+  CLAUDE_CONFIG_DIR="$TMP_DIR/claude-background-writer-home" FAKE_CLAUDE_BACKGROUND_WRITER=1 \
+    CLAUDE_TERM_GRACE_SECONDS=1 PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/claude-background-writer-runs" \
+      --prompt "do not inherit the stream forever" \
+      --heartbeat 1 \
+      --timeout 10 \
+      > "$output" 2>&1
 
-  run_monitor "$noid_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$run_dir"
-  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected no-id tool_result monitor timeout, got $MONITOR_STATUS"
-  assert_contains "$noid_output" "phase=tool-running"
-  assert_contains "$noid_output" "last_event=tool_result"
-  assert_contains "$noid_output" "transcript_lines=6"
-  assert_not_contains "$noid_output" "phase=thinking"
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_contains "$run_dir/status.json" '"state": "finished"'
 
-  pass "Claude tmux monitor keeps a pending tool when a tool_result has no id"
+  pass "Claude runner closes inherited stream writers after the main process exits"
+}
+
+test_claude_review_denies_direct_edit_tools() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-claude-review"
+  local output="$TMP_DIR/claude-review-output.txt"
+
+  setup_workspace "$workspace"
+  CLAUDE_CONFIG_DIR="$TMP_DIR/claude-review-home" PATH="$fakebin:$PATH" \
+    bash "$CLAUDE_RUN" review \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/claude-review-runs" \
+      --prompt "review without direct edits" \
+      --dry-run \
+      > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_contains "$run_dir/command.txt" "--disallowed-tools Edit\\,Write\\,NotebookEdit"
+  assert_contains "$run_dir/run.env" "READ_ONLY=true"
+
+  pass "Claude review mode denies direct editing tools"
+}
+
+test_claude_child_transcript_activity_prevents_false_stall() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-claude-child-active"
+  local output="$TMP_DIR/claude-child-active-output.txt"
+
+  setup_workspace "$workspace"
+  CLAUDE_CONFIG_DIR="$TMP_DIR/claude-child-active-home" FAKE_CLAUDE_CHILD_MODE=active \
+    PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/claude-child-active-runs" \
+      --read-only \
+      --prompt "wait for one active child" \
+      --heartbeat 1 \
+      --stall-timeout 2 \
+      --report-timeout 2 \
+      --timeout 10 \
+      > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_not_contains "$output" "event=stall"
+  assert_contains "$run_dir/status.json" '"state": "finished"'
+  assert_contains "$run_dir/status.json" '"child_count": 1'
+  assert_contains "$run_dir/status.json" '"completed_children": 1'
+  assert_contains "$run_dir/child-reports/agent-active.md" "child active final"
+
+  pass "Claude child transcript growth counts as meaningful activity"
+}
+
+test_claude_report_pending_stops_and_salvages_child_answer() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-claude-report-pending"
+  local output="$TMP_DIR/claude-report-pending-output.txt"
+
+  setup_workspace "$workspace"
+  set +e
+  CLAUDE_CONFIG_DIR="$TMP_DIR/claude-report-pending-home" FAKE_CLAUDE_CHILD_MODE=pending \
+    PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/claude-report-pending-runs" \
+      --read-only \
+      --prompt "parent never consumes child" \
+      --heartbeat 1 \
+      --stall-timeout 10 \
+      --report-timeout 1 \
+      --timeout 10 \
+      > "$output" 2>&1
+  local status=$?
+  set -e
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  [[ "$status" == "124" ]] || fail "expected report-pending timeout 124, got $status"
+  assert_contains "$output" "event=stall kind=report-pending"
+  assert_contains "$run_dir/status.json" '"state": "stalled"'
+  assert_contains "$run_dir/status.json" '"report_pending": true'
+  assert_contains "$run_dir/child-reports/agent-pending.md" "salvage this child report"
+
+  pass "Claude runner salvages a completed child report when its parent stalls"
 }
 
 test_claude_run_env_is_not_sourced() {
@@ -1199,58 +1166,38 @@ test_claude_run_env_is_not_sourced() {
   local workspace="$TMP_DIR/workspace-claude-malicious"
   local prior="$TMP_DIR/claude-prior"
   local output="$TMP_DIR/claude-malicious-output.txt"
-  local monitor_output="$TMP_DIR/claude-malicious-monitor.txt"
-  local pwned_continue="$TMP_DIR/claude-pwned-continue"
-  local pwned_monitor="$TMP_DIR/claude-pwned-monitor"
+  local pwned="$TMP_DIR/claude-pwned"
 
   setup_workspace "$workspace"
   mkdir -p "$prior"
   {
-    printf 'RUN_ID=malicious\n'
-    printf 'SESSION_ID=%q\n' "safe-claude-session"
-    printf 'TMUX_SESSION=%q\n' "safe-claude-tmux"
+    printf 'SESSION_ID=safe-claude-session\n'
     printf 'WORKSPACE=%q\n' "$workspace"
     printf 'RUN_ROOT=%q\n' "$TMP_DIR/claude-runs"
-    printf 'RUN_DIR=%q\n' "$prior"
-    printf 'STATUS_FILE=%q\n' "$prior/status.env"
-    printf 'FINAL_FILE=%q\n' "$prior/final.md"
-    printf 'STARTUP_WAIT_SECONDS=0\n'
-    printf 'HEARTBEAT_SECONDS=1\n'
-    printf 'TIMEOUT_SECONDS=0\n'
-    printf 'PASTE_SETTLE_SECONDS=0\n'
-    printf 'SUBMIT_KEY=C-m\n'
-    printf 'EVIL=%s\n' "\$(touch $(printf '%q' "$pwned_continue"))"
+    printf 'PERMISSION_MODE=auto\nREAD_ONLY=false\nMODEL=\nEFFORT=\n'
+    printf 'HEARTBEAT_SECONDS=1\nSTALL_TIMEOUT_SECONDS=2\nREPORT_TIMEOUT_SECONDS=1\nTIMEOUT_SECONDS=10\n'
+    printf 'NO_SESSION_PERSISTENCE=false\n'
+    printf 'EVIL=%s\n' "\$(touch $(printf '%q' "$pwned"))"
   } > "$prior/run.env"
-  {
-    printf 'state=dry-run\n'
-    printf 'exit_code=0\n'
-    printf 'EVIL=%s\n' "\$(touch $(printf '%q' "$pwned_monitor"))"
-  } > "$prior/status.env"
 
-  PATH="$fakebin:$PATH" bash "$CLAUDE_RUN" run \
-    --continue-run "$prior" \
-    --prompt "safe follow-up" \
-    --dry-run \
-    > "$output" 2>&1
+  CLAUDE_CONFIG_DIR="$TMP_DIR/claude-malicious-home" PATH="$fakebin:$PATH" \
+    bash "$CLAUDE_RUN" resume \
+      --continue-run "$prior" \
+      --prompt "safe follow-up" \
+      --dry-run \
+      > "$output" 2>&1
 
-  assert_not_exists "$pwned_continue"
+  assert_not_exists "$pwned"
   local run_dir
   run_dir="$(extract_run_dir "$output")"
-  assert_contains "$run_dir/run.env" "SESSION_ID=safe-claude-session"
-  assert_contains "$run_dir/run.env" "TMUX_SESSION=safe-claude-tmux"
+  assert_contains "$run_dir/command.txt" "--resume safe-claude-session"
 
-  run_monitor "$monitor_output" env "PATH=$fakebin:$PATH" bash "$CLAUDE_RUN" monitor --run-dir "$prior"
-  assert_not_exists "$pwned_monitor"
-  assert_contains "$monitor_output" "event=finish state=dry-run exit_code=0"
-
-  pass "Claude tmux runner parses run.env/status.env without executing shell"
+  pass "Claude headless runner parses continuation metadata without sourcing shell"
 }
 
 main() {
   local fakebin="$TMP_DIR/fakebin"
   write_fake_tools "$fakebin"
-  export FAKE_TMUX_LOG="$TMP_DIR/fake-tmux.log"
-
   test_codex_exec_continue_contract
   test_codex_run_dir_file_contract
   test_codex_generate_is_an_exact_run_write_alias
@@ -1269,10 +1216,13 @@ main() {
   test_codex_review_stderr_noise_filtered_from_final
   test_codex_json_stdout_fallback_keeps_final_empty
   test_codex_review_stderr_session_only_keeps_final_empty
-  test_claude_dry_run_continue_contract
-  test_claude_monitor_tracks_transcript_phase
-  test_claude_monitor_stall_excludes_pane
-  test_claude_monitor_noid_tool_result_keeps_pending
+  test_claude_stream_and_continue_contract
+  test_claude_monitor_detects_abandoned_wrapper
+  test_claude_reused_run_dir_clears_stale_state
+  test_claude_background_writer_does_not_hold_wrapper_open
+  test_claude_review_denies_direct_edit_tools
+  test_claude_child_transcript_activity_prevents_false_stall
+  test_claude_report_pending_stops_and_salvages_child_answer
   test_claude_run_env_is_not_sourced
 }
 

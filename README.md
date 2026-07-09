@@ -94,7 +94,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **claude** | Run Claude Code CLI with auth and billing checks, tmux-backed TUI delegation, external data-sharing approval handling, session continuation, manual takeover, and non-interactive fallback |
+| **claude** | Run Claude headlessly with transcript-aware liveness, named-subagent reports, durable artifacts, and exact session continuation. |
 | **visualize** | Generate self-contained HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
 
 ### Languages & Platforms
