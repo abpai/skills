@@ -589,6 +589,16 @@ fi
 if (( REPORT_SECONDS < 1 )); then
   REPORT_SECONDS=30
 fi
+# The monitor trusts status.json for state, but a SIGKILLed wrapper never
+# writes a terminal state. Detect that via wrapper_pid liveness, and bound the
+# monitor itself so a frozen status file can never hang a caller forever.
+MONITOR_TIMEOUT="${CODEX_EXEC_MONITOR_TIMEOUT_SECONDS:-3600}"
+case "$MONITOR_TIMEOUT" in
+  ''|*[!0-9]*)
+    echo "[codex-exec] monitor=error detail=\"CODEX_EXEC_MONITOR_TIMEOUT_SECONDS must be an integer\"" >&2
+    exit 2
+    ;;
+esac
 
 # This monitor parses status.env with python3 (see below). Fail loudly instead
 # of polling forever if the interpreter is missing at monitor runtime.
@@ -617,6 +627,7 @@ while true; do
   stdout_log=""
   stderr_log=""
   final_message=""
+  wrapper_pid=""
 
   if [[ -f "$STATUS_JSON" ]]; then
     while IFS=$'\t' read -r key value; do
@@ -628,6 +639,7 @@ while true; do
         stdout_log) stdout_log="$value" ;;
         stderr_log) stderr_log="$value" ;;
         final_message) final_message="$value" ;;
+        wrapper_pid) wrapper_pid="$value" ;;
       esac
     done < <(python3 - "$STATUS_JSON" <<'PY'
 import json
@@ -635,7 +647,7 @@ import sys
 from pathlib import Path
 
 data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-for key in ("state", "health", "exit_code", "elapsed_seconds", "stdout_log", "stderr_log", "final_message"):
+for key in ("state", "health", "exit_code", "elapsed_seconds", "stdout_log", "stderr_log", "final_message", "wrapper_pid"):
     value = data.get(key, "")
     print(f"{key}\t{value}")
 PY
@@ -652,8 +664,9 @@ PY
         stdout_log) stdout_log="$value" ;;
         stderr_log) stderr_log="$value" ;;
         final_message) final_message="$value" ;;
+        wrapper_pid) wrapper_pid="$value" ;;
       esac
-    done < <(python3 - "$STATUS_FILE" state health exit_code elapsed_seconds stdout_log stderr_log final_message <<'PY'
+    done < <(python3 - "$STATUS_FILE" state health exit_code elapsed_seconds stdout_log stderr_log final_message wrapper_pid <<'PY'
 import shlex
 import sys
 from pathlib import Path
@@ -703,6 +716,17 @@ PY
       exit 1
       ;;
   esac
+
+  if [[ "$wrapper_pid" =~ ^[0-9]+$ ]] && ! kill -0 "$wrapper_pid" 2>/dev/null; then
+    printf '[codex-exec] monitor=abandoned state=%s wrapper_pid=%s detail=wrapper-exited-without-terminal-status\n' \
+      "$state" "$wrapper_pid" >&2
+    exit 1
+  fi
+
+  if (( MONITOR_TIMEOUT > 0 && now - started_at >= MONITOR_TIMEOUT )); then
+    printf '[codex-exec] monitor=timed-out timeout=%ss status=%q\n' "$MONITOR_TIMEOUT" "$STATUS_JSON" >&2
+    exit 124
+  fi
 
   if (( now - last_report >= REPORT_SECONDS )); then
     stdout_lines="$(line_count "$stdout_log")"
@@ -872,13 +896,15 @@ RETRY_SAFE="true"
 if [[ "$SANDBOX" != "read-only" ]] || (( ${#CONFIG_ARGS[@]} > 0 || ${#EXTRA_ARGS[@]} > 0 )); then
   RETRY_SAFE="false"
 fi
-for arg in "${COMMON_ARGS[@]}"; do
-  case "$arg" in
-    --dangerously-bypass-approvals-and-sandbox|--dangerously-bypass-hook-trust)
-      RETRY_SAFE="false"
-      ;;
-  esac
-done
+if (( ${#COMMON_ARGS[@]} > 0 )); then
+  for arg in "${COMMON_ARGS[@]}"; do
+    case "$arg" in
+      --dangerously-bypass-approvals-and-sandbox|--dangerously-bypass-hook-trust)
+        RETRY_SAFE="false"
+        ;;
+    esac
+  done
+fi
 
 {
   printf 'cwd='
@@ -951,13 +977,16 @@ write_status() {
   stderr_lines="$(line_count "$STDERR_LOG")"
   event_lines="$(line_count "$EVENTS_LOG")"
   local status_tmp
-  status_tmp="$STATUS_FILE.tmp.${BASHPID:-$$}"
+  # mktemp keeps concurrent writers (heartbeat subshell vs. main shell) from
+  # sharing one temp path; BASHPID is unavailable on macOS bash 3.2.
+  status_tmp="$(mktemp "$STATUS_FILE.tmp.XXXXXX")"
   {
     printf 'run_id=%q\n' "$RUN_ID"
     printf 'mode=%q\n' "$MODE"
     printf 'state=%q\n' "$state"
     printf 'health=%q\n' "$health"
     printf 'pid=%q\n' "${CHILD_PID:-}"
+    printf 'wrapper_pid=%q\n' "$$"
     printf 'exit_code=%q\n' "$exit_code"
     printf 'elapsed_seconds=%q\n' "$elapsed"
     printf 'stalled_for_seconds=%q\n' "$stalled_for"
@@ -984,7 +1013,7 @@ write_status() {
   } > "$status_tmp"
   mv "$status_tmp" "$STATUS_FILE"
   python3 - "$STATUS_JSON" "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$progress_source" \
-    "$stdout_lines" "$stderr_lines" "$event_lines" "${CHILD_PID:-}" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" \
+    "$stdout_lines" "$stderr_lines" "$event_lines" "${CHILD_PID:-}" "$$" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" \
     "$STDOUT_LOG" "$STDERR_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" "$FINAL_SOURCE" <<'PY'
 import json
 import os
@@ -992,7 +1021,7 @@ import sys
 from pathlib import Path
 
 (path, state, health, exit_code, elapsed, stalled_for, progress_source,
- stdout_lines, stderr_lines, event_lines, pid, session_id, workspace, run_dir,
+ stdout_lines, stderr_lines, event_lines, pid, wrapper_pid, session_id, workspace, run_dir,
  stdout_log, stderr_log, events_log, final_message, final_source) = sys.argv[1:]
 
 def number(value):
@@ -1009,6 +1038,7 @@ data = {
     "stderr_lines": number(stderr_lines) or 0,
     "event_lines": number(event_lines) or 0,
     "pid": number(pid),
+    "wrapper_pid": number(wrapper_pid),
     "session_id": session_id,
     "workspace": workspace,
     "run_dir": run_dir,
