@@ -503,6 +503,33 @@ test_codex_monitor_status_is_not_sourced() {
   pass "codex-exec monitor parses status.env without executing shell"
 }
 
+test_codex_reused_run_dir_clears_stale_markers() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-stale-markers"
+  local output="$TMP_DIR/codex-stale-markers-output.txt"
+  local run_dir="$TMP_DIR/codex-stale-markers-run"
+
+  setup_workspace "$workspace"
+  mkdir -p "$run_dir"
+  printf 'silent\n' > "$run_dir/.stalled"
+  : > "$run_dir/.hard-timeout"
+
+  PATH="$fakebin:$PATH" bash "$CODEX_RUN" exec \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/codex-stale-markers-runs" \
+    --run-dir "$run_dir" \
+    --prompt "reuse run dir after a stalled attempt" \
+    --sandbox read-only \
+    > "$output" 2>&1
+
+  assert_contains "$run_dir/status.env" "state=finished"
+  assert_contains "$run_dir/status.json" '"state": "finished"'
+  assert_not_exists "$run_dir/.stalled"
+  assert_not_exists "$run_dir/.hard-timeout"
+
+  pass "codex-exec clears stale stall/timeout markers when a run dir is reused"
+}
+
 test_codex_monitor_detects_abandoned_wrapper() {
   local fakebin="$TMP_DIR/fakebin"
   local workspace="$TMP_DIR/workspace-codex-monitor-abandoned"
@@ -1229,6 +1256,7 @@ main() {
   test_codex_generate_is_an_exact_run_write_alias
   test_codex_continue_env_is_not_sourced
   test_codex_monitor_status_is_not_sourced
+  test_codex_reused_run_dir_clears_stale_markers
   test_codex_monitor_detects_abandoned_wrapper
   test_codex_stall_retries_once_without_workspace_changes
   test_codex_monitor_waits_through_stall_retry
