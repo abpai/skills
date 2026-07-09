@@ -31,10 +31,10 @@
     },
     {
       "name": "composer",
-      "description": "Run Cursor Composer as a planner-led implementation or review worker without the Pi harness.",
+      "description": "Run Cursor Agent headlessly with liveness artifacts, read-only review, and exact session continuation.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "composer" },
       "category": "productivity",
-      "keywords": ["cursor", "composer", "implementation", "review", "subagents", "worktree", "pr"]
+      "keywords": ["cursor", "composer", "headless", "implementation", "review", "liveness", "resume"]
     },
     {
       "name": "engineering",

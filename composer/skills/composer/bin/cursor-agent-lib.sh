@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Shared Cursor Agent CLI helpers for composer scripts.
-# Source this file; do not execute directly.
-
-cursor_agent_lib_loaded="${cursor_agent_lib_loaded:-}"
-
-if [[ -n "$cursor_agent_lib_loaded" ]]; then
-  return 0 2>/dev/null || exit 0
-fi
-cursor_agent_lib_loaded=1
+# Source this file from composer-run.sh.
 
 CURSOR_AGENT_BIN=""
 RESOLVED_CURSOR_AUTH=""
 ACTIVE_CURSOR_KEY=""
+
+resolve_agent_bin() {
+  if command -v agent >/dev/null 2>&1; then
+    CURSOR_AGENT_BIN="agent"
+  elif command -v cursor-agent >/dev/null 2>&1; then
+    CURSOR_AGENT_BIN="cursor-agent"
+  else
+    return 1
+  fi
+}
 
 strip_quotes() {
   local value="$1"
@@ -24,124 +26,37 @@ strip_quotes() {
   printf '%s' "$value"
 }
 
-redact() {
-  sed -E \
-    -e 's/(sk-[A-Za-z0-9_-]{8})[A-Za-z0-9_-]+/\1…/g' \
-    -e 's/(crsr_[A-Za-z0-9_-]{8})[A-Za-z0-9_-]+/\1…/g' \
-    -e 's/(CURSOR_API_KEY=)[^[:space:]]+/\1[redacted]/Ig' \
-    -e 's/(api[-_ ]?key[:=][[:space:]]*)[^[:space:]]+/\1[redacted]/Ig'
-}
-
-resolve_agent_bin() {
-  if command -v agent >/dev/null 2>&1; then
-    CURSOR_AGENT_BIN="agent"
-    return 0
-  fi
-  if command -v cursor-agent >/dev/null 2>&1; then
-    CURSOR_AGENT_BIN="cursor-agent"
-    return 0
-  fi
-  return 1
-}
-
-load_env_file() {
-  local file="$1"
-  [[ -f "$file" ]] || return 1
+load_explicit_env_file() {
+  local file="$1" line
+  [[ -f "$file" ]] || { echo "[FAIL] Cursor env file not found: $file" >&2; return 1; }
   while IFS= read -r line || [[ -n "$line" ]]; do
-    case "$line" in
-      ''|'#'*) continue ;;
-    esac
     if [[ "$line" == CURSOR_API_KEY=* ]]; then
       ACTIVE_CURSOR_KEY="$(strip_quotes "${line#CURSOR_API_KEY=}")"
-      return 0
+      [[ -n "$ACTIVE_CURSOR_KEY" ]] && return 0
     fi
   done < "$file"
-  return 1
-}
-
-find_cursor_api_key() {
-  local workspace="${1:-$PWD}"
-  local env_file="${2:-}"
-  local env_file_explicit="${3:-false}"
-  local auth_mode="${4:-auto}"
-
-  ACTIVE_CURSOR_KEY=""
-
-  if [[ -n "${CURSOR_API_KEY:-}" ]]; then
-    ACTIVE_CURSOR_KEY="$CURSOR_API_KEY"
-    return 0
-  fi
-
-  if [[ "$env_file_explicit" == "true" ]]; then
-    if load_env_file "$env_file"; then
-      return 0
-    fi
-    echo "[FAIL] explicit env file did not contain CURSOR_API_KEY: $env_file" >&2
-    return 1
-  fi
-
-  if [[ -n "$env_file" ]]; then
-    if load_env_file "$env_file"; then
-      return 0
-    fi
-    if [[ "$auth_mode" == "api-key" ]]; then
-      echo "[FAIL] CURSOR_ENV_FILE did not contain CURSOR_API_KEY: $env_file" >&2
-      return 1
-    fi
-  fi
-
-  local dir
-  dir="$(cd "$workspace" 2>/dev/null && pwd -P || printf '%s' "$workspace")"
-  while :; do
-    if load_env_file "$dir/.env"; then
-      return 0
-    fi
-    local next
-    next="$(dirname "$dir")"
-    [[ "$next" == "$dir" ]] && break
-    dir="$next"
-  done
-
+  echo "[FAIL] explicit Cursor env file has no CURSOR_API_KEY: $file" >&2
   return 1
 }
 
 check_browser_authenticated() {
-  local bin="${1:-$CURSOR_AGENT_BIN}"
-  local status_output text_status
-
-  [[ -n "$bin" ]] || return 1
-
-  # Prefer the structured probe and treat valid JSON as authoritative. A
-  # logged-out CLI prints "Not logged in", whose substring "logged in" would
-  # otherwise pass a naive positive grep — so never fall through to text when
-  # JSON parsed cleanly.
-  status_output="$(mktemp)"
-  if (unset CURSOR_API_KEY; "$bin" status --format json >"$status_output" 2>/dev/null) &&
-    command -v jq >/dev/null 2>&1 &&
-    jq -e 'type == "object"' "$status_output" >/dev/null 2>&1; then
-    if jq -e '
-      (.authenticated == true)
-      or (.isAuthenticated == true)
-      or (.auth.authenticated == true)
-      or (.status == "authenticated")
-    ' "$status_output" >/dev/null 2>&1; then
-      rm -f "$status_output"
-      return 0
-    fi
-    rm -f "$status_output"
-    return 1
-  fi
-  rm -f "$status_output"
-
-  # Text fallback only when JSON/jq is unavailable. Reject explicit negatives
-  # before matching positives so "Not logged in" / "unauthenticated" don't pass.
-  text_status="$(unset CURSOR_API_KEY; "$bin" status 2>/dev/null)"
-  if printf '%s\n' "$text_status" | grep -Eiq 'not (logged in|signed in|authenticated)|unauthenticated|logged out|signed out'; then
-    return 1
-  fi
-  if printf '%s\n' "$text_status" | grep -Eiq 'logged in|signed in|authenticated'; then
+  local output
+  output="$(mktemp)"
+  if (unset CURSOR_API_KEY; "$CURSOR_AGENT_BIN" status --format json > "$output" 2>/dev/null) &&
+    python3 - "$output" <<'PY'
+import json, sys
+try:
+    data = json.load(open(sys.argv[1]))
+except (OSError, json.JSONDecodeError):
+    raise SystemExit(1)
+ok = data.get("authenticated") is True or data.get("isAuthenticated") is True or data.get("status") == "authenticated"
+raise SystemExit(0 if ok else 1)
+PY
+  then
+    rm -f "$output"
     return 0
   fi
+  rm -f "$output"
   return 1
 }
 
@@ -149,80 +64,43 @@ print_cursor_auth_help() {
   cat >&2 <<'EOF'
 Cursor Agent CLI is not authenticated.
 
-Use one of:
-
-  agent login
-
-or set a key in the environment (or a file via CURSOR_ENV_FILE / --env-file):
-
-  export CURSOR_API_KEY=...
-
-Then rerun this command.
+Run `agent login`, export CURSOR_API_KEY, or pass an explicit key file with
+`--env-file PATH` / CURSOR_ENV_FILE. Workspace and ancestor .env files are not
+searched.
 EOF
 }
 
 resolve_cursor_auth() {
-  local auth_mode="${1:-auto}"
-  local workspace="${2:-$PWD}"
-  local env_file="${3:-}"
-  local env_file_explicit="${4:-false}"
-
+  local mode="${1:-auto}" env_file="${2:-}"
   RESOLVED_CURSOR_AUTH=""
   ACTIVE_CURSOR_KEY=""
+  resolve_agent_bin || { echo "[FAIL] Cursor Agent CLI not found (agent or cursor-agent)" >&2; return 1; }
 
-  if ! resolve_agent_bin; then
-    echo "[FAIL] Cursor Agent CLI not found. Install it first: curl https://cursor.com/install -fsS | bash" >&2
-    return 1
-  fi
+  case "$mode" in auto|login|api-key) ;; *) echo "[FAIL] --auth must be auto, login, or api-key" >&2; return 1 ;; esac
 
-  case "$auth_mode" in
-    auto|api-key|login) ;;
-    *)
-      echo "[FAIL] --auth must be auto, api-key, or login" >&2
-      return 1
-      ;;
-  esac
-
-  if [[ "$auth_mode" == "login" ]]; then
-    if [[ "$env_file_explicit" == "true" ]]; then
-      echo "[FAIL] --env-file cannot be combined with --auth login" >&2
-      return 1
-    fi
-    if check_browser_authenticated "$CURSOR_AGENT_BIN"; then
-      RESOLVED_CURSOR_AUTH="login"
-      return 0
-    fi
-    print_cursor_auth_help
-    return 1
-  fi
-
-  if [[ "$auth_mode" == "api-key" ]]; then
-    if find_cursor_api_key "$workspace" "$env_file" "$env_file_explicit" "$auth_mode"; then
-      RESOLVED_CURSOR_AUTH="api-key"
-      return 0
-    fi
-    echo "[FAIL] CURSOR_API_KEY not found for --auth api-key." >&2
-    print_cursor_auth_help
-    return 1
-  fi
-
-  # auto: browser login first, CURSOR_API_KEY fallback, hard stop if neither.
-  if check_browser_authenticated "$CURSOR_AGENT_BIN"; then
+  if [[ "$mode" != "api-key" ]] && check_browser_authenticated; then
     RESOLVED_CURSOR_AUTH="login"
     return 0
   fi
-
-  if find_cursor_api_key "$workspace" "$env_file" "$env_file_explicit" "$auth_mode"; then
+  if [[ "$mode" == "login" ]]; then
+    print_cursor_auth_help
+    return 1
+  fi
+  if [[ -n "${CURSOR_API_KEY:-}" ]]; then
+    ACTIVE_CURSOR_KEY="$CURSOR_API_KEY"
     RESOLVED_CURSOR_AUTH="api-key"
     return 0
   fi
-
+  if [[ -n "$env_file" ]] && load_explicit_env_file "$env_file"; then
+    RESOLVED_CURSOR_AUTH="api-key"
+    return 0
+  fi
   print_cursor_auth_help
   return 1
 }
 
 run_with_cursor_auth() {
-  if [[ "$RESOLVED_CURSOR_AUTH" == "api-key" && -n "$ACTIVE_CURSOR_KEY" ]]; then
+  if [[ "$RESOLVED_CURSOR_AUTH" == "api-key" ]]; then
     CURSOR_API_KEY="$ACTIVE_CURSOR_KEY" "$@"
   else
     (unset CURSOR_API_KEY; "$@")
