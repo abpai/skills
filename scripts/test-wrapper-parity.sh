@@ -1142,3 +1142,4 @@ main() {
 }
 
 main "$@"
+bash "$ROOT_DIR/scripts/test-composer-runner.sh"

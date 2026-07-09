@@ -65,7 +65,7 @@ research and review. The debate workflow now lives inside `pi` as
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
 | **codex-exec** | Run OpenAI Codex headlessly for implementation, review, and resumable second opinions with durable liveness artifacts. | Yes |
-| **composer** | Delegate bounded implementation and strict review tasks to Cursor Composer from planner-led workflows. | Yes |
+| **composer** | Run Cursor Agent headlessly with durable liveness, review, and exact session continuation. | Yes |
 | **pi** | Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and `/pi:debate` for structured architecture/product decisions. | Claude-only |
 
 ### Code Workflows
