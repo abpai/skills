@@ -227,6 +227,10 @@ if [[ "${FAKE_CLAUDE_CHILD_MODE:-}" == "active" ]]; then
   printf '{"type":"user","message":{"role":"user","content":"child consumed"}}\n' >> "$parent_transcript"
 elif [[ "${FAKE_CLAUDE_CHILD_MODE:-}" == "pending" ]]; then
   child="$child_dir/agent-pending.jsonl"
+  # Outrun coarse filesystem mtime granularity (ext4 stamps from a ~1-4ms
+  # clock): the wrapper's report_pending needs child mtime strictly newer than
+  # the parent transcript, as it always is for real runs.
+  sleep 0.1
   printf '{"type":"assistant","message":{"role":"assistant","stop_reason":"end_turn","content":[{"type":"text","text":"salvage this child report"}]}}\n' > "$child"
   sleep 60
 fi
