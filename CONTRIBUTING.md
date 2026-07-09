@@ -99,7 +99,7 @@ agent frontmatter, plugin-manifest path safety, and `hooks/hooks.json`
 structure so plugin-only workflows like `pi` stay aligned with current Claude
 plugin conventions. It does not call any external validator.
 
-The wrapper parity test uses fake `codex`, `claude`, and `tmux` binaries to
+The wrapper parity test uses fake `codex` and `claude` binaries to
 verify prompt transport, private run artifacts, generated monitor/continue
 helpers, session continuation, and safe env-file parsing without requiring real
 agent subscriptions in CI.

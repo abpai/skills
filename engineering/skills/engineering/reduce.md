@@ -29,7 +29,7 @@ partner — so neither model's blind spots go unchallenged.
   - Claude orchestrating → partner is **Codex**, via the `codex-exec` skill
     (`codex exec --sandbox read-only`).
   - Codex orchestrating → partner is **Claude**, via the `claude` skill
-    (`claude -p` / the tmux wrapper, no edits).
+    (the headless `claude-run.sh` wrapper around `claude -p`, no edits).
 
 Debate protocol for a step:
 

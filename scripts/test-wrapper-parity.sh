@@ -481,6 +481,58 @@ test_codex_monitor_status_is_not_sourced() {
   pass "codex-exec monitor parses status.env without executing shell"
 }
 
+test_codex_monitor_detects_abandoned_wrapper() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-monitor-abandoned"
+  local output="$TMP_DIR/codex-monitor-abandoned-output.txt"
+  local monitor_output="$TMP_DIR/codex-monitor-abandoned-monitor.txt"
+  local timeout_output="$TMP_DIR/codex-monitor-timeout-monitor.txt"
+
+  setup_workspace "$workspace"
+
+  PATH="$fakebin:$PATH" bash "$CODEX_RUN" exec \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/codex-monitor-abandoned-runs" \
+    --prompt "prepare monitor fixture" \
+    --dry-run \
+    > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  python3 - "$run_dir/status.json" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+data = json.loads(path.read_text())
+data.update(state="running", health="active", exit_code=None, wrapper_pid=99999999)
+path.write_text(json.dumps(data))
+PY
+  set +e
+  CODEX_EXEC_MONITOR_POLL_SECONDS=1 bash "$run_dir/monitor.sh" > "$monitor_output" 2>&1
+  local status=$?
+  set -e
+  [[ "$status" == "1" ]] || fail "expected abandoned monitor exit 1, got $status"
+  assert_contains "$monitor_output" "monitor=abandoned"
+
+  python3 - "$run_dir/status.json" "$$" <<'PY'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+data = json.loads(path.read_text())
+data.update(state="running", health="active", exit_code=None, wrapper_pid=int(sys.argv[2]))
+path.write_text(json.dumps(data))
+PY
+  set +e
+  CODEX_EXEC_MONITOR_TIMEOUT_SECONDS=1 CODEX_EXEC_MONITOR_POLL_SECONDS=1 \
+    bash "$run_dir/monitor.sh" > "$timeout_output" 2>&1
+  status=$?
+  set -e
+  [[ "$status" == "124" ]] || fail "expected monitor self-timeout 124, got $status"
+  assert_contains "$timeout_output" "monitor=timed-out"
+
+  pass "codex-exec monitor stops for abandoned wrappers and its own deadline"
+}
+
 test_codex_stall_retries_once_without_workspace_changes() {
   local fakebin="$TMP_DIR/fakebin"
   local workspace="$TMP_DIR/workspace-codex-stall"
@@ -1120,6 +1172,7 @@ main() {
   test_codex_generate_is_an_exact_run_write_alias
   test_codex_continue_env_is_not_sourced
   test_codex_monitor_status_is_not_sourced
+  test_codex_monitor_detects_abandoned_wrapper
   test_codex_stall_retries_once_without_workspace_changes
   test_codex_monitor_waits_through_stall_retry
   test_codex_write_stall_never_retries

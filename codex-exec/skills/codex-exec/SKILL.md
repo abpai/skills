@@ -114,7 +114,10 @@ Every wrapper run writes:
 Pass `--run-dir-file PATH` for background launches so the caller receives the
 exact run directory without racing global "latest" discovery. The wrapper does
 not daemonize; use the caller's background-process facility, then wait on the
-generated `monitor.sh`.
+generated `monitor.sh`. The monitor is finite: it exits when the wrapper
+process recorded in `status.json` is gone without a terminal state, and after
+`CODEX_EXEC_MONITOR_TIMEOUT_SECONDS` (default 3600, `0` disables) as a
+last-resort bound.
 
 ## Liveness And Recovery
 
