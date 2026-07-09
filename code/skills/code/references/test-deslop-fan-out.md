@@ -49,7 +49,8 @@ fan out the rest once both are true.
 ## Subagent prompt template
 
 Give every agent the **identical** rubric — vary only the file list and a one-line
-area note. Paste the KILL/KEEP/PROTECT rubric from `rubric.md` into the prompt.
+area note. Paste the KILL/KEEP/PROTECT rubric from `test-deslop-rubric.md` into
+the prompt.
 
 ```
 OPINIONATED test deslopification on ONE slice. Work inside: <REPO/WORKTREE ROOT>.

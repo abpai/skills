@@ -2,7 +2,7 @@
 
 Make code materially easier to understand, change, and operate without changing
 its behavior. Prefer restructurings that delete concepts, branches, duplication,
-or needless work over cosmetic cleanup.
+needless work, or low-value tests over cosmetic cleanup.
 
 ## Scope contract
 
@@ -29,6 +29,9 @@ only when that evidence is genuinely ambiguous.
   before acting.
 - A deletion needs reachability evidence. Zero grep hits alone never proves code
   is dead.
+- A test deletion needs coverage evidence. Fewer tests is useful only when the
+  surviving suite preserves the behavior, security, boundary, and contract guards
+  that matter.
 - Stop when the remaining gains are speculative, cosmetic, or disproportionate
   to their review cost.
 
@@ -67,6 +70,9 @@ only when that evidence is genuinely ambiguous.
    public symbol, or its tests. In whole-repository proposal mode, record the
    gauntlet as a proof obligation for a proposed slice; do not perform the full
    census, scorecard, or deletion proof until the user selects that slice.
+5. When the requested scope is a test suite, test directory, or test-pruning
+   request, read `references/test-deslop-rubric.md`. For a large approved scope,
+   also read `references/test-deslop-fan-out.md` before partitioning work.
 
 ## Review passes
 
@@ -88,6 +94,11 @@ Use the passes that fit the evidence; do not manufacture one finding per pass.
    hooks, and external-consumer boundaries. Classify candidates as proven dead,
    test-only, conditional, externally consumable, or unresolved. Reflection,
    string dispatch, `eval`, and generated registration lower confidence.
+6. **Test signal:** remove tests that only re-prove mocks, private call order,
+   constants, duplicate branches, incidental snapshots, or vacuous assertions.
+   Keep and sharpen observable behavior tests. Protect security and identity
+   guards, public wire/CLI/API goldens, no-drift and dependency-boundary gates,
+   compile-time type proofs, and intentional environment-gated test shims.
 
 Every promoted item must cite concrete files/lines and explain the concept or
 work it removes.
@@ -106,6 +117,28 @@ For a narrow scope:
    by the blast radius.
 5. Re-read the final diff and confirm it is smaller in concepts, not merely
    different in style.
+
+### Test-suite scopes
+
+Treat test pruning as simplification, not as a separate command:
+
+1. Inventory the target tests by area and capture before counts. Establish the
+   pristine pass/fail baseline using the invocation CI actually uses; for a small
+   scope, run the narrow CI-equivalent command first, but still finish with the
+   repository gate required by the blast radius.
+2. Apply the rubric autonomously within the named scope. Delete clearly low-value
+   cases or whole files, conservatively clarify survivors, and keep borderline or
+   load-bearing guards with an explicit reason. Do not weaken meaningful
+   assertions just to reduce counts.
+3. For a large named scope, calibrate on one representative slice before scaling.
+   If subagents are used, give them non-overlapping test-file lists and the same
+   rubric; centralize formatting, test execution, staging, and orphan cleanup.
+4. Remove snapshots and fixtures made unreachable by the approved test deletions.
+   Confirm the diff did not spill into production code or shared helpers unless
+   those files were independently inside the requested simplify scope.
+5. Re-run formatting, type checking, and the CI-equivalent suite. The proof is
+   fewer tests with no new failures relative to baseline, plus a before/after
+   count and a short account of what was deliberately protected.
 
 Done means the scoped changes are applied, relevant checks have run, and any
 residual uncertainty is explicit.
@@ -133,8 +166,9 @@ For scoped execution, report:
 1. Applied simplifications.
 2. Findings intentionally skipped and why.
 3. Dead-code/reachability decisions, if any.
-4. Validation commands and results.
-5. Remaining risk.
+4. Test cases/files removed and protected, with before/after counts when relevant.
+5. Validation commands and results.
+6. Remaining risk.
 
 For whole-repository work, return the ranked proposed batch and state clearly
 that no files were modified.

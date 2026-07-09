@@ -28,7 +28,7 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install tutorial@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install composer@abpai-skills
-/plugin install capture-feedback@abpai-skills
+/plugin install decision-worksheet@abpai-skills
 /plugin install pi@abpai-skills
 ```
 
@@ -72,7 +72,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Four focused workflows under `/code`: `prepare-pr --effort low\|medium\|high` carries changes through risk-scaled review, validation, commit, seal, push, and PR update; `simplify [scope]` applies behavior-preserving improvements to a named scope or proposes a ranked whole-repo batch; `understand` writes an HTML map plus a runnable real-code snippet; `handoff` creates a cold-start continuation prompt. |
+| **code** | Four focused workflows under `/code`: `prepare-pr --effort low\|medium\|high` carries changes through risk-scaled review, validation, commit, seal, push, and PR update; `simplify [scope]` applies behavior-preserving improvements—including high-signal test-suite pruning—to a named scope or proposes a ranked whole-repo batch; `understand` writes an HTML map plus a runnable real-code snippet; `handoff` creates a cold-start continuation prompt. |
 | **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
 
 ### Engineering Practices
@@ -86,9 +86,8 @@ research and review. The debate workflow now lives inside `pi` as
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **capture-feedback** | Capture concise agent-behavior corrections into a local shared inbox for later trace review and skill or rule improvements |
-| **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and return the decisions |
-| **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; run `/harness baseline` to inventory and characterize existing production behavior, `/harness doctor` for readiness or diff self-review, and `/harness docs` or `/harness compliant` to repair repo guidance and proof routes |
+| **decision-worksheet** | Capture concise agent-behavior feedback notes, or inventory a real scope and build one self-contained HTML worksheet to ratify or override a recommended verdict per item |
+| **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; use `/harness baseline` to inventory production behavior, `/harness doctor` for readiness or diff self-review, `/harness secure-dependencies` for supply-chain policy, and `/harness compliant` for end-to-end remediation |
 
 ### Tools
 

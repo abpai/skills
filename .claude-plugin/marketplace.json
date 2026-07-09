@@ -66,10 +66,10 @@
     },
     {
       "name": "code",
-      "description": "Four focused workflows under /code: effort-scaled prepare-pr through push, behavior-preserving simplify, cold-start handoff, and understand with HTML plus a runnable real-code snippet.",
+      "description": "Four focused workflows under /code: effort-scaled prepare-pr through push, behavior-preserving simplify with test-suite pruning, cold-start handoff, and understand with HTML plus a runnable real-code snippet.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "prepare-pr", "effort", "review", "commit", "push", "qa", "simplify", "refactor", "dead-code", "understand", "snippet", "html", "handoff", "continuation"]
+      "keywords": ["code", "prepare-pr", "effort", "review", "commit", "push", "qa", "simplify", "refactor", "dead-code", "test-deslop", "testing", "pruning", "understand", "snippet", "html", "handoff", "continuation"]
     },
     {
       "name": "harness",
@@ -80,17 +80,10 @@
     },
     {
       "name": "decision-worksheet",
-      "description": "Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item and return the decisions.",
+      "description": "Capture concise feedback notes, or build evidence-backed HTML worksheets that let users ratify or override recommended verdicts and return the decisions.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "decision-worksheet" },
       "category": "productivity",
-      "keywords": ["decision", "review", "worksheet", "html", "triage", "ratify-override"]
-    },
-    {
-      "name": "capture-feedback",
-      "description": "Capture concise user corrections about agent behavior into a local shared inbox for later trace review and skill or rule improvements.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "capture-feedback" },
-      "category": "productivity",
-      "keywords": ["feedback", "traces", "agent-behavior", "retrospective", "skills", "rules"]
+      "keywords": ["decision", "review", "worksheet", "html", "triage", "feedback", "capture", "ratify-override"]
     },
     {
       "name": "hexagon-audit",
@@ -133,13 +126,6 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "visualize" },
       "category": "tools",
       "keywords": ["visualization", "html", "diagrams", "explanation"]
-    },
-    {
-      "name": "test-deslop",
-      "description": "Opinionated test-suite deslopification — delete low-value tests and leave the survivors high-signal and easy to read. Use to prune redundant, brittle, tautological, or mock-only tests, or to standardize test naming.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "test-deslop" },
-      "category": "code-quality",
-      "keywords": ["testing", "tests", "deslop", "pruning", "code-quality", "refactoring", "monorepo"]
     }
   ]
 }
