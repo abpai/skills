@@ -3,9 +3,9 @@
   "skills": {
     "bun-expert": "1.4.2",
     "capture-feedback": "1.0.1",
-    "claude": "1.6.5",
+    "claude": "2.0.0",
     "cli-design-expert": "1.2.1",
-    "code": "2.1.4",
+    "code": "2.1.5",
     "codex-exec": "2.0.0",
     "composer": "1.4.12",
     "decision-worksheet": "1.0.1",
