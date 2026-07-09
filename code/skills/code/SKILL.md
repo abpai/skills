@@ -1,7 +1,7 @@
 ---
 name: code
-description: "Route coding workflows through one scoped /code command. Use prepare-pr for full PR readiness, review-and-commit for a quick local commit, handoff for continuation prompts, thermo-nuclear for strict read-only audits, walkthrough for mastery checks, understand for traced code maps, dead-code for reachability audits, and secure-dependencies for dependency hardening."
-argument-hint: "[subcommand] [args] - e.g. understand src/api, --prepare-pr, review-and-commit, thermo-nuclear"
+description: "Route coding workflows through one scoped /code command. Use prepare-pr for full PR readiness, review-and-commit for a quick local commit, handoff for continuation prompts, thermo-nuclear for strict read-only audits, walkthrough for mastery checks, understand for traced code maps, dead-code for reachability audits, secure-dependencies for dependency hardening, and test-deslop for pruning low-value tests."
+argument-hint: "[subcommand] [args] - e.g. understand src/api, test-deslop tests, --prepare-pr, review-and-commit"
 # allowed-tools belongs on the umbrella because hidden wrappers never become the
 # active skill; git push and PR writes are still sealed by hooks/gate-before-push.sh.
 allowed-tools: >
@@ -12,9 +12,9 @@ allowed-tools: >
   Bash(pnpm *) Bash(bun *) Bash(npx *) Bash(pytest *)
   Bash(go test *) Bash(cargo test *) Bash(gh *)
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
-  Read Write Edit Grep Glob
+  Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "2.1.4"
+  version: "2.2.0"
 ---
 
 # Code Workflow Pack
@@ -28,7 +28,7 @@ Invoke a workflow by passing its name as the first argument to this umbrella —
 - `code <subcommand> <args>` — e.g. `code understand src/api`
 - `code --<subcommand> <args>` — e.g. `code --understand src/api`
 
-Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `prepare-pr`, `review-and-commit`, `handoff`, `thermo-nuclear`, `walkthrough`, `understand`, `dead-code`, `secure-dependencies`.
+Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `prepare-pr`, `review-and-commit`, `handoff`, `thermo-nuclear`, `walkthrough`, `understand`, `dead-code`, `secure-dependencies`, `test-deslop`.
 
 ## Routing
 
@@ -39,6 +39,7 @@ Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and m
 - Use `understand.md` for tracing a specific code path into a `.understand/<topic>.html` artifact with call graph, concrete values, side effects, and import skeleton.
 - Use `dead-code.md` for conservative dead-code reachability audits and safe removal plans.
 - Use `secure-dependencies.md` for dependency resolution and supply-chain hardening in code repositories.
+- Use `test-deslop.md` for opinionated test-suite pruning: calibrate the deletion bar, baseline CI, remove low-value tests, preserve load-bearing guards, and prove there are no new failures.
 - Use `handoff.md` for creating a focused continuation prompt that lets a new coding session resume with live repo state, file refs, decisions, next steps, and verification.
 - Use `thermo-nuclear.md` for unusually strict baseline-to-PR code quality audits: define scope, protect the working tree, gather structural evidence, and report only evidence-backed findings without editing code or preparing PR artifacts.
 

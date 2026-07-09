@@ -1,27 +1,8 @@
----
-name: test-deslop
-description: >-
-  Opinionated test-suite deslopification — delete low-value tests and leave the
-  survivors high-signal and a joy to read. Use when asked to deslop, prune, clean
-  up, thin, or "remove low-value" tests; cut redundant, brittle, tautological, or
-  mock-only tests; or standardize test naming across a codebase or monorepo.
-allowed-tools:
-  - Read
-  - Glob
-  - Grep
-  - Bash
-  - Edit
-  - Write
-  - AskUserQuestion
-  - Agent
-license: MIT
-metadata:
-  author: Andy Pai
-  version: "1.0.0"
-  tags: "testing tests deslop pruning code-quality refactoring monorepo"
----
-
 # Test Deslop
+
+This is the test-suite pruning module in the `code` workflow pack. Claude users
+can invoke `/code:test-deslop`; Codex users can ask for `code test-deslop` or a
+natural-language test-deslop request.
 
 Make a test suite high-signal: delete tests that don't earn their keep, and leave
 the survivors easy to read. "Slop" is test code that adds maintenance weight without
@@ -54,9 +35,15 @@ editing. These choices change the whole shape of the work:
 Then ground the request: count the test files and lines, and map them by area, so
 the plan is sized to reality, not a guess.
 
+If the approval model is **ratify a worksheet first** or the user asks for a
+dry run, stay read-only: do not edit, delete, format, stage, commit, or run a
+long CI baseline unless the user explicitly asked for it. Produce the
+evidence-backed worksheet and mark the CI baseline as the first execution step
+after approval.
+
 ## The bar
 
-Full catalog with examples in `references/rubric.md`. The short version:
+Full catalog with examples in `references/test-deslop-rubric.md`. The short version:
 
 **KILL** a test case (or the whole file if every case is low-value) when it is:
 
@@ -93,9 +80,12 @@ would mean*.
 
 ## Workflow
 
-1. **Baseline first.** Run the suite exactly the way CI does and capture the
-   pass/fail set. Your finish line is "no *new* failures and fewer tests," not "all
-   green" — pre-existing failures are not yours to fix here.
+1. **Baseline first.** Before executing approved edits, run the suite exactly the way CI does and capture the
+   pass/fail set. For a scoped pilot, use the narrowest command that is already part
+   of the CI-equivalent lane for that scope; if you cannot prove one, use the full
+   CI-equivalent command. Before finishing, run the full CI-equivalent gate. Your
+   finish line is "no *new* failures and fewer tests," not "all green" —
+   pre-existing failures are not yours to fix here.
 2. **Learn how the suite actually runs.** Whole-repo run vs per-package/per-file?
    A package-subset run can surface pre-existing order-dependent failures that the
    whole-repo CI run doesn't — the CI invocation is the source of truth. Don't chase
@@ -115,7 +105,7 @@ would mean*.
    contention across concurrent agents. Agents edit only the test files assigned
    to their slice, using the repo's convention (`*.test.ts`, `*.spec.ts`,
    `*.test.tsx`, etc.); never source, the code-under-test, or shared helpers.
-   Template in `references/fan-out.md`.
+   Template in `references/test-deslop-fan-out.md`.
 7. **Clean up orphans.** Snapshot files with no remaining `toMatchSnapshot` calls;
    fixtures left unused by deletions.
 8. **Verify.** Formatter check, typecheck (catches imports orphaned by prunes), then

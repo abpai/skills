@@ -28,7 +28,7 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install tutorial@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install composer@abpai-skills
-/plugin install capture-feedback@abpai-skills
+/plugin install decision-worksheet@abpai-skills
 /plugin install pi@abpai-skills
 ```
 
@@ -72,7 +72,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under one `/code` umbrella with subcommands (e.g. `/code prepare-pr`, `/code review-and-commit`): `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, commits, push, and PR update) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes walkthrough (teach a system to verified mastery), understand, dead-code, secure-dependencies, handoff, and thermo-nuclear (strict baseline-to-PR structural audit) |
+| **code** | Groups common code workflows under one `/code` umbrella with subcommands (e.g. `/code prepare-pr`, `/code review-and-commit`, `/code test-deslop`): `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, commits, push, and PR update) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes walkthrough, understand, dead-code, secure-dependencies, test-deslop, handoff, and thermo-nuclear |
 | **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
 
 ### Engineering Practices
@@ -86,8 +86,7 @@ research and review. The debate workflow now lives inside `pi` as
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **capture-feedback** | Capture concise agent-behavior corrections into a local shared inbox for later trace review and skill or rule improvements |
-| **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and return the decisions |
+| **decision-worksheet** | Capture concise agent-behavior feedback notes, or inventory a real scope and build one self-contained HTML worksheet to ratify or override a recommended verdict per item |
 | **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; run a workflow with `/harness docs` (create progressive-disclosure repo docs) or `/harness doctor` (audit docs, `AGENTS.md`, glossary/todo specs, domain maps, validation routes, and Harness Doctor findings) |
 
 ### Tools
