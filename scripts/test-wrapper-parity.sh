@@ -507,9 +507,11 @@ data = json.loads(path.read_text())
 data.update(state="running", health="active", exit_code=None, wrapper_pid=99999999)
 path.write_text(json.dumps(data))
 PY
-  run_monitor "$monitor_output" \
-    env CODEX_EXEC_MONITOR_POLL_SECONDS=1 bash "$run_dir/monitor.sh"
-  [[ "$MONITOR_STATUS" == "1" ]] || fail "expected abandoned monitor exit 1, got $MONITOR_STATUS"
+  set +e
+  CODEX_EXEC_MONITOR_POLL_SECONDS=1 bash "$run_dir/monitor.sh" > "$monitor_output" 2>&1
+  local status=$?
+  set -e
+  [[ "$status" == "1" ]] || fail "expected abandoned monitor exit 1, got $status"
   assert_contains "$monitor_output" "monitor=abandoned"
 
   python3 - "$run_dir/status.json" "$$" <<'PY'
@@ -520,10 +522,12 @@ data = json.loads(path.read_text())
 data.update(state="running", health="active", exit_code=None, wrapper_pid=int(sys.argv[2]))
 path.write_text(json.dumps(data))
 PY
-  run_monitor "$timeout_output" \
-    env CODEX_EXEC_MONITOR_TIMEOUT_SECONDS=1 CODEX_EXEC_MONITOR_POLL_SECONDS=1 \
-    bash "$run_dir/monitor.sh"
-  [[ "$MONITOR_STATUS" == "124" ]] || fail "expected monitor self-timeout 124, got $MONITOR_STATUS"
+  set +e
+  CODEX_EXEC_MONITOR_TIMEOUT_SECONDS=1 CODEX_EXEC_MONITOR_POLL_SECONDS=1 \
+    bash "$run_dir/monitor.sh" > "$timeout_output" 2>&1
+  status=$?
+  set -e
+  [[ "$status" == "124" ]] || fail "expected monitor self-timeout 124, got $status"
   assert_contains "$timeout_output" "monitor=timed-out"
 
   pass "codex-exec monitor stops for abandoned wrappers and its own deadline"
