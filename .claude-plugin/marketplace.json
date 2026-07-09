@@ -24,10 +24,10 @@
     },
     {
       "name": "codex-exec",
-      "description": "Run the Codex CLI for non-interactive coding work. Second opinions, adversarial review, and multi-model consensus.",
+      "description": "Run Codex headlessly for implementation, review, and resumable second opinions with durable liveness artifacts.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "codex-exec" },
       "category": "productivity",
-      "keywords": ["codex", "openai", "multi-model", "review"]
+      "keywords": ["codex", "openai", "implementation", "review", "liveness", "resume"]
     },
     {
       "name": "composer",
