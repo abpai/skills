@@ -130,6 +130,11 @@ once only for read-only work; write-capable prompts are never replayed
 automatically. A second stall ends with state `stalled` and exit code 124,
 preserving all artifacts for diagnosis.
 
+Read-only here means the filesystem sandbox. If the Codex config exposes
+side-effectful MCP tools or hooks, a replayed prompt can repeat those side
+effects; pass `--stall-timeout 0` for such prompts and supervise via
+`monitor.sh` instead.
+
 `--timeout` is a hard child-process deadline, not a monitor-detach operation.
 Use `--stall-timeout 0` or `--timeout 0` only when another supervisor owns that
 limit.
