@@ -256,6 +256,19 @@ Code, tests, and runtime behavior are the source of truth. Docs route you to the
 
 Adapt sections to the repo (add earned-surface links only when those surfaces exist). Make `CLAUDE.md` a shim whose content is the single import line `@AGENTS.md` (Claude Code's import syntax — a prose "see AGENTS.md" does not reliably load the file). Claude Code reads only `CLAUDE.md`, other agents read `AGENTS.md`; the shim keeps one source of truth.
 
+If `docs/BEHAVIOR_INVENTORY.md` or `docs/BEHAVIOR_LEDGER.md` exists, add a tiny
+route to the router, not a long explanation:
+
+```md
+- Behavior inventory: `docs/BEHAVIOR_INVENTORY.md`
+- Behavior ledger: `docs/BEHAVIOR_LEDGER.md`
+- Before changing covered behavior, run `harness doctor diff` and the affected
+  ledger proof commands.
+```
+
+Do not create these files from `docs.md`; `baseline.md` owns behavior inventory
+and ledger creation. `docs.md` only routes to them when they exist.
+
 #### AGENTS line gate
 
 Every durable **rule** line must pass all six tests; otherwise move or delete it per step 2. Grounding lines are judged by the grounding gate (Rules versus grounding, above) instead — do not delete grounding for failing the Operational test.

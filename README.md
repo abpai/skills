@@ -88,7 +88,7 @@ research and review. The debate workflow now lives inside `pi` as
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
 | **capture-feedback** | Capture concise agent-behavior corrections into a local shared inbox for later trace review and skill or rule improvements |
 | **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and return the decisions |
-| **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; run a workflow with `/harness docs` (create progressive-disclosure repo docs) or `/harness doctor` (audit docs, `AGENTS.md`, glossary/todo specs, domain maps, validation routes, and Harness Doctor findings) |
+| **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; run `/harness baseline` to inventory and characterize existing production behavior, `/harness doctor` for readiness or diff self-review, and `/harness docs` or `/harness compliant` to repair repo guidance and proof routes |
 
 ### Tools
 
@@ -151,8 +151,10 @@ abpai/skills/
 ├── harness/                   ← grouped agent-harness workflows
 │   └── skills/
 │       ├── harness/           ← umbrella skill (/harness) + flat modules
+│       │   ├── baseline.md    ← production behavior-baseline workflow
 │       │   ├── docs.md        ← progressive-disclosure docs workflow
-│       │   └── doctor.md      ← Harness Doctor audit workflow
+│       │   └── doctor.md      ← Harness Doctor audit and diff-review workflow
+│       ├── baseline/          ← /harness:baseline wrapper
 │       ├── doctor/            ← /harness:doctor wrapper
 │       └── docs/              ← /harness:docs wrapper
 ├── pi/                        ← intentional Claude-only exception

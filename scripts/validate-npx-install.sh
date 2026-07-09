@@ -40,7 +40,10 @@ if ! "${SKILLS_CMD[@]}" --version >/dev/null 2>&1; then
   exit 0
 fi
 
-mapfile -t SKILL_FILES < <(find . -name SKILL.md -type f -not -path './.git/*' | sort)
+SKILL_FILES=()
+while IFS= read -r skill_file; do
+  SKILL_FILES+=("$skill_file")
+done < <(find . -name SKILL.md -type f -not -path './.git/*' | sort)
 
 if [[ ${#SKILL_FILES[@]} -eq 0 ]]; then
   echo "No SKILL.md files found."

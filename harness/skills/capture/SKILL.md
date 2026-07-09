@@ -4,8 +4,8 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: "Route behavior-capture (characterization safety net) work to the capture module."
-argument-hint: "[behavior to pin before change]"
+description: "Route scoped behavior-capture (characterization safety net) work to the capture module."
+argument-hint: "[behavior to pin before change or baseline row]"
 ---
 
 # /harness:capture
@@ -17,6 +17,7 @@ the user input.
 2. Treat `$ARGUMENTS` as the behavior surface to pin before change.
 3. Follow the module's workflow and stop if the module cannot be read.
 4. Preserve the wrapper invariant: capture what the code *does*, not what it
-   *should* do, and confirm the net is green against the unchanged code.
+   *should* do, confirm the net is green against the unchanged code, and follow
+   the shared characterization rules.
 
 User input: $ARGUMENTS

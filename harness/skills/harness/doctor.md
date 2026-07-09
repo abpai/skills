@@ -2,14 +2,18 @@
 
 Audit how ready a repo is for agent-driven development and turn findings into next actions. Verification surfaces are weighted above doc shape: a repo with runnable proofs and a thin router outscores a repo with a beautiful docs tree and no checks.
 
-Use this workflow when the user asks to run Harness Doctor, score repo readiness, audit docs or `AGENTS.md`, check the spec contract, find stale or missing agent guidance, or decide what guidance to keep, move, or delete.
+Use this workflow when the user asks to run Harness Doctor, score repo readiness,
+audit docs or `AGENTS.md`, check the spec contract, review behavior-baseline
+inventory/ledger health, run diff-scoped self-review for an agent handoff, find
+stale or missing agent guidance, or decide what guidance to keep, move, or
+delete.
 
 Readiness scoring of this kind is experimental — explanations matter more than the number, and the audit must not reward scaffolding for its own sake: an empty `docs/domains/` tree is a finding, not a point.
 
 ## Core split
 
 - `harness:docs` (`docs.md`) is the canonical source for the shared concepts: enforcement hierarchy, spec contract shape, AGENTS line gate, grounding gate, nested AGENTS decision test, Keep/Move/Delete verdicts, demonstrated-need evidence, budgets. This module applies them as audit dimensions — when judging, follow the `docs.md` definitions; deterministic symptom lists are kept local here for executability.
-- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks (the `docs-structure/*` rule family): files, routes, spec-contract existence and sections, links, byte/line budgets, banned paths, `STRUCTURE.md`, the `CLAUDE.md` shim. This module never reimplements them — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
+- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks (the `docs-structure/*` rule family): files, routes, spec-contract existence and sections, behavior inventory/ledger parseability and ID integrity, links, byte/line budgets, banned paths, `STRUCTURE.md`, the `CLAUDE.md` shim. This module never reimplements them — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
 - Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract, whether a nested grounding file still matches the code it describes (per the `docs.md` grounding gate).
 
 Do not add scanner scripts to product repos. A product repo may keep stable docs plus optional `harness.config.ts`; scanner output stays temporary.
@@ -25,6 +29,18 @@ npx @andypai/harness-doctor@latest --json --verbose --diff
 `npx …@latest` executes whatever the registry serves at run time — confirm with the user before the first run in a session and record the resolved version in the proof section. If diff mode is unavailable or the user asks for a full audit, drop `--diff`.
 
 If the CLI is unavailable (no network, no `npx`), follow the Scanner unavailable section below — warn, degrade, and never hand-run the deterministic rule family. The scanner owns deterministic facts; this module adds command execution, spec-contract alignment, and semantic judgment on top.
+
+For an agent self-review before final handoff, use diff scope:
+
+```bash
+harness-doctor --json --verbose --diff
+```
+
+Then run this module's diff review: map changed files to
+`docs/BEHAVIOR_INVENTORY.md` entry points and `docs/BEHAVIOR_LEDGER.md` test
+paths, require the affected ledger commands to run, and flag source changes that
+have no matched behavior proof or explicit gap. Diff-scoped runs emit findings
+and required proof commands only; they do not compute a full readiness score.
 
 The scanner also emits its own numeric `score`/`scoreLabel` (a penalty count, `100 − 2·errors − 1·warnings`). That is **not** the readiness score and shares its 0-100 scale by coincidence only — a raw pre-scoping run is dominated by false-positive noise and is unreliable as a verdict. Until the two converge (the scanner is slated to emit per-dimension deterministic sub-signals this module's D1-D7 rubric consumes), treat the scanner number as a noise indicator, and report the **weighted D1-D7 score below** as the readiness number. Never surface the scanner's raw penalty score to the user as "readiness."
 
@@ -70,6 +86,16 @@ Score each reviewed dimension 0-4 against the `docs.md` bar:
 
 Intermediate scores: start at 4 and subtract roughly one point per named gap; every point lost must link to one or more finding IDs. D5 and D6 are scanner-owned: without a scanner run, mark them `unreviewed` rather than hand-deriving findings. D3 splits: its existence/routing facts are scanner-owned, but its supply/demand alignment is this module's own check — run it whenever `docs/SPEC_CONTRACT.md` is present. D7 is this module's own judgment from reading how the repo handles secrets, credentials, and write scope — never scanner-derived — so mark it `unreviewed` only when you genuinely did not inspect those surfaces. Mark a genuinely unreviewed semantic dimension `unreviewed` — never guess.
 
+Behavior-baseline coverage feeds D2 and D4:
+
+- Confirmed/corrected high-risk P0/P1 behavior with `captured` or `bug-pinned`
+  ledger proof improves D2/D4 only when the named command ran in this audit or a
+  current CI run is cited.
+- Confirmed/corrected high-risk P0/P1 behavior with `gap`, `failed`, `stale`, or
+  no ledger row is a D2/D4 finding.
+- A malformed inventory or ledger is scanner-owned and does not get hand-scored;
+  cite the scanner finding and treat the affected coverage as unverified.
+
 Overall score: `round(100 × Σ(weightᵢ × dimᵢ/4) / Σ weightᵢ)`, summing only reviewed dimensions; print `–/4` for unreviewed dimensions in the header. When any dimension is unreviewed, label the score `provisional` and state the reviewed weight (e.g. `provisional — 85/100 weight reviewed` when the scanner-owned D5+D6 are unreviewed); never present a rescaled partial audit as a full score. Diff-scoped runs emit findings only — the score is computed only on a full audit.
 
 ## Loop-readiness verdict
@@ -88,6 +114,11 @@ Derive it honestly, separating the two input classes and naming any gate left un
 
 **Safety cap:** a material D7 gap — exposed secrets the agent can read, or unbounded ambient access to mutate production or shared data — caps the verdict at `supervised-only` regardless of the numeric score. D7 is scored (it moves the number), but you cannot run unattended *through* a blast-radius hole; you can only supervise around it. Name the specific safety gap in the promotion path.
 
+**Behavior-baseline cap:** when `docs/BEHAVIOR_INVENTORY.md` exists, an
+unresolved high-risk confirmed/corrected P0 row caps the verdict at
+`supervised-only`. The repo may still be useful to agents, but unattended work
+through a known unprotected high-risk behavior requires supervision.
+
 State the one or two gaps that would promote a repo to the next tier — the verdict is a triage tool, so its value is the promotion path, not the label. When the scanner did not run or a semantic gate is genuinely unreviewed, say so and withhold `autonomous-ready` rather than guessing it.
 
 ## Spec-contract alignment check
@@ -102,6 +133,40 @@ The spec contract is the demand side; the repo's validation surfaces are the sup
 
 A missing `SPEC_CONTRACT.md` is D3 = 0 — Critical when the repo opted into the contract (`harness.config.ts` with `docsContract: true`), High otherwise (finding: the repo has not adopted the contract). A stale proof menu (rows referencing dead commands) is Critical, because it silently breaks the intake → execution pipeline.
 
+## Behavior-baseline checks
+
+When `docs/BEHAVIOR_INVENTORY.md` or `docs/BEHAVIOR_LEDGER.md` exists, use the
+scanner for deterministic facts and this module for semantic judgment.
+
+Scanner-owned deterministic facts:
+
+- Required inventory and ledger headers exist.
+- Behavior IDs are stable and unique (`B-001`, `B-002`, ...).
+- Status, priority, confidence, risk, and capture-type cells use the allowed
+  enums from `./INTERFACES.md`.
+- Ledger IDs reference inventory IDs.
+- Confirmed/corrected P0/P1 inventory rows have a ledger row.
+- Captured/bug-pinned ledger rows name test paths that exist.
+
+Semantic checks this module owns:
+
+- Behavior rows are observable product behavior, not private implementation
+  trivia.
+- Existing proof actually exercises the named entry point rather than merely
+  existing nearby.
+- High-risk behavior gaps are acceptable for the requested readiness tier, or
+  they block promotion.
+- Bug-pinned rows are clearly marked for human product review.
+
+For `doctor diff`, inspect changed files and report:
+
+- Impacted behavior IDs whose entry points or tests changed.
+- Ledger commands that must run before final handoff.
+- Characterization tests changed without a ledger update.
+- Production/source changes that map to no behavior row and have no explicit
+  gap, recommending `harness baseline inventory --refresh` or a scoped
+  `harness capture`.
+
 ## Findings
 
 Every finding gets an ID (`HD-1`, `HD-2`, … in report order, or the scanner rule id when the CLI produced it), a severity, evidence, and a fix. Evidence rule: include the file path when a file caused or proves the finding; for semantic findings with no single file, cite the files inspected or state the evidence that was missing. Vague areas ("docs", "auth code") are banned when a concrete path exists.
@@ -109,7 +174,7 @@ Every finding gets an ID (`HD-1`, `HD-2`, … in report order, or the scanner ru
 Severity describes impact:
 
 - **Critical**: missing entry point, stale spec-contract proof menu, validation commands that fail or do not exist, stale local links, stale grounding (a nested `AGENTS.md` whose data model or key-files table no longer matches the code), misleading routes that send agents to the wrong code, or a D7 blast-radius failure (plaintext secrets an unattended agent can read, or ambient credentials letting it mutate production/shared data unchecked).
-- **High**: no e2e proof path for a major change type, invariants carried only as prose, an enforced test with no determinism guard (a flake an agent cannot distinguish from a real failure), giant or over-budget root `AGENTS.md` (length alone does not flag a nested grounding file — its limits are the grounding gate and the byte chain), missing `docs/INDEX.md` or `SPEC_CONTRACT.md` routing, banned long-lived paths, incomplete earned surfaces.
+- **High**: no e2e proof path for a major change type, high-risk confirmed baseline behavior without proof, invariants carried only as prose, an enforced test with no determinism guard (a flake an agent cannot distinguish from a real failure), giant or over-budget root `AGENTS.md` (length alone does not flag a nested grounding file — its limits are the grounding gate and the byte chain), missing `docs/INDEX.md` or `SPEC_CONTRACT.md` routing, banned long-lived paths, incomplete earned surfaces.
 - **Medium**: oversized docs, todo specs missing sections, duplicate vocabulary files, a proof-menu row that does not declare grader sufficiency (`auto`/`human-gate`), default scaffolding without demonstrated need, follow-up semantic review items.
 
 Anything below Medium is omitted, not reported — do not inflate trivia to Medium.
@@ -172,6 +237,8 @@ End every audit with what was actually checked:
 - Every validation command executed, with pass/fail and runtime; commands marked `inspected-not-run`, `env-blocked`, `not-applicable`, or `unverified`, each with the reason.
 - Manual commands run and files inspected.
 - Link/path failures verified.
+- Behavior inventory/ledger files inspected, scanner baseline findings, affected
+  behavior IDs in diff scope, and ledger proof commands run.
 - Product-facing proof for UI/API claims when relevant: route loads, endpoint responds, screenshot/trace exists.
 
 Never claim a documented command works unless this audit ran it.
