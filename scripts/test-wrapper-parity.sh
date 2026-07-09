@@ -152,6 +152,54 @@ for arg in "$@"; do
 done
 
 cat >/dev/null || true
+if [[ -n "${FAKE_CODEX_STALL_COUNTER:-}" ]]; then
+  attempt="$(cat "$FAKE_CODEX_STALL_COUNTER" 2>/dev/null || printf 0)"
+  attempt=$((attempt + 1))
+  printf '%s' "$attempt" > "$FAKE_CODEX_STALL_COUNTER"
+  stall_attempts="${FAKE_CODEX_STALL_ATTEMPTS:-1}"
+  if (( attempt <= stall_attempts )); then
+    if [[ -n "${FAKE_CODEX_MUTATE_FILE:-}" ]]; then
+      printf 'mutated during first attempt\n' > "$FAKE_CODEX_MUTATE_FILE"
+    fi
+    if [[ "${FAKE_CODEX_IGNORE_TERM:-}" == "1" ]]; then
+      trap '' TERM
+    fi
+    sleep 10
+  fi
+fi
+if [[ -n "${FAKE_CODEX_SPAWN_ON_TERM_PID_FILE:-}" ]]; then
+  spawn_on_term() {
+    trap - TERM
+    (
+      trap '' TERM
+      while :; do sleep 1; done
+    ) &
+    spawned_pid=$!
+    printf '%s' "$spawned_pid" > "$FAKE_CODEX_SPAWN_ON_TERM_PID_FILE"
+    exit 0
+  }
+  trap spawn_on_term TERM
+  while :; do sleep 1; done
+fi
+if [[ "${FAKE_CODEX_HANG:-}" == "1" ]]; then
+  if [[ "${FAKE_CODEX_IGNORE_TERM:-}" == "1" ]]; then
+    trap '' TERM
+  fi
+  if [[ -n "${FAKE_CODEX_CHILD_PID_FILE:-}" ]]; then
+    sleep 60 &
+    hang_pid=$!
+    printf '%s' "$hang_pid" > "$FAKE_CODEX_CHILD_PID_FILE"
+    wait "$hang_pid"
+  else
+    sleep 60
+  fi
+fi
+if [[ -n "${FAKE_CODEX_PROGRESS_FILE:-}" ]]; then
+  for progress_step in 1 2 3 4; do
+    printf 'progress %s\n' "$progress_step" > "$FAKE_CODEX_PROGRESS_FILE"
+    sleep 1
+  done
+fi
 if [[ "${FAKE_CODEX_NO_STDOUT:-}" == "1" ]]; then
   :
 elif [[ "${FAKE_CODEX_JSON_STDOUT:-}" == "1" ]]; then
@@ -258,12 +306,14 @@ test_codex_exec_continue_contract() {
   run_dir="$(extract_run_dir "$output")"
   assert_file "$run_dir/run.env"
   assert_file "$run_dir/status.env"
+  assert_private_file "$run_dir/status.json"
   assert_private_file "$run_dir/prompt.txt"
   assert_private_file "$run_dir/command.txt"
   assert_executable_private "$run_dir/monitor.sh"
   assert_executable_private "$run_dir/continue.sh"
   assert_contains "$run_dir/final.md" "fake codex final"
   assert_contains "$run_dir/status.env" "state=finished"
+  assert_contains "$run_dir/status.json" '"state": "finished"'
   assert_contains "$run_dir/run.env" "SESSION_ID=fake-session-123"
   assert_contains "$run_dir/command.txt" "--sandbox read-only"
   assert_not_contains "$run_dir/command.txt" "codex prompt secret"
@@ -341,6 +391,44 @@ test_codex_run_dir_file_contract() {
   pass "codex-exec writes --run-dir-file for exact MonitorTool handoff"
 }
 
+test_codex_generate_is_an_exact_run_write_alias() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-generate-alias"
+  local run_output="$TMP_DIR/codex-run-alias-output.txt"
+  local generate_output="$TMP_DIR/codex-generate-alias-output.txt"
+
+  setup_workspace "$workspace"
+
+  PATH="$fakebin:$PATH" bash "$CODEX_RUN" run \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/codex-run-alias-runs" \
+    --write \
+    --prompt "same implementation prompt" \
+    --dry-run \
+    > "$run_output" 2>&1
+  PATH="$fakebin:$PATH" bash "$CODEX_RUN" generate \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/codex-generate-alias-runs" \
+    --prompt "same implementation prompt" \
+    --dry-run \
+    > "$generate_output" 2>&1
+
+  local run_dir generate_dir
+  run_dir="$(extract_run_dir "$run_output")"
+  generate_dir="$(extract_run_dir "$generate_output")"
+  cmp "$run_dir/prompt.txt" "$generate_dir/prompt.txt" >/dev/null || \
+    fail "generate rewrote the prompt instead of acting as an alias"
+  assert_contains "$run_dir/command.txt" "--sandbox workspace-write"
+  assert_contains "$generate_dir/command.txt" "--sandbox workspace-write"
+  assert_contains "$run_dir/command.txt" 'model_reasoning_effort=\"medium\"'
+  assert_contains "$generate_dir/command.txt" 'model_reasoning_effort=\"medium\"'
+  assert_contains "$generate_output" 'event=deprecated old=generate replacement="run --write"'
+  assert_not_contains "$run_dir/command.txt" "--output-schema"
+  assert_not_contains "$generate_dir/command.txt" "--output-schema"
+
+  pass "codex-exec generate is an exact deprecated alias for run --write"
+}
+
 test_codex_continue_env_is_not_sourced() {
   local fakebin="$TMP_DIR/fakebin"
   local workspace="$TMP_DIR/workspace-codex-malicious"
@@ -385,8 +473,8 @@ test_codex_monitor_status_is_not_sourced() {
 
   setup_workspace "$workspace"
 
-  # A dry run still writes a real monitor.sh, the only place codex-exec reads
-  # status.env, so it is the path a malicious status.env could exploit.
+  # A dry run still writes a real monitor. Remove status.json to exercise the
+  # compatibility status.env parser without allowing shell execution.
   PATH="$fakebin:$PATH" bash "$CODEX_RUN" exec \
     --workspace "$workspace" \
     --run-root "$TMP_DIR/codex-monitor-runs" \
@@ -398,6 +486,7 @@ test_codex_monitor_status_is_not_sourced() {
   local run_dir
   run_dir="$(extract_run_dir "$output")"
   assert_executable_private "$run_dir/monitor.sh"
+  rm -f "$run_dir/status.json"
 
   {
     printf 'state=finished\n'
@@ -412,6 +501,237 @@ test_codex_monitor_status_is_not_sourced() {
   assert_contains "$monitor_output" "monitor=done state=finished exit_code=0"
 
   pass "codex-exec monitor parses status.env without executing shell"
+}
+
+test_codex_stall_retries_once_without_workspace_changes() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-stall"
+  local output="$TMP_DIR/codex-stall-output.txt"
+  local counter="$TMP_DIR/codex-stall-attempts"
+
+  setup_workspace "$workspace"
+
+  FAKE_CODEX_STALL_COUNTER="$counter" PATH="$fakebin:$PATH" \
+    bash "$CODEX_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-stall-runs" \
+      --prompt "retry a silent startup once" \
+      --heartbeat 1 \
+      --stall-timeout 1 \
+      --timeout 10 \
+      > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_contains "$output" "event=stall"
+  assert_contains "$output" "event=retry reason=stall attempt=2"
+  assert_contains "$output" "event=spawn attempt=2"
+  assert_contains "$run_dir/status.json" '"state": "finished"'
+  assert_contains "$run_dir/final.md" "fake codex final"
+  [[ "$(cat "$counter")" == "2" ]] || fail "expected exactly two Codex attempts"
+
+  pass "codex-exec retries one silent stall when the workspace is unchanged"
+}
+
+test_codex_monitor_waits_through_stall_retry() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-monitor-retry"
+  local output="$TMP_DIR/codex-monitor-retry-output.txt"
+  local monitor_output="$TMP_DIR/codex-monitor-retry-monitor.txt"
+  local counter="$TMP_DIR/codex-monitor-retry-attempts"
+  local run_dir_file="$TMP_DIR/codex-monitor-retry-run-dir"
+
+  setup_workspace "$workspace"
+
+  CODEX_EXEC_TERM_GRACE_SECONDS=1 FAKE_CODEX_STALL_COUNTER="$counter" FAKE_CODEX_IGNORE_TERM=1 \
+    PATH="$fakebin:$PATH" bash "$CODEX_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-monitor-retry-runs" \
+      --run-dir-file "$run_dir_file" \
+      --prompt "monitor the retry instead of exiting early" \
+      --heartbeat 1 \
+      --stall-timeout 1 \
+      --timeout 10 \
+      > "$output" 2>&1 &
+  local wrapper_pid=$!
+
+  local attempt
+  for attempt in {1..50}; do
+    : "$attempt"
+    [[ -s "$run_dir_file" ]] && break
+    sleep 0.1
+  done
+  [[ -s "$run_dir_file" ]] || fail "runner did not publish run directory"
+  local run_dir
+  run_dir="$(cat "$run_dir_file")"
+  CODEX_EXEC_MONITOR_POLL_SECONDS=1 CODEX_EXEC_MONITOR_REPORT_SECONDS=1 \
+    bash "$run_dir/monitor.sh" > "$monitor_output" 2>&1
+  wait "$wrapper_pid"
+
+  assert_contains "$output" "event=retry reason=stall attempt=2"
+  assert_contains "$monitor_output" "monitor=done state=finished exit_code=0"
+
+  pass "codex-exec monitor remains attached through a safe stall retry"
+}
+
+test_codex_write_stall_never_retries() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-mutation"
+  local output="$TMP_DIR/codex-mutation-output.txt"
+  local counter="$TMP_DIR/codex-mutation-attempts"
+
+  setup_workspace "$workspace"
+  printf 'original\n' > "$workspace/mutable.txt"
+  git -C "$workspace" add mutable.txt
+  git -C "$workspace" commit -qm "add mutable fixture"
+
+  set +e
+  FAKE_CODEX_STALL_COUNTER="$counter" \
+    FAKE_CODEX_MUTATE_FILE="$workspace/mutable.txt" \
+    PATH="$fakebin:$PATH" bash "$CODEX_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-mutation-runs" \
+      --write \
+      --prompt "mutate, then stall" \
+      --heartbeat 1 \
+      --stall-timeout 1 \
+      --timeout 10 \
+      > "$output" 2>&1
+  local status=$?
+  set -e
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  [[ "$status" == "124" ]] || fail "expected mutation stall to exit 124, got $status"
+  assert_contains "$output" "event=no-retry reason=unsafe-command-capabilities"
+  assert_not_contains "$output" "event=spawn attempt=2"
+  assert_contains "$run_dir/status.json" '"state": "stalled"'
+  [[ "$(cat "$counter")" == "1" ]] || fail "expected exactly one Codex attempt after mutation"
+
+  pass "codex-exec never retries a stalled write-capable run"
+}
+
+test_codex_capability_passthrough_disables_retry() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-bypass"
+  local output="$TMP_DIR/codex-bypass-output.txt"
+  local counter="$TMP_DIR/codex-bypass-attempts"
+
+  setup_workspace "$workspace"
+
+  set +e
+  FAKE_CODEX_STALL_COUNTER="$counter" PATH="$fakebin:$PATH" \
+    bash "$CODEX_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-bypass-runs" \
+      --prompt "nominally read-only but sandbox bypassed" \
+      --dangerously-bypass-approvals-and-sandbox \
+      --heartbeat 1 \
+      --stall-timeout 1 \
+      --timeout 10 \
+      > "$output" 2>&1
+  local status=$?
+  set -e
+
+  [[ "$status" == "124" ]] || fail "expected bypassed stall to exit 124, got $status"
+  assert_contains "$output" "event=no-retry reason=unsafe-command-capabilities"
+  assert_not_contains "$output" "event=spawn attempt=2"
+  [[ "$(cat "$counter")" == "1" ]] || fail "expected one bypassed attempt"
+
+  pass "codex-exec does not replay a read-only label after capability passthrough"
+}
+
+test_codex_workspace_content_progress_prevents_false_stall() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-content-progress"
+  local output="$TMP_DIR/codex-content-progress-output.txt"
+
+  setup_workspace "$workspace"
+  printf 'original\n' > "$workspace/progress.txt"
+  git -C "$workspace" add progress.txt
+  git -C "$workspace" commit -qm "add progress fixture"
+
+  FAKE_CODEX_PROGRESS_FILE="$workspace/progress.txt" PATH="$fakebin:$PATH" \
+    bash "$CODEX_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-content-progress-runs" \
+      --write \
+      --no-json \
+      --prompt "edit one already-dirty file quietly" \
+      --heartbeat 1 \
+      --stall-timeout 2 \
+      --timeout 10 \
+      > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_not_contains "$output" "event=stall"
+  assert_contains "$run_dir/status.json" '"state": "finished"'
+
+  pass "codex-exec treats continuing file-content edits as meaningful progress"
+}
+
+test_codex_retry_gets_a_fresh_stall_clock() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-second-stall"
+  local output="$TMP_DIR/codex-second-stall-output.txt"
+  local counter="$TMP_DIR/codex-second-stall-attempts"
+
+  setup_workspace "$workspace"
+
+  set +e
+  FAKE_CODEX_STALL_COUNTER="$counter" FAKE_CODEX_STALL_ATTEMPTS=2 \
+    PATH="$fakebin:$PATH" bash "$CODEX_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-second-stall-runs" \
+      --prompt "stall twice with independent inactivity clocks" \
+      --heartbeat 1 \
+      --stall-timeout 3 \
+      --timeout 20 \
+      > "$output" 2>&1
+  local status=$?
+  set -e
+
+  [[ "$status" == "124" ]] || fail "expected second stall to exit 124, got $status"
+  awk '/event=spawn attempt=2/{second=1} second && /event=progress/{found=1} END{exit !found}' "$output" || \
+    fail "expected attempt two to start with a fresh inactivity clock"
+  [[ "$(cat "$counter")" == "2" ]] || fail "expected exactly two stalled attempts"
+
+  pass "codex-exec resets the inactivity clock for a safe retry"
+}
+
+test_codex_hard_timeout_escalates_to_kill() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-hard-timeout"
+  local output="$TMP_DIR/codex-hard-timeout-output.txt"
+  local child_pid_file="$TMP_DIR/codex-hard-timeout-child-pid"
+
+  setup_workspace "$workspace"
+
+  set +e
+  CODEX_EXEC_TERM_GRACE_SECONDS=1 \
+    FAKE_CODEX_SPAWN_ON_TERM_PID_FILE="$child_pid_file" \
+    PATH="$fakebin:$PATH" bash "$CODEX_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-hard-timeout-runs" \
+      --prompt "ignore TERM until the runner escalates" \
+      --stall-timeout 0 \
+      --timeout 1 \
+      > "$output" 2>&1
+  local status=$?
+  set -e
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  [[ "$status" == "124" ]] || fail "expected hard timeout to exit 124, got $status"
+  assert_contains "$output" "event=timeout kind=hard timeout_seconds=1"
+  assert_contains "$run_dir/status.json" '"state": "timed-out"'
+  [[ -s "$child_pid_file" ]] || fail "TERM handler did not record its spawned descendant pid"
+  if kill -0 "$(cat "$child_pid_file")" 2>/dev/null; then
+    fail "provider descendant survived hard-timeout process-group escalation"
+  fi
+
+  pass "codex-exec kills descendants spawned during TERM handling"
 }
 
 test_codex_review_stderr_fallback_populates_final() {
@@ -858,8 +1178,16 @@ main() {
 
   test_codex_exec_continue_contract
   test_codex_run_dir_file_contract
+  test_codex_generate_is_an_exact_run_write_alias
   test_codex_continue_env_is_not_sourced
   test_codex_monitor_status_is_not_sourced
+  test_codex_stall_retries_once_without_workspace_changes
+  test_codex_monitor_waits_through_stall_retry
+  test_codex_write_stall_never_retries
+  test_codex_capability_passthrough_disables_retry
+  test_codex_workspace_content_progress_prevents_false_stall
+  test_codex_retry_gets_a_fresh_stall_clock
+  test_codex_hard_timeout_escalates_to_kill
   test_codex_review_stderr_fallback_populates_final
   test_codex_review_stderr_noise_filtered_from_final
   test_codex_json_stdout_fallback_keeps_final_empty

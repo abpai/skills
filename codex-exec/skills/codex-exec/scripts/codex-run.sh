@@ -2,11 +2,12 @@
 set -euo pipefail
 umask 077
 
-MODE="${1:-}"
+REQUESTED_MODE="${1:-}"
+MODE="$REQUESTED_MODE"
 
 usage() {
   cat >&2 <<'EOF'
-Usage: codex-run.sh exec|generate|review|resume [options] [-- extra-codex-args...]
+Usage: codex-run.sh run|review|resume [options] [-- extra-codex-args...]
 
 Common options:
   --prompt TEXT          Prompt text to send through stdin.
@@ -17,23 +18,21 @@ Common options:
   --run-dir-file PATH    Write the exact run directory path to this file immediately.
   --continue-run PATH    Reuse session/workspace defaults from a prior wrapper run.
   --heartbeat SECONDS    Monitor heartbeat interval (default: 15).
-  --timeout SECONDS      Kill the run after this many seconds if timeout/gtimeout exists.
+  --timeout SECONDS      Kill the run after this many seconds (default: 2700, 0 disables).
+  --stall-timeout SECS   Kill after no meaningful progress (default: 300, 0 disables).
   --reasoning LEVEL      model_reasoning_effort value (default: medium).
   --model MODEL          Pass a model only when explicitly requested.
   --json                 Ask Codex to emit JSONL events; also mirrors stdout to events.jsonl.
   --ephemeral            Run without persisting Codex session files.
   --dry-run              Write run files and command.txt, but do not launch Codex.
 
-exec options:
+run options:
   --sandbox MODE         read-only, workspace-write, or danger-full-access (default: read-only).
+  --write                Shortcut for --sandbox workspace-write.
   --output-schema PATH   JSON schema for Codex final output.
 
-generate options:
-  --sandbox MODE         Defaults to workspace-write when omitted.
-  --output-schema PATH   JSON schema for Codex final output (default: candidate-report.schema.json).
-  --timeout SECONDS      Defaults to 1800 for generate runs; pass --timeout 0 to disable.
-  Writes workspace-baseline.txt, workspace-status.txt, workspace.diff,
-  workspace-diff.stat, and changed-files.txt around the run.
+generate compatibility:
+  Exact deprecated alias for run --write.
 
 review options:
   --uncommitted          Review staged, unstaged, and untracked changes (default).
@@ -58,16 +57,24 @@ EOF
 if [[ "$MODE" == "-h" || "$MODE" == "--help" ]]; then
   usage
   exit 0
-elif [[ "$MODE" == "exec" || "$MODE" == "generate" || "$MODE" == "review" || "$MODE" == "resume" ]]; then
+elif [[ "$MODE" == "run" || "$MODE" == "exec" || "$MODE" == "generate" || "$MODE" == "review" || "$MODE" == "resume" ]]; then
   shift
 else
   usage
   exit 2
 fi
 
+LEGACY_GENERATE="false"
+if [[ "$MODE" == "run" ]]; then
+  MODE="exec"
+elif [[ "$MODE" == "generate" ]]; then
+  printf '[codex-exec] event=deprecated old=generate replacement="run --write"\n' >&2
+  MODE="exec"
+  LEGACY_GENERATE="true"
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
-DEFAULT_GENERATE_SCHEMA="$SCRIPT_DIR/../references/candidate-report.schema.json"
 PROMPT_TEXT=""
 PROMPT_FILE=""
 WORKSPACE="$PWD"
@@ -76,10 +83,11 @@ RUN_DIR=""
 RUN_DIR_FILE=""
 CONTINUE_RUN_DIR=""
 HEARTBEAT_SECONDS="${CODEX_EXEC_HEARTBEAT_SECONDS:-15}"
-TIMEOUT_SECONDS="${CODEX_EXEC_TIMEOUT_SECONDS:-0}"
+TIMEOUT_SECONDS="${CODEX_EXEC_TIMEOUT_SECONDS:-2700}"
+STALL_TIMEOUT_SECONDS="${CODEX_EXEC_STALL_TIMEOUT_SECONDS:-300}"
 REASONING="medium"
 MODEL=""
-JSON_OUTPUT="false"
+JSON_OUTPUT="true"
 EPHEMERAL="false"
 DRY_RUN="false"
 SANDBOX="read-only"
@@ -102,6 +110,7 @@ WORKSPACE_SET="false"
 RUN_ROOT_SET="false"
 HEARTBEAT_SET="false"
 TIMEOUT_SET="false"
+STALL_TIMEOUT_SET="false"
 REASONING_SET="false"
 MODEL_SET="false"
 SESSION_SET="false"
@@ -169,6 +178,12 @@ while [[ $# -gt 0 ]]; do
       TIMEOUT_SET="true"
       shift 2
       ;;
+    --stall-timeout)
+      STALL_TIMEOUT_SECONDS="${2:-}"
+      require_value "$1" "$STALL_TIMEOUT_SECONDS"
+      STALL_TIMEOUT_SET="true"
+      shift 2
+      ;;
     --reasoning)
       REASONING="${2:-}"
       require_value "$1" "$REASONING"
@@ -185,6 +200,10 @@ while [[ $# -gt 0 ]]; do
       JSON_OUTPUT="true"
       shift
       ;;
+    --no-json)
+      JSON_OUTPUT="false"
+      shift
+      ;;
     --ephemeral)
       EPHEMERAL="true"
       shift
@@ -198,6 +217,11 @@ while [[ $# -gt 0 ]]; do
       require_value "$1" "$SANDBOX"
       SANDBOX_SET="true"
       shift 2
+      ;;
+    --write)
+      SANDBOX="workspace-write"
+      SANDBOX_SET="true"
+      shift
       ;;
     --output-schema)
       OUTPUT_SCHEMA="${2:-}"
@@ -312,6 +336,12 @@ case "$TIMEOUT_SECONDS" in
     exit 2
     ;;
 esac
+case "$STALL_TIMEOUT_SECONDS" in
+  ''|*[!0-9]*)
+    echo "[FAIL] --stall-timeout must be an integer number of seconds" >&2
+    exit 2
+    ;;
+esac
 
 absolute_path() {
   case "$1" in
@@ -387,7 +417,7 @@ load_continue_defaults() {
     exit 2
   fi
 
-  local prior_workspace="" prior_run_root="" prior_heartbeat="" prior_timeout=""
+  local prior_workspace="" prior_run_root="" prior_heartbeat="" prior_timeout="" prior_stall_timeout=""
   local prior_reasoning="" prior_model="" prior_sandbox="" prior_ephemeral=""
   local prior_session="" prior_status_workspace="" prior_status_session="" prior_stderr=""
   local key value
@@ -399,6 +429,7 @@ load_continue_defaults() {
       RUN_ROOT) prior_run_root="$value" ;;
       HEARTBEAT_SECONDS) prior_heartbeat="$value" ;;
       TIMEOUT_SECONDS) prior_timeout="$value" ;;
+      STALL_TIMEOUT_SECONDS) prior_stall_timeout="$value" ;;
       REASONING) prior_reasoning="$value" ;;
       MODEL) prior_model="$value" ;;
       SANDBOX) prior_sandbox="$value" ;;
@@ -406,7 +437,7 @@ load_continue_defaults() {
       SESSION_ID) prior_session="$value" ;;
     esac
   done < <(read_env_values "$prior_env" \
-    WORKSPACE RUN_ROOT HEARTBEAT_SECONDS TIMEOUT_SECONDS REASONING MODEL SANDBOX EPHEMERAL SESSION_ID)
+    WORKSPACE RUN_ROOT HEARTBEAT_SECONDS TIMEOUT_SECONDS STALL_TIMEOUT_SECONDS REASONING MODEL SANDBOX EPHEMERAL SESSION_ID)
 
   # One python pass over status.env for back-compat fallbacks (older runs predate run.env).
   while IFS=$'\t' read -r key value; do
@@ -439,6 +470,9 @@ load_continue_defaults() {
   if [[ "$TIMEOUT_SET" == "false" && -n "$prior_timeout" ]]; then
     TIMEOUT_SECONDS="$prior_timeout"
   fi
+  if [[ "$STALL_TIMEOUT_SET" == "false" && -n "$prior_stall_timeout" ]]; then
+    STALL_TIMEOUT_SECONDS="$prior_stall_timeout"
+  fi
   if [[ "$REASONING_SET" == "false" && -n "$prior_reasoning" ]]; then
     REASONING="$prior_reasoning"
   fi
@@ -464,21 +498,8 @@ load_continue_defaults() {
 
 load_continue_defaults
 
-if [[ "$MODE" == "generate" && "$SANDBOX_SET" == "false" ]]; then
+if [[ "$LEGACY_GENERATE" == "true" && "$SANDBOX_SET" == "false" ]]; then
   SANDBOX="workspace-write"
-fi
-if [[ "$MODE" == "generate" && "$REASONING_SET" == "false" ]]; then
-  REASONING="high"
-fi
-if [[ "$MODE" == "generate" && -z "$OUTPUT_SCHEMA" ]]; then
-  OUTPUT_SCHEMA="$DEFAULT_GENERATE_SCHEMA"
-fi
-# generate runs are long-lived and unattended; a Codex-side stall after the
-# prompt echo otherwise runs forever (observed in the field: session id
-# assigned, then zero output for 45+ minutes). Default to a hard cap; pass
-# --timeout 0 to opt out explicitly.
-if [[ "$MODE" == "generate" && "$TIMEOUT_SET" == "false" && "$TIMEOUT_SECONDS" == "0" ]]; then
-  TIMEOUT_SECONDS="1800"
 fi
 
 WORKSPACE="$(absolute_path "$WORKSPACE")"
@@ -532,11 +553,14 @@ FINAL_MESSAGE="$RUN_DIR/final.md"
 FINAL_SOURCE="output-last-message"
 RUN_ENV_FILE="$RUN_DIR/run.env"
 STATUS_FILE="$RUN_DIR/status.env"
+STATUS_JSON="$RUN_DIR/status.json"
 COMMAND_FILE="$RUN_DIR/command.txt"
 PREFLIGHT_LOG="$RUN_DIR/preflight.log"
 MONITOR_SCRIPT="$RUN_DIR/monitor.sh"
 CONTINUE_SCRIPT="$RUN_DIR/continue.sh"
 BASELINE_FILE="$RUN_DIR/workspace-baseline.txt"
+STALL_MARKER="$RUN_DIR/.stalled"
+HARD_TIMEOUT_MARKER="$RUN_DIR/.hard-timeout"
 
 : > "$STDOUT_LOG"
 : > "$STDERR_LOG"
@@ -549,6 +573,7 @@ set -euo pipefail
 
 RUN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 STATUS_FILE="$RUN_DIR/status.env"
+STATUS_JSON="$RUN_DIR/status.json"
 POLL_SECONDS="${CODEX_EXEC_MONITOR_POLL_SECONDS:-3}"
 REPORT_SECONDS="${CODEX_EXEC_MONITOR_REPORT_SECONDS:-30}"
 
@@ -586,25 +611,49 @@ line_count() {
 
 while true; do
   state="pending"
+  health="pending"
   exit_code=""
   elapsed_seconds=""
   stdout_log=""
   stderr_log=""
   final_message=""
 
-  if [[ -f "$STATUS_FILE" ]]; then
-    # Parse known keys with python/shlex instead of sourcing, so a crafted
-    # status.env cannot execute shell (matches the wrapper's read_env_values).
+  if [[ -f "$STATUS_JSON" ]]; then
     while IFS=$'\t' read -r key value; do
       case "$key" in
         state) state="$value" ;;
+        health) health="$value" ;;
         exit_code) exit_code="$value" ;;
         elapsed_seconds) elapsed_seconds="$value" ;;
         stdout_log) stdout_log="$value" ;;
         stderr_log) stderr_log="$value" ;;
         final_message) final_message="$value" ;;
       esac
-    done < <(python3 - "$STATUS_FILE" state exit_code elapsed_seconds stdout_log stderr_log final_message <<'PY'
+    done < <(python3 - "$STATUS_JSON" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for key in ("state", "health", "exit_code", "elapsed_seconds", "stdout_log", "stderr_log", "final_message"):
+    value = data.get(key, "")
+    print(f"{key}\t{value}")
+PY
+)
+  elif [[ -f "$STATUS_FILE" ]]; then
+    # Parse known keys with python/shlex instead of sourcing, so a crafted
+    # status.env cannot execute shell (matches the wrapper's read_env_values).
+    while IFS=$'\t' read -r key value; do
+      case "$key" in
+        state) state="$value" ;;
+        health) health="$value" ;;
+        exit_code) exit_code="$value" ;;
+        elapsed_seconds) elapsed_seconds="$value" ;;
+        stdout_log) stdout_log="$value" ;;
+        stderr_log) stderr_log="$value" ;;
+        final_message) final_message="$value" ;;
+      esac
+    done < <(python3 - "$STATUS_FILE" state health exit_code elapsed_seconds stdout_log stderr_log final_message <<'PY'
 import shlex
 import sys
 from pathlib import Path
@@ -643,7 +692,7 @@ PY
   fi
 
   case "$state" in
-    finished|failed|interrupted|dry-run)
+    finished|failed|stalled|timed-out|interrupted|dry-run)
       stdout_lines="$(line_count "$stdout_log")"
       stderr_lines="$(line_count "$stderr_log")"
       printf '[codex-exec] monitor=done state=%s exit_code=%s elapsed=%ss stdout_lines=%s stderr_lines=%s final=%q\n' \
@@ -658,8 +707,8 @@ PY
   if (( now - last_report >= REPORT_SECONDS )); then
     stdout_lines="$(line_count "$stdout_log")"
     stderr_lines="$(line_count "$stderr_log")"
-    printf '[codex-exec] monitor=waiting state=%s elapsed=%ss stdout_lines=%s stderr_lines=%s\n' \
-      "$state" "$elapsed_seconds" "$stdout_lines" "$stderr_lines"
+    printf '[codex-exec] monitor=waiting state=%s health=%s elapsed=%ss stdout_lines=%s stderr_lines=%s\n' \
+      "$state" "$health" "$elapsed_seconds" "$stdout_lines" "$stderr_lines"
     last_report="$now"
   fi
 
@@ -684,11 +733,6 @@ elif [[ -n "$PROMPT_FILE" ]]; then
   HAS_PROMPT="true"
 else
   : > "$PROMPT_RUN_FILE"
-fi
-
-if [[ "$MODE" == "generate" && "$HAS_PROMPT" != "true" ]]; then
-  echo "[FAIL] generate mode requires --prompt or --prompt-file" >&2
-  exit 2
 fi
 
 review_scope_text() {
@@ -734,22 +778,6 @@ if [[ "$MODE" == "review" && "$HAS_PROMPT" == "true" ]]; then
   } > "$PROMPT_RUN_FILE"
 fi
 
-if [[ "$MODE" == "generate" && "$HAS_PROMPT" == "true" ]]; then
-  USER_PROMPT_FILE="$RUN_DIR/user-prompt.txt"
-  cp "$PROMPT_RUN_FILE" "$USER_PROMPT_FILE"
-  {
-    printf 'Implement the following task in workspace: %s\n\n' "$WORKSPACE"
-    printf 'You may edit files in this workspace. Run validation commands named in the brief. '
-    printf 'If none are named, run the smallest obvious focused check when practical; otherwise report not_run.\n'
-    printf 'Do not run git commit, git push, or any history-rewriting git command; leave your changes as an '
-    printf 'uncommitted working-tree diff for the orchestrator to review, unless the task brief explicitly says otherwise.\n'
-    printf 'Do not ask clarifying questions; make reasonable assumptions, state them in the final report, and proceed.\n\n'
-    printf 'End with a structured report covering changed files, design choices, tests run, failures, and risks.\n\n'
-    printf 'Task brief:\n'
-    cat "$USER_PROMPT_FILE"
-  } > "$PROMPT_RUN_FILE"
-fi
-
 codex_cmd=(codex exec --cd "$WORKSPACE" -c "model_reasoning_effort=\"$REASONING\"")
 if (( ${#CONFIG_ARGS[@]} > 0 )); then
   codex_cmd+=("${CONFIG_ARGS[@]}")
@@ -766,7 +794,7 @@ if [[ -n "$MODEL" ]]; then
   codex_cmd+=(--model "$MODEL")
 fi
 
-if [[ "$MODE" == "exec" || "$MODE" == "generate" ]]; then
+if [[ "$MODE" == "exec" ]]; then
   codex_cmd+=(--sandbox "$SANDBOX")
   if [[ "$JSON_OUTPUT" == "true" ]]; then
     codex_cmd+=(--json)
@@ -835,22 +863,22 @@ else
   fi
 fi
 
-timeout_cmd=()
-if (( TIMEOUT_SECONDS > 0 )); then
-  if command -v timeout >/dev/null 2>&1; then
-    timeout_cmd=(timeout "$TIMEOUT_SECONDS")
-  elif command -v gtimeout >/dev/null 2>&1; then
-    timeout_cmd=(gtimeout "$TIMEOUT_SECONDS")
-  else
-    echo "[codex-exec] event=warn message=timeout_command_not_found timeout_seconds=$TIMEOUT_SECONDS"
-  fi
-fi
+run_cmd=("${codex_cmd[@]}")
 
-run_cmd=()
-if (( ${#timeout_cmd[@]} > 0 )); then
-  run_cmd+=("${timeout_cmd[@]}")
+# Automatic replay is limited to commands whose effective capability is known
+# to be read-only. Arbitrary config/passthrough args and dangerous common flags
+# can broaden access beyond the wrapper's SANDBOX variable.
+RETRY_SAFE="true"
+if [[ "$SANDBOX" != "read-only" ]] || (( ${#CONFIG_ARGS[@]} > 0 || ${#EXTRA_ARGS[@]} > 0 )); then
+  RETRY_SAFE="false"
 fi
-run_cmd+=("${codex_cmd[@]}")
+for arg in "${COMMON_ARGS[@]}"; do
+  case "$arg" in
+    --dangerously-bypass-approvals-and-sandbox|--dangerously-bypass-hook-trust)
+      RETRY_SAFE="false"
+      ;;
+  esac
+done
 
 {
   printf 'cwd='
@@ -882,6 +910,7 @@ write_run_env() {
     printf 'RUN_DIR_FILE=%q\n' "$RUN_DIR_FILE"
     printf 'RUN_ENV_FILE=%q\n' "$RUN_ENV_FILE"
     printf 'STATUS_FILE=%q\n' "$STATUS_FILE"
+    printf 'STATUS_JSON=%q\n' "$STATUS_JSON"
     printf 'MONITOR_SCRIPT=%q\n' "$MONITOR_SCRIPT"
     printf 'CONTINUE_SCRIPT=%q\n' "$CONTINUE_SCRIPT"
     printf 'PROMPT_RUN_FILE=%q\n' "$PROMPT_RUN_FILE"
@@ -903,7 +932,9 @@ write_run_env() {
     printf 'JSON_OUTPUT=%q\n' "$JSON_OUTPUT"
     printf 'EPHEMERAL=%q\n' "$EPHEMERAL"
     printf 'SANDBOX=%q\n' "$SANDBOX"
+    printf 'RETRY_SAFE=%q\n' "$RETRY_SAFE"
     printf 'TIMEOUT_SECONDS=%q\n' "$TIMEOUT_SECONDS"
+    printf 'STALL_TIMEOUT_SECONDS=%q\n' "$STALL_TIMEOUT_SECONDS"
     printf 'HEARTBEAT_SECONDS=%q\n' "$HEARTBEAT_SECONDS"
   } > "$RUN_ENV_FILE"
 }
@@ -912,13 +943,28 @@ write_status() {
   local state="$1"
   local exit_code="${2:-}"
   local elapsed="${3:-0}"
+  local health="${4:-$state}"
+  local stalled_for="${5:-0}"
+  local progress_source="${6:-none}"
+  local stdout_lines stderr_lines event_lines
+  stdout_lines="$(line_count "$STDOUT_LOG")"
+  stderr_lines="$(line_count "$STDERR_LOG")"
+  event_lines="$(line_count "$EVENTS_LOG")"
+  local status_tmp
+  status_tmp="$STATUS_FILE.tmp.${BASHPID:-$$}"
   {
     printf 'run_id=%q\n' "$RUN_ID"
     printf 'mode=%q\n' "$MODE"
     printf 'state=%q\n' "$state"
+    printf 'health=%q\n' "$health"
     printf 'pid=%q\n' "${CHILD_PID:-}"
     printf 'exit_code=%q\n' "$exit_code"
     printf 'elapsed_seconds=%q\n' "$elapsed"
+    printf 'stalled_for_seconds=%q\n' "$stalled_for"
+    printf 'progress_source=%q\n' "$progress_source"
+    printf 'stdout_lines=%q\n' "$stdout_lines"
+    printf 'stderr_lines=%q\n' "$stderr_lines"
+    printf 'event_lines=%q\n' "$event_lines"
     printf 'session_id=%q\n' "$SESSION_ID"
     printf 'workspace=%q\n' "$WORKSPACE"
     printf 'run_dir=%q\n' "$RUN_DIR"
@@ -935,7 +981,100 @@ write_status() {
     printf 'baseline_file=%q\n' "$BASELINE_FILE"
     printf 'monitor_script=%q\n' "$MONITOR_SCRIPT"
     printf 'continue_script=%q\n' "$CONTINUE_SCRIPT"
-  } > "$STATUS_FILE"
+  } > "$status_tmp"
+  mv "$status_tmp" "$STATUS_FILE"
+  python3 - "$STATUS_JSON" "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$progress_source" \
+    "$stdout_lines" "$stderr_lines" "$event_lines" "${CHILD_PID:-}" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" \
+    "$STDOUT_LOG" "$STDERR_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" "$FINAL_SOURCE" <<'PY'
+import json
+import os
+import sys
+from pathlib import Path
+
+(path, state, health, exit_code, elapsed, stalled_for, progress_source,
+ stdout_lines, stderr_lines, event_lines, pid, session_id, workspace, run_dir,
+ stdout_log, stderr_log, events_log, final_message, final_source) = sys.argv[1:]
+
+def number(value):
+    return int(value) if value.isdigit() else None
+
+data = {
+    "state": state,
+    "health": health,
+    "exit_code": number(exit_code),
+    "elapsed_seconds": number(elapsed) or 0,
+    "stalled_for_seconds": number(stalled_for) or 0,
+    "progress_source": progress_source,
+    "stdout_lines": number(stdout_lines) or 0,
+    "stderr_lines": number(stderr_lines) or 0,
+    "event_lines": number(event_lines) or 0,
+    "pid": number(pid),
+    "session_id": session_id,
+    "workspace": workspace,
+    "run_dir": run_dir,
+    "stdout_log": stdout_log,
+    "stderr_log": stderr_log,
+    "events_log": events_log,
+    "final_message": final_message,
+    "final_source": final_source,
+}
+tmp = Path(path + f".tmp.{os.getpid()}")
+tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+tmp.replace(path)
+PY
+}
+
+# Print descendants before their parent for a fallback alongside the dedicated
+# process group used for every provider launch.
+descendant_pids() {
+  local parent="$1"
+  local child
+  if ! command -v pgrep >/dev/null 2>&1; then
+    return 0
+  fi
+  while IFS= read -r child; do
+    [[ "$child" =~ ^[0-9]+$ ]] || continue
+    descendant_pids "$child"
+    printf '%s\n' "$child"
+  done < <(pgrep -P "$parent" 2>/dev/null || true)
+}
+
+terminate_process_tree() {
+  local root_pid="$1"
+  local grace="${CODEX_EXEC_TERM_GRACE_SECONDS:-5}"
+  local pid attempt alive
+  local targets=()
+  [[ "$root_pid" =~ ^[0-9]+$ ]] || return 0
+  while IFS= read -r pid; do
+    targets+=("$pid")
+  done < <(descendant_pids "$root_pid")
+  targets+=("$root_pid")
+
+  kill -TERM -- "-$root_pid" 2>/dev/null || true
+  kill -TERM "${targets[@]}" 2>/dev/null || true
+  case "$grace" in
+    ''|*[!0-9]*) grace=5 ;;
+  esac
+  for ((attempt = 0; attempt < grace * 10; attempt++)); do
+    alive="false"
+    if kill -0 -- "-$root_pid" 2>/dev/null; then
+      alive="true"
+    fi
+    for pid in "${targets[@]}"; do
+      if kill -0 "$pid" 2>/dev/null; then
+        alive="true"
+        break
+      fi
+    done
+    [[ "$alive" == "false" ]] && return 0
+    sleep 0.1
+  done
+  # Catch descendants created by TERM handlers as well as the original tree.
+  while IFS= read -r pid; do
+    targets+=("$pid")
+  done < <(descendant_pids "$root_pid")
+  kill -KILL -- "-$root_pid" 2>/dev/null || true
+  kill -KILL "${targets[@]}" 2>/dev/null || true
 }
 
 # shellcheck disable=SC2317,SC2329 # Invoked through signal traps.
@@ -943,8 +1082,11 @@ cleanup_children() {
   if [[ -n "${HEARTBEAT_PID:-}" ]]; then
     kill "$HEARTBEAT_PID" 2>/dev/null || true
   fi
+  if [[ -n "${HARD_TIMEOUT_PID:-}" ]]; then
+    kill "$HARD_TIMEOUT_PID" 2>/dev/null || true
+  fi
   if [[ -n "${CHILD_PID:-}" ]]; then
-    kill "$CHILD_PID" 2>/dev/null || true
+    terminate_process_tree "$CHILD_PID"
   fi
   # Kill the tee readers before unlinking the FIFOs so a signal that arrives
   # before Codex opens both pipes cannot leave a tee blocked on a removed path.
@@ -994,8 +1136,50 @@ last_output_line() {
   printf '%s' "$line"
 }
 
+workspace_progress_fingerprint() {
+  if [[ "$SANDBOX" == "read-only" ]] || ! git -C "$WORKSPACE" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf 'read-only'
+    return 0
+  fi
+  local hash_command=(cksum)
+  local file_path
+  if command -v shasum >/dev/null 2>&1; then
+    hash_command=(shasum -a 256)
+  elif command -v sha256sum >/dev/null 2>&1; then
+    hash_command=(sha256sum)
+  fi
+  {
+    git -C "$WORKSPACE" rev-parse --verify HEAD 2>/dev/null || printf 'no-head\n'
+    if git -C "$WORKSPACE" rev-parse --verify HEAD >/dev/null 2>&1; then
+      git -C "$WORKSPACE" diff --raw HEAD -- 2>/dev/null || true
+    else
+      git -C "$WORKSPACE" diff --raw 2>/dev/null || true
+      git -C "$WORKSPACE" diff --raw --cached 2>/dev/null || true
+    fi
+    while IFS= read -r -d '' file_path; do
+      printf 'tracked\0%s\0' "$file_path"
+      if [[ -e "$WORKSPACE/$file_path" || -L "$WORKSPACE/$file_path" ]]; then
+        git -C "$WORKSPACE" hash-object --no-filters -- "$file_path" 2>/dev/null || printf 'unreadable\n'
+      else
+        printf 'deleted\n'
+      fi
+    done < <(
+      if git -C "$WORKSPACE" rev-parse --verify HEAD >/dev/null 2>&1; then
+        git -C "$WORKSPACE" diff --name-only -z HEAD -- 2>/dev/null || true
+      else
+        git -C "$WORKSPACE" diff --name-only -z 2>/dev/null || true
+        git -C "$WORKSPACE" diff --name-only -z --cached 2>/dev/null || true
+      fi
+    )
+    while IFS= read -r -d '' file_path; do
+      printf 'untracked\0%s\0' "$file_path"
+      git -C "$WORKSPACE" hash-object --no-filters -- "$file_path" 2>/dev/null || printf 'unreadable\n'
+    done < <(git -C "$WORKSPACE" ls-files --others --exclude-standard -z 2>/dev/null)
+  } | "${hash_command[@]}" | awk '{print $1}'
+}
+
 capture_workspace_baseline() {
-  if [[ "$MODE" != "generate" ]]; then
+  if [[ "$SANDBOX" == "read-only" ]]; then
     return 0
   fi
 
@@ -1028,7 +1212,7 @@ append_untracked_diff_artifacts() {
 }
 
 capture_workspace_artifacts() {
-  if [[ "$MODE" != "generate" ]]; then
+  if [[ "$SANDBOX" == "read-only" ]]; then
     return 0
   fi
 
@@ -1119,22 +1303,67 @@ populate_final_message_fallback() {
 
 heartbeat_loop() {
   local pid="$1"
-  local started_at="$2"
+  local attempt_started_at="$2"
+  local last_progress_at="$attempt_started_at"
+  local stdout_lines stderr_lines event_lines workspace_hash
+  stdout_lines="$(line_count "$STDOUT_LOG")"
+  stderr_lines="$(line_count "$STDERR_LOG")"
+  event_lines="$(line_count "$EVENTS_LOG")"
+  workspace_hash="$(workspace_progress_fingerprint)"
+  local previous_fingerprint="$stdout_lines:$stderr_lines:$event_lines:$workspace_hash"
   while kill -0 "$pid" 2>/dev/null; do
     sleep "$HEARTBEAT_SECONDS"
     if ! kill -0 "$pid" 2>/dev/null; then
       break
     fi
-    local now elapsed stdout_lines stderr_lines last_line
+    local now elapsed stdout_lines stderr_lines event_lines workspace_hash fingerprint
+    local stalled_for progress_source last_line
     now="$(date +%s)"
-    elapsed=$((now - started_at))
+    elapsed=$((now - STARTED_AT))
     stdout_lines="$(line_count "$STDOUT_LOG")"
     stderr_lines="$(line_count "$STDERR_LOG")"
+    event_lines="$(line_count "$EVENTS_LOG")"
+    workspace_hash="$(workspace_progress_fingerprint)"
+    fingerprint="$stdout_lines:$stderr_lines:$event_lines:$workspace_hash"
+    progress_source="none"
+    if [[ "$fingerprint" != "$previous_fingerprint" ]]; then
+      progress_source="output-or-workspace"
+      previous_fingerprint="$fingerprint"
+      last_progress_at="$now"
+    fi
+    stalled_for=$((now - last_progress_at))
+    if (( STALL_TIMEOUT_SECONDS > 0 && stalled_for >= STALL_TIMEOUT_SECONDS )); then
+      : > "$STALL_MARKER"
+      write_status "running" "" "$elapsed" "stall-detected" "$stalled_for" "$progress_source"
+      printf '[codex-exec] event=stall elapsed=%ss stalled_for=%ss pid=%s\n' "$elapsed" "$stalled_for" "$pid"
+      terminate_process_tree "$pid"
+      return 0
+    fi
     last_line="$(last_output_line)"
-    write_status "running" "" "$elapsed"
-    printf '[codex-exec] event=progress elapsed=%ss pid=%s stdout_lines=%s stderr_lines=%s last=%q\n' \
-      "$elapsed" "$pid" "$stdout_lines" "$stderr_lines" "$last_line"
+    write_status "running" "" "$elapsed" "active" "$stalled_for" "$progress_source"
+    printf '[codex-exec] event=progress elapsed=%ss stalled_for=%ss pid=%s stdout_lines=%s stderr_lines=%s event_lines=%s last=%q\n' \
+      "$elapsed" "$stalled_for" "$pid" "$stdout_lines" "$stderr_lines" "$event_lines" "$last_line"
   done
+}
+
+hard_timeout_loop() {
+  local pid="$1"
+  local now elapsed remaining
+  now="$(date +%s)"
+  elapsed=$((now - STARTED_AT))
+  remaining=$((TIMEOUT_SECONDS - elapsed))
+  if (( remaining > 0 )); then
+    sleep "$remaining"
+  fi
+  if ! kill -0 "$pid" 2>/dev/null; then
+    return 0
+  fi
+  now="$(date +%s)"
+  elapsed=$((now - STARTED_AT))
+  : > "$HARD_TIMEOUT_MARKER"
+  write_status "running" "" "$elapsed" "hard-timeout-detected" 0 "deadline"
+  printf '[codex-exec] event=timeout-detected kind=hard elapsed=%ss pid=%s\n' "$elapsed" "$pid"
+  terminate_process_tree "$pid"
 }
 
 {
@@ -1154,8 +1383,8 @@ capture_workspace_baseline
 write_run_env
 write_status "planned" "" 0
 printf '[codex-exec] event=start run_id=%s mode=%s workspace=%q\n' "$RUN_ID" "$MODE" "$WORKSPACE"
-printf '[codex-exec] event=paths run_dir=%q run_dir_file=%q status=%q run_env=%q monitor=%q continue=%q stdout=%q stderr=%q final=%q command=%q preflight=%q\n' \
-  "$RUN_DIR" "$RUN_DIR_FILE" "$STATUS_FILE" "$RUN_ENV_FILE" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT" "$STDOUT_LOG" "$STDERR_LOG" "$FINAL_MESSAGE" "$COMMAND_FILE" "$PREFLIGHT_LOG"
+printf '[codex-exec] event=paths run_dir=%q run_dir_file=%q status=%q status_json=%q run_env=%q monitor=%q continue=%q stdout=%q stderr=%q final=%q command=%q preflight=%q\n' \
+  "$RUN_DIR" "$RUN_DIR_FILE" "$STATUS_FILE" "$STATUS_JSON" "$RUN_ENV_FILE" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT" "$STDOUT_LOG" "$STDERR_LOG" "$FINAL_MESSAGE" "$COMMAND_FILE" "$PREFLIGHT_LOG"
 
 if [[ "$JSON_OUTPUT" == "true" ]]; then
   printf '[codex-exec] event=json events=%q\n' "$EVENTS_LOG"
@@ -1175,59 +1404,99 @@ if [[ "$DRY_RUN" == "true" ]]; then
 fi
 
 STARTED_AT="$(date +%s)"
+attempt=1
+while true; do
+  ATTEMPT_STARTED_AT="$(date +%s)"
+  STDOUT_PIPE="$RUN_DIR/.stdout.pipe"
+  STDERR_PIPE="$RUN_DIR/.stderr.pipe"
+  rm -f "$STDOUT_PIPE" "$STDERR_PIPE"
+  mkfifo "$STDOUT_PIPE" "$STDERR_PIPE"
 
-# Mirror Codex output to logs and the terminal through named pipes with tracked
-# tee PIDs. Process substitution (`> >(tee ...)`) leaves the tee unwaited, so
-# `wait "$CHILD_PID"` can return before the final stderr line (the session id)
-# is flushed to STDERR_LOG. Waiting on the tee PIDs makes capture deterministic.
-STDOUT_PIPE="$RUN_DIR/.stdout.pipe"
-STDERR_PIPE="$RUN_DIR/.stderr.pipe"
-rm -f "$STDOUT_PIPE" "$STDERR_PIPE"
-mkfifo "$STDOUT_PIPE" "$STDERR_PIPE"
+  if [[ "$JSON_OUTPUT" == "true" ]]; then
+    tee -a "$STDOUT_LOG" "$EVENTS_LOG" < "$STDOUT_PIPE" &
+  else
+    tee -a "$STDOUT_LOG" < "$STDOUT_PIPE" &
+  fi
+  STDOUT_TEE_PID=$!
+  tee -a "$STDERR_LOG" < "$STDERR_PIPE" >&2 &
+  STDERR_TEE_PID=$!
 
-if [[ "$JSON_OUTPUT" == "true" ]]; then
-  # One tee fans out to both logs and the terminal, so $! is the FIFO reader
-  # (a pipeline would set $! to the downstream tee, leaving the reader untracked
-  # and unkillable in cleanup_children).
-  tee -a "$STDOUT_LOG" "$EVENTS_LOG" < "$STDOUT_PIPE" &
-else
-  tee -a "$STDOUT_LOG" < "$STDOUT_PIPE" &
-fi
-STDOUT_TEE_PID=$!
-tee -a "$STDERR_LOG" < "$STDERR_PIPE" >&2 &
-STDERR_TEE_PID=$!
+  # Python's setsid gives the provider a dedicated process group on macOS and
+  # Linux so timeout escalation reaches the provider and its descendants.
+  process_group_cmd=(python3 -c 'import os, sys; os.setsid(); os.execvp(sys.argv[1], sys.argv[1:])' "${run_cmd[@]}")
+  if [[ "$HAS_PROMPT" == "true" ]]; then
+    "${process_group_cmd[@]}" < "$PROMPT_RUN_FILE" > "$STDOUT_PIPE" 2> "$STDERR_PIPE" &
+  else
+    "${process_group_cmd[@]}" < /dev/null > "$STDOUT_PIPE" 2> "$STDERR_PIPE" &
+  fi
 
-if [[ "$HAS_PROMPT" == "true" ]]; then
-  "${run_cmd[@]}" < "$PROMPT_RUN_FILE" > "$STDOUT_PIPE" 2> "$STDERR_PIPE" &
-else
-  "${run_cmd[@]}" < /dev/null > "$STDOUT_PIPE" 2> "$STDERR_PIPE" &
-fi
+  CHILD_PID=$!
+  write_status "running" "" "$((ATTEMPT_STARTED_AT - STARTED_AT))" "active" 0 "spawn"
+  printf '[codex-exec] event=spawn attempt=%s pid=%s\n' "$attempt" "$CHILD_PID"
 
-CHILD_PID=$!
-write_status "running" "" 0
-printf '[codex-exec] event=spawn pid=%s\n' "$CHILD_PID"
+  heartbeat_loop "$CHILD_PID" "$ATTEMPT_STARTED_AT" &
+  HEARTBEAT_PID=$!
+  HARD_TIMEOUT_PID=""
+  if (( TIMEOUT_SECONDS > 0 )); then
+    hard_timeout_loop "$CHILD_PID" &
+    HARD_TIMEOUT_PID=$!
+  fi
 
-heartbeat_loop "$CHILD_PID" "$STARTED_AT" &
-HEARTBEAT_PID=$!
+  set +e
+  wait "$CHILD_PID"
+  EXIT_CODE=$?
+  set -e
 
-set +e
-wait "$CHILD_PID"
-EXIT_CODE=$?
-set -e
+  if [[ -f "$STALL_MARKER" || -f "$HARD_TIMEOUT_MARKER" ]]; then
+    EXIT_CODE=124
+  fi
 
-kill "$HEARTBEAT_PID" 2>/dev/null || true
-wait "$HEARTBEAT_PID" 2>/dev/null || true
+  if [[ -f "$STALL_MARKER" ]]; then
+    wait "$HEARTBEAT_PID" 2>/dev/null || true
+  else
+    kill "$HEARTBEAT_PID" 2>/dev/null || true
+    wait "$HEARTBEAT_PID" 2>/dev/null || true
+  fi
+  if [[ -n "$HARD_TIMEOUT_PID" ]]; then
+    if [[ -f "$HARD_TIMEOUT_MARKER" ]]; then
+      wait "$HARD_TIMEOUT_PID" 2>/dev/null || true
+    else
+      kill "$HARD_TIMEOUT_PID" 2>/dev/null || true
+      wait "$HARD_TIMEOUT_PID" 2>/dev/null || true
+    fi
+  fi
+  wait "$STDOUT_TEE_PID" 2>/dev/null || true
+  wait "$STDERR_TEE_PID" 2>/dev/null || true
+  rm -f "$STDOUT_PIPE" "$STDERR_PIPE"
 
-# Codex has exited and closed the pipes; drain the tees so the logs are fully
-# written before we read the session id below, then remove the pipes.
-wait "$STDOUT_TEE_PID" 2>/dev/null || true
-wait "$STDERR_TEE_PID" 2>/dev/null || true
-rm -f "$STDOUT_PIPE" "$STDERR_PIPE"
+  if [[ -f "$STALL_MARKER" && "$attempt" == "1" ]]; then
+    elapsed_now="$(($(date +%s) - STARTED_AT))"
+    if [[ "$RETRY_SAFE" != "true" ]]; then
+      printf '[codex-exec] event=no-retry reason=unsafe-command-capabilities\n'
+    elif (( TIMEOUT_SECONDS > 0 && elapsed_now >= TIMEOUT_SECONDS )); then
+      : > "$HARD_TIMEOUT_MARKER"
+      rm -f "$STALL_MARKER"
+      EXIT_CODE=124
+      printf '[codex-exec] event=no-retry reason=deadline-exhausted\n'
+    else
+      rm -f "$STALL_MARKER"
+      attempt=2
+      write_status "retrying" "" "$elapsed_now" "starting" 0 "stall-retry"
+      printf '[codex-exec] event=retry reason=stall attempt=2\n'
+      continue
+    fi
+  fi
+  break
+done
 
 ENDED_AT="$(date +%s)"
 ELAPSED=$((ENDED_AT - STARTED_AT))
 FINAL_STATE="finished"
-if (( EXIT_CODE != 0 )); then
+if [[ -f "$HARD_TIMEOUT_MARKER" ]]; then
+  FINAL_STATE="timed-out"
+elif [[ -f "$STALL_MARKER" ]]; then
+  FINAL_STATE="stalled"
+elif (( EXIT_CODE != 0 )); then
   FINAL_STATE="failed"
 fi
 if [[ "$EPHEMERAL" != "true" ]]; then
@@ -1240,15 +1509,17 @@ fi
 populate_final_message_fallback
 capture_workspace_artifacts
 write_run_env
-write_status "$FINAL_STATE" "$EXIT_CODE" "$ELAPSED"
+write_status "$FINAL_STATE" "$EXIT_CODE" "$ELAPSED" "$FINAL_STATE" "0" "finish"
 
 stdout_lines="$(line_count "$STDOUT_LOG")"
 stderr_lines="$(line_count "$STDERR_LOG")"
 printf '[codex-exec] event=finish exit_code=%s elapsed=%ss stdout_lines=%s stderr_lines=%s session_id=%q final=%q final_source=%q continue=%q\n' \
   "$EXIT_CODE" "$ELAPSED" "$stdout_lines" "$stderr_lines" "$SESSION_ID" "$FINAL_MESSAGE" "$FINAL_SOURCE" "$CONTINUE_SCRIPT"
 
-if (( TIMEOUT_SECONDS > 0 && EXIT_CODE == 124 )); then
-  echo "[codex-exec] event=timeout timeout_seconds=$TIMEOUT_SECONDS"
+if [[ -f "$HARD_TIMEOUT_MARKER" ]]; then
+  echo "[codex-exec] event=timeout kind=hard timeout_seconds=$TIMEOUT_SECONDS"
+elif [[ -f "$STALL_MARKER" ]]; then
+  echo "[codex-exec] event=timeout kind=stall stall_timeout_seconds=$STALL_TIMEOUT_SECONDS"
 fi
 
 exit "$EXIT_CODE"

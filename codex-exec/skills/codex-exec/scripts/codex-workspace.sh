@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 
 # codex-workspace.sh — git worktree topology helper for dual-candidate Codex
-# generate loops. Takes branch/worktree prepare, diff-vs-base bundling, and
+# isolated implementation loops. Takes branch/worktree prepare, diff-vs-base bundling, and
 # safe teardown out of orchestration prompts. Thin wrapper over `git worktree`;
 # it does not call Codex itself. Prints stable "[codex-workspace] event=..."
 # lines and keeps one small state file per candidate so callers reference a
@@ -28,7 +28,7 @@ prepare — mint an isolated candidate worktree (or branch) from a frozen base:
 finalize — bundle the candidate diff (vs the frozen base) + report for comparison:
   --name NAME            Candidate name (required).
   --repo PATH            Source repo used to locate state (default: current dir).
-  --run-dir PATH         codex-run.sh generate run dir; its final.md is copied in.
+  --run-dir PATH         codex-run.sh run --write directory; its final.md is copied in.
   --out PATH             Bundle output dir (default: <state>/<key>-bundle).
 
 cleanup — tear down a rejected candidate worktree and its disposable branch:
@@ -99,7 +99,7 @@ state_dir() {
 }
 
 # Append `git diff --no-index` output for each untracked file so candidate
-# diffs include newly created files (mirrors codex-run.sh generate capture).
+# diffs include newly created files (mirrors codex-run.sh write-run capture).
 append_untracked_diff() {
   local repo="$1" mode="$2"
   git -C "$repo" ls-files --others --exclude-standard -z 2>/dev/null |
