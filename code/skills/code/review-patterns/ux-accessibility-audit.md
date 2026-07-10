@@ -40,7 +40,8 @@ Judge whether changed UI/CLI surfaces are usable and accessible for a first-time
 ## Quick pass
 
 1. List changed surfaces from the diff + `changed-files.txt`; classify each web / CLI / mobile / API.
-2. Run `generate-checklist.py <type>` for the surface(s) to get the tailored sweep; run `npx axe <file>` on changed `.tsx`/`.jsx`/`.html` as a first pass.
+2. Run the repository's existing axe/Lighthouse/pa11y check when available. Do
+   not install a new scanner merely for the review.
 3. Open each real route/command; if it won't run, grep the diff for the four HTML smells (gotcha 5) + CLI gotchas (gotcha 6).
 4. Walk happy path, then error path, against **Nielsen's 10**: 1 Visibility · 2 Match real world (no jargon/codes) · 3 Control & freedom (undo, cancel, Escape, back) · 4 Consistency · 5 Error prevention · 6 Recognition-over-recall · 7 Flexibility · 8 Minimalist · 9 Error help · 10 Documentation.
 5. Tab through: reachability, focus order, visible focus, no traps, labels/alt/ARIA, color-independent meaning, contrast ratios.
@@ -48,17 +49,7 @@ Judge whether changed UI/CLI surfaces are usable and accessible for a first-time
 
 ## Deep pass
 
-For launch-quality / high-traffic / compliance-bound UI: add a full mobile + desktop viewport pass with the 44pt / dynamic-type / reduce-motion checks, screen-reader smoke test (VoiceOver/NVDA), Lighthouse/`pa11y` run, input stress + error injection, and a prioritized UX/a11y report with per-heuristic findings. Run `generate-checklist.py {web|cli|mobile|api}` for each surface and walk it fully.
-
-## Scripts
-
-- [`scripts/generate-checklist.py`](scripts/generate-checklist.py) — emits a surface-tailored UX/a11y checklist to stdout, organized by Nielsen's 10 plus an accessibility block (WCAG 4.5:1, 44pt targets, keyboard, alt text). The `cli`/`mobile`/`api` variants carry criteria a web-only walk drops.
-  ```bash
-  ./scripts/generate-checklist.py web     # web app
-  ./scripts/generate-checklist.py cli     # CLI tool
-  ./scripts/generate-checklist.py mobile  # mobile app
-  ./scripts/generate-checklist.py api     # API / DX
-  ```
+For launch-quality / high-traffic / compliance-bound UI: add a full mobile + desktop viewport pass with the 44pt / dynamic-type / reduce-motion checks, screen-reader smoke test (VoiceOver/NVDA), repository-native Lighthouse/`pa11y` run, input stress + error injection, and a prioritized UX/a11y report with per-heuristic findings.
 
 ## False positives
 

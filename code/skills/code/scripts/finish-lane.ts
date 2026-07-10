@@ -27,8 +27,7 @@ Options:
   --base REF   Override base detection (default: origin/HEAD -> origin/main ->
                origin/master -> main -> master -> HEAD).
   --fix        Also run discovered fix/format commands. Cannot be combined with
-               --seal: fixes mutate files after the scope hash is computed, so
-               the sentinel would be stale the moment it was written.
+               --seal: review and QA must inspect the post-fix scope first.
   --arm        Arm the push gate for this repo (prepare-pr Phase 1). Writes the
                arm marker the gate-before-push hook checks. Needs CLAUDE_PLUGIN_DATA.
   --seal       Write the per-branch seal sentinel after gates/QA/review pass.
@@ -70,13 +69,11 @@ function parseArgs(args: string[]): Options {
         fail(`Unknown option: ${arg}\n\n${usage}`, 2)
     }
   }
-  // --fix mutates files AFTER the scope hash would be computed, so a sentinel
-  // written in the same run would be stale on arrival (the hook recomputes the
-  // hash over the formatter-modified tree). The documented flows never combine
-  // them (Phase 1 is --fix --arm, Phase 5 is plain --seal); refuse rather than
-  // silently writing a dead seal.
+  // The documented flow reviews and QAs the post-fix scope before sealing
+  // (Phase 1 is --fix --arm, Phase 5 is plain --seal). Keep that human/agent
+  // checkpoint explicit even though main() now recomputes scope after fixes.
   if (options.runFixes && options.seal) {
-    fail("--fix cannot be combined with --seal: run --fix first, re-validate, then --seal in a separate run.", 2)
+    fail("--fix cannot be combined with --seal: run --fix first, review and QA the post-fix scope, then --seal separately.", 2)
   }
   return options
 }
@@ -976,28 +973,25 @@ function ubsScan(rootDir: string, files: string[], outDir: string): UbsScan {
 
 // --- Surface tagger ------------------------------------------------------
 
-// Shared source-code extension set. Widened beyond the original multi-pass list to cover
-// compiled languages; reused by the simplification, metamorphic, and doctor routing rules.
+// Shared source-code extension set for filename-driven invariant and doctor routing.
 const CODE_EXT = "ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt|swift|c|cc|cpp|cxx|h|hpp|cs|scala|php|m|mm|dart|ex|exs"
-const codeFileTest = new RegExp(`\\.(${CODE_EXT})$`, "i")
 
 const lensRules: { lens: string; test: RegExp }[] = [
   { lens: "browser-e2e-verification.md", test: /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|html|css|scss|sass)$/i },
   { lens: "ux-accessibility-audit.md", test: /(^|\/)(routes|pages|components|ui|frontend)\/|\.(tsx|jsx|vue|svelte|html|css|scss|sass)$/i },
   { lens: "real-service-integration-check.md", test: /(^|\/)(api|server|workers?|db|database|migrations?|webhooks?|auth|billing|payments?|checkout|subscriptions?|stripe|paypal|integration|e2e|factories?)(\/|$)|(^|\/)[^/]*(factory|harness)[^/]*\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$|(^|\/)[^/]*test[^/]*db[^/]*\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$/i },
   { lens: "cli-agent-ergonomics.md", test: /(^|\/)(commands|bin|scripts|cli)(\/|$)|\.(sh|bash|zsh)$/i },
-  { lens: "prose-quality-pr-copy.md", test: /(^|\/)README(\.[^/]+)?$|(^|\/)(CHANGELOG|CHANGES|HISTORY)(\.[^/]+)?$|(^|\/)docs\/|\.md$/i },
+  { lens: "prose-quality-check.md", test: /(^|\/)README(\.[^/]+)?$|(^|\/)(CHANGELOG|CHANGES|HISTORY)(\.[^/]+)?$|(^|\/)docs\/|\.md$/i },
   { lens: "config-contract-check.md", test: /(^|\/)(package|tsconfig|plugin|marketplace|versions)\.(json|jsonc)$|\.(ya?ml|toml)$|(^|\/)SKILL\.md$|(^|\/)\.c(laude|odex)-plugin\/plugin\.json$|(^|\/)commands\/.+\.md$/i },
   { lens: "performance-profiling.md", test: /(^|\/)(benchmarks?|perf|performance|profiles|profiling)(\/|$)|\.(bench|benchmark)\./i },
-  { lens: "golden-artifact-decision.md", test: /(^|\/)(goldens?|snapshots?|__snapshots__|approvals?|goldenfiles?)(\/|$)|\.(snap|golden|approved|received|actual|ambr)(\.[^/]*)?$/i },
+  { lens: "snapshot-testing-check.md", test: /(^|\/)(goldens?|snapshots?|__snapshots__|approvals?|goldenfiles?)(\/|$)|\.(snap|golden|approved|received|actual|ambr)(\.[^/]*)?$/i },
   { lens: "mock-stub-placeholder-sweep.md", test: testFilePattern },
   { lens: "mock-stub-placeholder-sweep.md", test: /(^|\/)(api|server|workers?|routes|jobs)\/.+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|rb|java|kt)$/i },
-  { lens: "multi-pass-bug-hunting.md", test: codeFileTest },
-  { lens: "isomorphic-simplification.md", test: codeFileTest },
   { lens: "doctor-self-healing-candidate.md", test: new RegExp(`(^|/)(doctor|fixers?|repair|healers?)/|(^|/)(doctor|repair|heal|fixer|setup|bootstrap|provision)[^/]*\\.(sh|bash|zsh|${CODE_EXT})$|(^|/)migrations?/`, "i") },
-  { lens: "metamorphic-property-test-decision.md", test: new RegExp(`(^|/)(parser|serializ|deserial|codec|compiler|interpreter|ranking|scoring|optimizer|transform)[^/]*\\.(${CODE_EXT})$|(^|/)(parse|serialize|encode|decode)[^/]*\\.(${CODE_EXT})$`, "i") },
-  // ubs-static-risk-scanner.md is intentionally NOT routed here: runUbsScan runs it unconditionally as an
-  // advisory step (see below), so a lensRules entry would double-surface the same scanner.
+  { lens: "invariant-testing-check.md", test: new RegExp(`(^|/)(parser|serializ|deserial|codec|compiler|interpreter|ranking|scoring|optimizer|transform)[^/]*\\.(${CODE_EXT})$|(^|/)(parse|serialize|encode|decode)[^/]*\\.(${CODE_EXT})$`, "i") },
+  // The UBS scan runs unconditionally as advisory support below, so it is not a lens.
+  // refactor-safety-check.md is selected from diff intent (move/delete/refactor),
+  // which cannot be inferred safely from a changed filename alone.
 ]
 
 export function suggestLenses(files: string[]): string[] {
@@ -1145,6 +1139,13 @@ function main(): void {
   const pm = packageManager(rootDir)
   const scripts = packageScripts(rootDir)
 
+  // Format/fix commands may touch files outside the pre-run diff. Run them
+  // before computing the authoritative scope so changed-files, scans, lenses,
+  // and the scope hash all describe the bytes the reviewer will actually ship.
+  const fixResults = options.runFixes
+    ? runCommands(rootDir, pm, scripts, ["format", "fmt", "lint:fix", "fix"])
+    : []
+
   const scope = scopeFiles(rootDir, baseRef)
   const outDir = path.join(rootDir, ".workflow", "finish-lane")
   mkdirSync(outDir, { recursive: true })
@@ -1152,9 +1153,6 @@ function main(): void {
   writeFileSync(changedFilesPath, `${scope.all.join("\n")}${scope.all.length ? "\n" : ""}`, "utf8")
   const hash = scopeHash(rootDir, baseRef)
 
-  const fixResults = options.runFixes
-    ? runCommands(rootDir, pm, scripts, ["format", "fmt", "lint:fix", "fix"])
-    : []
   const validationResults = runValidation(rootDir, pm, scripts)
   const scan = mechanicalScans(rootDir, scope.all)
   const ubs = ubsScan(rootDir, scope.all, outDir)
@@ -1251,6 +1249,7 @@ function main(): void {
 
   console.log(out.join("\n"))
   if (sealRefused) process.exit(2)
+  if ([...fixResults, ...validationResults].some((result) => result.status === "fail")) process.exit(1)
 }
 
 if (import.meta.main) main()

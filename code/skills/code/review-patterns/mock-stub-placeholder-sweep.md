@@ -29,7 +29,7 @@ _Auto-suggest fires on test files and on service/job production paths (api/serve
 
 8. **Tests can themselves be stubs.** A test file with < 5 real assertions proves nothing. Rank by assertion count: `rg -c 'assert|expect|should' tests/ | sort -t: -k2 -n`. Real case (mcp-agent-mail): an E2E audit found `null_fields` and `unicode` test files were stubs (only 5-7 assertions). Caveat: this MISSES files with many but shallow assertions.
 
-9. **Structural stubs need AST, not keywords.** Single-keyword grep misses *unlabeled* short functions that do nothing substantive. Measure body length and rank shortest-first with ast-grep + jq; functions under ~3 lines in a non-trivial module deserve scrutiny. See [Scripts](#scripts).
+9. **Structural stubs need source inspection, not keywords.** Single-keyword grep misses *unlabeled* short functions that do nothing substantive. Use the repository's AST tooling when available, or inspect short changed functions directly; body length is only a lead.
 
 10. **A slightly-better stub is still a stub.** Replacing a stub with a marginally less-fake stub is not real code — implement fully or defer **explicitly** as blocked. Oversimplifying a resolution loses functionality. After fixing, re-run the SAME scan targeting zero findings, and delete the TODO marker — a forgotten marker makes the next sweep re-flag stale work.
 
@@ -48,7 +48,6 @@ _Auto-suggest fires on test files and on service/job production paths (api/serve
 
 Risk-gated escalation for large, generated, or correctness-sensitive diffs:
 
-- **AST short-function rank** for unlabeled structural stubs — `scripts/short-function-rank.sh`.
 - **Behavioral grep pack** (fake-work sleep + FP filter, hardcoded metrics, 501, no-op cache, swallowed errors) — `scripts/behavioral-stub-scan.sh`.
 - **Stub-test counter** — `scripts/stub-test-counter.sh`.
 - Inspect generated artifacts that feed runtime behavior; sample tests to confirm they exercise the real path, not a mock.
@@ -60,9 +59,8 @@ Risk-gated escalation for large, generated, or correctness-sensitive diffs:
 
 ## Scripts
 
-- [`scripts/short-function-rank.sh`](scripts/short-function-rank.sh) — rank functions shortest-body-first via ast-grep + jq. `short-function-rank.sh Rust src/ 3` emits only fns whose body spans < 3 lines.
 - [`scripts/behavioral-stub-scan.sh`](scripts/behavioral-stub-scan.sh) — behavioral stub pack with the load-bearing sleep FP filter. `xargs scripts/behavioral-stub-scan.sh < .workflow/finish-lane/changed-files.txt`.
-- [`scripts/stub-test-counter.sh`](scripts/stub-test-counter.sh) — flag test files with < 5 assertions. `stub-test-counter.sh tests/`.
+- [`scripts/stub-test-counter.sh`](scripts/stub-test-counter.sh) — rank only test/spec files by assertion-bearing line count, including files with zero. Use it as a density lead, not an exact case count: `stub-test-counter.sh tests/`.
 
 ## False positives
 
@@ -80,7 +78,7 @@ Named buckets that look like stubs but usually are not — do not flag without c
 
 In the finish-lane gate decision, record:
 
-- Scan commands run (keyword, AST rank, behavioral pack, stub-test counter).
+- Scan commands run (keyword, structural spot-check, behavioral pack, stub-test counter).
 - Each suspect `file:line`.
 - The caller/consumer `file:line` proving wired-or-fake — and whether the caller depends on **output** (stub) or only **signature** (maybe intentional).
 - The 4-way disposition + blocker status per suspect (Just-needs-code / Blocked-on-infra / Dead-code / Intentional-stub).

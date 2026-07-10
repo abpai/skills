@@ -9,10 +9,28 @@ This is the single self-contained PR-prep workflow. The deterministic core is
 `scripts/finish-lane.ts`; everything else (findings, fixes, QA narrative, PR
 text, commit discipline) is judgment this module owns.
 
+## Effort contract
+
+Parse `--effort low|medium|high` anywhere in the arguments. Default to
+`medium`; reject any other value with one concise correction. Effort changes
+review depth, not the terminal state: every level commits the intended scope,
+seals, pushes, and creates or updates the PR.
+
+| Effort | Required depth |
+| --- | --- |
+| `low` | Deterministic preflight, focused diff review, applicable risk-required gates, targeted source-grounded QA, validation, PR text, commit, seal, push. |
+| `medium` | Everything in low, plus suggested quick-pass lenses and one independent full-scope review for behavior-affecting changes. |
+| `high` | Everything in medium, plus a scoped `simplify.md` pass over the PR, deep passes for applicable lenses, broader live QA, and a second independent perspective when the first review leaves meaningful uncertainty. |
+
+Risk is a floor. Auth, billing, migrations, destructive operations, public APIs,
+new runtime surfaces, and other high-blast-radius changes still receive the gates
+their evidence demands at `low`. Effort may add ambition; it may not waive a
+safety or correctness obligation.
+
 ## Two bright-line rules (read before any phase)
 
-**BRIGHT LINE 1 — Gate before push.** Quality gates, source-grounded QA, and
-independent review run and the branch is **sealed** _before_ `git push`,
+**BRIGHT LINE 1 — Gate before push.** Effort-selected and risk-required quality
+gates, source-grounded QA, and any required independent review run and the branch is **sealed** _before_ `git push`,
 `gh pr create`, or `gh pr edit --body`. Push/PR-create is the terminal,
 gated-on-green action — never an early "share it then polish" step. Pushing first
 turns every finding into a post-hoc follow-up commit a reviewer already saw. An
@@ -34,11 +52,11 @@ boundary, confirm fixtures match a sanitized real sample, not an invented shape;
 for any value crossing a boundary (HTTP header, env var, API field, cache key),
 find the consumer and confirm it accepts that shape.
 
-**Light ambition check.** Do not force every gate on every diff. Trivial
-docs-only or metadata-only changes skip the heavy lane with a one-line rationale.
-You may override any script recommendation with a concrete reason, or add a
-one-off local gate for a new surface. The goal is explicit applicability and
-visible skip rationale, not ceremony.
+**Ambition check.** Do not force every gate on every diff. Trivial docs-only or
+metadata-only changes skip inapplicable gates with a one-line rationale. You may
+override a script recommendation with a concrete reason or add a gate the
+changed surface demands. Record the selected effort and any risk-driven
+escalation above it.
 
 **Autonomous finish contract.** `prepare-pr` is allowed and expected to stage
 the intended scope, create coherent commits, push the branch, and create or
@@ -107,6 +125,15 @@ gate the defaults missed. For each selected gate, load **only** that
 front), run its quick pass, escalate to the deep pass only when diff risk
 justifies it, and record evidence or a skip rationale in context.
 
+- At `low`, load only lenses required by concrete risk. A focused diff review is
+  still mandatory.
+- At `medium`, run the quick pass for applicable suggested lenses; use a deep
+  pass only when the quick evidence escalates.
+- At `high`, load `simplify.md` and explicitly invoke **scoped execution** over
+  the changed-file set from `<base>...HEAD` plus uncommitted scope (not the
+  repository-root proposal mode), applying worthwhile behavior-preserving fixes
+  before QA. Run deep passes for every applicable lens whose stop rules allow it.
+
 **New-surface check.** If the diff adds a surface the project did not have before
 — first web UI, public CLI, API route, database migration, auth/billing
 boundary, or background job — add a local gate and capture evidence for it.
@@ -134,9 +161,16 @@ Run validation (lint / test / typecheck / build) via the commands the script
 reported. State any skips and why. Keep the parse/trust-boundary and
 cross-boundary-consumer checks here — they catch what a green suite hides.
 
+At `low`, keep QA targeted to the changed behavior and its most important
+failure path. At `medium`, cover the representative user path plus relevant
+boundaries. At `high`, broaden to alternate paths and live integrations that are
+safe and practical. Never execute destructive, costly, or production-facing QA
+without the authority required for that action.
+
 ## Phase 4 — Independent review & PR text
 
-For correctness-sensitive or behavior-affecting diffs, run an **independent**
+At `medium` and `high`, for correctness-sensitive or behavior-affecting diffs,
+run an **independent**
 review of the current diff — a reviewer with no memory of why you wrote the code,
 because self-review reliably misses regressions your own fix just introduced. Use
 the path that fits the harness:
@@ -153,8 +187,11 @@ only uncommitted changes sees an empty diff and passes vacuously.
   over the full scope diff — a fresh context, not your active one. Do **not**
   recursively `codex review` your own running session.
 
+At `low`, skip independent review unless the change's risk requires it; record
+the reason. At `high`, add a second independent perspective only when the first
+review leaves meaningful structural, correctness, or boundary uncertainty.
+
 Fold findings into `Review Findings` and triage them — do **not** auto-apply.
-Skip with a rationale only for trivial docs/metadata diffs.
 
 Draft or rewrite PR text from the actual diff + evidence: what now happens that
 did not before, why it matters, how it works (only as much as a reviewer needs),
@@ -251,18 +288,3 @@ exact blocker and leave the branch locally review-ready.
   current-change bug, pre-existing issue, or environment blocker.
 - When review or QA surfaces a bug outside this change's scope, propose it as a
   separate commit or stacked PR rather than bundling it in.
-
-## Update Check
-
-On first use in a session, silently check for a newer version:
-
-1. Fetch `https://raw.githubusercontent.com/abpai/skills/main/versions.json`.
-2. Compare the version for `code` against the umbrella `SKILL.md`
-   `metadata.version` — `code/skills/code/SKILL.md` in the repo checkout,
-   `${CLAUDE_PLUGIN_ROOT}/skills/code/SKILL.md` when installed as a plugin.
-3. If the remote version is newer, pause before the main task and ask:
-   > **code** update available (local {X.Y} → remote {A.B}).
-   > Would you like me to update it for you first?
-   > I can run `npx skills update code` for you.
-4. If yes, run the update before continuing. If no, continue with the local
-   version. If the fetch fails or web access is unavailable, skip silently.

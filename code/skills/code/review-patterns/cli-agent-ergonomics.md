@@ -19,21 +19,21 @@ The heart of this lens. Hunt these named failure modes; each maps to a verbatim 
 
 3. **Exit 1 must never mean "ran fine, no results."** Empty result = exit 0 with an empty `[]` in JSON. Exit codes are a documented dictionary surfaced in `--help` and `capabilities --json`: `0`=success, `1`=user-input-error, `2`=safety-block, `3`=tool-environment-error, `4`=upstream-failure, `5`=conflict. Check: an agent can write `case $? in 1) …; 2) …; esac` deterministically.
 
-4. **Stdout is data; stderr is diagnostics — mixing them is the #1 cause of agent fragility.** `tool X --json | jq` must work without `grep -v`-ing log lines. Progress bars, warnings, deprecation notices, prompts → stderr. Score 0 on parseability when violated. Check: [`verify-stdout-stderr-split.sh`](scripts/verify-stdout-stderr-split.sh).
+4. **Stdout is data; stderr is diagnostics — mixing them is the #1 cause of agent fragility.** `tool X --json | jq` must work without filtering log lines. Capture both streams separately; progress, warnings, deprecations, and prompts belong on stderr.
 
 5. **TUI-on-bare-invocation hangs the agent forever (P0).** Bare `<tool>` dropping into a REPL/ncurses consumes stdin and never returns on a pipe — the agent times out. Either bare `<tool>` prints help/triage and exits, or `<tool> tui` is the explicit opt-in — *never both*. Detect non-TTY via `isatty`/`is_terminal`, print a one-line guide to `--json`, exit non-zero. (Axiom 15)
 
 6. **Errors need THREE parts, not "see --help":** (a) what failed, (b) where (`file:line` if applicable), (c) the *exact copy-pasteable* command the agent should have typed instead. For a missing arg, also name the **discover-the-value** move: `to find an ID: mytool list --json | jq '.items[].id'`. The "to find an ID" hint is gold — it names the canonical way to get the value. (`🩹 Error-Teaches`)
 
-7. **Auto-correcting a typo is dangerous for destructive flags.** Levenshtein-1 "did you mean `--json`?" is table stakes — an agent that mistypes once and gets a surgical correction learns the spelling forever. But only *act on* the correction (`inferred_and_acted`) when typo-distance==1 AND the corrected flag is non-destructive AND the canonical spelling has been stable ≥1 release. **Destructive flags must NEVER be auto-corrected — the agent must type the canonical form.** Keep the suggestion list in sync with source via [`extract-known-flags.sh`](scripts/extract-known-flags.sh).
+7. **Auto-correcting a typo is dangerous for destructive flags.** Levenshtein-1 "did you mean `--json`?" is useful, but only *act on* the correction when it is non-destructive and stable. **Destructive flags must NEVER be auto-corrected.** Compare suggestions directly with the parser/help source; do not maintain a second extracted flag registry.
 
 8. **Gate AND teach in the same breath.** Every irreversible op (delete, force-push, drop, reset, prune) requires explicit `--yes`/`--force`/`--confirm=<token>` AND the refusal must name a safe alternative (`--dry-run`/`--plan`/`--diff`; canonical example `dcg`'s "use git revert instead"). A bare "this is destructive, pass `--yes`" without naming the safe path still leaves the agent stuck. (`🛡 Safe-Alternative-Always`)
 
 9. **Changing a public flag in one PR breaks every dependent agent.** Use the 5-stage deprecation ladder: `0. introduce` (new+old both work) → `1. warn` (old emits deprecation warning) → `2. error` (old fails with migration recipe) → `3. remove` (old gone from source). Span ≥2 passes; **NEVER skip stages on a public CLI.** A rename in a single PR is a finding.
 
-10. **Non-determinism breaks golden tests and agent parsing.** Hashmap-iteration ordering, raw timestamps/wall-clock in free-text stdout (timestamps belong in JSON fields), non-stable IDs. Use sorted/`BTreeMap`, content-addressed IDs, honor `SOURCE_DATE_EPOCH`. Verify by re-running the binary twice and diffing the bytes: [`verify-determinism.sh`](scripts/verify-determinism.sh).
+10. **Non-determinism breaks golden tests and agent parsing.** Hashmap-iteration ordering, raw timestamps/wall-clock in free-text stdout (timestamps belong in JSON fields), non-stable IDs. Pin time/seed when supported, run twice, canonicalize documented volatile fields, and diff the bytes.
 
-11. **ANSI/progress leak into piped stdout** on nearly every audit. Detect non-TTY via `isatty`; honor `NO_COLOR`/`CI`/`TERM=dumb`/`--no-color`; drop progress bars and interactive prompts. Check: [`verify-non-tty-discipline.sh`](scripts/verify-non-tty-discipline.sh).
+11. **ANSI/progress leak into piped stdout** on nearly every audit. Probe piped output plus `NO_COLOR=1`, `CI=true`, `TERM=dumb`, and closed stdin; fail on ANSI, prompts, or hangs.
 
 12. **Round-trip economy — the mega-command.** Collapse 3 read round-trips into 1 call returning `quick_ref + recommendations + commands + project_health`. Four canonical shapes: TRIAGE / DIAGNOSE / PLAN / CAPABILITIES. This is the most-cited single uplift in the source — flag any read flow that forces an agent through 3 separate calls.
 
@@ -59,18 +59,12 @@ Escalate for agent-facing or CI-invoked CLIs and any destructive surface.
 
 - **Rank findings: `priority = frequency × score_gap × blast_radius`** where `score_gap = (1000 − weighted_score)/1000` and `blast_radius = 0.10` (cosmetic) / `0.50` (workflow) / `1.00` (blocker). Fix the worst-scoring high-traffic surfaces first.
 - Run the non-TTY/`CI`/`NO_COLOR` matrix, JSON-schema validation, a failure matrix mapping inputs→exit codes, dry-run output checks, idempotence on re-run, and a destructive-op safety review (Gotcha 8).
-- Re-run the binary twice and byte-diff (Gotcha 10). Diff README vs `--help` for doc drift: [`audit-readme-vs-help.sh`](scripts/audit-readme-vs-help.sh).
+- Re-run the binary twice and byte-diff (Gotcha 10). Compare changed README command/flag claims directly with the real `--help` output.
 - **The 8 universal recs** (default top-N for almost any agent CLI audit): U-1 `capabilities --json` · U-2 `robot-docs guide` · U-3 `--robot-*`/`--json` on read verbs · U-4 levenshtein-1 typo correction · U-5 schema-pin `capabilities` regression test · U-6 `recommended_action` field on `doctor`/`health` output · U-7 `meta._provenance`/`--robot-meta` for fallback-mode detection · U-8 AGENT/AUTOMATION footer in every subcommand's `--help`.
 
-## Scripts
-
-Ported from `agent-ergonomics-and-intuitiveness-maximization-for-cli-tools`. Each takes `<tool> <verb> [args]` unless noted; exit 2 = input error, 1 = violation, 0 = clean.
-
-- [`scripts/verify-stdout-stderr-split.sh`](scripts/verify-stdout-stderr-split.sh) `<tool> <verb> [args]` — pins Gotcha 4: stdout data-only (parses as JSON when `--json` accepted), no log lines on stdout, no JSON leaking to stderr.
-- [`scripts/verify-non-tty-discipline.sh`](scripts/verify-non-tty-discipline.sh) `<tool> <verb> [args]` — pins Gotcha 11: piped/`NO_COLOR`/`TERM=dumb`/`CI=true` strip ANSI; closed stdin does not block on a prompt.
-- [`scripts/verify-determinism.sh`](scripts/verify-determinism.sh) `<tool> <verb> [args]` — pins Gotcha 10: runs `--json` twice with `SOURCE_DATE_EPOCH` pinned, strips volatile fields, byte-diffs.
-- [`scripts/audit-readme-vs-help.sh`](scripts/audit-readme-vs-help.sh) `<repo> <tool-binary>` — emits a JSON drift report of verbs in README but absent from `--help` and vice versa.
-- [`scripts/extract-known-flags.sh`](scripts/extract-known-flags.sh) `<repo>` — extracts the canonical flag list from source (clap/cobra/argparse/click/commander/yargs/bash/picocli/thor) so the levenshtein-1 "did you mean" list (Gotcha 7) stays in sync.
+Use the target repository's real CLI and schema. The removed bundled probes
+guessed `--json` placement and volatile-field names, and leaked diagnostic temp
+files; direct commands are shorter and more accurate for the actual interface.
 
 ## False positives
 

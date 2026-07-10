@@ -1,120 +1,93 @@
 ---
 name: decision-worksheet
-description: Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet that lets the user ratify or override a recommended verdict per item and return the decisions. Use when the user wants to review many similar items one-by-one, triage unsubscribe candidates, dead-code functions, PRs, files, rows, vendors, or line items, or says "go through X and let me decide keep/cut on each."
-argument-hint: "[what to review, e.g. 'inbox for unsubscribe candidates']"
+description: Capture concise user feedback notes or build evidence-backed decision worksheets. Use when the user asks to record a correction, capture feedback about agent behavior, review many similar items one-by-one, triage keep/cut/unsubscribe/approve decisions, or says "go through X and let me decide on each."
+argument-hint: "[feedback text or scope to review]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.1"
-  tags: "decision review worksheet html triage ratify-override"
+  version: "1.1.0"
+  tags: "decision review worksheet feedback capture triage ratify-override"
 ---
 
 # Decision Worksheet
 
-Build **one** self-contained HTML file that lets the user rule on every item in a
-scope, then return those rulings to you as a decisions payload.
+Use the smallest shape that fits the request:
 
-The core idea: **ratify-or-override beats decide-from-scratch.** You do the reading,
-pre-select a recommended verdict with a reason and a confidence tag, and the user's
-job shrinks to confirming or flipping each one. Their overrides become meaningful
-signal — and the returned payload carries their reasoning, not just their verdict.
+- **Feedback note:** the user gives one correction, asks to capture feedback, or
+  asks to list/show prior notes. Use the bundled secure helper, return its result,
+  and stop.
+- **Worksheet:** the user needs to decide many similar items. Inventory the real
+  scope, recommend a verdict per item, then build one self-contained HTML file so
+  they can ratify or override quickly.
 
-Do not lower the bar because there's a default. The recommendation is a starting
-point that must be honestly reasoned, not the answer.
+## Feedback Note
 
-## 1. Pin the four variables
+Use this mode for requests like "capture that feedback", "remember this
+correction", or explicit `capture-feedback` wording.
 
-Every worksheet is the same shape with four task-specific slots. Infer them from the
-request; only ask at most two concise questions about what you genuinely can't
-infer:
+Resolve `<skill-dir>` to the directory containing this `SKILL.md`, then run:
 
-- **ITEM** — the unit being ruled on (sender, function, PR, file, row, vendor).
-- **SCOPE** — where they come from (the inbox, this directory, these PRs, this sheet).
-- **VERDICTS** — the choices per item, with **one marked recommended/default**.
-  Adapt the verbs to the task: `keep / unsubscribe` · `keep / reshape / cut / discuss`
-  · `approve / reject`. Two is fine; four is the practical max.
-- **FIELDS** — the 3–6 facts the user needs to decide each item. Pick what the task
-  needs, e.g. *what it is · the evidence quote/metric · frequency/volume ·
-  last-seen/recency · dependency/risk · suggested better-shape*.
+```bash
+python3 <skill-dir>/scripts/feedback_notes.py capture "<verbatim feedback>"
+```
 
-State the four back in one line before building, so the user can correct a wrong guess
-cheaply.
+Pass the correction as one quoted argument so spacing and punctuation stay exact.
+The helper writes private directories/files (`0700`/`0600`) with exclusive
+creation and collision retries under:
 
-This phase is complete when ITEM, SCOPE, VERDICTS, and FIELDS are named and any
-unknown slot is either inferred from evidence or explicitly asked.
+```text
+${DECISION_WORKSHEET_HOME:-~/.agents/decision-worksheet}/feedback/<id>.json
+```
 
-## 2. Ground it first — real evidence only
+It uses this schema:
 
-Before generating anything, actually inventory the SCOPE: read the real emails / files
-/ PRs / rows. Then:
+```json
+{
+  "schema_version": "decision_feedback_note/v1",
+  "id": "df_20260708T183012Z_7f3a",
+  "created_at": "2026-07-08T18:30:12Z",
+  "marker": "decision-feedback:df_20260708T183012Z_7f3a",
+  "cwd": "/current/working/directory",
+  "user_words": "<verbatim feedback>"
+}
+```
 
-- Every field on every item must cite **real evidence** — a quote, `file:line`, a
-  sender address, a metric, a date. Never invent behavior or fill a gap with a
-  plausible guess.
-- If you couldn't verify a field, render it `unverified` rather than asserting it.
-- If two sources disagree, **surface the conflict in the item** instead of papering
-  over it.
-- Assign each item its recommended verdict + a confidence tag (high/med/low) + a
-  one-line *why*. Confidence reflects how sure you are, given the evidence you found.
+Rules:
 
-For large scopes, fan out the inventory across subagents (one per batch/area), then
-merge — but the merged set must still reconcile to one honest count (step 4).
+- Preserve the user's words exactly; do not classify, summarize, or propose fixes.
+- Ask "What should I capture?" only when no feedback text was provided.
+- Reply only with `Captured <marker>` and, when useful, the local file path.
+- For requests to inspect prior notes, run `feedback_notes.py list [--limit N]`
+  or `feedback_notes.py show <id-or-marker>`. These commands read both the new
+  store and legacy `${CAPTURE_FEEDBACK_HOME:-~/.agents/capture-feedback}/inbox`
+  notes, so consolidation does not strand existing feedback.
+- If the helper is missing or fails, report the error. Do not reconstruct a less
+  secure direct-write path from memory.
 
-This phase is complete when every item has a stable id, evidence-backed fields,
-recommended verdict, confidence, and source anchor.
+Done means the helper succeeds, the file exists with private permissions, the
+marker is stable, and `user_words` matches the correction verbatim.
 
-## 3. Build one self-contained HTML file
+## Worksheet
 
-A single `.html` file. No external network/CDN dependencies — it must open offline by
-double-click. One row (or card) per item, each showing:
+Build one offline `.html` file when the user needs to rule on many items.
 
-- a **stable id** + title + an **anchor** back to source (sender / `file:line` / URL).
-- the chosen **FIELDS** for that item.
-- the **recommended verdict pre-selected**, with its confidence tag and one-line why.
-- **segmented buttons** to set the verdict (the VERDICTS set) — overriding is one click.
-- a **notes field** per item.
+1. **Pin the shape.** Infer `ITEM`, `SCOPE`, `VERDICTS`, and `FIELDS`; ask at
+   most two concise questions if a missing slot is risky. Keep verdict sets
+   small, usually 2-4 choices, with one recommended default.
+2. **Inventory from evidence.** Read the real source material first. Every item
+   needs a stable id, source anchor, 3-6 evidence-backed fields, recommended
+   verdict, confidence (`high`, `med`, `low`), and a one-line reason. Use
+   `unverified` for gaps and surface conflicts instead of smoothing them away.
+3. **Render the worksheet.** Include one row or card per item, preselected
+   recommendation, one-click segmented verdict controls, notes, search/filter,
+   a live tally, `localStorage` persistence, and a `Download decisions` JSON
+   button with copy-to-clipboard fallback. No external network or CDN assets.
+4. **Reconcile counts.** Verify the rendered item count, tally totals, and final
+   summary all match the inventory. Call out any mismatch explicitly.
 
-Controls:
-
-- a **sticky top bar**: search box + filters (by verdict, by confidence, by group).
-- a **live tally header** that updates as the user marks: total, a count per verdict,
-  and how many still sit at the recommended default vs. overridden.
-- optional grouping into ~N areas, each with a one-line blurb and its own
-  recommended-verdict mix bar.
-
-Decision output:
-
-- a **Download decisions** button that writes the current marks to a local `.json`
-  file (with a copy-to-clipboard fallback). See the schema below.
-- **persist marks to `localStorage`** so a reload never loses work.
-- after writing the file, **tell the user exactly what the decisions payload looks
-  like** (show the shape) so they know what to paste back.
-
-This phase is complete when the file opens offline, every item is rendered once,
-the tally matches the rendered rows, `localStorage` survives a reload, and
-download/copy returns the schema below.
-
-## 4. Reconcile before finishing
-
-Confirm the tally header's per-verdict counts sum to the real number of items you
-inventoried, and that the count you cite in your summary matches what's rendered in the
-file. Call out any mismatch **explicitly** rather than silently rounding — this check is
-what catches a worksheet that quietly dropped or double-counted items.
-
-## Design — make it genuinely good to read
-
-This is a tool the user will stare at while making dozens of judgments. Design it well.
-
-- **Dark, dense, calm.** Generous line-height, a clear type scale, comfortable column
-  widths. The verdict and confidence must read instantly at a glance.
-- **Monospace** for code/paths/addresses; proportional for prose.
-- **One consistent, semantic color per verdict**, used everywhere it appears (button,
-  row accent, tally segment). Color is meaning, never decoration.
-- **Confidence via weight/opacity**, not a second clashing palette.
-- **Unreviewed-but-defaulted items look distinct from ones the user has actively
-  ratified**, so progress through the list is visible.
-- **Quiet, smooth interactions** (hover, selection, filter). No jank, no layout shift.
-- Default every item to its recommended verdict; overriding stays one click.
+Design it as a dense, calm work surface: readable columns, semantic colors per
+verdict, visible confidence, no layout shift, and a clear distinction between
+defaulted, ratified, and overridden items.
 
 ## Decisions payload schema
 

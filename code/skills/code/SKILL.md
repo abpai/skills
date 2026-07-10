@@ -1,7 +1,7 @@
 ---
 name: code
-description: "Route coding workflows through one scoped /code command. Use prepare-pr for full PR readiness, review-and-commit for a quick local commit, handoff for continuation prompts, thermo-nuclear for strict read-only audits, walkthrough for mastery checks, understand for traced code maps, dead-code for reachability audits, and secure-dependencies for dependency hardening."
-argument-hint: "[subcommand] [args] - e.g. understand src/api, --prepare-pr, review-and-commit, thermo-nuclear"
+description: "Route coding workflows through one scoped /code command. Use prepare-pr for effort-scaled PR readiness through push, simplify for behavior-preserving cleanup and high-signal test pruning of a target or a ranked whole-repo proposal, handoff for continuation prompts, and understand for an HTML code map plus a runnable real-code snippet."
+argument-hint: "[subcommand] [args] - e.g. prepare-pr --effort medium, simplify src/api, understand login flow, handoff"
 # allowed-tools belongs on the umbrella because hidden wrappers never become the
 # active skill; git push and PR writes are still sealed by hooks/gate-before-push.sh.
 allowed-tools: >
@@ -9,12 +9,12 @@ allowed-tools: >
   Bash(git add *) Bash(git commit *) Bash(git branch *)
   Bash(git push *) Bash(git rev-parse *) Bash(git restore --staged *)
   Bash(codex *) Bash(curl *) Bash(npm *) Bash(yarn *)
-  Bash(pnpm *) Bash(bun *) Bash(npx *) Bash(pytest *)
+  Bash(pnpm *) Bash(bun *) Bash(npx *) Bash(node *) Bash(python3 *) Bash(pytest *)
   Bash(go test *) Bash(cargo test *) Bash(gh *)
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
-  Read Write Edit Grep Glob
+  Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "2.1.5"
+  version: "3.0.0"
 ---
 
 # Code Workflow Pack
@@ -28,18 +28,32 @@ Invoke a workflow by passing its name as the first argument to this umbrella —
 - `code <subcommand> <args>` — e.g. `code understand src/api`
 - `code --<subcommand> <args>` — e.g. `code --understand src/api`
 
-Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `prepare-pr`, `review-and-commit`, `handoff`, `thermo-nuclear`, `walkthrough`, `understand`, `dead-code`, `secure-dependencies`.
+Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `prepare-pr`, `simplify`, `handoff`, `understand`.
+
+Before natural-language fallback, detect these removed exact subcommand tokens and
+return the migration guidance instead of silently changing side effects:
+
+- `review-and-commit` → `code prepare-pr --effort low` (warning: the replacement
+  commits, pushes, and creates or updates a PR).
+- `dead-code`, `thermo-nuclear`, or `test-deslop` → `code simplify [scope]`.
+  Simplify's reachability and test-signal passes own those audits now, but they
+  were read-only and a scoped `simplify` applies edits; omit the scope for a
+  proposal-only ranking, the closest match to the old audit reports.
+- `walkthrough` → `code understand [topic]`; the mastery-quiz workflow was removed.
+- `secure-dependencies` → `harness secure-dependencies [scope]` (requires the
+  harness plugin), the focused dependency-hardening pass; the broader
+  `harness compliant` also runs it as one step of end-to-end remediation.
+
+Carry the user's remaining arguments into the suggested replacement. Do not load
+a removed module or pretend the migration ran. Stop after giving the replacement
+so the user can accept the new contract explicitly.
 
 ## Routing
 
-- Use `prepare-pr.md` for full PR readiness: deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, commit, seal, push, and PR update. There is no separate finish-lane command; the preflight is a phase inside `prepare-pr`.
-- Use `review-and-commit.md` for quick local review plus commit: inspect scope, fix real issues, run targeted checks, plan a commit, ask approval, then commit.
+- Use `prepare-pr.md` for PR readiness through push. It accepts `--effort low|medium|high` (default `medium`) to scale review depth while preserving risk-required gates. Natural-language requests to review and commit route to `prepare-pr --effort low`; this pack no longer has a local-only commit workflow.
+- Use `simplify.md` for behavior-preserving simplification, including pruning low-value tests while protecting load-bearing guards. A named path, symbol, file, or subsystem is edited and validated autonomously. Omitted scope or repository-root scope produces a ranked whole-repository proposal without edits.
 - Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
-- Use `walkthrough.md` to teach the owner a system or change to verified mastery: establish mission and prior knowledge, ground a checklist, then quiz one scenario at a time until every item has an unaided correct answer. It is a persistent comprehension goal, not a tour.
-- Use `understand.md` for tracing a specific code path into a `.understand/<topic>.html` artifact with call graph, concrete values, side effects, and import skeleton.
-- Use `dead-code.md` for conservative dead-code reachability audits and safe removal plans.
-- Use `secure-dependencies.md` for dependency resolution and supply-chain hardening in code repositories.
+- Use `understand.md` for tracing a specific code path into `.understand/<topic>/index.html` plus a runnable `how_<topic>_works.<ext>` that imports and executes real code. It may leave clearly tagged temporary exports in place so the snippet remains runnable.
 - Use `handoff.md` for creating a focused continuation prompt that lets a new coding session resume with live repo state, file refs, decisions, next steps, and verification.
-- Use `thermo-nuclear.md` for unusually strict baseline-to-PR code quality audits: define scope, protect the working tree, gather structural evidence, and report only evidence-backed findings without editing code or preparing PR artifacts.
 
 When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.

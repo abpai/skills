@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>abpai/skills — AI Workflow Plugins</title>
-  <meta name="description" content="Curated marketplace of 19 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
+  <meta name="description" content="Curated marketplace of 17 AI agent workflow plugins across Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
   <meta property="og:title" content="abpai/skills — AI Workflow Plugins">
-  <meta property="og:description" content="19 production-grade AI workflow plugins for Claude Code and Codex.">
+  <meta property="og:description" content="17 AI workflow plugins across Claude Code and Codex.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -55,11 +55,11 @@
       --bg-surface-raised: #242424;
       --border: #333333;
       --border-visible: #444444;
-      --text-disabled: #666666;
+      --text-disabled: #999999;
       --text-secondary: #999999;
       --text-primary: #E8E8E8;
       --text-display: #FFFFFF;
-      --accent: #D71921;
+      --accent: #FF6B6B;
       --interactive: #5B9BF6;
     }
 
@@ -70,7 +70,7 @@
       --bg-surface-raised: #EEEEEE;
       --border: #E0E0E0;
       --border-visible: #CCCCCC;
-      --text-disabled: #AAAAAA;
+      --text-disabled: #666666;
       --text-secondary: #666666;
       --text-primary: #222222;
       --text-display: #000000;
@@ -100,6 +100,32 @@
     a { color: inherit; text-decoration: none; }
     button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
     input { font: inherit; border: none; outline: none; background: none; color: inherit; }
+
+    .skip-link {
+      position: fixed;
+      top: var(--space-sm);
+      left: var(--space-sm);
+      z-index: 1000;
+      padding: var(--space-sm) var(--space-md);
+      color: var(--text-display);
+      background: var(--bg-surface-raised);
+      border: 2px solid var(--accent);
+      transform: translateY(-150%);
+    }
+
+    .skip-link:focus { transform: translateY(0); }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
 
     /* ============================================
        LAYOUT
@@ -145,7 +171,12 @@
     .nav-links a {
       color: var(--text-secondary);
       transition: color var(--duration-fast) var(--ease);
-      padding: var(--space-xs) 0;
+      padding: var(--space-xs) var(--space-sm);
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .nav-links a:hover,
@@ -172,6 +203,8 @@
       padding: var(--space-xs) var(--space-sm);
       border: 1px solid var(--border);
       border-radius: 100px;
+      min-width: 44px;
+      min-height: 44px;
     }
 
     .theme-toggle:hover { color: var(--text-display); border-color: var(--border-visible); }
@@ -183,6 +216,11 @@
       letter-spacing: 0.1em;
       color: var(--text-secondary);
       transition: color var(--duration-fast) var(--ease);
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .github-link:hover { color: var(--text-display); }
@@ -304,6 +342,16 @@
       position: relative;
     }
 
+    .search-label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-xs);
+    }
+
     .search-input {
       width: 100%;
       font-family: var(--font-mono);
@@ -314,6 +362,7 @@
       padding: var(--space-sm) 0;
       border-bottom: 1px solid var(--border-visible);
       transition: border-color var(--duration-fast) var(--ease);
+      min-height: 44px;
     }
 
     .search-input::placeholder {
@@ -328,7 +377,7 @@
       font-size: var(--label);
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: var(--text-disabled);
+      color: var(--text-secondary);
       white-space: nowrap;
     }
 
@@ -351,6 +400,8 @@
       border-radius: 100px;
       transition: all var(--duration-fast) var(--ease);
       white-space: nowrap;
+      min-width: 44px;
+      min-height: 44px;
     }
 
     .filter-pill:hover {
@@ -362,6 +413,9 @@
       border-color: var(--accent);
       color: var(--accent);
     }
+
+    .filter-pill.active::before { content: '[ '; }
+    .filter-pill.active::after { content: ' ]'; }
 
     /* ============================================
        CATALOG GRID
@@ -487,6 +541,11 @@
       border-radius: 100px;
       transition: all var(--duration-fast) var(--ease);
       white-space: nowrap;
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .card-link:hover {
@@ -529,6 +588,8 @@
       gap: var(--space-xl);
     }
 
+    .install-column { min-width: 0; }
+
     .install-column h3 {
       font-family: var(--font-mono);
       font-size: var(--body-sm);
@@ -558,6 +619,7 @@
       border-radius: 2px;
       padding: var(--space-md);
       overflow-x: auto;
+      max-width: 100%;
     }
 
     .code-block code {
@@ -585,6 +647,8 @@
       border: 1px solid var(--border);
       border-radius: 2px;
       transition: all var(--duration-fast) var(--ease);
+      min-width: 44px;
+      min-height: 44px;
     }
 
     .copy-btn:hover { color: var(--text-primary); border-color: var(--border-visible); }
@@ -612,6 +676,11 @@
     .footer-content a {
       color: var(--text-secondary);
       transition: color var(--duration-fast) var(--ease);
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .footer-content a:hover { color: var(--text-display); }
@@ -630,7 +699,7 @@
       font-size: var(--body-sm);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--text-disabled);
+      color: var(--text-secondary);
     }
 
     /* ============================================
@@ -645,13 +714,23 @@
       font-size: var(--label);
       text-transform: uppercase;
       letter-spacing: 0.15em;
-      color: var(--text-disabled);
+      color: var(--text-secondary);
       animation: pulse 2s var(--ease) infinite;
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 0.4; }
       50% { opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .scroll-hint { animation: none; }
     }
 
     /* ============================================
@@ -677,6 +756,8 @@
 </head>
 <body>
 
+  <a class="skip-link" href="#main">Skip to main content</a>
+
   <!-- NAV -->
   <nav class="nav" id="nav">
     <div class="container">
@@ -692,6 +773,8 @@
     </div>
   </nav>
 
+  <main id="main">
+
   <!-- HERO -->
   <section class="hero" id="hero">
     <div class="hero-content">
@@ -702,7 +785,7 @@
         Cross-domain thinking, multi-model tooling, and developer productivity plugins for Claude Code and Codex.
       </p>
       <div class="hero-stats">
-        <span class="stat-pill"><strong id="pluginCount">19</strong>&ensp;Plugins</span>
+        <span class="stat-pill"><strong id="pluginCount">17</strong>&ensp;Plugins</span>
         <span class="stat-pill"><strong>6</strong>&ensp;Categories</span>
         <span class="stat-pill"><strong>2</strong>&ensp;Runtimes</span>
         <span class="stat-pill">MIT</span>
@@ -716,18 +799,19 @@
     <div class="container">
       <div class="filter-bar">
         <div class="search-wrapper">
-          <input type="text" class="search-input" id="searchInput" placeholder="Search plugins..." autocomplete="off" spellcheck="false">
+          <label class="search-label" for="searchInput">Search plugins</label>
+          <input type="text" class="search-input" id="searchInput" placeholder="Search by name or workflow..." autocomplete="off" spellcheck="false">
         </div>
-        <span class="result-count" id="resultCount">19 / 19</span>
+        <span class="result-count" id="resultCount" role="status" aria-live="polite">17 / 17</span>
       </div>
       <div class="category-filters" id="categoryFilters">
-        <button class="filter-pill active" data-category="All">All</button>
-        <button class="filter-pill" data-category="Planning & Reasoning">Planning & Reasoning</button>
-        <button class="filter-pill" data-category="Code Quality">Code Quality</button>
-        <button class="filter-pill" data-category="Developer Productivity">Developer Productivity</button>
-        <button class="filter-pill" data-category="Tools">Tools</button>
-        <button class="filter-pill" data-category="Languages & Platforms">Languages & Platforms</button>
-        <button class="filter-pill" data-category="Writing">Writing</button>
+        <button class="filter-pill active" data-category="All" aria-pressed="true">All</button>
+        <button class="filter-pill" data-category="Planning & Reasoning" aria-pressed="false">Planning & Reasoning</button>
+        <button class="filter-pill" data-category="Code Quality" aria-pressed="false">Code Quality</button>
+        <button class="filter-pill" data-category="Developer Productivity" aria-pressed="false">Developer Productivity</button>
+        <button class="filter-pill" data-category="Tools" aria-pressed="false">Tools</button>
+        <button class="filter-pill" data-category="Languages & Platforms" aria-pressed="false">Languages & Platforms</button>
+        <button class="filter-pill" data-category="Writing" aria-pressed="false">Writing</button>
       </div>
     </div>
   </section>
@@ -735,6 +819,7 @@
   <!-- CATALOG -->
   <section class="catalog">
     <div class="container">
+      <h2 class="sr-only">Plugin catalog</h2>
       <div class="catalog-grid" id="catalogGrid">
 
         <article class="skill-card" data-category="Planning & Reasoning" data-keywords="distillation analysis primitives compression">
@@ -788,12 +873,12 @@
           </div>
         </article>
 
-        <article class="skill-card" data-category="Code Quality" data-keywords="code prepare-pr review commit qa manual-qa pr-prep browser walkthrough understand call-stack html artifact dead-code dependency-security supply-chain handoff continuation thermo-nuclear audit structural">
+        <article class="skill-card" data-category="Code Quality" data-keywords="code prepare-pr effort review commit push qa simplify refactor dead-code test-deslop testing pruning understand runnable snippet html handoff continuation">
           <span class="card-category">Code Quality</span>
           <h3 class="card-name">code</h3>
-          <p class="card-description">Grouped coding workflows under one /code umbrella with subcommands (e.g. /code prepare-pr): prepare-pr carries a branch through QA, commits, push, and PR update; review-and-commit is quick local review plus commit; thermo-nuclear is a strict evidence-backed structural audit.</p>
+          <p class="card-description">Four focused /code workflows: effort-scaled prepare-pr through push, behavior-preserving simplify with test-suite pruning, cold-start handoff, and understand with an HTML map plus runnable real-code snippet.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>2.1.5</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>3.0.0</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/code" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
@@ -808,32 +893,22 @@
           </div>
         </article>
 
-        <article class="skill-card" data-category="Code Quality" data-keywords="testing tests deslop pruning code-quality refactoring monorepo redundant brittle tautological mock-only naming">
-          <span class="card-category">Code Quality</span>
-          <h3 class="card-name">test-deslop</h3>
-          <p class="card-description">Opinionated test-suite deslopification — delete low-value tests and leave the survivors high-signal and easy to read. Use to prune redundant, brittle, tautological, or mock-only tests, or to standardize test naming.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0.0</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/test-deslop" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="matt-pocock tdd grill-me zoom-out architecture engineering ubiquitous-language ddd glossary domain-model clean-code typescript maintainability static-analysis complexity performance reduce algorithm first-principles plan-optimization elon-musk debate">
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="matt-pocock tdd grill-me zoom-out architecture engineering ubiquitous-language ddd glossary domain-model complexity performance reduce algorithm first-principles plan-optimization elon-musk debate">
           <span class="card-category">Developer Productivity</span>
           <h3 class="card-name">engineering</h3>
-          <p class="card-description">Engineering-practice workflow pack: grill-me, TDD, zoom-out, architecture deepening, DDD glossaries, clean-code reviews, complexity reports, and plan optimization.</p>
+          <p class="card-description">Engineering-practice workflow pack: grill-me, TDD, zoom-out, architecture deepening, DDD glossaries, complexity reports, and plan optimization.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.10.1</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>2.0.0</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/engineering" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="harness baseline doctor agents docs spec-contract enforcement validation testing agents-md progressive-disclosure architecture domains invariants glossary todos audit readiness behavior-ledger characterization">
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="harness baseline doctor agents docs spec-contract enforcement validation testing dependency-security supply-chain lockfile agents-md progressive-disclosure architecture domains invariants glossary todos audit readiness behavior-ledger characterization compliant">
           <span class="card-category">Developer Productivity</span>
           <h3 class="card-name">harness</h3>
-          <p class="card-description">Agent-harness workflows for agent-driven development: fleet-scale behavior baselines, spec contracts, prose-to-enforcement conversion, tiny AGENTS.md routers, verification-first Harness Doctor readiness and diff audits, scoped behavior capture, autonomous-ready onboarding, eval seeding, and skill dogfooding.</p>
+          <p class="card-description">Agent-harness workflows for agent-driven development: fleet-scale behavior baselines, spec contracts, dependency hardening, verification-first readiness and diff audits, compliant remediation, scoped behavior capture, autonomous-ready onboarding, eval seeding, and skill dogfooding.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.6.0</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>1.7.0</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/harness" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
@@ -848,23 +923,13 @@
           </div>
         </article>
 
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="decision review worksheet html triage ratify override">
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="decision review worksheet html triage feedback capture capture-feedback ratify override">
           <span class="card-category">Developer Productivity</span>
           <h3 class="card-name">decision-worksheet</h3>
-          <p class="card-description">Build an evidence-backed HTML worksheet so many similar items can be ratified or overridden quickly.</p>
+          <p class="card-description">Capture concise feedback notes, or build evidence-backed HTML worksheets so many similar items can be ratified or overridden quickly.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0.1</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>1.1.0</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/decision-worksheet" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="feedback traces agent-behavior retrospective skills rules local inbox">
-          <span class="card-category">Developer Productivity</span>
-          <h3 class="card-name">capture-feedback</h3>
-          <p class="card-description">Capture concise agent-behavior corrections into a local shared inbox for later trace review and skill or rule improvements.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0.1</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/capture-feedback" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -928,6 +993,10 @@
           </div>
         </article>
 
+        <div class="empty-state" id="emptyState" hidden>
+          <p>No plugins found. Try a broader search or choose All.</p>
+        </div>
+
       </div>
     </div>
   </section>
@@ -978,6 +1047,8 @@ codex
     </div>
   </section>
 
+  </main>
+
   <!-- FOOTER -->
   <footer class="site-footer">
     <div class="container">
@@ -1013,6 +1084,7 @@ codex
         if (show) visible++;
       });
       document.getElementById('resultCount').textContent = visible + ' / ' + totalCount;
+      document.getElementById('emptyState').hidden = visible !== 0;
     }
 
     // Category filters
@@ -1020,8 +1092,12 @@ codex
       const btn = e.target.closest('[data-category]');
       if (!btn) return;
       activeCategory = btn.dataset.category;
-      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.filter-pill').forEach(p => {
+        p.classList.remove('active');
+        p.setAttribute('aria-pressed', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
       filterCards();
     });
 

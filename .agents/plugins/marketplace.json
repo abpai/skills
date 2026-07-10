@@ -65,18 +65,6 @@
       "category": "Productivity"
     },
     {
-      "name": "capture-feedback",
-      "source": {
-        "source": "local",
-        "path": "./capture-feedback"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Productivity"
-    },
-    {
       "name": "engineering",
       "source": {
         "source": "local",
@@ -207,18 +195,6 @@
         "authentication": "ON_INSTALL"
       },
       "category": "Tools"
-    },
-    {
-      "name": "test-deslop",
-      "source": {
-        "source": "local",
-        "path": "./test-deslop"
-      },
-      "policy": {
-        "installation": "AVAILABLE",
-        "authentication": "ON_INSTALL"
-      },
-      "category": "Code Quality"
     }
   ]
 }

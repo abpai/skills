@@ -28,7 +28,7 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install tutorial@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install composer@abpai-skills
-/plugin install capture-feedback@abpai-skills
+/plugin install decision-worksheet@abpai-skills
 /plugin install pi@abpai-skills
 ```
 
@@ -72,23 +72,29 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **code** | Groups common code workflows under one `/code` umbrella with subcommands (e.g. `/code prepare-pr`, `/code review-and-commit`): `prepare-pr` is the single full-PR-readiness workflow (deterministic preflight, quality gates from `review-patterns/`, source-grounded QA, validation, PR text, commits, push, and PR update) backed by an always-registered gate-before-push hook; `review-and-commit` is quick local review plus commit. Also includes walkthrough (teach a system to verified mastery), understand, dead-code, secure-dependencies, handoff, and thermo-nuclear (strict baseline-to-PR structural audit) |
+| **code** | Four focused workflows under `/code`: `prepare-pr --effort low\|medium\|high` carries changes through risk-scaled review, validation, commit, seal, push, and PR update; `simplify [scope]` applies behavior-preserving improvements—including high-signal test-suite pruning—to a named scope or proposes a ranked whole-repo batch; `understand` writes an HTML map plus a runnable real-code snippet; `handoff` creates a cold-start continuation prompt. |
 | **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
 
 ### Engineering Practices
 
 | Plugin | What it does |
 |--------|-------------|
-| **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, `/engineering clean-code`, or `/engineering reduce` |
+| **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, or `/engineering reduce`. Code cleanup now lives under `/code simplify`. |
 
 ### Developer Productivity
 
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **capture-feedback** | Capture concise agent-behavior corrections into a local shared inbox for later trace review and skill or rule improvements |
-| **decision-worksheet** | Inventory every item in a scope from real evidence, then build one self-contained HTML worksheet to ratify or override a recommended verdict per item (keep/cut, unsubscribe, approve/reject) and return the decisions |
-| **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; run `/harness baseline` to inventory and characterize existing production behavior, `/harness doctor` for readiness or diff self-review, and `/harness docs` or `/harness compliant` to repair repo guidance and proof routes |
+| **decision-worksheet** | Capture concise agent-behavior feedback notes, or inventory a real scope and build one self-contained HTML worksheet to ratify or override a recommended verdict per item |
+| **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; use `/harness baseline` to inventory production behavior, `/harness doctor` for readiness or diff self-review, `/harness secure-dependencies` for supply-chain policy, and `/harness compliant` for end-to-end remediation |
+
+Migration aliases are documented rather than silently executed: `review-and-commit`
+moves to `code prepare-pr --effort low` and now pushes; `dead-code`,
+`thermo-nuclear`, and `test-deslop` move to `code simplify`; `walkthrough` moves
+to `code understand`; `secure-dependencies` moves to `harness
+secure-dependencies` (or `harness compliant` for end-to-end remediation);
+`engineering clean-code` moves to `code simplify`.
 
 ### Tools
 
@@ -132,14 +138,13 @@ abpai/skills/
 │   │   └── gate-before-push.sh
 │   └── skills/
 │       ├── code/              ← umbrella skill (/code) + flat workflow modules
-│       │   ├── *.md           ← prepare-pr.md, review-and-commit.md, thermo-nuclear.md, ...
+│       │   ├── *.md           ← prepare-pr.md, simplify.md, understand.md, handoff.md
 │       │   ├── references/
 │       │   ├── review-patterns/        ← per-gate lenses
 │       │   │   └── scripts/   ← ported executable review assets
 │       │   └── scripts/       ← bundled helpers (e.g. finish-lane.ts preflight)
-│       ├── review-and-commit/ ← /code:review-and-commit (one SKILL.md per command)
 │       ├── prepare-pr/        ← /code:prepare-pr
-│       ├── thermo-nuclear/    ← /code:thermo-nuclear
+│       ├── simplify/          ← /code:simplify
 │       └── <workflow>/        ← one namespaced skill per workflow
 ├── engineering/               ← grouped engineering-practice workflows
 │   └── skills/
@@ -178,10 +183,10 @@ material that should be bundled without becoming separate skills.
 > **Do not add a plugin-root `commands/` directory to expose `/<plugin>:<name>`
 > commands.** Flat Markdown files under a plugin's `commands/` directory do
 > **not** acquire the plugin namespace — they never appear as
-> `/code:review-and-commit`, `/engineering:tdd`, etc., so the command is
+> `/code:simplify`, `/engineering:tdd`, etc., so the command is
 > silently missing from the `/` menu. Only a **skill subdirectory**
-> (`code/skills/review-and-commit/SKILL.md`) deterministically produces the
-> namespaced command `/code:review-and-commit`, per the
+> (`code/skills/simplify/SKILL.md`) deterministically produces the
+> namespaced command `/code:simplify`, per the
 > [skills command-name rules](https://code.claude.com/docs/en/skills#how-a-skill-gets-its-command-name)
 > ("Use `skills/` for new plugins").
 

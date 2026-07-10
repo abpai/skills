@@ -55,7 +55,10 @@ Escalate when auth, billing, webhooks, or data-loss paths changed, or any Score 
 
 - [`scripts/audit-riskiest-mocks.sh`](scripts/audit-riskiest-mocks.sh) — rank files by `vi.mock`/`jest.mock` density (Score-≥-8 candidates first): `./scripts/audit-riskiest-mocks.sh tests src`.
 - [`scripts/assert-test-mode.ts`](scripts/assert-test-mode.ts) — production-safety blocklist (`sk_live_`/`pk_live_`/`production` + `NODE_ENV` + prod-URL denylist) as a pre-flight gate: `bun review-patterns/scripts/assert-test-mode.ts` (exit 1 = unsafe target).
-- [`scripts/real-service-harness.ts`](scripts/real-service-harness.ts) — `withTestTransaction()`/`getTestDb()` (single-connection rollback isolation), `createSignedWebhook(payload, secret)` (HMAC-SHA256 `stripe-signature`), and `CleanupRegistry` (LIFO, FK-safe) reference implementations to adapt into the repo's test utils.
+
+Use the target repository's ORM, webhook SDK, and cleanup utilities. A bundled
+reference harness is intentionally not shipped: copied example code can silently
+misstate transaction, signature, or teardown semantics for the real service.
 
 ## False positives
 
