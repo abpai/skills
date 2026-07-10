@@ -27,8 +27,7 @@ Options:
   --base REF   Override base detection (default: origin/HEAD -> origin/main ->
                origin/master -> main -> master -> HEAD).
   --fix        Also run discovered fix/format commands. Cannot be combined with
-               --seal: fixes mutate files after the scope hash is computed, so
-               the sentinel would be stale the moment it was written.
+               --seal: review and QA must inspect the post-fix scope first.
   --arm        Arm the push gate for this repo (prepare-pr Phase 1). Writes the
                arm marker the gate-before-push hook checks. Needs CLAUDE_PLUGIN_DATA.
   --seal       Write the per-branch seal sentinel after gates/QA/review pass.
@@ -70,13 +69,11 @@ function parseArgs(args: string[]): Options {
         fail(`Unknown option: ${arg}\n\n${usage}`, 2)
     }
   }
-  // --fix mutates files AFTER the scope hash would be computed, so a sentinel
-  // written in the same run would be stale on arrival (the hook recomputes the
-  // hash over the formatter-modified tree). The documented flows never combine
-  // them (Phase 1 is --fix --arm, Phase 5 is plain --seal); refuse rather than
-  // silently writing a dead seal.
+  // The documented flow reviews and QAs the post-fix scope before sealing
+  // (Phase 1 is --fix --arm, Phase 5 is plain --seal). Keep that human/agent
+  // checkpoint explicit even though main() now recomputes scope after fixes.
   if (options.runFixes && options.seal) {
-    fail("--fix cannot be combined with --seal: run --fix first, re-validate, then --seal in a separate run.", 2)
+    fail("--fix cannot be combined with --seal: run --fix first, review and QA the post-fix scope, then --seal separately.", 2)
   }
   return options
 }
@@ -1142,6 +1139,13 @@ function main(): void {
   const pm = packageManager(rootDir)
   const scripts = packageScripts(rootDir)
 
+  // Format/fix commands may touch files outside the pre-run diff. Run them
+  // before computing the authoritative scope so changed-files, scans, lenses,
+  // and the scope hash all describe the bytes the reviewer will actually ship.
+  const fixResults = options.runFixes
+    ? runCommands(rootDir, pm, scripts, ["format", "fmt", "lint:fix", "fix"])
+    : []
+
   const scope = scopeFiles(rootDir, baseRef)
   const outDir = path.join(rootDir, ".workflow", "finish-lane")
   mkdirSync(outDir, { recursive: true })
@@ -1149,9 +1153,6 @@ function main(): void {
   writeFileSync(changedFilesPath, `${scope.all.join("\n")}${scope.all.length ? "\n" : ""}`, "utf8")
   const hash = scopeHash(rootDir, baseRef)
 
-  const fixResults = options.runFixes
-    ? runCommands(rootDir, pm, scripts, ["format", "fmt", "lint:fix", "fix"])
-    : []
   const validationResults = runValidation(rootDir, pm, scripts)
   const scan = mechanicalScans(rootDir, scope.all)
   const ubs = ubsScan(rootDir, scope.all, outDir)
@@ -1248,6 +1249,7 @@ function main(): void {
 
   console.log(out.join("\n"))
   if (sealRefused) process.exit(2)
+  if ([...fixResults, ...validationResults].some((result) => result.status === "fail")) process.exit(1)
 }
 
 if (import.meta.main) main()

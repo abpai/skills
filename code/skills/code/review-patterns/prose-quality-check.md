@@ -44,7 +44,7 @@ Skeptical technical-editor lens for changed user-facing prose: deslop line by li
 
 Escalate for public READMEs, release notes, changelogs, or setup docs users follow.
 
-- **Changelog / release history**: run the version-spine + history-clustering scripts (below) to get ground truth, then audit the draft. Apply gotchas 5–10: research-first, release-vs-tag, live repo links + representative commits, absolute dates, capability-wave structure over a version spine, chunked coverage for large windows.
+- **Changelog / release history**: run the version-spine script, then inspect `git log` in bounded tag/date ranges to identify capability waves. Apply gotchas 5–10: research-first, release-vs-tag, live repo links + representative commits, absolute dates, capability-wave structure over a version spine, chunked coverage for large windows.
 - **Fresh-eyes draft-auditor pass**: return severity-tagged FINDINGS, not a rewrite, against this fixed priority list — (1) missing/weak scope framing, (2) incorrect release-vs-tag treatment, (3) bare hashes instead of live links, (4) weak capability synthesis / commit dump, (5) coverage gaps. Prefer precise findings over generic praise.
 - **README deep pass**: run or trace each example command where practical; confirm install paths, badges, and comparison claims; flag the anti-patterns in gotcha 11.
 - Keep a before/after prose diff for every rewritten passage.
@@ -55,7 +55,6 @@ Ported from changelog-md-workmanship; run directly (shebangs present), prose wor
 
 - [`scripts/validate-changelog-md.py`](scripts/validate-changelog-md.py) — audit a finished `CHANGELOG.md` for structural/evidence problems (enforces release-vs-tag, live-link, concrete-date, generic-phrase gotchas). Invoke: `scripts/validate-changelog-md.py <path/to/CHANGELOG.md>`; network link-check: `scripts/validate-changelog-md.py --verify-links <path>`.
 - [`scripts/build-version-spine.py`](scripts/build-version-spine.py) — generate a version-timeline skeleton from local git tags + GitHub releases, correctly distinguishing Releases from plain tags (ground truth to verify version/date/link claims). Invoke: `scripts/build-version-spine.py --repo . --format markdown`.
-- [`scripts/cluster-history.py`](scripts/cluster-history.py) — group commits into candidate capability waves for the synthesis-not-dump check. Invoke: `scripts/cluster-history.py --repo . --format markdown`.
 
 ## False positives
 

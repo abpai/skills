@@ -624,6 +624,58 @@ test("editing a dash-leading untracked file's contents changes scope_hash", () =
   expect(after).not.toBe(before)
 })
 
+test("--fix recomputes scope after a formatter creates another file", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "package.json", JSON.stringify({ scripts: { format: "format" } }))
+  writeRepoFile(repo, "target.txt", "before\n")
+  const binDir = path.join(repo, "fake-bin")
+  mkdirSync(binDir, { recursive: true })
+  const npm = path.join(binDir, "npm")
+  writeFileSync(
+    npm,
+    "#!/bin/sh\nif [ \"$1\" = run ] && [ \"$2\" = format ]; then printf 'formatted\\n' > formatted.txt; fi\n",
+    "utf8",
+  )
+  chmodSync(npm, 0o755)
+
+  const result = runFinishLaneArgs(repo, ["--base", "HEAD", "--fix"], { PATH: `${binDir}:${systemPath}` })
+  const changed = readFileSync(path.join(repo, ".workflow", "finish-lane", "changed-files.txt"), "utf8")
+
+  expect(result.status).toBe(0)
+  expect(result.stdout).toContain("npm run format -> ok")
+  expect(changed).toContain("formatted.txt")
+})
+
+test("validation failure exits non-zero without requiring --seal", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "package.json", JSON.stringify({ scripts: { validate: "validate" } }))
+  const binDir = path.join(repo, "fake-bin")
+  mkdirSync(binDir, { recursive: true })
+  const npm = path.join(binDir, "npm")
+  writeFileSync(npm, "#!/bin/sh\nexit 1\n", "utf8")
+  chmodSync(npm, 0o755)
+
+  const result = runFinishLaneArgs(repo, ["--base", "HEAD"], { PATH: `${binDir}:${systemPath}` })
+
+  expect(result.status).toBe(1)
+  expect(result.stdout).toContain("npm run validate -> fail")
+})
+
+test("failed fix command exits non-zero", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "package.json", JSON.stringify({ scripts: { format: "format" } }))
+  const binDir = path.join(repo, "fake-bin")
+  mkdirSync(binDir, { recursive: true })
+  const npm = path.join(binDir, "npm")
+  writeFileSync(npm, "#!/bin/sh\nexit 7\n", "utf8")
+  chmodSync(npm, 0o755)
+
+  const result = runFinishLaneArgs(repo, ["--base", "HEAD", "--fix"], { PATH: `${binDir}:${systemPath}` })
+
+  expect(result.status).toBe(1)
+  expect(result.stdout).toContain("npm run format -> fail")
+})
+
 // --- suggestLenses routing (lensRules coverage) ---------------------------
 
 test("suggestLenses: plain code does not invent a generic review lens", () => {

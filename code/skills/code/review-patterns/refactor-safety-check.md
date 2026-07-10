@@ -46,12 +46,13 @@ Look in both directions:
 - **Removed unsafely:** code with unresolved external, dynamic, string, config,
   build, feature-flag, test, or documentation references.
 
-For a moved, renamed, or deleted symbol, run
-`scripts/callsite_census.sh <symbol> [run-id]`. Before deleting a file, module,
-public symbol, or its tests, run
-`scripts/dead_code_safety_check.sh <path> [symbol]`. A failing or incomplete
-gauntlet means `DO NOT DELETE`; report the unresolved consumer instead of
-guessing. Removing a file together with its tests does not prove it was dead.
+For a proposed or already-applied deletion of a file, module, symbol, or its tests, run
+`scripts/dead_code_safety_check.sh <path> [symbol]`. It reports source, dynamic,
+string, config, build, test, and documentation references in one read-only scan.
+A failing or incomplete scan means `DO NOT DELETE`; report the unresolved
+consumer instead of guessing. A clean result still cannot prove that a public
+export has no external consumers. Removing a file together with its tests does
+not prove it was dead.
 
 ## Quick pass
 
@@ -76,7 +77,7 @@ registration, or deletions:
 
 - Claimed unchanged behavior and source of truth.
 - Applicable behavior axes and before/after evidence.
-- Callsite census and dead-code gauntlet results when relevant.
+- Dead-code safety scan and external-consumer reasoning when relevant.
 - Left-behind residue found or explicit `none found` scope.
 - Validation commands, results, blockers, and any behavior change split out of
   the refactor.

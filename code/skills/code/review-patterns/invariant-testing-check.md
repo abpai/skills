@@ -22,8 +22,8 @@ correct and broken code.
    *necessary, not sufficient* conditions. A function that always returns `0`
    satisfies `sin(x) = sin(x)`; a constant-return impl passes many relations.
    The dividing line between a real suite and a placebo is **mutation evidence**:
-   plant known bugs and confirm each relation *fails* on the broken impl. Check:
-   run `scripts/mr_mutation_matrix.py` against the seven canonical operators
+   plant known bugs and confirm each relation *fails* on the broken impl. Check
+   the seven canonical operators
    (off-by-one, sign-flip, zero-out, double, swap-args, drop-element,
    constant-return); require every mutation killed by ≥1 relation, **kill-rate
    ≥ 80%**, or a written equivalent-mutant argument. No kill evidence → not done.
@@ -67,7 +67,7 @@ correct and broken code.
    `f(x+c)=f(x)+g(c)`, **Multiplicative** `f(k·x)=h(k)·f(x)`, **Permutative**
    `f(permute(x))=permute(f(x))`, **Inclusive/Exclusive** (subset / superset /
    disjoint), **Invertive** `f(T(T(x)))=f(x)`. For an unfamiliar domain paste
-   `scripts/mr_elicit_prompt.txt` to enumerate ALL relations with category,
+   explicitly enumerate candidate relations with category,
    exact `T(x)`, exact relation `R`, bug class, and ALWAYS-vs-sometimes
    confidence.
 
@@ -121,7 +121,7 @@ Escalate when the unit needs a durable oracle-free suite:
 
 - Build ≥5 independent relations across ≥3 categories; add ≥1 composite chain
   where the chain's sensitivity exceeds any single relation (justify the order).
-- Run the full mutation matrix (`scripts/mr_mutation_matrix.py`): every operator
+- Run the target repository's mutation runner: every operator
   killed by ≥1 relation, suite kill-rate ≥80%, or a written equivalent-mutant
   argument for survivors.
 - Pin deterministic seeds, an explicit tolerance strategy, and property-based
@@ -129,20 +129,9 @@ Escalate when the unit needs a durable oracle-free suite:
 - Mutation testing belongs to a durable suite — don't drag a full campaign into
   ordinary PR prep beyond confirming the landed relations kill one planted bug.
 
-## Scripts
-
-- [`scripts/mr_mutation_matrix.py`](scripts/mr_mutation_matrix.py) — placebo
-  detector. Wire `relation_holds(mr, mutation)` to the code under test; it builds
-  the MR × mutation detection matrix over the seven canonical operators, asserts
-  every mutation is killed by ≥1 relation, and prints the kill-rate. Run:
-  `python3 scripts/mr_mutation_matrix.py`.
-- [`scripts/mr_elicit_prompt.txt`](scripts/mr_elicit_prompt.txt) — paste-ready
-  prompt to enumerate ALL relations for an unfamiliar `[SYSTEM/INPUT/OUTPUT]`,
-  each tagged category / exact `T(x)` / exact `R` / bug class / ALWAYS-vs-
-  sometimes confidence, prioritized for diversity.
-- [`scripts/mr_templates.md`](scripts/mr_templates.md) — proptest/Hypothesis
-  skeletons for Equivalence / Subset / Round-trip plus the relative-epsilon
-  helper `eps = max(|a|,|b|)*1e-12 + 1e-15`.
+Use the target repository's property/mutation framework. The removed bundled
+matrix was a template with a stubbed evaluator, so running it could not validate
+real code.
 
 ## False positives
 
