@@ -16,7 +16,7 @@ plugins are copied into runtime caches, so checkout-relative paths like
 
 ## Namespaced commands
 
-To expose a namespaced command such as `/code:review-and-commit` or
+To expose a namespaced command such as `/code:prepare-pr` or
 `/engineering:tdd`, create one skill subdirectory per command:
 
 ```text

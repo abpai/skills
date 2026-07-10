@@ -13,8 +13,9 @@ metadata:
 
 Use the smallest shape that fits the request:
 
-- **Feedback note:** the user gives one correction or says to capture feedback.
-  Save it verbatim as a local JSON note, return the marker, and stop.
+- **Feedback note:** the user gives one correction, asks to capture feedback, or
+  asks to list/show prior notes. Use the bundled secure helper, return its result,
+  and stop.
 - **Worksheet:** the user needs to decide many similar items. Inventory the real
   scope, recommend a verdict per item, then build one self-contained HTML file so
   they can ratify or override quickly.
@@ -24,13 +25,21 @@ Use the smallest shape that fits the request:
 Use this mode for requests like "capture that feedback", "remember this
 correction", or explicit `capture-feedback` wording.
 
-Store one JSON file under:
+Resolve `<skill-dir>` to the directory containing this `SKILL.md`, then run:
+
+```bash
+python3 <skill-dir>/scripts/feedback_notes.py capture "<verbatim feedback>"
+```
+
+Pass the correction as one quoted argument so spacing and punctuation stay exact.
+The helper writes private directories/files (`0700`/`0600`) with exclusive
+creation and collision retries under:
 
 ```text
 ${DECISION_WORKSHEET_HOME:-~/.agents/decision-worksheet}/feedback/<id>.json
 ```
 
-Use this schema:
+It uses this schema:
 
 ```json
 {
@@ -48,9 +57,15 @@ Rules:
 - Preserve the user's words exactly; do not classify, summarize, or propose fixes.
 - Ask "What should I capture?" only when no feedback text was provided.
 - Reply only with `Captured <marker>` and, when useful, the local file path.
+- For requests to inspect prior notes, run `feedback_notes.py list [--limit N]`
+  or `feedback_notes.py show <id-or-marker>`. These commands read both the new
+  store and legacy `${CAPTURE_FEEDBACK_HOME:-~/.agents/capture-feedback}/inbox`
+  notes, so consolidation does not strand existing feedback.
+- If the helper is missing or fails, report the error. Do not reconstruct a less
+  secure direct-write path from memory.
 
-Done means the file exists, the marker is stable, and `user_words` matches the
-correction verbatim.
+Done means the helper succeeds, the file exists with private permissions, the
+marker is stable, and `user_words` matches the correction verbatim.
 
 ## Worksheet
 

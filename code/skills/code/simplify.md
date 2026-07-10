@@ -43,8 +43,10 @@ only when that evidence is genuinely ambiguous.
    the highest-signal areas. For a whole repository, rank hotspots using size,
    branching, coupling, duplication, churn, and centrality rather than reading
    every file uniformly.
-3. When Python is available and a selected target contains supported JS/TS or
-   Python, run the bundled scanner:
+3. When Python is available and a selected non-test target contains supported
+   JS/TS or Python, run the bundled scanner. For an explicit test-pruning scope,
+   start with the test rubric and behavioral census; run the generic scanner only
+   when survivor-readability work makes its style leads useful.
 
    ```bash
    python3 <code-module-dir>/scripts/clean-code-scan.py <target> --format markdown
@@ -136,9 +138,11 @@ Treat test pruning as simplification, not as a separate command:
 4. Remove snapshots and fixtures made unreachable by the approved test deletions.
    Confirm the diff did not spill into production code or shared helpers unless
    those files were independently inside the requested simplify scope.
-5. Re-run formatting, type checking, and the CI-equivalent suite. The proof is
-   fewer tests with no new failures relative to baseline, plus a before/after
-   count and a short account of what was deliberately protected.
+5. Re-run formatting, type checking, and the CI-equivalent suite. When deletion
+   is justified, the proof is fewer tests with no new failures relative to
+   baseline, plus a before/after count and a short account of what was protected.
+   When every candidate is load-bearing or uncertain, a same-count justified
+   no-op is the correct result; do not delete merely to satisfy a metric.
 
 Done means the scoped changes are applied, relevant checks have run, and any
 residual uncertainty is explicit.

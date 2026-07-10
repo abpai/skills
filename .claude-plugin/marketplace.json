@@ -83,7 +83,7 @@
       "description": "Capture concise feedback notes, or build evidence-backed HTML worksheets that let users ratify or override recommended verdicts and return the decisions.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "decision-worksheet" },
       "category": "productivity",
-      "keywords": ["decision", "review", "worksheet", "html", "triage", "feedback", "capture", "ratify-override"]
+      "keywords": ["decision", "review", "worksheet", "html", "triage", "feedback", "capture", "capture-feedback", "ratify-override"]
     },
     {
       "name": "hexagon-audit",

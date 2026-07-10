@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>abpai/skills — AI Workflow Plugins</title>
-  <meta name="description" content="Curated marketplace of 17 AI agent workflow plugins for Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
+  <meta name="description" content="Curated marketplace of 17 AI agent workflow plugins across Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
   <meta property="og:title" content="abpai/skills — AI Workflow Plugins">
-  <meta property="og:description" content="17 production-grade AI workflow plugins for Claude Code and Codex.">
+  <meta property="og:description" content="17 AI workflow plugins across Claude Code and Codex.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -55,7 +55,7 @@
       --bg-surface-raised: #242424;
       --border: #333333;
       --border-visible: #444444;
-      --text-disabled: #666666;
+      --text-disabled: #999999;
       --text-secondary: #999999;
       --text-primary: #E8E8E8;
       --text-display: #FFFFFF;
@@ -70,7 +70,7 @@
       --bg-surface-raised: #EEEEEE;
       --border: #E0E0E0;
       --border-visible: #CCCCCC;
-      --text-disabled: #AAAAAA;
+      --text-disabled: #666666;
       --text-secondary: #666666;
       --text-primary: #222222;
       --text-display: #000000;
@@ -145,7 +145,12 @@
     .nav-links a {
       color: var(--text-secondary);
       transition: color var(--duration-fast) var(--ease);
-      padding: var(--space-xs) 0;
+      padding: var(--space-xs) var(--space-sm);
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .nav-links a:hover,
@@ -172,6 +177,8 @@
       padding: var(--space-xs) var(--space-sm);
       border: 1px solid var(--border);
       border-radius: 100px;
+      min-width: 44px;
+      min-height: 44px;
     }
 
     .theme-toggle:hover { color: var(--text-display); border-color: var(--border-visible); }
@@ -183,6 +190,11 @@
       letter-spacing: 0.1em;
       color: var(--text-secondary);
       transition: color var(--duration-fast) var(--ease);
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .github-link:hover { color: var(--text-display); }
@@ -304,6 +316,16 @@
       position: relative;
     }
 
+    .search-label {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: var(--label);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-xs);
+    }
+
     .search-input {
       width: 100%;
       font-family: var(--font-mono);
@@ -314,6 +336,7 @@
       padding: var(--space-sm) 0;
       border-bottom: 1px solid var(--border-visible);
       transition: border-color var(--duration-fast) var(--ease);
+      min-height: 44px;
     }
 
     .search-input::placeholder {
@@ -328,7 +351,7 @@
       font-size: var(--label);
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: var(--text-disabled);
+      color: var(--text-secondary);
       white-space: nowrap;
     }
 
@@ -351,6 +374,8 @@
       border-radius: 100px;
       transition: all var(--duration-fast) var(--ease);
       white-space: nowrap;
+      min-width: 44px;
+      min-height: 44px;
     }
 
     .filter-pill:hover {
@@ -362,6 +387,9 @@
       border-color: var(--accent);
       color: var(--accent);
     }
+
+    .filter-pill.active::before { content: '[ '; }
+    .filter-pill.active::after { content: ' ]'; }
 
     /* ============================================
        CATALOG GRID
@@ -487,6 +515,11 @@
       border-radius: 100px;
       transition: all var(--duration-fast) var(--ease);
       white-space: nowrap;
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .card-link:hover {
@@ -529,6 +562,8 @@
       gap: var(--space-xl);
     }
 
+    .install-column { min-width: 0; }
+
     .install-column h3 {
       font-family: var(--font-mono);
       font-size: var(--body-sm);
@@ -558,6 +593,7 @@
       border-radius: 2px;
       padding: var(--space-md);
       overflow-x: auto;
+      max-width: 100%;
     }
 
     .code-block code {
@@ -585,6 +621,8 @@
       border: 1px solid var(--border);
       border-radius: 2px;
       transition: all var(--duration-fast) var(--ease);
+      min-width: 44px;
+      min-height: 44px;
     }
 
     .copy-btn:hover { color: var(--text-primary); border-color: var(--border-visible); }
@@ -612,6 +650,11 @@
     .footer-content a {
       color: var(--text-secondary);
       transition: color var(--duration-fast) var(--ease);
+      min-width: 44px;
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .footer-content a:hover { color: var(--text-display); }
@@ -630,7 +673,7 @@
       font-size: var(--body-sm);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--text-disabled);
+      color: var(--text-secondary);
     }
 
     /* ============================================
@@ -645,13 +688,23 @@
       font-size: var(--label);
       text-transform: uppercase;
       letter-spacing: 0.15em;
-      color: var(--text-disabled);
+      color: var(--text-secondary);
       animation: pulse 2s var(--ease) infinite;
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 0.4; }
       50% { opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+      .scroll-hint { animation: none; }
     }
 
     /* ============================================
@@ -716,18 +769,19 @@
     <div class="container">
       <div class="filter-bar">
         <div class="search-wrapper">
-          <input type="text" class="search-input" id="searchInput" placeholder="Search plugins..." autocomplete="off" spellcheck="false">
+          <label class="search-label" for="searchInput">Search plugins</label>
+          <input type="text" class="search-input" id="searchInput" placeholder="Search by name or workflow..." autocomplete="off" spellcheck="false">
         </div>
-        <span class="result-count" id="resultCount">17 / 17</span>
+        <span class="result-count" id="resultCount" role="status" aria-live="polite">17 / 17</span>
       </div>
       <div class="category-filters" id="categoryFilters">
-        <button class="filter-pill active" data-category="All">All</button>
-        <button class="filter-pill" data-category="Planning & Reasoning">Planning & Reasoning</button>
-        <button class="filter-pill" data-category="Code Quality">Code Quality</button>
-        <button class="filter-pill" data-category="Developer Productivity">Developer Productivity</button>
-        <button class="filter-pill" data-category="Tools">Tools</button>
-        <button class="filter-pill" data-category="Languages & Platforms">Languages & Platforms</button>
-        <button class="filter-pill" data-category="Writing">Writing</button>
+        <button class="filter-pill active" data-category="All" aria-pressed="true">All</button>
+        <button class="filter-pill" data-category="Planning & Reasoning" aria-pressed="false">Planning & Reasoning</button>
+        <button class="filter-pill" data-category="Code Quality" aria-pressed="false">Code Quality</button>
+        <button class="filter-pill" data-category="Developer Productivity" aria-pressed="false">Developer Productivity</button>
+        <button class="filter-pill" data-category="Tools" aria-pressed="false">Tools</button>
+        <button class="filter-pill" data-category="Languages & Platforms" aria-pressed="false">Languages & Platforms</button>
+        <button class="filter-pill" data-category="Writing" aria-pressed="false">Writing</button>
       </div>
     </div>
   </section>
@@ -838,7 +892,7 @@
           </div>
         </article>
 
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="decision review worksheet html triage feedback capture ratify override">
+        <article class="skill-card" data-category="Developer Productivity" data-keywords="decision review worksheet html triage feedback capture capture-feedback ratify override">
           <span class="card-category">Developer Productivity</span>
           <h3 class="card-name">decision-worksheet</h3>
           <p class="card-description">Capture concise feedback notes, or build evidence-backed HTML worksheets so many similar items can be ratified or overridden quickly.</p>
@@ -907,6 +961,10 @@
             <a href="https://github.com/abpai/skills/tree/main/tutorial" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
+
+        <div class="empty-state" id="emptyState" hidden>
+          <p>No plugins found. Try a broader search or choose All.</p>
+        </div>
 
       </div>
     </div>
@@ -993,6 +1051,7 @@ codex
         if (show) visible++;
       });
       document.getElementById('resultCount').textContent = visible + ' / ' + totalCount;
+      document.getElementById('emptyState').hidden = visible !== 0;
     }
 
     // Category filters
@@ -1000,8 +1059,12 @@ codex
       const btn = e.target.closest('[data-category]');
       if (!btn) return;
       activeCategory = btn.dataset.category;
-      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.filter-pill').forEach(p => {
+        p.classList.remove('active');
+        p.setAttribute('aria-pressed', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
       filterCards();
     });
 

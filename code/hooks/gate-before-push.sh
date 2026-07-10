@@ -278,7 +278,7 @@ fi
 # --- 5. BLOCK --------------------------------------------------------------
 
 # JSON deny carries the actionable reason to the model (preferred over exit 2).
-REASON="prepare-pr gate: run the finish-lane quality gates + source-grounded QA + independent review, then seal with \`finish-lane.ts --seal\`, before pushing or opening/editing the PR body. No fresh gates-sealed sentinel for this branch (new commits/changes since seal also invalidate it). If this push is NOT part of a prepare-pr run (a previous lane was abandoned after arming), disarm the stale gate with \`finish-lane.ts --disarm\` instead."
+REASON="prepare-pr gate: run the finish-lane quality gates + source-grounded QA + any required independent review, then seal with \`finish-lane.ts --seal\`, before pushing or opening/editing the PR body. No fresh gates-sealed sentinel for this branch (new commits/changes since seal also invalidate it). If this push is NOT part of a prepare-pr run (a previous lane was abandoned after arming), disarm the stale gate with \`finish-lane.ts --disarm\` instead."
 
 jq -n --arg reason "$REASON" '{
   hookSpecificOutput: {

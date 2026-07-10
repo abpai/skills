@@ -89,6 +89,13 @@ research and review. The debate workflow now lives inside `pi` as
 | **decision-worksheet** | Capture concise agent-behavior feedback notes, or inventory a real scope and build one self-contained HTML worksheet to ratify or override a recommended verdict per item |
 | **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; use `/harness baseline` to inventory production behavior, `/harness doctor` for readiness or diff self-review, `/harness secure-dependencies` for supply-chain policy, and `/harness compliant` for end-to-end remediation |
 
+Migration aliases are documented rather than silently executed: `review-and-commit`
+moves to `code prepare-pr --effort low` and now pushes; `dead-code`,
+`thermo-nuclear`, and `test-deslop` move to `code simplify`; `walkthrough` moves
+to `code understand`; `secure-dependencies` moves to `harness compliant` (or
+`harness secure-dependencies` for the focused pass); `engineering clean-code`
+moves to `code simplify`.
+
 ### Tools
 
 | Plugin | What it does |

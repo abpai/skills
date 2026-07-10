@@ -22,6 +22,10 @@ Invoke a workflow by passing its name as the first argument to this umbrella —
 
 Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `grill-me`, `tdd`, `zoom-out`, `improve-architecture`, `defined-terms`, `complexity-report`, `reduce`.
 
+Before natural-language fallback, detect the removed exact token `clean-code` and
+return its migration to `code simplify [scope]`. Stop after the guidance; do not
+pretend the replacement ran.
+
 ## Routing
 
 - Use `grill-me.md` for grill-me, plan grilling, or design stress-testing.

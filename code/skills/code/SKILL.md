@@ -30,6 +30,19 @@ Invoke a workflow by passing its name as the first argument to this umbrella —
 
 Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `prepare-pr`, `simplify`, `handoff`, `understand`.
 
+Before natural-language fallback, detect these removed exact subcommand tokens and
+return the migration guidance instead of silently changing side effects:
+
+- `review-and-commit` → `code prepare-pr --effort low` (warning: the replacement
+  commits, pushes, and creates or updates a PR).
+- `dead-code`, `thermo-nuclear`, or `test-deslop` → `code simplify [scope]`.
+- `walkthrough` → `code understand [topic]`; the mastery-quiz workflow was removed.
+- `secure-dependencies` → `harness compliant`; dependency hardening now runs
+  automatically inside that workflow.
+
+Do not load a removed module or pretend the migration ran. Stop after giving the
+replacement so the user can accept the new contract explicitly.
+
 ## Routing
 
 - Use `prepare-pr.md` for PR readiness through push. It accepts `--effort low|medium|high` (default `medium`) to scale review depth while preserving risk-required gates. Natural-language requests to review and commit route to `prepare-pr --effort low`; this pack no longer has a local-only commit workflow.
