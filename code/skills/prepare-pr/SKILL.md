@@ -18,7 +18,7 @@ through the user input.
 
 1. Read the sibling module `../code/prepare-pr.md`.
 2. Treat `$ARGUMENTS` as the effort, scope, and message hint; `medium` is the default effort.
-3. Follow the module's Workflow, Stop Conditions, and Output Contract.
+3. Follow the module's phases, bright-line rules, and output format.
 4. Stop and report if the module cannot be read; do not reconstruct the workflow from memory.
 
 User input: $ARGUMENTS

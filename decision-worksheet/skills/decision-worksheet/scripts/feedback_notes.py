@@ -8,6 +8,7 @@ import json
 import os
 import secrets
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -49,14 +50,35 @@ def feedback_text(parts: list[str]) -> str:
     return ""
 
 
+def ensure_private_dir(path: Path) -> None:
+    # Only directories this helper creates get 0700; a pre-existing configured
+    # root (DECISION_WORKSHEET_HOME) keeps whatever permissions its owner chose.
+    if path.exists():
+        return
+    ensure_private_dir(path.parent)
+    try:
+        path.mkdir(mode=0o700)
+    except FileExistsError:
+        return
+    path.chmod(0o700)  # mkdir's mode is narrowed by the umask; pin it
+
+
 def write_json_secure(path: Path, payload: dict) -> None:
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    path.parent.parent.chmod(0o700)
-    path.parent.chmod(0o700)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as handle:
-        json.dump(payload, handle, indent=2, ensure_ascii=False)
-        handle.write("\n")
+    ensure_private_dir(path.parent)
+    # Write to a private sibling temp file, then hard-link to the final name:
+    # the note appears atomically (a crash never leaves a truncated note) and
+    # os.link raises FileExistsError on an id collision, preserving O_EXCL
+    # semantics for the caller's retry loop.
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(payload, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(tmp_name, path)
+    finally:
+        os.unlink(tmp_name)
 
 
 def cmd_capture(args: argparse.Namespace) -> int:

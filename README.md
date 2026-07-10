@@ -92,9 +92,9 @@ research and review. The debate workflow now lives inside `pi` as
 Migration aliases are documented rather than silently executed: `review-and-commit`
 moves to `code prepare-pr --effort low` and now pushes; `dead-code`,
 `thermo-nuclear`, and `test-deslop` move to `code simplify`; `walkthrough` moves
-to `code understand`; `secure-dependencies` moves to `harness compliant` (or
-`harness secure-dependencies` for the focused pass); `engineering clean-code`
-moves to `code simplify`.
+to `code understand`; `secure-dependencies` moves to `harness
+secure-dependencies` (or `harness compliant` for end-to-end remediation);
+`engineering clean-code` moves to `code simplify`.
 
 ### Tools
 

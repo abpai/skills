@@ -36,12 +36,17 @@ return the migration guidance instead of silently changing side effects:
 - `review-and-commit` → `code prepare-pr --effort low` (warning: the replacement
   commits, pushes, and creates or updates a PR).
 - `dead-code`, `thermo-nuclear`, or `test-deslop` → `code simplify [scope]`.
+  Simplify's reachability and test-signal passes own those audits now, but they
+  were read-only and a scoped `simplify` applies edits; omit the scope for a
+  proposal-only ranking, the closest match to the old audit reports.
 - `walkthrough` → `code understand [topic]`; the mastery-quiz workflow was removed.
-- `secure-dependencies` → `harness compliant`; dependency hardening now runs
-  automatically inside that workflow.
+- `secure-dependencies` → `harness secure-dependencies [scope]` (requires the
+  harness plugin), the focused dependency-hardening pass; the broader
+  `harness compliant` also runs it as one step of end-to-end remediation.
 
-Do not load a removed module or pretend the migration ran. Stop after giving the
-replacement so the user can accept the new contract explicitly.
+Carry the user's remaining arguments into the suggested replacement. Do not load
+a removed module or pretend the migration ran. Stop after giving the replacement
+so the user can accept the new contract explicitly.
 
 ## Routing
 

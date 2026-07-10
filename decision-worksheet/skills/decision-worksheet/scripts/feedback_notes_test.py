@@ -25,6 +25,16 @@ class FeedbackNotesTest(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(path.parent.stat().st_mode), 0o700)
             self.assertEqual(stat.S_IMODE(path.parent.parent.stat().st_mode), 0o700)
 
+    def test_capture_does_not_chmod_a_preexisting_configured_root(self) -> None:
+        with tempfile.TemporaryDirectory() as root:
+            shared = Path(root) / "shared"
+            shared.mkdir()
+            os.chmod(shared, 0o755)
+            env = {**os.environ, "DECISION_WORKSHEET_HOME": str(shared)}
+            subprocess.run([str(SCRIPT), "capture", "words"], check=True, text=True, capture_output=True, env=env)
+            self.assertEqual(stat.S_IMODE(shared.stat().st_mode), 0o755)
+            self.assertEqual(stat.S_IMODE((shared / "feedback").stat().st_mode), 0o700)
+
     def test_list_and_show_include_legacy_notes(self) -> None:
         with tempfile.TemporaryDirectory() as root:
             legacy_root = Path(root) / "legacy"
