@@ -38,10 +38,10 @@
     },
     {
       "name": "engineering",
-      "description": "Engineering-practice workflows under /engineering:* commands, including TDD, architecture, defined terms, clean-code reviews, read-only complexity reports, and a five-step plan-optimization algorithm.",
+      "description": "Engineering-practice workflows under /engineering:* commands, including TDD, architecture, defined terms, read-only complexity reports, design stress tests, and plan simplification.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "engineering" },
       "category": "productivity",
-      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out", "clean-code", "typescript", "complexity", "performance"]
+      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out", "defined-terms", "complexity", "performance", "reduce"]
     },
     {
       "name": "bun-expert",
@@ -66,17 +66,17 @@
     },
     {
       "name": "code",
-      "description": "Grouped coding workflows under one /code umbrella with subcommands (e.g. /code prepare-pr). prepare-pr is full PR readiness through commit, push, and PR update; review-and-commit is quick local review plus commit.",
+      "description": "Four focused workflows under /code: effort-scaled prepare-pr through push, behavior-preserving simplify, cold-start handoff, and understand with HTML plus a runnable real-code snippet.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "prepare-pr", "review", "commit", "qa", "manual-qa", "pr-prep", "browser", "walkthrough", "understand", "dead-code", "dependency-security", "html", "handoff", "continuation"]
+      "keywords": ["code", "prepare-pr", "effort", "review", "commit", "push", "qa", "simplify", "refactor", "dead-code", "understand", "snippet", "html", "handoff", "continuation"]
     },
     {
       "name": "harness",
-      "description": "Agent-harness workflows for agent-driven development: fleet-scale behavior baselines, spec contracts, prose-to-enforcement conversion, tiny AGENTS.md routers, verification-first Harness Doctor readiness and diff audits, scoped behavior capture, autonomous-ready onboarding, eval seeding, and skill dogfooding.",
+      "description": "Agent-harness workflows for agent-driven development: fleet-scale behavior baselines, spec contracts, dependency hardening, verification-first readiness and diff audits, compliant remediation, scoped behavior capture, autonomous-ready onboarding, eval seeding, and skill dogfooding.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "harness" },
       "category": "productivity",
-      "keywords": ["harness", "baseline", "agents", "docs", "spec-contract", "enforcement", "validation", "testing", "agents-md", "progressive-disclosure", "architecture", "domains", "invariants", "glossary", "todos", "doctor", "readiness", "behavior-ledger", "characterization"]
+      "keywords": ["harness", "baseline", "agents", "docs", "spec-contract", "enforcement", "validation", "testing", "dependency-security", "supply-chain", "lockfile", "agents-md", "progressive-disclosure", "architecture", "domains", "invariants", "glossary", "todos", "doctor", "readiness", "behavior-ledger", "characterization", "compliant"]
     },
     {
       "name": "decision-worksheet",

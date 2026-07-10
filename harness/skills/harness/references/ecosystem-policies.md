@@ -240,6 +240,17 @@ Do not create both Dependabot and Renovate configs unless the repo already inten
 
 ## CI Hardening
 
+Treat the runner's tools as dependencies as well as the application packages:
+
+- Pin third-party GitHub Actions `uses:` references to full commit SHAs and keep
+  the human-readable release tag in a trailing comment.
+- Replace required CI or documented-gate invocations that fetch the latest CLI
+  (`npx --yes <tool>`, `uvx <tool>`, curl-piped installers) with an exact version
+  backed by the ecosystem's lockfile or a verified checksum.
+- A minimal tool-only manifest/lockfile is justified when it makes a required
+  validation gate reproducible. Do not introduce a package manager only to pin
+  an optional local convenience command.
+
 Update CI install commands to frozen/locked equivalents:
 
 ```bash

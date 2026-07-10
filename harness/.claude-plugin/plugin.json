@@ -1,7 +1,7 @@
 {
   "name": "harness",
-  "version": "1.6.0",
-  "description": "Agent harness workflow pack for making repos ergonomic for agent-driven development: fleet-scale behavior baselines, spec contracts (docs/SPEC_CONTRACT.md), prose-to-enforcement conversion, tiny AGENTS.md routers, verification-first Harness Doctor readiness and diff audits, scoped behavior capture, autonomous-ready onboarding manifests, proof-menu eval seeding, and skill dogfooding.",
+  "version": "1.7.0",
+  "description": "Agent harness workflow pack for agent-driven development: fleet-scale behavior baselines, spec contracts, dependency hardening, verification-first readiness and diff audits, compliant remediation, scoped behavior capture, autonomous-ready onboarding manifests, proof-menu eval seeding, and skill dogfooding.",
   "author": {
     "name": "Andy Pai"
   },

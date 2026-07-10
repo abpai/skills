@@ -3,8 +3,8 @@
 ## gate-before-push (PreToolUse / Bash)
 
 `gate-before-push.sh` is an **always-registered but inert-by-default** push gate
-that enforces BRIGHT LINE 1 of `/code:prepare-pr`: quality gates +
-source-grounded QA + independent review must run, and the branch must be
+that enforces BRIGHT LINE 1 of `/code:prepare-pr`: effort-selected and
+risk-required gates + source-grounded QA + any required independent review must run, and the branch must be
 **sealed**, _before_ `git push`, `gh pr create`, or `gh pr edit ... --body`.
 
 ### Arm / Seal / Disarm lifecycle

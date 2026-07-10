@@ -7,7 +7,7 @@ prepared from upstream commit
 `05a25e8fb8f4cdca4e6cfbddd60323c6ddc5aa54`.
 No upstream examples are vendored.
 
-Use this as the review map for `/engineering clean-code`. The original upstream
+Use this as the review map for `/code simplify`. The original upstream
 document is a principle catalog; this file classifies those principles by what a
 repo-agnostic scanner can enforce and what needs agent judgment.
 

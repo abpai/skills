@@ -12,9 +12,9 @@ checks of its own.
 1. **Audit.** Load `doctor.md` and run a full audit (no `--diff`) following its
    execution policy. Capture the baseline: the weighted D1-D7 score, the
    loop-readiness verdict, and the tiered finding list (Immediate / Near-term /
-   Later). This baseline is what step 3 measures against — record it before
+   Later). This baseline is what step 4 measures against — record it before
    touching anything.
-2. **Remediate.** Load `docs.md` and work the findings through its process,
+2. **Remediate guidance and enforcement.** Load `docs.md` and work the findings through its process,
    highest-leverage first, walking the enforcement hierarchy (enforcement over
    prose): run the Keep / Move / Delete audit on flagged guidance, convert prose
    rules to tests/lints/CI/scripts, author any missing core docs (spec contract,
@@ -24,20 +24,26 @@ checks of its own.
    (record it as a `docs/todos` spec and surface the decision), and when the
    original request was docs-scoped, present the prose-to-enforcement conversion
    plan for approval before implementing it.
-3. **Re-verify.** Re-run the `doctor.md` audit and diff against the baseline:
+3. **Harden dependencies.** Load `secure-dependencies.md` and apply it to the
+   repository. This step is part of every compliant run, not an optional
+   recommendation: inspect only the ecosystems present, preserve existing
+   registries/package managers, and record frozen-install and policy evidence.
+4. **Re-verify.** Re-run the `doctor.md` audit and diff against the baseline:
    which findings are resolved, which remain, and how the score and verdict
    moved. A finding is closed only when the re-audit no longer reports it —
    never mark it resolved from intent alone.
 
 ## Completion
 
-The overhaul is done when step 3 has run and you can report, concretely:
+The overhaul is done when step 4 has run and you can report, concretely:
 
 - Baseline vs. final: D1-D7 score and loop-readiness verdict, before and after.
 - Findings resolved (by ID), findings deferred (with reason — usually a missing
   enforcement surface captured as a `docs/todos` spec), and any finding that a
   re-audit shows is still open.
 - Files created, changed, deleted, and prose rules converted to enforcement.
+- Dependency ecosystems hardened, bot/cooldown policy applied, lifecycle-script
+  decisions, and locked/frozen install proof.
 - Every validation command actually run during both audits, per the execution
   policy — a documented command not run is `unverified`, not passing.
 

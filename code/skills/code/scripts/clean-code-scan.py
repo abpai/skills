@@ -2,7 +2,7 @@
 """Static clean-code lead scanner for mixed TypeScript/JavaScript repositories.
 
 This scanner is intentionally conservative: it produces leads for
-`/engineering:clean-code`, not final findings. Principles are derived from
+`/code:simplify`, not final findings. Principles are derived from
 labs42io/clean-code-typescript (MIT licensed), upstream commit
 05a25e8fb8f4cdca4e6cfbddd60323c6ddc5aa54.
 """
@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import fnmatch
 import json
 import os
 import re
@@ -116,12 +117,30 @@ class Lead:
     finding_id: str = ""
 
 
-def iter_source_files(root: Path, excludes: set[str]) -> Iterable[Path]:
+def excluded_by_glob(path: Path, root: Path, patterns: list[str]) -> bool:
+    candidate = path.name if root.is_file() else path.relative_to(root).as_posix()
+    return any(fnmatch.fnmatch(candidate, pattern) for pattern in patterns)
+
+
+def iter_source_files(root: Path, excludes: set[str], exclude_globs: list[str]) -> Iterable[Path]:
+    if root.is_file():
+        if (
+            root.suffix in TEXT_EXTENSIONS
+            and root.resolve() != SCANNER_PATH
+            and not excluded_by_glob(root, root, exclude_globs)
+        ):
+            yield root
+        return
+
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [name for name in dirnames if name not in excludes]
         for filename in filenames:
             path = Path(dirpath) / filename
-            if path.suffix in TEXT_EXTENSIONS and path.resolve() != SCANNER_PATH:
+            if (
+                path.suffix in TEXT_EXTENSIONS
+                and path.resolve() != SCANNER_PATH
+                and not excluded_by_glob(path, root, exclude_globs)
+            ):
                 yield path
 
 
@@ -721,10 +740,16 @@ def render_markdown(leads: list[Lead], total_leads: int, dropped_leads: int, max
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Scan a repository for clean-code static leads.")
-    parser.add_argument("root", nargs="?", default=".", help="Repository or directory to scan.")
+    parser = argparse.ArgumentParser(description="Scan a file or directory for clean-code static leads.")
+    parser.add_argument("root", nargs="?", default=".", help="File or directory to scan.")
     parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
     parser.add_argument("--exclude", action="append", default=[], help="Additional directory name to exclude.")
+    parser.add_argument(
+        "--exclude-glob",
+        action="append",
+        default=[],
+        help="Additional file glob to exclude, matched against paths relative to the scan root.",
+    )
     parser.add_argument("--max-findings", type=int, default=120)
     args = parser.parse_args()
     if args.max_findings < 1:
@@ -734,10 +759,11 @@ def main() -> int:
     excludes = DEFAULT_EXCLUDES | set(args.exclude)
     leads: list[Lead] = []
 
-    for path in iter_source_files(root, excludes):
+    display_root = root.parent if root.is_file() else root
+    for path in iter_source_files(root, excludes, args.exclude_glob):
         text = read_text(path)
         if text is not None:
-            leads.extend(scan_file(path, root, text))
+            leads.extend(scan_file(path, display_root, text))
 
     all_leads = sorted(dedupe(leads), key=sort_key)
     dropped_leads = max(0, len(all_leads) - args.max_findings)
