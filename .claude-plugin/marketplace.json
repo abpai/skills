@@ -73,7 +73,7 @@
     },
     {
       "name": "harness",
-      "description": "Agent-harness workflows for agent-driven development: fleet-scale behavior baselines, spec contracts, dependency hardening, verification-first readiness and diff audits, compliant remediation, scoped behavior capture, autonomous-ready onboarding, eval seeding, and skill dogfooding.",
+      "description": "Agent-harness workflows for agent-driven development: scenario-based workflow selection, fleet-scale behavior baselines, spec contracts, dependency hardening, verification-first readiness and diff audits, compliant remediation, scoped behavior capture, autonomous-ready onboarding, eval seeding, and skill dogfooding.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "harness" },
       "category": "productivity",
       "keywords": ["harness", "baseline", "agents", "docs", "spec-contract", "enforcement", "validation", "testing", "dependency-security", "supply-chain", "lockfile", "agents-md", "progressive-disclosure", "architecture", "domains", "invariants", "glossary", "todos", "doctor", "readiness", "behavior-ledger", "characterization", "compliant"]
