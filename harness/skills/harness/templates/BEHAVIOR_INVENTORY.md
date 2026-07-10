@@ -20,4 +20,3 @@ Allowed `Risk` values: `high`, `medium`, `low`.
 
 | ID | Area | Behavior | Entry points | Existing proof | Missing proof | Confidence | Risk | Status | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| B-001 |  |  |  |  |  | medium | medium | proposed | P1 |  |

@@ -33,7 +33,7 @@ If the CLI is unavailable (no network, no `npx`), follow the Scanner unavailable
 For an agent self-review before final handoff, use diff scope:
 
 ```bash
-harness-doctor --json --verbose --diff
+npx @andypai/harness-doctor@latest --json --verbose --diff
 ```
 
 Then run this module's diff review: map changed files to

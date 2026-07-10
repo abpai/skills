@@ -10,6 +10,12 @@ undocumented, or under-tested code; asks to "capture behavior," "add a safety
 net," "characterize this before we touch it," or lock current behavior before a
 refactor or migration.
 
+If the request is repo-scale rather than one behavior surface — for example
+"capture baseline", "baseline this repo", "capture all existing behavior", or
+"prepare this production repo for agents" — route to `baseline.md` instead of
+continuing here. This module owns scoped capture; `baseline.md` owns inventory,
+human ratification, and the repo-wide capture loop.
+
 For fleet-scale repo adoption, `baseline.md` is the orchestrator and this module
 is the primitive. In row mode, `baseline.md` passes one ratified `BehaviorRow`
 and this module returns one `LedgerRow`.
@@ -63,10 +69,12 @@ written wrong (you asserted a wish, not the behavior). Record what ran. These
 tests then live as the enforcement surface (per `docs.md`'s enforcement
 hierarchy) that catches regressions when the agent makes its change.
 
-### 4. Report the behavior ledger and coverage gaps
+### 4. Report the capture report and coverage gaps
 
-- **Behavior ledger** — a table of `behavior | capture level | test/snapshot file
-  | seed source`, listing exactly what is now pinned.
+- **Capture report** — a table of `behavior | capture level | test/snapshot
+  file | seed source`, listing exactly what is now pinned. Standalone capture
+  does not write `docs/BEHAVIOR_LEDGER.md`; that machine-readable file is owned
+  by `baseline.md` row mode and requires stable behavior IDs.
 - **Coverage-gap report** — behavior in scope that you could *not* pin and why
   (non-deterministic without a seam, needs a live external service, timing-
   dependent), plus suspected bugs captured as-is. These gaps are where an agent's
@@ -77,7 +85,7 @@ hierarchy) that catches regressions when the agent makes its change.
 
 Capture is done when: the behavior surface at risk is scoped; characterization
 tests/snapshots exist at the right level and **pass against the current code**
-(run, not assumed); the behavior ledger and coverage-gap report are written; and
+(run, not assumed); the capture report and coverage-gap report are written; and
 suspected bugs are flagged separately rather than encoded as intended behavior.
 Not done because tests were written — done when they run green against today's
 code and the gaps are named.

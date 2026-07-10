@@ -114,7 +114,9 @@ interface EvalSeed {
 
 Both are human-readable Markdown, but their tables are constrained so
 `harness-doctor` and downstream tooling can parse them. Stable IDs join the two
-files and must not be renumbered casually.
+files and must not be renumbered casually. Absence of a ledger row for an
+inventory ID means the behavior is pending capture; do not add a `pending`
+ledger status.
 
 ### Inventory table
 
