@@ -626,28 +626,24 @@ test("editing a dash-leading untracked file's contents changes scope_hash", () =
 
 // --- suggestLenses routing (lensRules coverage) ---------------------------
 
-test("suggestLenses: a plain code file routes bug-hunting + simplification", () => {
-  expect(suggestLenses(["src/foo.ts"])).toEqual([
-    "isomorphic-simplification.md",
-    "multi-pass-bug-hunting.md",
-  ])
-  // compiled languages now covered too
-  expect(suggestLenses(["src/main.cpp"])).toContain("multi-pass-bug-hunting.md")
+test("suggestLenses: plain code does not invent a generic review lens", () => {
+  expect(suggestLenses(["src/foo.ts"])).toEqual([])
+  expect(suggestLenses(["src/main.cpp"])).toEqual([])
 })
 
 test("suggestLenses: doc prose never routes code-only lenses", () => {
   const setupDoc = suggestLenses(["docs/setup-guide.md"])
-  expect(setupDoc).toContain("prose-quality-pr-copy.md")
+  expect(setupDoc).toContain("prose-quality-check.md")
   expect(setupDoc).not.toContain("doctor-self-healing-candidate.md")
 
   const parserDoc = suggestLenses(["docs/parser-guide.md"])
-  expect(parserDoc).toContain("prose-quality-pr-copy.md")
-  expect(parserDoc).not.toContain("metamorphic-property-test-decision.md")
+  expect(parserDoc).toContain("prose-quality-check.md")
+  expect(parserDoc).not.toContain("invariant-testing-check.md")
 
   // The real-service `test*db*` fragment is extension-anchored: a doc whose name
   // merely contains the substrings "test" and "db" must not route the code lens.
   const dbDoc = suggestLenses(["docs/latestdberby.md"])
-  expect(dbDoc).toContain("prose-quality-pr-copy.md")
+  expect(dbDoc).toContain("prose-quality-check.md")
   expect(dbDoc).not.toContain("real-service-integration-check.md")
 })
 
@@ -656,31 +652,29 @@ test("suggestLenses: service & test-harness surfaces route real-service integrat
     expect.arrayContaining([
       "real-service-integration-check.md",
       "mock-stub-placeholder-sweep.md",
-      "multi-pass-bug-hunting.md",
-      "isomorphic-simplification.md",
     ]),
   )
   expect(suggestLenses(["src/harness.ts"])).toContain("real-service-integration-check.md")
   expect(suggestLenses(["lib/billing/cancel.ts"])).toContain("real-service-integration-check.md")
 })
 
-test("suggestLenses: doctor & metamorphic route on code surfaces, not prose", () => {
+test("suggestLenses: doctor & invariant testing route on code surfaces, not prose", () => {
   expect(suggestLenses(["scripts/bootstrap.sh"])).toContain("doctor-self-healing-candidate.md")
-  expect(suggestLenses(["src/parser.ts"])).toContain("metamorphic-property-test-decision.md")
+  expect(suggestLenses(["src/parser.ts"])).toContain("invariant-testing-check.md")
 })
 
 test("suggestLenses: config surfaces route the contract lens", () => {
   expect(suggestLenses(["code/skills/code/SKILL.md"])).toContain("config-contract-check.md")
 })
 
-test("suggestLenses: golden residue extensions route the golden lens", () => {
-  expect(suggestLenses(["build/foo.actual"])).toContain("golden-artifact-decision.md")
-  expect(suggestLenses(["__snapshots__/x.received"])).toContain("golden-artifact-decision.md")
+test("suggestLenses: snapshot residue extensions route the snapshot lens", () => {
+  expect(suggestLenses(["build/foo.actual"])).toContain("snapshot-testing-check.md")
+  expect(suggestLenses(["__snapshots__/x.received"])).toContain("snapshot-testing-check.md")
 })
 
 test("suggestLenses: an extensionless CHANGELOG routes prose-quality", () => {
-  expect(suggestLenses(["CHANGELOG"])).toContain("prose-quality-pr-copy.md")
-  expect(suggestLenses(["docs/HISTORY"])).toContain("prose-quality-pr-copy.md")
+  expect(suggestLenses(["CHANGELOG"])).toContain("prose-quality-check.md")
+  expect(suggestLenses(["docs/HISTORY"])).toContain("prose-quality-check.md")
 })
 
 // --- seal <-> gate-before-push.sh parity -----------------------------------

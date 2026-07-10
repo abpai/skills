@@ -62,7 +62,7 @@ only when that evidence is genuinely ambiguous.
    Read `references/clean-code-typescript-taxonomy.md` only when scanner leads or
    the target language make those principles relevant.
 4. For changed code or deletion candidates, load
-   `review-patterns/isomorphic-simplification.md`. In scoped execution, use its
+   `review-patterns/refactor-safety-check.md`. In scoped execution, use its
    quick pass and run the deep dead-code gauntlet before deleting a file, module,
    public symbol, or its tests. In whole-repository proposal mode, record the
    gauntlet as a proof obligation for a proposed slice; do not perform the full

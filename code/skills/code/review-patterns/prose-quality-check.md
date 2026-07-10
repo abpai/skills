@@ -1,11 +1,10 @@
-# Prose Quality And PR Copy
+# Prose Quality Check
 
-Skeptical technical-editor lens for changed user-facing prose and generated PR copy: deslop line by line, verify every claim against the repo, and treat any changelog/release-history as a research artifact, not a summary. Keep the meaning; cut the slop; mark anything unverifiable as unknown.
+Skeptical technical-editor lens for changed user-facing prose: deslop line by line, verify every claim against the repo, and treat any changelog/release-history as a research artifact, not a summary. Keep the meaning; cut the slop; mark anything unverifiable as unknown. Drafting the PR title and body remains core `prepare-pr` work, not this lens.
 
 ## When this gate applies
 
 - Changed `**/*.md`, `README*`, `docs/**`, `CHANGELOG*`, release notes, handoff text, or inline user-facing strings in the diff.
-- Generated PR copy: PR title/body, `gh pr create`/`--body` text, release-note blurbs.
 - Any prose that asserts behavior, commands, paths, flags, versions, links, dates, or project history.
 - A changed window touching a changelog or release page (release-vs-tag and link claims must be verified).
 
@@ -35,15 +34,15 @@ Skeptical technical-editor lens for changed user-facing prose and generated PR c
 
 ## Quick pass
 
-1. From `changed-files.txt`, list the changed prose files + any generated PR/README/changelog copy.
+1. From `changed-files.txt`, list the changed prose files and user-facing strings.
 2. Deslop each changed line by hand: emdash overuse (gotcha 2) and the exact phrase catalog (gotcha 3). Do NOT touch code, headers, lists, or correct explanations (gotcha 4).
 3. Verify every command, path, flag, version, link, date against the repo; mark anything you cannot confirm as **unknown** rather than polishing over it.
-4. Shape the copy: PR body = behavior change → why it matters → brief how → validation commands + QA evidence → selected/skipped gates → residual risk. README = value-first (gotcha 11).
+4. Shape the changed document for its real reader. For a README, lead with value and a runnable path (gotcha 11); preserve the local structure for scoped edits.
 5. Record files reviewed (with `file:line`) and every claim left unverified.
 
 ## Deep pass
 
-Escalate for public READMEs, release notes, changelogs, setup docs users follow, or high-visibility PRs.
+Escalate for public READMEs, release notes, changelogs, or setup docs users follow.
 
 - **Changelog / release history**: run the version-spine + history-clustering scripts (below) to get ground truth, then audit the draft. Apply gotchas 5–10: research-first, release-vs-tag, live repo links + representative commits, absolute dates, capability-wave structure over a version spine, chunked coverage for large windows.
 - **Fresh-eyes draft-auditor pass**: return severity-tagged FINDINGS, not a rewrite, against this fixed priority list — (1) missing/weak scope framing, (2) incorrect release-vs-tag treatment, (3) bare hashes instead of live links, (4) weak capability synthesis / commit dump, (5) coverage gaps. Prefer precise findings over generic praise.
@@ -68,10 +67,10 @@ Ported from changelog-md-workmanship; run directly (shebangs present), prose wor
 
 ## Evidence to record
 
-Write into the finish-lane context/PR-body draft:
+Write into the finish-lane context:
 
 - Files reviewed with `file:line` for each changed claim; before/after snippets for every rewritten passage.
 - The commands/links run to verify examples, versions, releases, and history, and their results.
 - For changelogs: release-vs-tag determination per version, the script outputs used as ground truth, and the date format used.
 - Every claim left **unknown** (could not verify against the repo or a cited source) — never written around.
-- If skipped: a one-line rationale (e.g. "no human-facing prose or PR copy in scope"). Stop and mark unknown when a claim needs external truth you cannot verify.
+- If skipped: a one-line rationale (e.g. "no changed human-facing prose in scope"). Stop and mark unknown when a claim needs external truth you cannot verify.

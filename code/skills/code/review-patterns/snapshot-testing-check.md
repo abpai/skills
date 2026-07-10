@@ -1,4 +1,4 @@
-# Golden Artifact Decision
+# Snapshot Testing Check
 
 Decide whether complex stable output should be frozen behind a golden / snapshot / approval artifact (and with which comparison strategy), or skipped for stronger evidence — and catch goldens committed without scrubbing or human review that silently lock in noise or a regression as "expected."
 
@@ -33,7 +33,7 @@ Decide whether complex stable output should be frozen behind a golden / snapshot
 
 11. **No PROVENANCE = irreproducible golden.** `goldens/PROVENANCE.md` must record the generator version + exact command so a stale golden can be regenerated 6 months later. Missing PROVENANCE is a listed anti-pattern. Also: don't commit transient `.actual` files (`.gitignore *.actual`).
 
-12. **Routing to other oracles.** When exact output is a **weak oracle** (the oracle problem — you can't state the exact right answer), route to metamorphic/property testing instead; golden only once a value is validated. A golden is the **frozen reference** for a conformance harness. A **fuzz-found crash should be frozen as a golden regression test** — that's the right home for it, not a one-off assert.
+12. **Routing to other evidence.** When exact output is a **weak oracle** (you cannot state the exact right answer), route to `invariant-testing-check.md` instead; snapshot only once a value is validated. A snapshot is the **frozen reference** for a conformance harness. A **fuzz-found crash should be frozen as a snapshot regression test** — that's the right home for it, not a one-off assert.
 
 ## Quick pass
 
@@ -73,7 +73,7 @@ Risk-gated, for a durable golden suite or a correctness-sensitive change:
 - Generate/update command + validation command, each with captured exit status.
 - The reviewed diff summary (one line per changed golden) and the update rationale.
 - Gate state from `golden-ci-gate-check.sh`: CI compare-only, no residue, harness emits diff, PROVENANCE present.
-- On skip: name the stronger evidence that replaces the golden (exact assertion already covers it / too volatile-or-large to review / no safe canonicalization / routed to metamorphic for the oracle problem / fuzz crash frozen elsewhere).
+- On skip: name the stronger evidence that replaces the snapshot (exact assertion already covers it / too volatile-or-large to review / no safe canonicalization / routed to invariant testing for the oracle problem / fuzz crash frozen elsewhere).
 
 ---
 Provenance: distilled from `jeffery-skills/testing-golden-artifacts` (SKILL.md + references/SCRUBBERS, CI-GOLDENS, BINARY-GOLDENS, INSTA, TROUBLESHOOTING).

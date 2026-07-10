@@ -1,4 +1,4 @@
-# Metamorphic / Property Test Decision
+# Invariant Testing Check
 
 Pick the oracle when output has no trusted exact answer — and if a metamorphic
 relation is the answer, make it a *real* test, not a placebo that passes for both
