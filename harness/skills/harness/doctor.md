@@ -41,10 +41,12 @@ audit.
 
 Two version/scope traps: the CLI silently ignores flags it does not implement,
 and scanner versions before the baseline rules shipped accept `--baseline-check`
-without acting on it — when the recorded resolved version predates the flag, or
-a run with baseline artifacts present returns zero `behavior-*` findings of any
-kind, report baseline facts as missing, never as passing. Scope is signaled in
-the JSON output (`mode`, `diff`): a `--diff` run that comes back `mode: "full"`
+without acting on it. Before trusting baseline results, confirm that the resolved
+version is known to include the baseline rules or that `--help` advertises
+`--baseline-check`; otherwise report baseline facts as missing, never as passing.
+A supported run with zero `behavior-*` findings means the baseline checks passed
+and is not evidence of a no-op. Scope is signaled in the JSON output (`mode`,
+`diff`): a `--diff` run that comes back `mode: "full"`
 (for example in a repo with no commits) is a full audit — treat it as one,
 score included, and note the substitution in the proof section.
 

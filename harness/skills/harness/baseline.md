@@ -239,8 +239,8 @@ the `BaselineReport` contract in `./INTERFACES.md`. Placeholder sources:
 - Last verified is the most recent SHA recorded in the ledger's Run evidence
   column; `unknown` when no ledger row records one.
 - High-risk gaps counts confirmed/corrected high-risk P0/P1 rows whose ledger
-  status is `gap`, `failed`, or `stale`, or that have no ledger row — the same
-  scope `doctor.md` uses for its D2/D4 criterion and verdict cap.
+  status is `gap`, `failed`, or `stale`, or that have no ledger row. This is the
+  D2/D4 scope in `doctor.md`; the doctor verdict cap is its P0 subset.
 
 If artifacts are malformed, report the parse issue and point to the required
 headers instead of continuing.
