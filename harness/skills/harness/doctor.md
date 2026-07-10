@@ -28,6 +28,26 @@ npx @andypai/harness-doctor@latest --json --verbose --diff
 
 `npx …@latest` executes whatever the registry serves at run time — confirm with the user before the first run in a session and record the resolved version in the proof section. If diff mode is unavailable or the user asks for a full audit, drop `--diff`.
 
+Before any scanner run, check whether `docs/BEHAVIOR_INVENTORY.md` or
+`docs/BEHAVIOR_LEDGER.md` exists. If either does and the repo's config does not
+already set `baselineCheck: true` (config lives in `harness.config.*` — `.ts`,
+`.js`, `.json`, and variants — or `package.json#harnessDoctor`), append
+`--baseline-check` (combined as `--diff --baseline-check` in diff scope). The
+flag matters most in diff scope: without it the scanner narrows
+behavior-baseline findings to changed files, so integrity facts about an
+untouched inventory or ledger are silently dropped. Repos with no baseline
+artifacts run without the flag — do not force baseline adoption through the
+audit.
+
+Two version/scope traps: the CLI silently ignores flags it does not implement,
+and scanner versions before the baseline rules shipped accept `--baseline-check`
+without acting on it — when the recorded resolved version predates the flag, or
+a run with baseline artifacts present returns zero `behavior-*` findings of any
+kind, report baseline facts as missing, never as passing. Scope is signaled in
+the JSON output (`mode`, `diff`): a `--diff` run that comes back `mode: "full"`
+(for example in a repo with no commits) is a full audit — treat it as one,
+score included, and note the substitution in the proof section.
+
 If the CLI is unavailable (no network, no `npx`), follow the Scanner unavailable section below — warn, degrade, and never hand-run the deterministic rule family. The scanner owns deterministic facts; this module adds command execution, spec-contract alignment, and semantic judgment on top.
 
 For an agent self-review before final handoff, use diff scope:
@@ -117,7 +137,9 @@ Derive it honestly, separating the two input classes and naming any gate left un
 **Behavior-baseline cap:** when `docs/BEHAVIOR_INVENTORY.md` exists, an
 unresolved high-risk confirmed/corrected P0 row caps the verdict at
 `supervised-only`. The repo may still be useful to agents, but unattended work
-through a known unprotected high-risk behavior requires supervision.
+through a known unprotected high-risk behavior requires supervision. The cap is
+deliberately P0-only: unresolved P1 gaps stay D2/D4 findings and lower the
+score, but do not by themselves cap the verdict.
 
 State the one or two gaps that would promote a repo to the next tier — the verdict is a triage tool, so its value is the promotion path, not the label. When the scanner did not run or a semantic gate is genuinely unreviewed, say so and withhold `autonomous-ready` rather than guessing it.
 
