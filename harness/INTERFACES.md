@@ -7,6 +7,9 @@ sides build to the same shape:
 - **Proof-row format** — a constrained shape for `docs/SPEC_CONTRACT.md` proof-menu
   rows so **harness-doctor** (Phase 4) can statically verify them and downstream
   software factories (Phase 5) can seed eval cases from them.
+- **Behavior inventory and ledger rows** — the durable artifacts emitted by
+  `harness baseline`: a human-ratified inventory and a machine-maintained proof
+  ledger keyed by stable behavior IDs.
 - **`autonomous-ready` onboard manifest** — what the **harness** emits (Phase 5)
   and a downstream software factory consumes to accept a repo for unattended work.
 
@@ -102,7 +105,148 @@ interface EvalSeed {
 `AutonomousReadyManifest.evalSeeds` (§2) is `EvalSeed[]`, derived one-to-one from
 `proofMenu` rows.
 
-## 2. `autonomous-ready` onboard manifest
+## 2. Behavior baseline artifacts
+
+`harness baseline` creates two durable repo files:
+
+- `docs/BEHAVIOR_INVENTORY.md` — human-ratified behavior map.
+- `docs/BEHAVIOR_LEDGER.md` — machine-maintained proof ledger.
+
+Both are human-readable Markdown, but their tables are constrained so
+`harness-doctor` and downstream tooling can parse them. Stable IDs join the two
+files and must not be renumbered casually. Absence of a ledger row for an
+inventory ID means the behavior is pending capture; do not add a `pending`
+ledger status.
+
+### Inventory table
+
+Required columns, fixed order:
+
+```md
+| ID | Area | Behavior | Entry points | Existing proof | Missing proof | Confidence | Risk | Status | Priority | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| B-001 | Auth | Google login | `src/auth/google.ts:42` | none | no e2e proof | high | high | confirmed | P0 |  |
+```
+
+Rules:
+
+- `ID` matches `B-\d{3,}` and is unique.
+- `Entry points` contains one or more concrete repo paths, preferably
+  `file:line`.
+- `Confidence` is `high | medium | low`.
+- `Risk` is `high | medium | low`.
+- `Status` is `proposed | confirmed | corrected | skip | deferred | stale`.
+- `Priority` is `P0 | P1 | P2`.
+
+Extracted shape:
+
+```ts
+interface BehaviorRow {
+  id: string;                         // stable B-001 style ID
+  area: string;
+  behavior: string;                   // observable behavior, user-facing when possible
+  entryPoints: string[];              // file or file:line references
+  existingProof: string[];            // test files/cases/commands, empty when none found
+  missingProof: string;
+  confidence: "high" | "medium" | "low";
+  risk: "high" | "medium" | "low";
+  status: "proposed" | "confirmed" | "corrected" | "skip" | "deferred" | "stale";
+  priority: "P0" | "P1" | "P2";
+  notes: string;
+}
+```
+
+### Ledger table
+
+Required columns, fixed order:
+
+```md
+| ID | Status | Capture type | Test paths | Run command | Run evidence | Confidence | Remaining gap |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| B-001 | captured | integration | `tests/auth/google.test.ts` | `pnpm test tests/auth/google.test.ts` | 3/3 green at abc123 | high |  |
+```
+
+Rules:
+
+- `ID` references an inventory row.
+- `Status` is `captured | bug-pinned | gap | failed | stale`.
+- `Capture type` is `unit | integration | golden | snapshot | screenshot |
+  contract | none`.
+- `Test paths` for `captured` and `bug-pinned` rows names one or more files
+  that exist.
+- `Run command` for proof-backed rows names the command that was run.
+- `Run evidence` records the result and repo snapshot, such as
+  `3/3 green at <sha>`.
+- `Confidence` is `high | medium | low`.
+
+Extracted shape:
+
+```ts
+interface LedgerRow {
+  id: string;                         // references BehaviorRow.id
+  status: "captured" | "bug-pinned" | "gap" | "failed" | "stale";
+  captureType: "unit" | "integration" | "golden" | "snapshot" | "screenshot" | "contract" | "none";
+  testPaths: string[];
+  runCommand: string;
+  runEvidence: string;
+  confidence: "high" | "medium" | "low";
+  remainingGap: string;
+}
+```
+
+### Baseline report
+
+`harness baseline status` should be derivable from the two tables plus the
+current repo snapshot:
+
+```ts
+interface BaselineReport {
+  gate0:
+    | "toolchain-ready-green"
+    | "tests-runnable-red"
+    | "no-test-harness"
+    | "toolchain-broken"
+    | "env-blocked"
+    | "unknown";
+  inventory: {
+    path: "docs/BEHAVIOR_INVENTORY.md";
+    totalRows: number;
+    confirmedRows: number;
+    correctedRows: number;
+    pendingRows: number;
+    deferredRows: number;
+    highRiskRows: number;
+  };
+  ledger: {
+    path: "docs/BEHAVIOR_LEDGER.md";
+    capturedRows: number;
+    bugPinnedRows: number;
+    gapRows: number;
+    failedRows: number;
+    staleRows: number;
+    highRiskGapRows: number;
+    lastVerifiedSha: string | null;
+  };
+  nextAction: string;
+}
+```
+
+### Scanner verification rules
+
+`harness-doctor` owns deterministic checks:
+
+- Required headers are present.
+- IDs are unique and valid.
+- enum cells use the values above.
+- ledger rows reference inventory IDs.
+- confirmed/corrected P0/P1 inventory rows have terminal ledger rows.
+- captured/bug-pinned ledger rows reference existing test files.
+
+The skill owns semantic judgment: whether rows describe meaningful observable
+behavior, whether existing proof really exercises the entry point, and whether
+remaining gaps block the target readiness tier.
+
+## 3. `autonomous-ready` onboard manifest
 
 ### Why it is needed
 
@@ -139,6 +283,17 @@ interface AutonomousReadyManifest {
   bootstrap: { commands: string[]; healthSmoke: string };   // one-command bring-up + smoke
   validation: { fastLane: string[]; fullLane: string[]; liveLane: string[] };
   proofMenu: ProofRow[];                                     // §1
+  behaviorLedger?: {
+    path: string;
+    coverage: {
+      inventoryRows: number;
+      capturedRows: number;
+      bugPinnedRows: number;
+      gapRows: number;
+      highRiskGapRows: number;
+    };
+    lastVerifiedSha: string | null;
+  };
 
   humanGates: string[];                  // change types that are human-gate-by-design
   escalation: string[];                  // irreversible / scope-conflict / reserved-for-human
@@ -170,6 +325,7 @@ interface AutonomousReadyManifest {
 | `verdict`, `readinessScore`, `dimensions` | `doctor.md` audit | new |
 | `bootstrap`, `validation` lanes | `docs/engineering/commands.md` + signals menu | new (docs today) |
 | `proofMenu` | `docs/SPEC_CONTRACT.md` (§1 shape) | new |
+| `behaviorLedger` | `docs/BEHAVIOR_LEDGER.md` + `doctor.md` audit | new |
 | `humanGates`, `escalation`, `mergePolicy` | spec-contract escalation + doctor verdict | new (policy today) |
 | `safety` (D7) | `doctor.md` D7 | new |
 | `parallelSafety`, `reversibility` | `doctor.md` semantic gates | new |

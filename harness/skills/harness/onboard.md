@@ -41,6 +41,10 @@ field to look ready):
   (`./INTERFACES.md`); if the menu is free-form, fix its shape first. Resolve
   command IDs through the signals menu before presenting executable shell
   commands to a runner.
+- **behaviorLedger** — when `docs/BEHAVIOR_LEDGER.md` exists, include its path,
+  captured/bug-pinned/gap counts, high-risk gap count, and last verified SHA from
+  the `doctor.md` audit. If the ledger is malformed or absent, list that as a
+  gap rather than inventing readiness.
 - **humanGates / escalation / mergePolicy** — human-gate-by-design change types
   and escalation boundaries from the spec contract and the loop-readiness verdict.
 - **safety (D7)** — secrets-exposed, write-scope-bounded, sandboxed,

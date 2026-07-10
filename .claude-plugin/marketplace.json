@@ -73,10 +73,10 @@
     },
     {
       "name": "harness",
-      "description": "Agent harness workflow pack for making repos ergonomic for agent-driven development: spec contracts (docs/SPEC_CONTRACT.md), prose-to-enforcement conversion, tiny AGENTS.md routers, validation-path docs, and verification-first Harness Doctor readiness audits.",
+      "description": "Agent-harness workflows for agent-driven development: fleet-scale behavior baselines, spec contracts, prose-to-enforcement conversion, tiny AGENTS.md routers, verification-first Harness Doctor readiness and diff audits, scoped behavior capture, autonomous-ready onboarding, eval seeding, and skill dogfooding.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "harness" },
       "category": "productivity",
-      "keywords": ["harness", "agents", "docs", "spec-contract", "enforcement", "validation", "testing", "agents-md", "progressive-disclosure", "architecture", "domains", "invariants", "glossary", "todos", "doctor", "readiness"]
+      "keywords": ["harness", "baseline", "agents", "docs", "spec-contract", "enforcement", "validation", "testing", "agents-md", "progressive-disclosure", "architecture", "domains", "invariants", "glossary", "todos", "doctor", "readiness", "behavior-ledger", "characterization"]
     },
     {
       "name": "decision-worksheet",
