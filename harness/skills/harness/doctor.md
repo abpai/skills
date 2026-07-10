@@ -13,10 +13,13 @@ Readiness scoring of this kind is experimental — explanations matter more than
 ## Core split
 
 - `harness:docs` (`docs.md`) is the canonical source for the shared concepts: enforcement hierarchy, spec contract shape, AGENTS line gate, grounding gate, nested AGENTS decision test, Keep/Move/Delete verdicts, demonstrated-need evidence, budgets. This module applies them as audit dimensions — when judging, follow the `docs.md` definitions; deterministic symptom lists are kept local here for executability.
-- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks (the `docs-structure/*` rule family): files, routes, spec-contract existence and sections, behavior inventory/ledger parseability and ID integrity, links, byte/line budgets, banned paths, `STRUCTURE.md`, the `CLAUDE.md` shim. This module never reimplements them — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
+- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks (the `docs-structure/*` rule family): files, routes, spec-contract existence and sections, links, byte/line budgets, banned paths, `STRUCTURE.md`, the `CLAUDE.md` shim. Behavior inventory/ledger parseability and ID integrity join this family only once the pinned version ships the baseline rules (see **Fast path**); until then that surface falls back to `baseline.md`'s artifact parse, which is not this module hand-deriving. This module never reimplements the shipped rules — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
 - Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract, whether a nested grounding file still matches the code it describes (per the `docs.md` grounding gate).
 
-Do not add scanner scripts to product repos. A product repo may keep stable docs plus optional `harness.config.ts`; scanner output stays temporary.
+Do not copy Harness Doctor's implementation scripts into product repos. A
+product repo may pin the package, keep stable docs and `harness.config.*`, and
+add a package-script entry that invokes the binary; scanner output stays
+temporary.
 
 ## Fast path
 
@@ -28,27 +31,24 @@ npx @andypai/harness-doctor@latest --json --verbose --diff
 
 `npx …@latest` executes whatever the registry serves at run time — confirm with the user before the first run in a session and record the resolved version in the proof section. If diff mode is unavailable or the user asks for a full audit, drop `--diff`.
 
-Before any scanner run, check whether `docs/BEHAVIOR_INVENTORY.md` or
-`docs/BEHAVIOR_LEDGER.md` exists. If either does and the repo's config does not
-already set `baselineCheck: true` (config lives in `harness.config.*` — `.ts`,
-`.js`, `.json`, and variants — or `package.json#harnessDoctor`), append
-`--baseline-check` (combined as `--diff --baseline-check` in diff scope). The
-flag matters most in diff scope: without it the scanner narrows
-behavior-baseline findings to changed files, so integrity facts about an
-untouched inventory or ledger are silently dropped. Repos with no baseline
-artifacts run without the flag — do not force baseline adoption through the
-audit.
+Baseline integrity rules are **not in any released scanner**. As of
+`@andypai/harness-doctor@0.3.0` there is no `--baseline-check` flag and no
+`baselineCheck` config field: the CLI silently strips unknown flags and exits
+`0`, and `baselineCheck` is not a property of `HarnessDoctorConfig`, so writing
+it into a typed `harness.config.ts` fails typecheck (`TS2353`). Both exist on
+harness-doctor `main` but have not shipped. Do not pass the flag or add the
+config field until the pinned version's `HarnessDoctorConfig` declares it and
+`--help` advertises the flag — the setup recipe's step-3 rule (write only fields
+that exist on the pinned version) is what decides this.
 
-Two version/scope traps: the CLI silently ignores flags it does not implement,
-and scanner versions before the baseline rules shipped accept `--baseline-check`
-without acting on it. Before trusting baseline results, confirm that the resolved
-version is known to include the baseline rules or that `--help` advertises
-`--baseline-check`; otherwise report baseline facts as missing, never as passing.
-A supported run with zero `behavior-*` findings means the baseline checks passed
-and is not evidence of a no-op. Scope is signaled in the JSON output (`mode`,
-`diff`): a `--diff` run that comes back `mode: "full"`
-(for example in a repo with no commits) is a full audit — treat it as one,
-score included, and note the substitution in the proof section.
+Until those rules ship in the pinned version, `docs/BEHAVIOR_INVENTORY.md` and
+`docs/BEHAVIOR_LEDGER.md` integrity is **not** a deterministic scanner fact.
+Report those facts as missing, never as passing, and derive baseline health from
+`baseline.md`'s own artifact parse instead.
+
+Scope is signaled in the JSON output (`mode`, `diff`): a `--diff` run that comes
+back `mode: "full"` (for example in a repo with no commits) is a full audit —
+treat it as one, score included, and note the substitution in the proof section.
 
 If the CLI is unavailable (no network, no `npx`), follow the Scanner unavailable section below — warn, degrade, and never hand-run the deterministic rule family. The scanner owns deterministic facts; this module adds command execution, spec-contract alignment, and semantic judgment on top.
 
@@ -65,6 +65,73 @@ have no matched behavior proof or explicit gap. Diff-scoped runs emit findings
 and required proof commands only; they do not compute a full readiness score.
 
 The scanner also emits its own numeric `score`/`scoreLabel` (a penalty count, `100 − 2·errors − 1·warnings`). That is **not** the readiness score and shares its 0-100 scale by coincidence only — a raw pre-scoping run is dominated by false-positive noise and is unreliable as a verdict. Until the two converge (the scanner is slated to emit per-dimension deterministic sub-signals this module's D1-D7 rubric consumes), treat the scanner number as a noise indicator, and report the **weighted D1-D7 score below** as the readiness number. Never surface the scanner's raw penalty score to the user as "readiness."
+
+## Pinned scanner and CI setup
+
+This section is the canonical setup recipe for durable local and CI enforcement.
+Other Harness modules route here instead of copying the commands.
+
+1. Detect the package manager from the lockfile or `package.json#packageManager`.
+   The lockfile decides who owns installs. Script bodies that invoke another
+   runtime (`bun test` beside a `package-lock.json`) are a runtime choice, not a
+   package-manager conflict — do not let them override the lockfile. Ask which
+   manager owns dependency changes only when two lockfiles disagree or when a
+   lockfile contradicts `packageManager`.
+
+   A repo with no `package.json` has no place to pin this scanner. Do not add one
+   to a Python, Go, or Rust repo to hold a dev tool. Stop, say the pinned setup
+   does not apply, and offer the unpinned `npx @andypai/harness-doctor@latest`
+   audit — invoked from CI as a step, not as a repo dependency — under the same
+   confirmation rule as **Fast path**.
+2. After the user approves dependency and config edits, run exactly one matching
+   install command:
+
+   ```bash
+   bun add -d @andypai/harness-doctor
+   pnpm add -D @andypai/harness-doctor
+   yarn add -D @andypai/harness-doctor
+   npm install -D @andypai/harness-doctor
+   ```
+
+   The lockfile pins the resolved version. Do not present all four as commands
+   for the user to run.
+3. Preserve an existing `harness.config.*` format. Harness Doctor supports
+   `.ts`, `.mts`, `.cts`, `.js`, `.mjs`, `.cjs`, `.json`, and `.jsonc`, plus a
+   `package.json#harnessDoctor` object. A repo only needs a config when it
+   overrides a default. For a new TypeScript config:
+
+   ```ts
+   import type { HarnessDoctorConfig } from "@andypai/harness-doctor/api";
+
+   export default {
+     failOn: "error",
+   } satisfies HarnessDoctorConfig;
+   ```
+
+   Only write fields that exist on `HarnessDoctorConfig` for the pinned version;
+   an unknown key fails typecheck. `baselineCheck` is not one of them — see the
+   baseline note under **Fast path**.
+4. Add one package script that invokes the pinned local binary:
+
+   ```json
+   {
+     "scripts": {
+       "harness:check": "harness-doctor --json --verbose --fail-on error"
+     }
+   }
+   ```
+
+5. Run the script with the detected manager: `bun run harness:check`, `pnpm run
+   harness:check`, `yarn harness:check`, or `npm run harness:check`. Select one;
+   record its exit result.
+6. Add the same package script to the repo's existing CI workflow. Do not create
+   a CI system when none exists without user approval. A repository admin, not
+   the agent, decides whether to make the job a required branch-protection check.
+
+Setup is done when a clean checkout installs the pinned dependency and the same
+`harness:check` script passes locally and in CI. CI runs this deterministic
+scanner; it never runs `harness baseline`, `harness compliant`, or another agent
+workflow.
 
 ## Execution policy
 
@@ -115,8 +182,10 @@ Behavior-baseline coverage feeds D2 and D4:
   current CI run is cited.
 - Confirmed/corrected high-risk P0/P1 behavior with `gap`, `failed`, `stale`, or
   no ledger row is a D2/D4 finding.
-- A malformed inventory or ledger is scanner-owned and does not get hand-scored;
-  cite the scanner finding and treat the affected coverage as unverified.
+- A malformed inventory or ledger does not get hand-scored: once the pinned
+  scanner ships the baseline rules, cite its finding; until then, cite
+  `baseline.md`'s parse error. Either way treat the affected coverage as
+  unverified.
 
 Overall score: `round(100 × Σ(weightᵢ × dimᵢ/4) / Σ weightᵢ)`, summing only reviewed dimensions; print `–/4` for unreviewed dimensions in the header. When any dimension is unreviewed, label the score `provisional` and state the reviewed weight (e.g. `provisional — 85/100 weight reviewed` when the scanner-owned D5+D6 are unreviewed); never present a rescaled partial audit as a full score. Diff-scoped runs emit findings only — the score is computed only on a full audit.
 
@@ -159,10 +228,14 @@ A missing `SPEC_CONTRACT.md` is D3 = 0 — Critical when the repo opted into the
 
 ## Behavior-baseline checks
 
-When `docs/BEHAVIOR_INVENTORY.md` or `docs/BEHAVIOR_LEDGER.md` exists, use the
-scanner for deterministic facts and this module for semantic judgment.
+When `docs/BEHAVIOR_INVENTORY.md` or `docs/BEHAVIOR_LEDGER.md` exists, split the
+work between deterministic facts and this module's semantic judgment. The
+deterministic facts below are scanner-owned **only once the pinned version ships
+the baseline rules** (see **Fast path**); until then they come from
+`baseline.md`'s artifact parse and are reported as unverified where that parse
+cannot settle them.
 
-Scanner-owned deterministic facts:
+Deterministic facts (scanner-owned once baseline rules ship):
 
 - Required inventory and ledger headers exist.
 - Behavior IDs are stable and unique (`B-001`, `B-002`, ...).

@@ -248,26 +248,22 @@ headers instead of continuing.
 ## Self-review and CI affordances
 
 Baseline itself is an agent workflow, not a CI job. Deterministic checks belong
-in `harness-doctor`. Use the flag for a one-off audit:
+in `harness-doctor`. Use it for a one-off audit:
 
 ```bash
-npx @andypai/harness-doctor@latest --json --verbose --diff
-npx @andypai/harness-doctor@latest --json --verbose --baseline-check
+npx @andypai/harness-doctor@latest --json --verbose
 ```
 
-After the baseline is ratified and capture is underway, commit enforcement in
-the repo's `harness.config.ts` so ordinary local and CI runs cannot silently
-drop it:
+No released scanner validates inventory or ledger integrity: there is no
+`--baseline-check` flag and no `baselineCheck` config field, and the CLI accepts
+unknown flags silently. Do not pass either. Until the rules ship, this module's
+own artifact parse is the only source of baseline health, and `doctor.md` reports
+those facts as missing rather than passing.
 
-```ts
-export default {
-  baselineCheck: true,
-};
-```
-
-When diff scope and baseline enforcement are both enabled, behavior-baseline
-integrity findings remain repo-wide while unrelated findings stay limited to
-changed files.
+For persistent local and CI enforcement, load `doctor.md` and follow its
+**Pinned scanner and CI setup** section. That section owns package-manager
+detection, config formats, the package script, and CI boundaries; do not
+duplicate or improvise the recipe here.
 
 For an agent's final self-review, route to `doctor.md` with diff scope:
 

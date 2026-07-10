@@ -1,9 +1,9 @@
 ---
 name: harness
-description: "Route agent-harness workflows through one scoped /harness command. Use baseline to inventory production behavior at repo scale, docs for agent-ready guidance, doctor for verification-first readiness and diff audits, compliant for end-to-end remediation including dependency hardening, secure-dependencies for lockfile and supply-chain policy, capture to pin one behavior surface, onboard for autonomous-ready manifests, evals for proof-menu cases, and dogfood for skill hardening."
-argument-hint: "[subcommand] [args] - e.g. baseline, docs, doctor, compliant, secure-dependencies, capture, onboard, evals, dogfood"
+description: "Route agent-harness workflows through one scoped /harness command. Use guide for scenario-based first-audit, adoption, CI, self-review, and tune-up instructions; baseline to inventory production behavior at repo scale; docs for agent-ready guidance; doctor for verification-first readiness and diff audits; compliant for end-to-end remediation including dependency hardening; secure-dependencies for lockfile and supply-chain policy; capture to pin one behavior surface; onboard for autonomous-ready manifests; evals for proof-menu cases; and dogfood for skill hardening."
+argument-hint: "[subcommand] [args] - e.g. guide, baseline, docs, doctor, compliant, secure-dependencies, capture, onboard, evals, dogfood"
 metadata:
-  version: "1.7.1"
+  version: "1.8.0"
 ---
 
 # Harness Workflow Pack
@@ -23,10 +23,11 @@ Invoke a workflow by passing its name as the first argument to this umbrella —
 
 Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, resolve aliases (`overhaul` → `compliant`), and match it case-insensitively against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language harness request and route by intent.
 
-Known subcommands: `baseline`, `docs`, `doctor`, `compliant`, `secure-dependencies`, `capture`, `onboard`, `evals`, `dogfood`.
+Known subcommands: `guide`, `baseline`, `docs`, `doctor`, `compliant`, `secure-dependencies`, `capture`, `onboard`, `evals`, `dogfood`.
 
 ## Routing
 
+- Use `guide.md` when a human or agent asks how to use Harness, what to run first, whether workflows differ, what belongs in CI, how to self-review, or when to run a tune-up. It selects a scenario and gives exact operations, human gates, expected artifacts, and done criteria without executing mutating workflows by default.
 - Use `baseline.md` to prepare an existing production repo for agents at fleet scale: run a Gate 0 toolchain check, scout functionality and existing proof, create/refresh `docs/BEHAVIOR_INVENTORY.md`, stop for file-based human ratification, capture confirmed behavior into characterization tests/snapshots, and write `docs/BEHAVIOR_LEDGER.md`. Stage overrides: `status`, `scout`, `inventory`, `inventory --refresh`, `capture`.
 - Use `docs.md` to make a repo ergonomic for agent-driven execution: the spec contract (`docs/SPEC_CONTRACT.md`), prose-to-enforcement conversion, a tiny `AGENTS.md` router with a `CLAUDE.md` shim, and earned doc surfaces. The module defines the full process. Per-task intake (interview-to-SPEC.md) happens outside the repo and is out of scope.
 - Use `doctor.md` for readiness audits and diff-scoped self-review: it runs the external `harness-doctor` CLI when available, executes the repo's validation commands per its execution policy, checks spec-contract and behavior-ledger alignment, scores the seven dimensions (D1-D7, including D7 safety/blast-radius), and reports recommendation-first with finding IDs, tiers, and proof of what actually ran. `doctor diff` maps changed files to behavior IDs and required ledger proofs.
@@ -37,6 +38,9 @@ Known subcommands: `baseline`, `docs`, `doctor`, `compliant`, `secure-dependenci
 - Use `evals.md` to seed eval cases from the spec-contract proof menu — one gradeable eval seed per proof row. Produces seed specs; the runner/grader lives on the factory side.
 - Use `dogfood.md` to harden a skill (or the harness) by running it under a sub-agent, reviewing the transcript for friction, and repairing the smallest durable surface until runs come out clean. Harness is the patchable target; automated feedback ingestion is the factory's job.
 
-When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.
+When a request names one workflow, load that module and follow it. Route
+questions such as “what should I run?” or “how do I make this compliant?” to
+`guide`; route imperatives such as “make this compliant” directly to the named
+workflow. When intent remains ambiguous, ask one short clarifying question.
 
-These workflows form the agent-driven pipeline end to end: `baseline` inventories and pins existing production behavior → `capture` pins one scoped behavior when needed → `docs`/`secure-dependencies`/`compliant` make the repo deterministic and ergonomic → `doctor` audits readiness and diff self-review → `onboard` emits the manifest and `evals` seeds the tests a factory runs → `dogfood` closes the loop by hardening the skills from real usage.
+These workflows form the agent-driven pipeline end to end: `guide` selects the right entry point → `baseline` inventories and pins existing production behavior → `capture` pins one scoped behavior when needed → `docs`/`secure-dependencies`/`compliant` make the repo deterministic and ergonomic → `doctor` audits readiness and diff self-review → `onboard` emits the manifest and `evals` seeds the tests a factory runs → `dogfood` closes the loop by hardening the skills from real usage.
