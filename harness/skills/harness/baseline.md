@@ -8,8 +8,9 @@ change code against a runnable safety net.
 
 Use this workflow when the user asks to baseline a legacy repo, capture existing
 functionality at repo scale, prepare a production repo for agents, create a
-behavior inventory, or run `/goal harness capture baseline`. `capture.md` remains
-the primitive for one named behavior; this module orchestrates many captures.
+behavior inventory, or characterize current behavior before autonomous work
+begins. `capture.md` remains the primitive for one named behavior; this module
+orchestrates many captures.
 
 ## Stage routing
 
@@ -20,8 +21,8 @@ Parse the first remaining argument after `baseline` as an optional stage:
   working surface map.
 - `inventory` — produce `docs/BEHAVIOR_INVENTORY.md`; with `--refresh`,
   preserve stable IDs and human statuses where possible.
-- `capture` or `capture-approved` — capture ratified rows into tests/snapshots
-  and update `docs/BEHAVIOR_LEDGER.md`.
+- `capture` — capture ratified rows into tests/snapshots and update
+  `docs/BEHAVIOR_LEDGER.md`.
 - no stage — auto-detect state from disk and resume at the next unfinished
   phase.
 
@@ -123,8 +124,9 @@ Rules:
   - `low` — inferred mostly from docs, comments, or weak naming.
 - Risk is based on blast radius: auth, permissions, billing, money, persistence,
   public API, migrations, jobs, and external integrations skew high.
-- Default ratifiable cap is about 30 rows. Rank by risk x centrality. Mark the
-  long tail `deferred` so the human is not asked to ratify hundreds of rows.
+- Default ratifiable cap is about 30 rows. Rank by risk x centrality. Leave the
+  long tail `proposed` at priority `P2` so the human is not asked to ratify
+  hundreds of rows; `deferred` is a human decision the agent never assigns.
 - Pre-mark high-confidence, high-evidence rows as `proposed`, not `confirmed`.
   The human owns confirmation.
 
@@ -222,12 +224,23 @@ Report a compact state summary:
 
 ```text
 Gate 0: <outcome>
-Inventory: <total> rows; <confirmed> confirmed; <pending> pending; <deferred> deferred
-Ledger: <captured> captured; <bug-pinned> bug-pinned; <gap> gaps; <failed> failed
+Inventory: <total> rows; <confirmed> confirmed; <corrected> corrected; <pending> pending; <deferred> deferred; <high-risk> high-risk
+Ledger: <captured> captured; <bug-pinned> bug-pinned; <gap> gaps; <failed> failed; <stale> stale
 High-risk gaps: <n>
 Last verified: <sha or unknown>
 Next action: <edit inventory | run harness baseline capture | run harness doctor>
 ```
+
+`pending` counts `proposed` rows awaiting human ratification. The counts mirror
+the `BaselineReport` contract in `./INTERFACES.md`. Placeholder sources:
+
+- Gate 0 comes from the prose summary above the inventory table (where Gate 0
+  records its outcome); print `unknown` when no summary exists.
+- Last verified is the most recent SHA recorded in the ledger's Run evidence
+  column; `unknown` when no ledger row records one.
+- High-risk gaps counts confirmed/corrected high-risk P0/P1 rows whose ledger
+  status is `gap`, `failed`, or `stale`, or that have no ledger row. This is the
+  D2/D4 scope in `doctor.md`; the doctor verdict cap is its P0 subset.
 
 If artifacts are malformed, report the parse issue and point to the required
 headers instead of continuing.

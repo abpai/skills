@@ -11,7 +11,8 @@ Allowed `Status` values:
 - `corrected` — capture this behavior after the row has been edited to match
   reality.
 - `skip` — do not capture.
-- `deferred` — real behavior, but not part of the current baseline.
+- `deferred` — real behavior, but not part of the current baseline. Set by the
+  human only; the agent leaves unratified rows `proposed`.
 - `stale` — entry point appears deleted or moved during refresh.
 
 Allowed `Priority` values: `P0`, `P1`, `P2`.

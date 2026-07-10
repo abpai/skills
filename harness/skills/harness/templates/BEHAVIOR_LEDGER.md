@@ -17,4 +17,3 @@ Allowed `Capture type` values: `unit`, `integration`, `golden`, `snapshot`,
 
 | ID | Status | Capture type | Test paths | Run command | Run evidence | Confidence | Remaining gap |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| B-001 | gap | none |  |  |  | medium |  |
