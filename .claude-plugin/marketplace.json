@@ -24,17 +24,17 @@
     },
     {
       "name": "codex-exec",
-      "description": "Run the Codex CLI for non-interactive coding work. Second opinions, adversarial review, and multi-model consensus.",
+      "description": "Run Codex headlessly for implementation, review, and resumable second opinions with durable liveness artifacts.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "codex-exec" },
       "category": "productivity",
-      "keywords": ["codex", "openai", "multi-model", "review"]
+      "keywords": ["codex", "openai", "implementation", "review", "liveness", "resume"]
     },
     {
       "name": "composer",
-      "description": "Run Cursor Composer as a planner-led implementation or review worker without the Pi harness.",
+      "description": "Run Cursor Agent headlessly with liveness artifacts, read-only review, and exact session continuation.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "composer" },
       "category": "productivity",
-      "keywords": ["cursor", "composer", "implementation", "review", "subagents", "worktree", "pr"]
+      "keywords": ["cursor", "composer", "headless", "implementation", "review", "liveness", "resume"]
     },
     {
       "name": "engineering",
@@ -52,10 +52,10 @@
     },
     {
       "name": "claude",
-      "description": "Run Claude Code CLI with auth and billing checks, tmux-backed TUI delegation, external data-sharing approval handling, session continuation, manual takeover, and non-interactive fallback.",
+      "description": "Run Claude headlessly with transcript-aware liveness, named-subagent reports, durable artifacts, and exact session continuation.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "claude" },
       "category": "tools",
-      "keywords": ["claude", "cli", "tmux", "tui", "delegation", "automation", "approval", "auth", "billing", "max"]
+      "keywords": ["claude", "cli", "headless", "delegation", "subagents", "liveness", "resume", "automation", "approval", "auth"]
     },
     {
       "name": "cli-design-expert",
@@ -122,7 +122,7 @@
     },
     {
       "name": "tutorial",
-      "description": "Write hands-on, code-first tutorials where every step ends in a runnable action and the reader finishes able to do the thing.",
+      "description": "Write hands-on, self-verified tutorials where every step ends in a runnable action and the reader finishes able to do the thing.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "tutorial" },
       "category": "writing",
       "keywords": ["tutorial", "teaching", "step-by-step", "guide", "documentation"]

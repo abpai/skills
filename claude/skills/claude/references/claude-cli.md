@@ -1,156 +1,122 @@
 # Claude CLI Reference
 
-Use this file only when the main `claude` workflow is not enough.
+Verify flags against `claude --help` after CLI upgrades.
 
-Verify every flag here against the local `claude --help` or `claude -p --help`
-before first use in a new environment.
-
-## Tmux Wrapper Details
-
-The main skill uses `scripts/claude-tmux-run.sh` instead of `claude -p` for
-default delegation. The wrapper creates or reuses a normal tmux session running
-interactive Claude Code, so the user can attach and take over:
+## Headless Commands
 
 ```bash
-scripts/claude-tmux-run.sh run \
-  --workspace "$PWD" \
-  --tmux-session claude-review \
-  --permission-mode auto \
-  --prompt "Review the current diff"
+claude -p --output-format text "One-shot prompt"
+claude -p --output-format json "Structured result envelope"
+claude -p --output-format stream-json --verbose \
+  --include-partial-messages --include-hook-events "Streaming prompt"
+claude -p --resume <session-id> "Continue"
 ```
 
-Useful follow-up commands:
+`stream-json` emits system, assistant, stream, hook, rate-limit, and final
+`result` objects. The useful final body is `result.result`, not the whole JSON
+line. `--include-partial-messages` supplies fine-grained liveness while Claude is
+responding.
+
+## Session Files
+
+Parent transcripts live under:
+
+```text
+~/.claude/projects/<encoded-workspace>/<session-id>.jsonl
+```
+
+Named-subagent transcripts live under:
+
+```text
+~/.claude/projects/<encoded-workspace>/<session-id>/subagents/*.jsonl
+```
+
+A child assistant event with `message.stop_reason = "end_turn"` and text content
+is a completed child report. The parent may not yet have consumed it; compare
+child and parent transcript activity instead of declaring the whole turn done.
+
+## Permissions
+
+- `auto`: classifier-backed unattended execution; default for delegated work.
+- `plan`: planning-oriented restrictions; useful for simple one-shot analysis.
+- `acceptEdits`: auto-accept direct edits, still subject to other permission
+  behavior.
+- `bypassPermissions`: only inside an external sandbox or VM.
+
+Tool controls:
+
+- `--disallowed-tools`: remove specific tools.
+- `--allowed-tools`: preapprove a bounded subset.
+- `--tools`: replace the built-in tool set entirely.
+
+Direct-edit denial is not an OS sandbox: a shell command may still mutate files.
+Always inspect the workspace after a review.
+
+## Model And Effort
+
+Omit `--model` to use the configured default. Current aliases and availability
+can change; inspect local help and account access instead of hardcoding a model.
+
+Effort choices currently include `low`, `medium`, `high`, `xhigh`, and `max`.
+Use higher effort deliberately rather than as wrapper ceremony.
+
+## Native Background Agents
 
 ```bash
-<run-dir>/continue.sh --prompt "Follow up in the same Claude session"
-scripts/claude-tmux-run.sh run --continue-run <run-dir> --prompt "Follow up in the same Claude session"
-scripts/claude-tmux-run.sh attach --run-dir <run-dir>
-scripts/claude-tmux-run.sh monitor --run-dir <run-dir>
-scripts/claude-tmux-run.sh stop --run-dir <run-dir>
-scripts/claude-tmux-run.sh list
-<run-dir>/submit.sh
-<run-dir>/resend.sh
+claude --bg --permission-mode auto "Bounded task"
+claude agents --json --all
 ```
 
-Use the generated `continue.sh` for the common Codex-to-Claude back-and-forth
-loop. It reuses the prior tmux session, Claude session id, and workspace, but
-creates a new run directory for the new prompt so earlier artifacts stay intact.
-It preserves the prior run-root, paste-settle delay, and submit key unless the
-new command overrides them. It also preserves the startup wait for cases where a
-dead tmux pane needs to be recreated.
+The background registry reports session id, cwd, name, state, and status. Use it
+for explicit detached ownership, not as the default monitored runner.
 
-The monitor reads Claude's transcript JSONL under `~/.claude/projects`, not the
-ANSI terminal screen. `pane.txt` is only a diagnostic snapshot for permission
-prompts, trust dialogs, or other TUI states that require manual takeover.
+## Worktrees
 
-Prompt submission defaults to `tmux send-keys C-m` after a short paste-settle
-delay. If the prompt is visible in the TUI but not submitted, use
-`<run-dir>/submit.sh`; if that key binding is wrong for the local terminal,
-rerun with `--submit-key C-j` or another tmux key name. If the prompt never
-appears after starting a new Claude pane, use `<run-dir>/resend.sh` in the same
-tmux session.
-
-If `pane.txt` shows an interactive trust or permission prompt, attach manually
-only when the current turn must be saved. Otherwise restart with
-`--permission-mode auto`, a specific `--allowed-tools` rule, or a sandboxed
-permission mode that fits the task.
-
-The wrapper records the transcript line count before paste and monitors only
-events after that point, so the prompt sent to Claude stays unchanged.
-
-## Built-In Claude Tmux
-
-Claude's own `--tmux` flag is tied to `--worktree`:
+Claude can own an isolated worktree with `--worktree`. This is separate from the
+headless runner and should be explicit:
 
 ```bash
-claude --worktree feature-auth --tmux
+claude -p --worktree feature-auth --permission-mode auto "Implement the task"
 ```
 
-Use that when Claude should create and own an isolated worktree. Prefer the
-bundled wrapper when Codex needs to drive the current checkout and keep
-MonitorTool-friendly artifacts.
+The parent still validates and integrates the result.
 
-## Tool Controls
+## Settings
 
-Claude exposes three tool controls:
-
-- `--disallowedTools`: remove a few tools
-- `--allowedTools`: auto-approve a safe subset
-- `--tools`: replace the available built-in tool set entirely
-
-Prefer them in that order. `--tools` is the sharpest knob and should not be the
-default for ordinary harness runs.
-
-```bash
-claude -p \
-  --disallowedTools "Edit" \
-  --permission-mode auto \
-  --no-session-persistence \
-  "Review this repo for risky shell scripts"
-```
-
-## System Prompt Control
-
-Prefer `--append-system-prompt` when you want to add constraints without
-replacing Claude's default behavior.
-
-Use `--system-prompt` only when you intentionally want a full replacement.
-
-## Streaming
-
-Use `--output-format stream-json` only for real streaming integrations.
-
-- `stream-json` is an event stream, not a single final blob
-- `--include-partial-messages` only works with `stream-json`
-- `--verbose` is optional, not required
-
-For most harness work, prefer plain `text` or `json`.
-
-## Settings And Scope
-
-Prefer CLI flags over mutating config files when this harness needs temporary
-overrides.
-
-Useful flags:
+Prefer temporary CLI flags over config mutation:
 
 - `--settings <file-or-json>`
 - `--setting-sources <sources>`
 - `--add-dir <dir>`
+- `--mcp-config <config>`
+- `--agent <name>` or `--agents <json>`
 
-Useful non-interactive commands:
+Useful diagnostics:
 
 ```bash
 claude --version
 claude auth status --text
-claude agents
 claude doctor
+claude agents --json --all
 ```
 
-## Worktree Mode
+## Runner Controls
 
-Use worktree mode only when the user wants isolation from the current checkout.
+`claude-run.sh` accepts flags for the common controls and environment variables
+for supervisor defaults:
 
-```bash
-claude -p -w feature-auth \
-  --model sonnet \
-  --effort high \
-  --permission-mode acceptEdits \
-  --no-session-persistence \
-  "Investigate and fix the auth regression"
-```
+- `CLAUDE_RUNS_DIR`: artifact root.
+- `CLAUDE_HEARTBEAT_SECONDS`: progress cadence, default 15.
+- `CLAUDE_STALL_TIMEOUT_SECONDS`: meaningful-inactivity limit, default 300.
+- `CLAUDE_REPORT_TIMEOUT_SECONDS`: unconsumed-child-report limit, default 90.
+- `CLAUDE_TIMEOUT_SECONDS`: hard process deadline, default 2700.
+- `CLAUDE_MONITOR_POLL_SECONDS`: generated-monitor polling cadence, default 3.
+- `CLAUDE_MONITOR_TIMEOUT_SECONDS`: monitor-only deadline, default 3600.
+- `CLAUDE_TERM_GRACE_SECONDS`: TERM-to-KILL grace period, default 5.
 
-## JSON Notes
-
-`--output-format json` returns a result envelope that can include fields such as:
-
-- `type`
-- `subtype`
-- `result`
-- `session_id`
-- `num_turns`
-- `usage`
-- `total_cost_usd`
-- `errors`
-
-Do not assume a valid task result lives at the top level. The useful model body
-is usually in `result`.
+The runner requires Bash, Python 3, and standard Unix process tools. Terminal
+`status.json` states are `finished`, `failed`, `stalled`, `timed-out`,
+`interrupted`, and `dry-run`. Exit 124 means inactivity or a hard deadline; 127
+means a required executable was unavailable; 130 and 143 represent INT and
+TERM. Argument and contract errors exit 2. Other nonzero values come from the
+Claude process or an unexpected wrapper failure.

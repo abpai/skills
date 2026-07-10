@@ -64,8 +64,8 @@ research and review. The debate workflow now lives inside `pi` as
 |--------|-------------|-------------|
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
-| **codex-exec** | Delegate prompts to OpenAI Codex CLI for second opinions and adversarial review. | Yes |
-| **composer** | Delegate bounded implementation and strict review tasks to Cursor Composer from planner-led workflows. | Yes |
+| **codex-exec** | Run OpenAI Codex headlessly for implementation, review, and resumable second opinions with durable liveness artifacts. | Yes |
+| **composer** | Run Cursor Agent headlessly with durable liveness, review, and exact session continuation. | Yes |
 | **pi** | Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and `/pi:debate` for structured architecture/product decisions. | Claude-only |
 
 ### Code Workflows
@@ -94,7 +94,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **claude** | Run Claude Code CLI with auth and billing checks, tmux-backed TUI delegation, external data-sharing approval handling, session continuation, manual takeover, and non-interactive fallback |
+| **claude** | Run Claude headlessly with transcript-aware liveness, named-subagent reports, durable artifacts, and exact session continuation. |
 | **visualize** | Generate self-contained HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
 
 ### Languages & Platforms
@@ -107,7 +107,7 @@ research and review. The debate workflow now lives inside `pi` as
 
 | Plugin | What it does |
 |--------|-------------|
-| **tutorial** | Write hands-on, code-first tutorials where every step ends in a runnable action |
+| **tutorial** | Write hands-on, self-verified tutorials where every step ends in a runnable action |
 | **improve-prompt** | Upgrade vague prompts into sharp, reusable prompts for planning, coding, review, and decision work |
 | **human-writer** | Edit prose to sound natural and human-written — deslop model-generated text |
 

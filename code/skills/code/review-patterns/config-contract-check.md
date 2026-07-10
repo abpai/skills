@@ -12,7 +12,7 @@ surface.
   wrapper frontmatter (`disable-model-invocation`, `user-invocable`,
   `metadata.internal`).
 - A loader/source path referenced from a skill, or a change to the
-  `codex-run.sh` / `claude-tmux-run.sh` runner wrappers.
+  `codex-run.sh` / `claude-run.sh` runner wrappers.
 - New or edited JSON/YAML/TOML config, ignore files, or docs that name a public
   `/<plugin>:<command>` surface.
 
@@ -77,7 +77,7 @@ surface.
    local path check is therefore meaningless if the path escapes the plugin
    root; confine every referenced path to its owning plugin.
 8. **Runner-wrapper parity is a config contract.** The `codex-run.sh` and
-   `claude-tmux-run.sh` wrappers must expose the same surface (flags, file modes,
+   `claude-run.sh` wrappers must expose the same surface (flags, file modes,
    error contract). `test-wrapper-parity.sh` is the committed, runnable check —
    run it instead of eyeballing whenever either runner wrapper changes.
 
@@ -122,7 +122,7 @@ real CI checkers.
 - `scripts/sync-plugin-versions.sh` — syncs `plugin.json` from `SKILL.md`
   `metadata.version`, encoding `X.Y` → `X.Y.0`. Run:
   `bash scripts/sync-plugin-versions.sh` to surface or fix version drift.
-- `scripts/test-wrapper-parity.sh` — checks `codex-run.sh` / `claude-tmux-run.sh`
+- `scripts/test-wrapper-parity.sh` — checks `codex-run.sh` / `claude-run.sh`
   parity. Run: `bash scripts/test-wrapper-parity.sh` when either runner wrapper
   changes.
 
