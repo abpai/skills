@@ -138,6 +138,13 @@ justifies it, and record evidence or a skip rationale in context.
 — first web UI, public CLI, API route, database migration, auth/billing
 boundary, or background job — add a local gate and capture evidence for it.
 
+**Semantic-shortcut check.** When the diff adds or changes fallback chains,
+regex-based classification, protocol/authentication/security implementations,
+or type assertions at a boundary, run the semantic-shortcuts pass from
+`simplify.md` regardless of effort. Record the authoritative contract or known
+compatibility case that makes the implementation valid; absence of one is a
+finding, not an implied requirement.
+
 ## Phase 3 — Source-grounded QA & verification
 
 Write named tests grounded in source/docs/route/contract **before** acting.

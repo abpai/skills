@@ -83,20 +83,29 @@ Use the passes that fit the evidence; do not manufacture one finding per pass.
 1. **Reuse and duplication:** find hand-rolled behavior that an existing
    canonical helper, type, policy, or abstraction already owns. Distinguish
    accidental duplication from intentionally separate domain logic.
-2. **Structural simplification:** look for a reframing that removes state,
+2. **Semantic shortcuts:** challenge code that guesses instead of using an
+   authoritative contract. Require a real compatibility case for fallback
+   chains; prefer parsers, schemas, or provider APIs over regex classification;
+   prefer an established dependency or repository abstraction over bespoke
+   protocol, authentication, or security code; and remove type assertions that
+   compensate for an incorrectly modeled boundary. Do not replace small,
+   well-understood code with a dependency merely because one exists. If the
+   authoritative contract or compatibility evidence is unavailable, retain the
+   implementation and report the uncertainty instead of guessing at a fix.
+3. **Structural simplification:** look for a reframing that removes state,
    branches, flags, casts, optionality, wrappers, or whole layers of indirection.
    A refactor that only moves complexity is not a simplification.
-3. **Readability and boundaries:** inspect naming, function shape, cohesion,
+4. **Readability and boundaries:** inspect naming, function shape, cohesion,
    abstraction level, side effects, error flow, and logic living in the wrong
    package or layer.
-4. **Efficiency:** find repeated work, sequential independent work, N+1 access,
+5. **Efficiency:** find repeated work, sequential independent work, N+1 access,
    avoidable I/O, hot-path bloat, unbounded collections, and no-op updates. Do not
    trade clarity for micro-optimization without evidence.
-5. **Reachability:** start from executables, routes, jobs, exports, framework
+6. **Reachability:** start from executables, routes, jobs, exports, framework
    hooks, and external-consumer boundaries. Classify candidates as proven dead,
    test-only, conditional, externally consumable, or unresolved. Reflection,
    string dispatch, `eval`, and generated registration lower confidence.
-6. **Test signal:** remove tests that only re-prove mocks, private call order,
+7. **Test signal:** remove tests that only re-prove mocks, private call order,
    constants, duplicate branches, incidental snapshots, or vacuous assertions.
    Keep and sharpen observable behavior tests. Protect security and identity
    guards, public wire/CLI/API goldens, no-drift and dependency-boundary gates,
