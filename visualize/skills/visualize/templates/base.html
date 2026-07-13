@@ -27,6 +27,9 @@
   - Mermaid.js only when a generated artifact needs a large diagram
 
   Keep generated pages self-contained. No build step.
+
+  htm does not decode HTML entity references in tagged-template text. Write
+  visible symbols directly (for example, → or ›), not as &...; spellings.
 -->
 <style>
   :root {
@@ -430,9 +433,9 @@ const STEPS = [
     visual: html`
       <div class="flow">
         <span class="node">Tokyo</span>
-        <span class="arrow">-&gt;</span>
+        <span class="arrow">→</span>
         <span class="node accent">copy saved here</span>
-        <span class="arrow">-&gt;</span>
+        <span class="arrow">→</span>
         <span class="node">Virginia</span>
       </div>`,
   },
@@ -490,9 +493,9 @@ function AnchorVisual() {
   return html`
     <div class="flow">
       <span class="node">your server<br /><small style="color: var(--muted)">(one place)</small></span>
-      <span class="arrow">-&gt;</span>
+      <span class="arrow">→</span>
       <span class="node accent">copies in many cities</span>
-      <span class="arrow">-&gt;</span>
+      <span class="arrow">→</span>
       <span class="node">your visitor<br /><small style="color: var(--muted)">(anywhere)</small></span>
     </div>`;
 }
@@ -543,7 +546,7 @@ function Depth({ summary, children }) {
     <div class="depth">
       <button class="depth-toggle" onClick=${() => setOpen(!open)}>
         <span>${summary}</span>
-        <span class=${open ? 'chev open' : 'chev'}>&gt;</span>
+        <span class=${open ? 'chev open' : 'chev'}>›</span>
       </button>
       ${open && html`<div class="depth-body">${children}</div>`}
     </div>`;
