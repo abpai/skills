@@ -138,12 +138,16 @@ justifies it, and record evidence or a skip rationale in context.
 — first web UI, public CLI, API route, database migration, auth/billing
 boundary, or background job — add a local gate and capture evidence for it.
 
-**Semantic-shortcut check.** When the diff adds or changes fallback chains,
-regex-based classification, protocol/authentication/security implementations,
-or type assertions at a boundary, run the semantic-shortcuts pass from
-`simplify.md` regardless of effort. Record the authoritative contract or known
-compatibility case that makes the implementation valid; absence of one is a
-finding, not an implied requirement.
+**Semantic-shortcut check.** During the mandatory focused diff review, at every
+effort level, inspect added or changed code at trust, parsing, security, and
+externally-supplied-or-persisted data boundaries for semantic shortcuts —
+fallback chains, regex-based classification, bespoke protocol/auth/security
+implementations, and boundary type assertions. When one is present, load
+`review-patterns/semantic-shortcuts.md` and run it. No filename glob can detect
+these, so `finish-lane.ts` will not suggest the lens: selecting it is your call,
+made from the diff. A contract divergence it surfaces is an unresolved
+correctness finding — do not seal until it is fixed, explicitly accepted for
+this PR, or removed from it.
 
 ## Phase 3 — Source-grounded QA & verification
 

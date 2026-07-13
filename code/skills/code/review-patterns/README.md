@@ -23,6 +23,7 @@ lenses ceremonially.
 | `prose-quality-check.md` | Human-facing docs, help, UI copy, errors, or release notes changed | Quick pass when prose is part of the change | Quick pass | Deep pass |
 | `real-service-integration-check.md` | Auth, billing, database, webhook, worker, or other service boundaries changed | Quick pass when integration realism is at risk | Quick pass | Deep pass |
 | `refactor-safety-check.md` | The diff refactors, moves, consolidates, or deletes code | Quick pass when applicable | Quick pass | Deep pass |
+| `semantic-shortcuts.md` | Code guesses at a contract it could consult: fallback chains, regex classification of a structured format, bespoke protocol/auth/security code, or boundary type assertions | Quick pass when the shortcut sits at a trust, parsing, security, or data boundary | Quick pass | Deep pass |
 | `snapshot-testing-check.md` | Snapshots, goldens, approvals, or exact-output fixtures changed | Quick decision when artifact validity is at risk | Quick pass | Deep pass |
 | `ux-accessibility-audit.md` | Rendered UI, interaction, accessibility, or user-visible CLI experience changed | Quick pass when UX is at risk | Quick pass | Deep pass |
 
@@ -34,7 +35,10 @@ lenses ceremonially.
    lenses based on behavior and risk.
 3. Select `refactor-safety-check.md` from diff evidence such as moves, deletions,
    old/new implementations, or a named refactor. Filename extensions alone cannot
-   establish that intent, so the finish lane does not auto-suggest it.
+   establish that intent, so the finish lane does not auto-suggest it. Select
+   `semantic-shortcuts.md` the same way — from the shape of the added code, which
+   no filename glob can see. `simplify.md` also loads it directly as its
+   semantic-shortcuts review pass.
 4. Read only the selected files. Run the tier-appropriate pass and escalate when
    evidence warrants it.
 5. Record findings and proof, or a concrete skip rationale, in the review notes.

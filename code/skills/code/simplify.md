@@ -83,15 +83,13 @@ Use the passes that fit the evidence; do not manufacture one finding per pass.
 1. **Reuse and duplication:** find hand-rolled behavior that an existing
    canonical helper, type, policy, or abstraction already owns. Distinguish
    accidental duplication from intentionally separate domain logic.
-2. **Semantic shortcuts:** challenge code that guesses instead of using an
-   authoritative contract. Require a real compatibility case for fallback
-   chains; prefer parsers, schemas, or provider APIs over regex classification;
-   prefer an established dependency or repository abstraction over bespoke
-   protocol, authentication, or security code; and remove type assertions that
-   compensate for an incorrectly modeled boundary. Do not replace small,
-   well-understood code with a dependency merely because one exists. If the
-   authoritative contract or compatibility evidence is unavailable, retain the
-   implementation and report the uncertainty instead of guessing at a fix.
+2. **Semantic shortcuts:** challenge code that guesses instead of consulting an
+   authoritative contract — unjustified fallback chains, regex where a parser or
+   schema exists, bespoke protocol/auth/security code, and boundary type
+   assertions. When the scope contains one, load
+   `review-patterns/semantic-shortcuts.md` and follow it. Most of what it finds
+   is a correctness finding to report, not a behavior-preserving edit to apply;
+   its apply rule governs which is which.
 3. **Structural simplification:** look for a reframing that removes state,
    branches, flags, casts, optionality, wrappers, or whole layers of indirection.
    A refactor that only moves complexity is not a simplification.
