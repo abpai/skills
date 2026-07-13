@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test"
-import { suggestLenses } from "./finish-lane.ts"
+import { classifyShortcutLine, scanSemanticShortcuts, suggestLenses } from "./finish-lane.ts"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
@@ -875,4 +875,181 @@ test("--seal on an unborn HEAD is refused and writes no sentinel", () => {
   expect(result.status).toBe(2)
   expect(result.stdout).toContain("SEAL REFUSED: HEAD has no commits")
   expect(existsSync(path.join(repo, ".workflow/finish-lane/seal"))).toBe(false)
+})
+
+// --- semantic-shortcut scan (content routing for semantic-shortcuts.md) ----
+
+test("classifyShortcutLine: catches code that guesses at a contract", () => {
+  // Chained fallbacks over property reads — a guess at a payload shape.
+  expect(classifyShortcutLine("  const orders = resp.data ?? resp.result ?? resp.body")).toBe("fallback-chain")
+  expect(classifyShortcutLine("return cfg.host || cfg.hostname || cfg.addr")).toBe("fallback-chain")
+  // Regex standing in for a parser on a structured grammar.
+  expect(classifyShortcutLine(`const table = sql.match(/FROM\\s+(\\w+)/i)`)).toBe("regex-parse")
+  expect(classifyShortcutLine(`if (new RegExp("<div[^>]*>").test(html)) return true`)).toBe("regex-parse")
+  // Hand-rolled auth/crypto.
+  expect(classifyShortcutLine(`  const sig = createHmac("sha256", secret).digest("hex")`)).toBe("bespoke-crypto")
+  expect(classifyShortcutLine(`const [header, payload, sig] = token.split(".")`)).toBe("bespoke-crypto")
+  // Casts asserting a shape nothing validated.
+  expect(classifyShortcutLine("const order = JSON.parse(rawBody) as Order")).toBe("boundary-cast")
+  expect(classifyShortcutLine("const user = row as any")).toBe("boundary-cast")
+})
+
+test("classifyShortcutLine: leaves the lens's documented false positives alone", () => {
+  // A single operator is a DEFAULT, not a guess about a contract. This is the
+  // de-minimis floor the lens spells out; it is the scan's most important no.
+  expect(classifyShortcutLine("export const port = Number(process.env.PORT) || 3000")).toBeNull()
+  expect(classifyShortcutLine("const retries = opts.retries ?? 3")).toBeNull()
+  // Boolean logic and comparisons are conditions, not payload-shape guesses.
+  expect(classifyShortcutLine("if (user.isAdmin && user.isActive) return true")).toBeNull()
+  expect(classifyShortcutLine("if (a.kind === 'x' || a.kind === 'y') return")).toBeNull()
+  // Regex doing ordinary regex work on unstructured text.
+  expect(classifyShortcutLine("const words = line.split(/\\s+/)")).toBeNull()
+  // Crypto primitive without an auth/signature context (e.g. a cache key).
+  expect(classifyShortcutLine(`const key = createHash("sha256").update(buf).digest("hex")`)).toBeNull()
+  // A named cast away from any boundary.
+  expect(classifyShortcutLine("const n = value as number")).toBeNull()
+  // Comments describing a shortcut are not a shortcut.
+  expect(classifyShortcutLine("// const orders = resp.data ?? resp.result ?? resp.body")).toBeNull()
+})
+
+test("scanSemanticShortcuts: reads added lines only, not the whole file", () => {
+  const repo = makeRepo()
+  // A shortcut that is already in the tree before this PR.
+  writeRepoFile(repo, "src/legacy.ts", "export const v = a.one ?? a.two ?? a.three\n")
+  run("git", ["add", "src/legacy.ts"], repo, { PATH: systemPath })
+  run("git", ["commit", "-qm", "pre-existing"], repo, { PATH: systemPath })
+
+  // Touching that file without adding a shortcut must not route the lens: the
+  // pre-existing chain is not this PR's finding.
+  writeRepoFile(repo, "src/legacy.ts", "export const v = a.one ?? a.two ?? a.three\nexport const n = 1\n")
+  expect(scanSemanticShortcuts(repo, "HEAD", []).count).toBe(0)
+
+  // Adding one does.
+  writeRepoFile(repo, "src/legacy.ts", "export const v = a.one ?? a.two ?? a.three\nconst o = r.data ?? r.result ?? r.body\n")
+  const scan = scanSemanticShortcuts(repo, "HEAD", [])
+  expect(scan.count).toBe(1)
+  expect(scan.hits[0]).toContain("fallback-chain")
+})
+
+test("scanSemanticShortcuts: ignores tests and generated code", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/api.test.ts", "const o = r.data ?? r.result ?? r.body\n")
+  writeRepoFile(repo, "dist/bundle.js", "const o = r.data ?? r.result ?? r.body\n")
+  expect(scanSemanticShortcuts(repo, "HEAD", ["src/api.test.ts", "dist/bundle.js"]).count).toBe(0)
+})
+
+test("suggestLenses: semantic-shortcuts.md is content-routed, never glob-routed", () => {
+  // No filename can imply it...
+  expect(suggestLenses(["src/orders.ts"])).not.toContain("semantic-shortcuts.md")
+  // ...only the content scan can.
+  expect(suggestLenses(["src/orders.ts"], true)).toContain("semantic-shortcuts.md")
+})
+
+test("finish-lane routes the semantic-shortcuts lens from an added fallback chain", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/orders.ts", "export const orders = resp.data ?? resp.result ?? resp.body\n")
+
+  const result = runFinishLaneArgs(repo, ["--base", "HEAD"])
+
+  expect(result.stdout).toContain("semantic-shortcut hits: 1")
+  expect(result.stdout).toContain("fallback-chain")
+  expect(result.stdout).toContain("review-patterns/semantic-shortcuts.md")
+})
+
+test("finish-lane leaves the semantic-shortcuts lens out of a clean diff", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/config.ts", "export const port = Number(process.env.PORT) || 3000\n")
+
+  const result = runFinishLaneArgs(repo, ["--base", "HEAD"])
+
+  expect(result.stdout).toContain("semantic-shortcut hits: 0")
+  expect(result.stdout).not.toContain("review-patterns/semantic-shortcuts.md")
+})
+
+// --- semantic-shortcut scan: regressions from independent review -----------
+
+test("classifyShortcutLine: catches the shapes a value-context rule used to miss", () => {
+  // A `??` chain is a shape guess wherever it sits, including a call argument.
+  expect(classifyShortcutLine("send(resp.data ?? resp.result ?? resp.body)")).toBe("fallback-chain")
+  // Python regex over SQL is still a parser substitute.
+  expect(classifyShortcutLine('rows = re.search(r"FROM\\s+(\\w+)", sql)')).toBe("regex-parse")
+  // createHash over a password is bespoke crypto.
+  expect(classifyShortcutLine('const h = createHash("sha256").update(password).digest()')).toBe("bespoke-crypto")
+  // A non-null assertion at a boundary is a claim about someone else's data.
+  expect(classifyShortcutLine("const user = response.body!")).toBe("boundary-cast")
+})
+
+test("classifyShortcutLine: strings and conditions are not shortcuts", () => {
+  // String CONTENT must not classify — this is a log line, not a cast.
+  expect(classifyShortcutLine('logger.debug("response body as User")')).toBeNull()
+  // A `||` chain inside a condition is boolean logic, not a payload-shape guess.
+  expect(classifyShortcutLine("if (user.isAdmin || user.isOwner || user.isEditor) return")).toBeNull()
+  // Whitespace normalization is not a parser, even on a line that says "html".
+  expect(classifyShortcutLine('const html = text.replace(/[ \\t]{2,}/g, " ")')).toBeNull()
+  // Negation and inequality are not non-null assertions.
+  expect(classifyShortcutLine("if (!response.ok) return null")).toBeNull()
+  expect(classifyShortcutLine("if (res.status !== 200) return")).toBeNull()
+})
+
+test("classifyShortcutLine: an unterminated regex literal does not hang the scan", () => {
+  // Exponential backtracking on overlapping alternatives would stall the finish
+  // lane on a single pathological added line.
+  const pathological = `const html = /${"[]".repeat(40)}X`
+  const started = Date.now()
+  classifyShortcutLine(pathological)
+  expect(Date.now() - started).toBeLessThan(250)
+})
+
+test("scanSemanticShortcuts: a shortcut committed then reverted in the tree is not reported", () => {
+  const repo = makeRepo()
+  run("git", ["commit", "-q", "--allow-empty", "-m", "base"], repo, { PATH: systemPath })
+  const base = run("git", ["rev-parse", "HEAD"], repo, { PATH: systemPath }).trim()
+
+  writeRepoFile(repo, "src/x.ts", "const x = r.data ?? r.result ?? r.body\n")
+  run("git", ["add", "src/x.ts"], repo, { PATH: systemPath })
+  run("git", ["commit", "-qm", "add shortcut"], repo, { PATH: systemPath })
+  expect(scanSemanticShortcuts(repo, base, []).count).toBe(1)
+
+  // The working tree is what ships. Once the line is gone, it is not a finding.
+  writeRepoFile(repo, "src/x.ts", "const x = 1\n")
+  expect(scanSemanticShortcuts(repo, base, []).count).toBe(0)
+})
+
+test("scanSemanticShortcuts: an added `++ x` line is not parsed as a diff file header", () => {
+  const repo = makeRepo()
+  writeRepoFile(repo, "src/a.ts", "let counter = 0\n")
+  run("git", ["add", "src/a.ts"], repo, { PATH: systemPath })
+  run("git", ["commit", "-qm", "seed"], repo, { PATH: systemPath })
+  const base = run("git", ["rev-parse", "HEAD"], repo, { PATH: systemPath }).trim()
+
+  // `++ counter` arrives in the diff as `+++ counter`. If that is read as a file
+  // header, the real shortcut below it gets attributed to a file named "counter"
+  // and silently dropped.
+  writeRepoFile(repo, "src/a.ts", "let counter = 0\n++ counter\nconst o = r.data ?? r.result ?? r.body\n")
+
+  const scan = scanSemanticShortcuts(repo, base, [])
+  expect(scan.count).toBe(1)
+  expect(scan.hits[0]).toContain("src/a.ts")
+  expect(scan.hits[0]).toContain("fallback-chain")
+})
+
+test("classifyShortcutLine: naming a pattern is not using one", () => {
+  // A rule table, import, or doc line that LISTS these constructs is talking
+  // about them, not hand-rolling them. Without this the scanner's own source is
+  // its loudest finding.
+  expect(classifyShortcutLine("const cryptoPrimitive = /\\b(createHmac|createHash|createSign)\\b/i")).toBeNull()
+  expect(classifyShortcutLine("const structuredFormat = /\\b(sql|html|xml|csv)\\b/i")).toBeNull()
+  expect(classifyShortcutLine('import { createHmac } from "node:crypto"')).toBeNull()
+  // A boolean OR of predicate CALLS is logic, not a fallback chain.
+  expect(classifyShortcutLine("return /\\(/.test(src) || /</.test(src) || /x/.test(src)")).toBeNull()
+})
+
+test("classifyShortcutLine: a chain of method calls is not a fallback chain", () => {
+  // Regression: `\w+(?!\s*\()` backtracks (`test` -> `tes`) so the "not a call"
+  // guard passed on `x.test(y) || z.test(y)`. Any `||` chain over method calls
+  // false-positived. The `\b` after `\w+` is what closes it.
+  expect(classifyShortcutLine("return a.test(src) || b.test(src) || c.test(src)")).toBeNull()
+  expect(classifyShortcutLine("const ok = check.run(x) || other.run(x)")).toBeNull()
+  // ...while a chain over property READS still classifies.
+  expect(classifyShortcutLine("const v = resp.data ?? resp.result ?? resp.body")).toBe("fallback-chain")
 })

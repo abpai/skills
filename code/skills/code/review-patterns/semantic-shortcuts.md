@@ -24,9 +24,15 @@ The diff — or the selected `simplify` scope — adds, changes, or contains any
   non-null assertions applied to data arriving from an API, parse, database,
   message, or config.
 
-Not auto-suggested by `finish-lane.ts`: the trigger is the *shape of the code*,
-which a filename glob cannot see. Select it from the diff or the scope under
-review, the way `refactor-safety-check.md` is selected from refactor intent.
+`finish-lane.ts` routes this lens from an **added-line content scan**, not a
+filename glob — a glob cannot see the shape of the code. It reports
+`semantic-shortcut hits: N` and adds the lens to the suggested list when `N > 0`.
+
+Treat a hit as a starting point, not a verdict, and treat **zero hits as weak
+evidence**. The scan is deliberately tuned to under-trigger on this lens's
+documented false positives — it will not flag a single-operator default, and it
+cannot see a shortcut expressed in a shape it has no pattern for. If you read the
+diff and find one, run the lens regardless of what the scan said.
 
 ## Gotchas
 

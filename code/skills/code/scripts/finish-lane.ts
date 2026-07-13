@@ -358,6 +358,200 @@ function mechanicalScans(rootDir: string, files: string[]): Scan {
   return scan
 }
 
+// --- Semantic-shortcut scan ----------------------------------------------
+
+// Code that guesses at a contract it could have consulted: fallback chains,
+// regex over a structured grammar, bespoke auth/crypto, boundary casts. A
+// filename glob cannot see any of it — the trigger is the *shape of the code* —
+// so this content scan is what routes review-patterns/semantic-shortcuts.md into
+// the suggested-lens list. Without it that lens is selectable only if the agent
+// happens to notice the pattern unaided.
+//
+// ADDED lines only, read from ONE base-to-working-tree diff. A shortcut already
+// living in a file this diff merely touches is not this PR's finding, and
+// flagging it would drag the lens into every edit of a legacy file. Scanning the
+// committed, staged, and unstaged diffs separately would be wrong twice over:
+// their line numbers live in different coordinate systems, and a shortcut that
+// was committed and then deleted in the working tree would still be reported.
+//
+// Tuned to under-trigger on the lens's own documented false positives rather
+// than to catch every case. `env.PORT || 3000` is a default, not a guess about a
+// contract, so a fallback needs TWO chained operators over a property access.
+// The output is a suggestion, not a verdict, and zero hits is weak evidence: the
+// agent still reads the diff.
+//
+// Known self-match: the rule table below applies a regex containing SQL keywords,
+// so scanning THIS file reports one `regex-parse` hit. A detector's source is
+// necessarily a corpus of the patterns it detects, and the alternative — rules
+// contorted until they cannot see themselves — would cost real detection. It is
+// an advisory suggestion; dismiss it.
+
+type ShortcutKind = "fallback-chain" | "regex-parse" | "bespoke-crypto" | "boundary-cast"
+
+// Alternatives are disjoint on their first character (`\` vs `[` vs neither), so
+// this cannot backtrack exponentially on an unterminated literal. The {4,} floor
+// keeps a trivial regex (`/,/`, `/\s/`) from ever reading as a parser substitute.
+const regexLiteral = /\/(?:[^/\n\\[]|\\.|\[(?:[^\]\\]|\\.)*\]){4,}\/[gimsuyd]*/
+const stringLiteral = /(["'`])(?:\\.|(?!\1)[^\\])*\1/g
+const lineComment = /\/\/.*$/
+
+const boundaryContext =
+  /JSON\.parse|await\s|fetch\(|\breq\b|\brequest\b|\bres\b|\bresponse\b|\bbody\b|payload|\brows?\b|\brecord\b|process\.env|\bmessage\b|\bevent\b|\bwebhook\b/i
+const authContext = /\b(sign|verify|auth|token|jwt|secret|signature|password|hmac|session|cookie|bearer)\b/i
+const structuredFormat =
+  /\b(sql|html|xml|csv|yaml|semver|jwt|mime|content-type|href|uri|url|email)\b|\b(select|insert|update|delete|from|where|join|union)\b|<\/?[a-z]/i
+// The primitive must be INVOKED, not merely named: a line that lists these as
+// alternatives (a rule table, a doc, an import) is talking about crypto, not
+// hand-rolling it. Same reason regex-parse demands an application site below —
+// otherwise this scanner's own rule table is its loudest finding.
+// `scryptSync|scrypt` rather than `scrypt(?:Sync)?`: an inline group would put a
+// literal `(` right after the name, so the pattern would match its own source.
+const cryptoPrimitive =
+  /\b(createHmac|createHash|createCipheriv|createDecipheriv|createSign|createVerify|pbkdf2|scryptSync|scrypt|hmac\.new|hashlib\.(md5|sha1|sha256|sha512))\s*\(/i
+const jwtHandSplit = /\.split\(\s*["'`]\.["'`]\s*\)/
+const regexApplied =
+  /\.(match|matchAll|test|exec|replace|replaceAll|search|split)\s*\(|\bre\.(search|match|fullmatch|findall|finditer|sub|compile)\s*\(/
+
+// Strings are noise for the fallback and cast rules — `logger.debug("body as User")`
+// is a log message, not a cast. They are EVIDENCE for the regex and crypto rules
+// (`new RegExp("<div>")`), so those read the raw line.
+function stripStrings(line: string): string {
+  return line.replace(stringLiteral, '""').replace(lineComment, "")
+}
+
+// The pattern a regex is actually applying — literal, RegExp ctor, or Python re.
+function regexSource(line: string): string | null {
+  const literal = regexLiteral.exec(line)
+  if (literal) return literal[0]
+  const ctor = /new RegExp\(\s*(["'`])((?:\\.|(?!\1)[^\\])*)\1/.exec(line)
+  if (ctor) return ctor[2]
+  const python = /\bre\.(?:search|match|fullmatch|findall|finditer|sub|compile)\(\s*[rbu]*(["'])((?:\\.|(?!\1)[^\\])*)\1/.exec(line)
+  if (python) return python[2]
+  return null
+}
+
+// A regex only stands in for a PARSER when the pattern itself reaches for
+// structure: a capture group, markup, or an SQL keyword. Without this,
+// `text.replace(/[ \t]{2,}/g, " ")` on a line that merely mentions `html` reads
+// as a parser substitute when it is whitespace normalization.
+function patternIsStructural(source: string): boolean {
+  return /\(/.test(source) || /</.test(source) || /\b(select|insert|update|delete|from|where|join|union)\b/i.test(source)
+}
+
+export function classifyShortcutLine(rawLine: string): ShortcutKind | null {
+  if (/^\s*(\/\/|\/\*|\*|#)/.test(rawLine)) return null
+  const line = stripStrings(rawLine)
+
+  // Fallback chain: two or more chained `??`/`||` reading properties. A single
+  // operator is a default, never a guess. `??` is a shape guess wherever it
+  // appears (including a call argument); a `||`-only chain must be producing a
+  // value, since in a condition it is ordinary boolean logic.
+  // The operands must READ values (`resp.data`), not CALL predicates
+  // (`re.test(x) || re2.test(x)`) — a boolean OR of function calls is logic, not
+  // a guess at which key exists.
+  const operators = (line.match(/\?\?|\|\|/g) || []).length
+  if (
+    operators >= 2 &&
+    !/&&|===|!==|==|!=|<=|>=/.test(line) &&
+    // `\b` after `\w+` is load-bearing: without it the greedy match backtracks
+    // (`test` -> `tes`) and the "not a call" lookahead passes on `x.test(y)`.
+    /[\w)\]]\s*\.\s*\w+\b(?!\s*\()|\[["'`]/.test(line) &&
+    !/^\s*(if|while|else\s+if|elif)\b/.test(line)
+  ) {
+    const nullish = /\?\?/.test(line)
+    const producesValue = /(^|[^=!<>])=[^=]|return\s|:\s/.test(line)
+    if (nullish || producesValue) return "fallback-chain"
+  }
+
+  const source = regexSource(rawLine)
+  if (source && regexApplied.test(rawLine) && structuredFormat.test(rawLine) && patternIsStructural(source)) {
+    return "regex-parse"
+  }
+
+  if ((cryptoPrimitive.test(rawLine) || jwtHandSplit.test(rawLine)) && authContext.test(rawLine)) return "bespoke-crypto"
+
+  if (/\bas\s+any\b|\bas\s+unknown\s+as\b/.test(line)) return "boundary-cast"
+  if (boundaryContext.test(line)) {
+    if (/\bas\s+[A-Z]\w*(\[\])?\b/.test(line)) return "boundary-cast"
+    // Non-null assertion: `response.body!` — a claim, not a check. `!==` and a
+    // leading `!` negation are excluded by requiring a value before the `!` and
+    // a terminator after it.
+    if (/[\w\])]\s*!\s*(?:[;,)\]}]|$)/.test(line)) return "boundary-cast"
+  }
+  return null
+}
+
+// Added lines in ONE coordinate system: base -> working tree. That is the state
+// the PR actually ships, so a committed-then-reverted line correctly disappears.
+function addedLines(rootDir: string, baseRef: string, untracked: string[]): { file: string; line: number; text: string }[] {
+  const added: { file: string; line: number; text: string }[] = []
+
+  if (gitRefExists("HEAD")) {
+    const diff = run(`git diff --unified=0 ${shellQuote(baseRef)} 2>/dev/null`, rootDir).stdout
+    let file = ""
+    let lineNo = 0
+    let sawOldHeader = false
+    for (const raw of diff.split(/\r?\n/)) {
+      // `+++` is only a file header directly after `---`. An added line of code
+      // reading `++ counter` arrives as `+++ counter` and must not be mistaken
+      // for one, or every later hunk is attributed to a file named `counter`.
+      if (raw.startsWith("--- ")) {
+        sawOldHeader = true
+        continue
+      }
+      if (sawOldHeader && raw.startsWith("+++ ")) {
+        const target = raw.slice(4).trim()
+        file = target === "/dev/null" ? "" : target.replace(/^b\//, "")
+        sawOldHeader = false
+        continue
+      }
+      sawOldHeader = false
+
+      const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(raw)
+      if (hunk) {
+        lineNo = Number(hunk[1])
+        continue
+      }
+      if (!file) continue
+      if (raw.startsWith("+")) {
+        added.push({ file, line: lineNo, text: raw.slice(1) })
+        lineNo += 1
+      } else if (raw.startsWith(" ")) {
+        // diff.interHunkContext can emit context even under --unified=0; context
+        // advances the new-file counter, removals and `\ No newline` do not.
+        lineNo += 1
+      }
+    }
+  }
+
+  for (const file of untracked) {
+    const text = readSample(rootDir, file)
+    if (text === null) continue
+    text.split(/\r?\n/).forEach((line, index) => added.push({ file, line: index + 1, text: line }))
+  }
+
+  return added
+}
+
+type ShortcutScan = { count: number; hits: string[] }
+
+export function scanSemanticShortcuts(rootDir: string, baseRef: string, untracked: string[]): ShortcutScan {
+  const scan: ShortcutScan = { count: 0, hits: [] }
+  const seen = new Set<string>()
+
+  for (const { file, line, text } of addedLines(rootDir, baseRef, untracked)) {
+    if (!isCodeFile(file) || isTestFile(file) || isGeneratedFile(file)) continue
+    const kind = classifyShortcutLine(text)
+    if (!kind) continue
+    const key = `${file}:${line}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    scan.count += 1
+    if (scan.hits.length < 20) scan.hits.push(`${key}: ${kind}: ${text.trim().slice(0, 80)}`)
+  }
+  return scan
+}
+
 type UbsSeverity = "good" | "info" | "warning" | "critical"
 type UbsStatus = "skipped" | "clean" | "advisory-findings" | "tool-failure" | "timeout"
 type UbsCounts = Record<UbsSeverity, number>
@@ -992,15 +1186,18 @@ const lensRules: { lens: string; test: RegExp }[] = [
   // The UBS scan runs unconditionally as advisory support below, so it is not a lens.
   // refactor-safety-check.md is selected from diff intent (move/delete/refactor),
   // which cannot be inferred safely from a changed filename alone.
+  // semantic-shortcuts.md is routed by the added-line content scan, not a
+  // filename glob — see scanSemanticShortcuts.
 ]
 
-export function suggestLenses(files: string[]): string[] {
+export function suggestLenses(files: string[], semanticShortcuts = false): string[] {
   const selected = new Set<string>()
   for (const file of files) {
     for (const rule of lensRules) {
       if (rule.test.test(file)) selected.add(rule.lens)
     }
   }
+  if (semanticShortcuts) selected.add("semantic-shortcuts.md")
   return Array.from(selected).sort()
 }
 
@@ -1155,8 +1352,9 @@ function main(): void {
 
   const validationResults = runValidation(rootDir, pm, scripts)
   const scan = mechanicalScans(rootDir, scope.all)
+  const shortcuts = scanSemanticShortcuts(rootDir, baseRef, scope.untracked)
   const ubs = ubsScan(rootDir, scope.all, outDir)
-  const lenses = suggestLenses(scope.all)
+  const lenses = suggestLenses(scope.all, shortcuts.count > 0)
 
   const out: string[] = []
   out.push(`FINISH_LANE ${new Date().toISOString()}`)
@@ -1179,6 +1377,8 @@ function main(): void {
   out.push("mechanical scans:")
   out.push(`  slop hits: ${scan.slop}`)
   out.push(`  placeholder hits: ${scan.placeholder}`)
+  out.push(`  semantic-shortcut hits: ${shortcuts.count}`)
+  for (const hit of shortcuts.hits) out.push(`    ${hit}`)
   out.push("  ubs:")
   out.push(`    status: ${ubs.status}`)
   out.push(`    available: ${ubs.available ? "yes" : "no"}`)

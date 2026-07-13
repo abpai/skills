@@ -29,19 +29,23 @@ lenses ceremonially.
 
 ## Selection contract
 
-1. Run `scripts/finish-lane.ts`. Its suggested list is a filename-driven starting
-   point, not a verdict.
+1. Run `scripts/finish-lane.ts`. Its suggested list is a starting point, not a
+   verdict — driven by changed filenames, plus one added-line content scan for
+   `semantic-shortcuts.md`.
 2. Inspect the actual diff and project intent. Accept, skip, override, or add
    lenses based on behavior and risk.
 3. Select `refactor-safety-check.md` from diff evidence such as moves, deletions,
    old/new implementations, or a named refactor. Filename extensions alone cannot
-   establish that intent, so the finish lane does not auto-suggest it. Select
-   `semantic-shortcuts.md` the same way — from the shape of the added code, which
-   no filename glob can see. `simplify.md` also loads it directly as its
-   semantic-shortcuts review pass.
-4. Read only the selected files. Run the tier-appropriate pass and escalate when
+   establish that intent, so the finish lane does not auto-suggest it.
+4. `semantic-shortcuts.md` is routed by an added-line **content** scan rather than
+   a filename glob, since no filename reveals the shape of the code. The finish
+   lane reports `semantic-shortcut hits: N` and suggests the lens when `N > 0`;
+   zero hits is weak evidence, not a clean bill, because the scan is tuned to
+   under-trigger on that lens's false positives. `simplify.md` also loads it
+   directly as its semantic-shortcuts review pass.
+5. Read only the selected files. Run the tier-appropriate pass and escalate when
    evidence warrants it.
-5. Record findings and proof, or a concrete skip rationale, in the review notes.
+6. Record findings and proof, or a concrete skip rationale, in the review notes.
    PR title and body drafting remain part of the core `prepare-pr` workflow.
 
 ## Lens shape
