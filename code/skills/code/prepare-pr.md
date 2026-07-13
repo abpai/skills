@@ -143,11 +143,15 @@ effort level, inspect added or changed code at trust, parsing, security, and
 externally-supplied-or-persisted data boundaries for semantic shortcuts —
 fallback chains, regex-based classification, bespoke protocol/auth/security
 implementations, and boundary type assertions. When one is present, load
-`review-patterns/semantic-shortcuts.md` and run it. No filename glob can detect
-these, so `finish-lane.ts` will not suggest the lens: selecting it is your call,
-made from the diff. A contract divergence it surfaces is an unresolved
-correctness finding — do not seal until it is fixed, explicitly accepted for
-this PR, or removed from it.
+`review-patterns/semantic-shortcuts.md` and run it.
+
+The finish lane scans added lines for these shapes and reports
+`semantic-shortcut hits: N`, suggesting the lens when `N > 0`. A hit is a lead,
+not a verdict. **Zero hits is weak evidence**, not a clean bill: the scan is tuned
+to under-trigger on the lens's false positives, so your own read of the diff
+overrides it in both directions. A contract divergence the lens surfaces is an
+unresolved correctness finding — do not seal until it is fixed, explicitly
+accepted for this PR, or removed from it.
 
 ## Phase 3 — Source-grounded QA & verification
 
