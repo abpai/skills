@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.1] - 2026-07-13
+
+### Render symbols instead of HTML entity spellings
+
+- Replaced entity-encoded arrows and chevrons in the Preact + htm base template
+  with literal Unicode symbols so generated pages no longer display text such
+  as `-&gt;` and `&gt;`.
+- Added explicit htm entity-handling guidance and a rendered-text delivery check
+  to prevent the same double-escaping bug in generated artifacts.
+
 ## [1.3.0] - 2026-07-07
 
 ### Explainer Arc — learning-first outputs

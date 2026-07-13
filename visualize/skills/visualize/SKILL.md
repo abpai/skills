@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.3.0"
+  version: "1.3.1"
   upstream_skill: https://github.com/nicobailon/visual-explainer
 ---
 
@@ -110,6 +110,26 @@ The Write tool can corrupt JavaScript template literals, writing literal `\`` an
 2. **Keep htm expressions simple.** Pass variables by reference (`${myVar}`, `${myArray.map(...)}`). Do not build complex multi-line strings or nested template literals inline within an `html\`...\`` block.
 3. **Verify after writing.** Re-read the first 30 lines of the `<script type="module">` block in the written file and confirm there are no escaped sequences (`\`` or `\${`). If Chrome DevTools MCP is available, check the browser console for `SyntaxError` after opening the file.
 
+## Avoiding Visible HTML Entity Text
+
+Inside an `htm` tagged template, entity spellings such as `&gt;`, `&lt;`, and
+`&amp;` are passed to Preact as ordinary text and escaped again. The rendered page
+then shows the spelling itself, such as `-&gt;`, instead of the intended symbol.
+
+- Write non-structural visible symbols directly in `html\`...\`` templates:
+  `→`, `←`, `›`, `>`, `&`, and so on. A visible `<` is the exception because
+  `htm` treats it as markup; render it through an expression such as `${'<'}`
+  (or a named string variable) and let Preact escape it. Use the same expression
+  approach for dynamic text.
+- Use HTML entities only in browser-parsed markup outside `<script>` blocks.
+  JavaScript source — including plain string constants and `htm` templates —
+  does not decode them for you.
+- Before delivery, inspect the rendered page text for visible entity spellings.
+  If the browser console is available, run
+  `document.body.innerText.match(/&(?:#\d+|#x[\da-f]+|[a-z][a-z0-9]+);/gi)`;
+  any match must be intentional or replaced with safe text that renders the
+  character the reader should see.
+
 ## Before Delivering
 
 Run these checks against the finished file, in order:
@@ -120,7 +140,8 @@ Run these checks against the finished file, in order:
 4. **Density check** — any visual with more than 7 primary elements? Any text in a visual under 13px?
 5. **First screen test** — is the gist + anchor visual visible without scrolling?
 6. **File opens cleanly** — no console errors, no broken fonts.
-7. **Format branch followed** — selected format, extra references, and dependencies match the artifact.
+7. **Rendered text is clean** — no accidental visible entity spellings such as `&gt;`, `&lt;`, or `&amp;`.
+8. **Format branch followed** — selected format, extra references, and dependencies match the artifact.
 
 ## Output
 
