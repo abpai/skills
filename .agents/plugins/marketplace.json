@@ -41,6 +41,18 @@
       "category": "Productivity"
     },
     {
+      "name": "codex-session",
+      "source": {
+        "source": "local",
+        "path": "./codex-session"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools"
+    },
+    {
       "name": "composer",
       "source": {
         "source": "local",
@@ -93,6 +105,18 @@
       "source": {
         "source": "local",
         "path": "./claude"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools"
+    },
+    {
+      "name": "claude-session",
+      "source": {
+        "source": "local",
+        "path": "./claude-session"
       },
       "policy": {
         "installation": "AVAILABLE",

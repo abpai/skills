@@ -24,10 +24,17 @@
     },
     {
       "name": "codex-exec",
-      "description": "Run Codex headlessly for implementation, review, and resumable second opinions with durable liveness artifacts.",
+      "description": "Run Codex headlessly for implementation, review, monitored work, and exact continuation with durable liveness artifacts.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "codex-exec" },
       "category": "productivity",
       "keywords": ["codex", "openai", "implementation", "review", "liveness", "resume"]
+    },
+    {
+      "name": "codex-session",
+      "description": "Inspect local Codex CLI transcripts by session UUID without launching Codex or contacting a model provider.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "codex-session" },
+      "category": "tools",
+      "keywords": ["codex", "session", "transcript", "jsonl", "local", "read-only"]
     },
     {
       "name": "composer",
@@ -52,10 +59,17 @@
     },
     {
       "name": "claude",
-      "description": "Run Claude headlessly with transcript-aware liveness, named-subagent reports, durable artifacts, and exact session continuation.",
+      "description": "Run Claude headlessly with transcript-aware liveness, durable artifacts, and exact continuation.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "claude" },
       "category": "tools",
       "keywords": ["claude", "cli", "headless", "delegation", "subagents", "liveness", "resume", "automation", "approval", "auth"]
+    },
+    {
+      "name": "claude-session",
+      "description": "Inspect local Claude Code transcripts by session UUID without invoking Claude or contacting Anthropic.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "claude-session" },
+      "category": "tools",
+      "keywords": ["claude", "session", "transcript", "jsonl", "local", "read-only"]
     },
     {
       "name": "cli-design-expert",

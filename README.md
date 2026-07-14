@@ -27,6 +27,7 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install code@abpai-skills
 /plugin install tutorial@abpai-skills
 /plugin install codex-exec@abpai-skills
+/plugin install codex-session@abpai-skills
 /plugin install composer@abpai-skills
 /plugin install decision-worksheet@abpai-skills
 /plugin install status-update@abpai-skills
@@ -65,7 +66,8 @@ research and review. The debate workflow now lives inside `pi` as
 |--------|-------------|-------------|
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
-| **codex-exec** | Run OpenAI Codex headlessly for implementation, review, and resumable second opinions with durable liveness artifacts. | Yes |
+| **codex-exec** | Run Codex headlessly for implementation, review, monitored work, and exact continuation with durable liveness artifacts. | Yes |
+| **codex-session** | Inspect local Codex transcripts by UUID without launching Codex or contacting a model provider. | Yes |
 | **composer** | Run Cursor Agent headlessly with durable liveness, review, and exact session continuation. | Yes |
 | **pi** | Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and `/pi:debate` for structured architecture/product decisions. | Claude-only |
 
@@ -102,7 +104,8 @@ secure-dependencies` (or `harness compliant` for end-to-end remediation);
 
 | Plugin | What it does |
 |--------|-------------|
-| **claude** | Run Claude headlessly with transcript-aware liveness, named-subagent reports, durable artifacts, and exact session continuation. |
+| **claude** | Run Claude headlessly with transcript-aware liveness, durable artifacts, and exact continuation. |
+| **claude-session** | Inspect local Claude Code transcripts by UUID without invoking Claude or contacting Anthropic. |
 | **visualize** | Generate self-contained HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
 
 ### Languages & Platforms

@@ -1,7 +1,7 @@
 {
   "name": "codex-exec",
-  "version": "2.0.0",
-  "description": "Run Codex headlessly for implementation, review, and resumable second opinions with durable liveness artifacts.",
+  "version": "2.1.0",
+  "description": "Run Codex headlessly for implementation, review, monitored work, and exact continuation with durable liveness artifacts.",
   "author": {
     "name": "Andy Pai"
   },

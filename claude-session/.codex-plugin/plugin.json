@@ -1,0 +1,11 @@
+{
+  "name": "claude-session",
+  "version": "1.0.0",
+  "description": "Inspect local Claude Code transcripts by session UUID without invoking Claude or contacting Anthropic.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}
