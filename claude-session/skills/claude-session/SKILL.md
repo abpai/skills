@@ -2,14 +2,15 @@
 name: claude-session
 description: >
   Locate, read, and summarize local Claude Code transcripts by session UUID.
-  Use when the user supplies a Claude session ID or asks what a Claude session
-  did, said, decided, or contained; renders bounded recent context, opt-in tool
-  summaries, and child subagent transcript paths. Local-only: never runs Claude
-  or contacts Anthropic.
+  Use first whenever the user supplies a Claude session ID — even alongside
+  follow-on work — or asks what a Claude session did, said, decided, or
+  contained; renders bounded recent context, opt-in tool summaries, and child
+  subagent transcript paths. Local-only: never runs Claude or contacts
+  Anthropic; any follow-on execution remains a separate step.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Claude Session

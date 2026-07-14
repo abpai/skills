@@ -1,6 +1,6 @@
 {
   "name": "claude-session",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Inspect local Claude Code transcripts by session UUID without invoking Claude or contacting Anthropic.",
   "author": {
     "name": "Andy Pai"
