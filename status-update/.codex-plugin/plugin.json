@@ -1,6 +1,6 @@
 {
   "name": "status-update",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Turn long-running agent work into concise, evidence-backed status snapshots with clear drill-down anchors.",
   "author": {
     "name": "Andy Pai"
@@ -14,7 +14,9 @@
     "longDescription": "Turn long-running agent work into concise, evidence-backed snapshots of completed outcomes, current activity, remaining work, friction, surprises, and required user action.",
     "developerName": "Andy Pai",
     "category": "Productivity",
-    "capabilities": ["Skills"],
+    "capabilities": [
+      "Skills"
+    ],
     "defaultPrompt": "Use the status-update skill to give me a concise, evidence-backed update on this long-running task."
   }
 }
