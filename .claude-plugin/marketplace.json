@@ -126,6 +126,13 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "visualize" },
       "category": "tools",
       "keywords": ["visualization", "html", "diagrams", "explanation"]
+    },
+    {
+      "name": "status-update",
+      "description": "Turn long-running agent work into concise, evidence-backed status snapshots with clear drill-down anchors.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "status-update" },
+      "category": "productivity",
+      "keywords": ["status", "progress", "agents", "blockers", "handoff", "operations"]
     }
   ]
 }
