@@ -1,6 +1,7 @@
 ---
 name: status-update
 description: Summarize a long-running agent task as a concise, evidence-backed snapshot of completed outcomes, current activity, remaining work, friction, surprises, and any required user action. Use when the user asks for a status update, progress report, catch-up, what has been done, what is active, what is left, why work is taking so long, what blockers or issues exist, what improvements are locked in, or whether anything surprising changed the plan.
+argument-hint: "[detailed] [scope to report on]"
 license: MIT
 metadata:
   author: Andy Pai
@@ -13,6 +14,14 @@ metadata:
 Give the user an accurate control-panel view of the work, not a transcript.
 Default to a quick update that is easy to scan and easy to drill into by
 selecting any bold label.
+
+## Read the request
+
+Arguments are `[detailed] [scope to report on]`, and the user's own words carry
+the same meaning ("give me the detail", "just the deploy work"). A `detailed`
+token, or an equivalent ask for depth, selects the expanded report in
+[Expand only on request](#expand-only-on-request); anything else is the scope.
+With no argument and no stated scope, write the quick update for the whole task.
 
 ## Establish current truth
 
@@ -65,10 +74,17 @@ Open with one of these verdicts and one plain-language sentence:
 - `On track` — work is advancing with no decision-changing risk.
 - `At risk` — work is advancing, but a known issue threatens scope, quality, or
   timing.
-- `Blocked` — no meaningful progress can continue without an external change.
+- `Blocked` — no meaningful progress can continue without an external change
+  that only someone other than the user can make.
 - `Waiting on you` — the next required action or decision belongs to the user.
 - `Idle` — nothing is executing even though autonomous work remains.
 - `Complete` — the requested outcome and required proof are finished.
+
+Exactly one verdict opens the update, so resolve overlaps by this order:
+`Complete`, then `Waiting on you`, then `Blocked`, then `Idle`, then `At risk`,
+then `On track`. A stall the user can clear — a credential, a permission, a
+decision — is `Waiting on you`, not `Blocked`; reserve `Blocked` for a stall
+that no user action can clear, such as a third-party outage or an upstream fix.
 
 If nothing is currently executing but autonomous work remains, say `Idle`,
 explain why, and do not disguise it as active.
@@ -83,12 +99,14 @@ narrow and broad verdicts in one sentence instead of silently choosing one.
 ## Write the quick update
 
 Keep the default around 150-250 words even when the underlying task is large.
-Use at most three Done bullets, one Active bullet, three Left items, two
-Friction bullets, and two Surprises. Collapse related outcomes before adding
-detail. Use short bullets, concrete outcomes, and bold noun labels that the
-user can select for follow-up. Omit empty optional sections except `Surprises`,
-which should say `None that changed the plan` when the user explicitly asked
-about surprises.
+Use at most three Done bullets, three Left items, two Friction bullets, and two
+Surprises. Give **Active now** one bullet per genuinely live workstream — never
+drop a live workstream to save a line — and if more than three are running,
+group the smaller ones into one bullet and name the count. Collapse related
+outcomes before adding detail. Use short bullets, concrete outcomes, and bold
+noun labels that the user can select for follow-up. Omit empty optional
+sections except `Surprises`, which should say `None that changed the plan` when
+the user explicitly asked about surprises.
 
 Use this shape:
 
