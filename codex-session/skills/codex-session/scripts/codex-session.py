@@ -30,6 +30,16 @@ TOOL_TYPES = {
     "tool_search_call",
     "web_search_call",
 }
+# Record shapes this parser understands, across both rollout dialects. A
+# non-empty rollout containing none of these is an unknown format: report that
+# rather than rendering an empty session, which reads as "nothing happened".
+KNOWN_RECORD_TYPES = {
+    "message",
+    "response_item",
+    "session_meta",
+    "turn_context",
+    *TOOL_TYPES,
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -105,22 +115,29 @@ def truncate(value: str, limit: int) -> str:
     return f"{value[:limit]}\n… [{omitted} chars omitted]"
 
 
+def is_injected(text: str) -> bool:
+    return text.lstrip().startswith(INJECTED_PREFIXES)
+
+
 def content_text(content: Any) -> str:
+    """Join a message's real text, dropping injected blocks individually.
+
+    Injected context and a genuine request can share one record, so the
+    injected test has to run per block: judging the joined string would
+    discard the user's actual words along with the wrapper.
+    """
     if not isinstance(content, list):
         return ""
     parts = [
-        block.get("text", "").strip()
+        block["text"].strip()
         for block in content
         if isinstance(block, dict)
         and block.get("type") in {"input_text", "output_text"}
         and isinstance(block.get("text"), str)
-        and block.get("text", "").strip()
+        and block["text"].strip()
+        and not is_injected(block["text"])
     ]
     return "\n".join(parts)
-
-
-def is_injected(text: str) -> bool:
-    return text.lstrip().startswith(INJECTED_PREFIXES)
 
 
 def tool_summary(payload: dict[str, Any], limit: int) -> dict[str, Any]:
@@ -138,20 +155,35 @@ def tool_summary(payload: dict[str, Any], limit: int) -> dict[str, Any]:
     return tool
 
 
+def message_payload(record: dict[str, Any]) -> dict[str, Any] | None:
+    """Return a record's message/tool payload across both rollout dialects.
+
+    Current rollouts wrap payloads in a `response_item` envelope; rollouts
+    written before that envelope store the same shapes at the top level.
+    """
+    if record.get("type") == "response_item":
+        payload = record.get("payload")
+        return payload if isinstance(payload, dict) else None
+    if record.get("type") in {"message", *TOOL_TYPES}:
+        return record
+    return None
+
+
 def semantic_messages(
     records: list[dict[str, Any]], include_tools: bool, limit: int
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], int]:
     messages: list[dict[str, Any]] = []
+    recognized = 0
     for record in records:
-        if record.get("type") != "response_item":
-            continue
-        payload = record.get("payload")
-        if not isinstance(payload, dict):
+        if record.get("type") in KNOWN_RECORD_TYPES:
+            recognized += 1
+        payload = message_payload(record)
+        if payload is None:
             continue
         payload_type = payload.get("type")
         if payload_type == "message" and payload.get("role") in {"user", "assistant"}:
             text = content_text(payload.get("content"))
-            if not text or is_injected(text):
+            if not text:
                 continue
             messages.append(
                 {
@@ -168,7 +200,7 @@ def semantic_messages(
                     "tools": [tool_summary(payload, limit)],
                 }
             )
-    return messages
+    return messages, recognized
 
 
 def session_header(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -177,6 +209,9 @@ def session_header(records: list[dict[str, Any]]) -> dict[str, Any]:
     for record in records:
         payload = record.get("payload")
         if not isinstance(payload, dict):
+            # Pre-envelope rollouts carry session metadata bare on the first record.
+            if not meta and record.get("type") is None and "git" in record:
+                meta = record
             continue
         if record.get("type") == "session_meta" and not meta:
             meta = payload
@@ -200,16 +235,24 @@ def main() -> int:
     if args.last < 0 or args.max_chars < 0:
         raise SystemExit("--last and --max-chars must be non-negative")
 
-    rollout = resolve_rollout(args.codex_home.expanduser(), args.session_id)
+    session_id = args.session_id.lower()
+    rollout = resolve_rollout(args.codex_home.expanduser(), session_id)
     if args.path:
         print(rollout)
         return 0
 
     records = read_records(rollout)
-    all_messages = semantic_messages(records, args.include_tools, args.max_chars)
+    all_messages, recognized = semantic_messages(
+        records, args.include_tools, args.max_chars
+    )
+    if records and not recognized:
+        raise SystemExit(
+            f"{rollout}: unrecognized rollout format ({len(records)} records, none understood); "
+            "refusing to render this session as empty"
+        )
     shown = all_messages[-args.last :] if args.last else all_messages
     result = {
-        "session_id": args.session_id,
+        "session_id": session_id,
         "rollout": str(rollout),
         **session_header(records),
         "message_count": len(all_messages),
@@ -227,7 +270,7 @@ def main() -> int:
             print(f"{key}: {result[key]}")
     print(f"messages: {result['message_count']} (showing {result['showing']})")
     for item in shown:
-        timestamp = item.get("timestamp") or ""
+        timestamp = item.get("timestamp") or "unknown time"
         if item.get("text"):
             print(f"\n[{timestamp}] {item['role']}\n{item['text']}")
         for tool in item.get("tools", []):

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -96,9 +97,62 @@ class ClaudeSessionTest(unittest.TestCase):
         with_tools = self.run_script(
             "--json", "--last", "0", "--include-tools", "--max-chars", "20"
         )
+        self.assertEqual(without.returncode, 0, without.stderr)
+        self.assertEqual(with_tools.returncode, 0, with_tools.stderr)
         self.assertNotIn('"tools"', without.stdout)
         self.assertIn('"name": "Read"', with_tools.stdout)
         self.assertIn("chars omitted", with_tools.stdout)
+
+    def test_max_chars_governs_tool_input(self) -> None:
+        result = self.run_script(
+            "--json", "--last", "0", "--include-tools", "--max-chars", "5000"
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("chars omitted", result.stdout)
+        self.assertIn("a" * 80, result.stdout)
+
+    def test_corrupt_line_does_not_break_path_lookup(self) -> None:
+        with self.transcript.open("a") as handle:
+            handle.write('{"type":"assistant","message":{"role":"assis\n')
+        path = self.run_script("--path")
+        self.assertEqual(path.returncode, 0, path.stderr)
+        self.assertEqual(path.stdout.strip(), str(self.transcript))
+        children = self.run_script("--children")
+        self.assertEqual(children.returncode, 0, children.stderr)
+        render = self.run_script("--json")
+        self.assertNotEqual(render.returncode, 0)
+        self.assertIn("invalid JSONL", render.stderr)
+
+    def test_tilde_home_is_expanded(self) -> None:
+        with tempfile.TemporaryDirectory() as fake_home:
+            Path(fake_home, ".claude").symlink_to(self.home, target_is_directory=True)
+            result = subprocess.run(
+                [str(SCRIPT), SESSION_ID, "--claude-home", "~/.claude", "--path"],
+                text=True,
+                capture_output=True,
+                check=False,
+                env={**os.environ, "HOME": fake_home},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                Path(result.stdout.strip()).resolve(), self.transcript.resolve()
+            )
+
+    def test_uppercase_uuid_finds_lowercase_transcript(self) -> None:
+        result = subprocess.run(
+            [
+                str(SCRIPT),
+                SESSION_ID.upper(),
+                "--claude-home",
+                str(self.home),
+                "--path",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), str(self.transcript))
 
 
 if __name__ == "__main__":

@@ -83,31 +83,52 @@ def transcript_cwd(records: list[dict[str, Any]]) -> str | None:
     return None
 
 
+def scan_cwd(path: Path) -> str | None:
+    """Read just far enough to learn a transcript's cwd.
+
+    Disambiguation must not depend on the whole file parsing: a transcript
+    truncated mid-line by a killed session still has a usable cwd up front.
+    """
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(record, dict):
+                cwd = record.get("cwd")
+                if isinstance(cwd, str) and cwd:
+                    return cwd
+    return None
+
+
 def resolve_transcript(
     claude_home: Path, session_id: str, workspace: Path | None
-) -> tuple[Path, list[dict[str, Any]]]:
+) -> Path:
     candidates = sorted((claude_home / "projects").glob(f"*/{session_id}.jsonl"))
     if not candidates:
         raise SystemExit(
             f"Claude transcript not found for {session_id} under {claude_home / 'projects'}"
         )
+    if len(candidates) == 1 and workspace is None:
+        return candidates[0]
 
-    loaded = [(path, read_records(path)) for path in candidates]
     if workspace is not None:
         expected = str(workspace.expanduser().resolve())
-        loaded = [item for item in loaded if transcript_cwd(item[1]) == expected]
-        if not loaded:
+        candidates = [path for path in candidates if scan_cwd(path) == expected]
+        if not candidates:
             raise SystemExit(f"no transcript for {session_id} has cwd {expected}")
 
-    if len(loaded) != 1:
+    if len(candidates) != 1:
         choices = "\n".join(
-            f"  {path} (cwd={transcript_cwd(records) or 'unknown'})"
-            for path, records in loaded
+            f"  {path} (cwd={scan_cwd(path) or 'unknown'})" for path in candidates
         )
         raise SystemExit(
             f"multiple transcripts found for {session_id}; pass --workspace:\n{choices}"
         )
-    return loaded[0]
+    return candidates[0]
 
 
 def text_blocks(content: Any) -> list[str]:
@@ -186,8 +207,11 @@ def main() -> int:
     if args.last < 0 or args.max_chars < 0:
         raise SystemExit("--last and --max-chars must be non-negative")
 
-    transcript, records = resolve_transcript(args.claude_home, args.session_id, args.workspace)
-    children = child_paths(transcript, args.session_id)
+    session_id = args.session_id.lower()
+    transcript = resolve_transcript(
+        args.claude_home.expanduser(), session_id, args.workspace
+    )
+    children = child_paths(transcript, session_id)
 
     if args.path:
         print(transcript)
@@ -197,20 +221,20 @@ def main() -> int:
             print(path)
         return 0
 
+    records = read_records(transcript)
     all_messages = semantic_messages(records, args.include_tools)
     shown = all_messages[-args.last :] if args.last else all_messages
     for item in shown:
         if "text" in item:
             item["text"] = truncate(item["text"], args.max_chars)
-        tool_limit = 0 if args.max_chars == 0 else min(args.max_chars, 500)
         for tool in item.get("tools", []):
             payload = json.dumps(
                 tool.get("input", {}), ensure_ascii=False, separators=(",", ":")
             )
-            tool["input"] = truncate(payload, tool_limit)
+            tool["input"] = truncate(payload, args.max_chars)
 
     result = {
-        "session_id": args.session_id,
+        "session_id": session_id,
         "transcript": str(transcript),
         "cwd": transcript_cwd(records),
         "message_count": len(all_messages),
