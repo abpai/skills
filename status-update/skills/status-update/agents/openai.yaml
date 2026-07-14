@@ -1,0 +1,4 @@
+interface:
+  display_name: "Status Update"
+  short_description: "Summarize long-running agent work clearly"
+  default_prompt: "Use $status-update to give me a concise status update with completed work, current activity, remaining work, friction, and surprises."
