@@ -1,7 +1,7 @@
 {
   "name": "claude",
-  "version": "2.0.0",
-  "description": "Run Claude headlessly with transcript-aware liveness, named-subagent reports, durable artifacts, and exact session continuation.",
+  "version": "2.1.0",
+  "description": "Run Claude headlessly with transcript-aware liveness, durable artifacts, and exact continuation.",
   "author": {
     "name": "Andy Pai"
   },

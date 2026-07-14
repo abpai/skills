@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>abpai/skills — AI Workflow Plugins</title>
-  <meta name="description" content="Curated marketplace of 18 AI agent workflow plugins across Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
+  <meta name="description" content="Curated marketplace of 20 AI agent workflow plugins across Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
   <meta property="og:title" content="abpai/skills — AI Workflow Plugins">
-  <meta property="og:description" content="18 AI workflow plugins across Claude Code and Codex.">
+  <meta property="og:description" content="20 AI workflow plugins across Claude Code and Codex.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -785,7 +785,7 @@
         Cross-domain thinking, multi-model tooling, and developer productivity plugins for Claude Code and Codex.
       </p>
       <div class="hero-stats">
-        <span class="stat-pill"><strong id="pluginCount">18</strong>&ensp;Plugins</span>
+        <span class="stat-pill"><strong id="pluginCount">20</strong>&ensp;Plugins</span>
         <span class="stat-pill"><strong>6</strong>&ensp;Categories</span>
         <span class="stat-pill"><strong>2</strong>&ensp;Runtimes</span>
         <span class="stat-pill">MIT</span>
@@ -802,7 +802,7 @@
           <label class="search-label" for="searchInput">Search plugins</label>
           <input type="text" class="search-input" id="searchInput" placeholder="Search by name or workflow..." autocomplete="off" spellcheck="false">
         </div>
-        <span class="result-count" id="resultCount" role="status" aria-live="polite">18 / 18</span>
+        <span class="result-count" id="resultCount" role="status" aria-live="polite">20 / 20</span>
       </div>
       <div class="category-filters" id="categoryFilters">
         <button class="filter-pill active" data-category="All" aria-pressed="true">All</button>
@@ -845,10 +845,20 @@
         <article class="skill-card" data-category="Planning & Reasoning" data-keywords="codex openai multi-model review">
           <span class="card-category">Planning & Reasoning</span>
           <h3 class="card-name">codex-exec</h3>
-          <p class="card-description">Run Codex headlessly for implementation, review, and resumable second opinions with durable liveness artifacts.</p>
+          <p class="card-description">Run Codex headlessly for implementation, review, monitored work, and exact continuation with durable liveness artifacts.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>2.0.0</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>2.1.0</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/codex-exec" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Tools" data-keywords="codex session transcript jsonl local read-only">
+          <span class="card-category">Tools</span>
+          <h3 class="card-name">codex-session</h3>
+          <p class="card-description">Inspect local Codex CLI transcripts by session UUID without launching Codex or contacting a model provider.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.0.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/codex-session" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -946,10 +956,20 @@
         <article class="skill-card" data-category="Tools" data-keywords="claude cli headless delegation subagents liveness resume approval auth">
           <span class="card-category">Tools</span>
           <h3 class="card-name">claude</h3>
-          <p class="card-description">Run Claude headlessly with transcript-aware liveness, named-subagent reports, durable artifacts, and exact session continuation.</p>
+          <p class="card-description">Run Claude headlessly with transcript-aware liveness, durable artifacts, and exact continuation.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>2.0.0</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>2.1.0</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/claude" target="_blank" rel="noopener" class="card-link">Source</a>
+          </div>
+        </article>
+
+        <article class="skill-card" data-category="Tools" data-keywords="claude session transcript jsonl local read-only">
+          <span class="card-category">Tools</span>
+          <h3 class="card-name">claude-session</h3>
+          <p class="card-description">Inspect local Claude Code transcripts by session UUID without invoking Claude or contacting Anthropic.</p>
+          <div class="card-footer">
+            <div class="card-meta"><span class="card-version">v <strong>1.0.0</strong></span></div>
+            <a href="https://github.com/abpai/skills/tree/main/claude-session" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
