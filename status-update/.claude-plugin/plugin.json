@@ -1,6 +1,6 @@
 {
   "name": "status-update",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Turn long-running agent work into concise, evidence-backed status snapshots with clear drill-down anchors.",
   "author": {
     "name": "Andy Pai"

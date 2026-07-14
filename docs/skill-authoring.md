@@ -7,8 +7,19 @@ route here instead of duplicating these rules.
 ## Plugin layout
 
 Each top-level directory is a plugin. Only `plugin.json` lives in
-`.claude-plugin/` and `.codex-plugin/`. Runtime directories such as `skills/`,
-`agents/`, `hooks/`, and `internal/` stay at the plugin root.
+`.claude-plugin/` and `.codex-plugin/`. Plugin runtime directories such as
+`skills/`, `agents/`, `hooks/`, and `internal/` stay at the plugin root.
+
+There are two different `agents/` conventions:
+
+- `<plugin>/agents/*.md` contains Claude agent definitions and is a plugin-root
+  runtime directory.
+- `<plugin>/skills/<skill>/agents/openai.yaml` contains optional Codex UI
+  metadata for that skill, including its display name, short description, and
+  default prompt. It stays beside the owning `SKILL.md`; do not move it to the
+  plugin-root `agents/` directory.
+
+`scripts/validate-skills.sh` validates both surfaces independently.
 
 Paths referenced from a skill must stay inside the owning plugin. Installed
 plugins are copied into runtime caches, so checkout-relative paths like

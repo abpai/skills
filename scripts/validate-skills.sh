@@ -40,6 +40,19 @@ if ! python3 scripts/validate_skills.py "$@"; then
   failed=1
 fi
 
+validator_test="scripts/validate_skills.test.py"
+if [[ -f "$validator_test" ]]; then
+  if python3 "$validator_test" >/tmp/skills-validate-validator-test.log 2>&1; then
+    echo "  [OK] $validator_test (python unittest)"
+    rm -f /tmp/skills-validate-validator-test.log
+  else
+    echo "[FAIL] $validator_test: python unittest failed"
+    cat /tmp/skills-validate-validator-test.log
+    rm -f /tmp/skills-validate-validator-test.log
+    failed=1
+  fi
+fi
+
 # ── Validate shared metadata tooling ──
 
 metadata_test="scripts/skill-metadata.test.ts"

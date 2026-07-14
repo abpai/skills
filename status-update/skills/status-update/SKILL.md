@@ -5,7 +5,7 @@ argument-hint: "[detailed] [scope to report on]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.0"
+  version: "1.0.1"
   tags: "status progress long-running agents blockers handoff operations"
 ---
 

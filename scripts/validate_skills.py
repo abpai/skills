@@ -275,6 +275,72 @@ def validate_skill_md(
         )
 
 
+def validate_openai_yaml(path: Path, skill_name: str, rep: Reporter) -> None:
+    """Validate optional Codex UI metadata stored beside a skill."""
+    text = path.read_text(encoding="utf-8")
+
+    # Enforce the portable subset even when PyYAML is available so local and CI
+    # runs apply the same quoting and indentation contract.
+    portable_interface: dict[str, str] = {}
+    in_interface = False
+    for line in text.splitlines():
+        if line == "interface:":
+            in_interface = True
+            continue
+        if in_interface and line and not line[0].isspace():
+            break
+        if not in_interface or not line.strip() or line.lstrip().startswith("#"):
+            continue
+        match = re.fullmatch(r'  ([a-z_]+):\s*"([^"]*)"\s*', line)
+        if match is None:
+            rep.fail(
+                f"{path}: interface entries must use two-space indentation "
+                "and quoted string values"
+            )
+            return
+        portable_interface[match.group(1)] = match.group(2)
+
+    if yaml is not None:
+        try:
+            data = yaml.safe_load(text)
+        except yaml.YAMLError as exc:
+            rep.fail(f"{path}: cannot parse YAML: {exc}")
+            return
+    else:
+        # Keep the required interface contract enforceable in the repo's
+        # supported no-PyYAML environment. Strict YAML validation remains an
+        # additional gate when PyYAML is installed.
+        data = {"interface": portable_interface} if in_interface else {}
+
+    if not isinstance(data, dict):
+        rep.fail(f"{path}: must contain a YAML mapping")
+        return
+
+    interface = data.get("interface")
+    if not isinstance(interface, dict):
+        rep.fail(f"{path}: missing 'interface' mapping")
+        return
+
+    for field in ("display_name", "short_description", "default_prompt"):
+        value = interface.get(field)
+        if not isinstance(value, str) or not value.strip():
+            rep.fail(f"{path}: interface.{field} must be a non-empty string")
+
+    short_description = interface.get("short_description")
+    if (
+        isinstance(short_description, str)
+        and not 25 <= len(short_description) <= 64
+    ):
+        rep.fail(
+            f"{path}: interface.short_description must be 25-64 characters "
+            f"(found {len(short_description)})"
+        )
+
+    default_prompt = interface.get("default_prompt")
+    if isinstance(default_prompt, str) and f"${skill_name}" not in default_prompt:
+        rep.fail(f"{path}: interface.default_prompt must mention '${skill_name}'")
+
+
 # ── Plugin agents ─────────────────────────────────────────────────────────────
 
 
@@ -519,6 +585,15 @@ def validate_plugin(plugin_dir: Path, rep: Reporter) -> None:
                 f, f.parent.name, plugin_name, has_umbrella, rep
             ),
         )
+        openai_yaml = skill_file.parent / "agents" / "openai.yaml"
+        if openai_yaml.is_file():
+            run_guarded(
+                rep,
+                str(openai_yaml),
+                lambda p=openai_yaml, name=skill_file.parent.name: validate_openai_yaml(
+                    p, name, rep
+                ),
+            )
 
     for agent_file in agent_files:
         run_guarded(
