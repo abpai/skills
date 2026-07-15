@@ -49,6 +49,13 @@ Tool controls:
 - `--allowed-tools`: preapprove a bounded subset.
 - `--tools`: replace the built-in tool set entirely.
 
+The runner rejects semantically empty `--tools` and `--allowed-tools` values.
+Use its explicit `--no-tools` flag only for generic non-repository work. Review
+mode supplies `Read`, `Glob`, `Grep`, and bounded read-only Bash rules while
+denying direct edit tools and common shell mutation paths. Repo-grounded review
+owns its exact plan/tool policy and rejects caller-supplied allowed-tool,
+permission, tool-set, and passthrough-argument overrides.
+
 Direct-edit denial is not an OS sandbox: a shell command may still mutate files.
 Always inspect the workspace after a review.
 
@@ -100,6 +107,13 @@ claude doctor
 claude agents --json --all
 ```
 
+These commands are for a developer's interactive terminal. A parent agent must
+not chain them as a preflight before `claude-run.sh`; the runner owns the
+bounded PTY authentication check and its machine-readable classification.
+`claude config get model` is not a supported model-discovery command and must
+not be used. Omit `--model` for the configured default or pass an explicit
+`--model` value when exact routing is required.
+
 ## Runner Controls
 
 `claude-run.sh` accepts flags for the common controls and environment variables
@@ -107,6 +121,7 @@ for supervisor defaults:
 
 - `CLAUDE_RUNS_DIR`: artifact root.
 - `CLAUDE_HEARTBEAT_SECONDS`: progress cadence, default 15.
+- `CLAUDE_PREFLIGHT_TIMEOUT_SECONDS`: runner-owned auth deadline, default 8.
 - `CLAUDE_STALL_TIMEOUT_SECONDS`: meaningful-inactivity limit, default 300.
 - `CLAUDE_REPORT_TIMEOUT_SECONDS`: unconsumed-child-report limit, default 90.
 - `CLAUDE_TIMEOUT_SECONDS`: hard process deadline, default 2700.
@@ -114,9 +129,26 @@ for supervisor defaults:
 - `CLAUDE_MONITOR_TIMEOUT_SECONDS`: monitor-only deadline, default 3600.
 - `CLAUDE_TERM_GRACE_SECONDS`: TERM-to-KILL grace period, default 5.
 
-The runner requires Bash, Python 3, and standard Unix process tools. Terminal
-`status.json` states are `finished`, `failed`, `stalled`, `timed-out`,
+Repo-grounded runner controls:
+
+- `--evidence-class repo-grounded-review` requires both an approved scope file
+  and structured sharing-approval JSON.
+- `--review-scope-file PATH` builds a tracked-file-only review workspace.
+- `--sharing-approval-file PATH` carries redacted destination, scope, purpose,
+  exclusions, and current-user approval.
+- `--external-transfer-status allowed` is required for a repo-grounded launch;
+  the default `not-checked` state blocks before authentication or launch.
+- `--external-transfer-status blocked` writes terminal blocker
+  `external_transfer_blocked` without probing or launching Claude.
+- `--transfer-attempt` accepts only `1` or `2`; the runner never retries by
+  itself.
+
+The runner requires Bash, Python 3 with PTY support, and standard Unix process tools. Terminal
+`status.json` states are `finished`, `failed`, `blocked`, `stalled`, `timed-out`,
 `interrupted`, and `dry-run`. Exit 124 means inactivity or a hard deadline; 127
-means a required executable was unavailable; 130 and 143 represent INT and
-TERM. Argument and contract errors exit 2. Other nonzero values come from the
-Claude process or an unexpected wrapper failure.
+means the Claude executable was unavailable. When preflight fails, 69 means the
+credential store was unavailable, 70 means classification was indeterminate,
+and 78 means the authoritative PTY probe reported logged out. Exit 130 and 143
+represent INT and TERM. Argument and contract errors exit 2. After a successful
+preflight, other nonzero values come from the Claude process or an unexpected
+wrapper failure.
