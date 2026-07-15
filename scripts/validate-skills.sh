@@ -53,6 +53,19 @@ if [[ -f "$validator_test" ]]; then
   fi
 fi
 
+claude_runner_test="scripts/test-claude-runner.sh"
+if [[ -f "$claude_runner_test" ]]; then
+  if bash "$claude_runner_test" >/tmp/skills-validate-claude-runner-test.log 2>&1; then
+    echo "  [OK] $claude_runner_test (fake Claude preflight regression)"
+    rm -f /tmp/skills-validate-claude-runner-test.log
+  else
+    echo "[FAIL] $claude_runner_test: regression test failed"
+    cat /tmp/skills-validate-claude-runner-test.log
+    rm -f /tmp/skills-validate-claude-runner-test.log
+    failed=1
+  fi
+fi
+
 # ── Validate shared metadata tooling ──
 
 metadata_test="scripts/skill-metadata.test.ts"

@@ -9,7 +9,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "2.1.0"
+  version: "2.2.0"
 ---
 
 # Claude Code CLI
@@ -64,12 +64,67 @@ Stop: <completion condition and genuine blockers>.
 
 If Claude needs context outside the approved scope, stop before widening it.
 
-## Preflight
+Keep four states separate: current-user sharing approval, the platform's
+external-transfer permission, Claude authentication, and Claude tool
+availability. User approval does not override a platform policy denial. The
+skill can carry approval consistently, but it cannot force Codex or another
+host gate to honor it.
+
+For a repo-grounded review, pass an explicit `--external-transfer-status
+allowed` only after the platform transfer gate permits the approved scope. The
+runner defaults this state to `not-checked` and blocks a repo-grounded launch
+until it is explicit.
+
+For a repo-grounded review, preserve the evidence class. Never replace blocked
+workspace transfer with a tool-less prompt, abstract repository description, or
+generic opinion and present that output as a repository review. If the platform
+rejects transfer, record the runner terminal state when possible:
 
 ```bash
-claude --version
-claude auth status --text
+scripts/claude-run.sh review \
+  --workspace "$PWD" \
+  --prompt-file /absolute/path/to/task.md \
+  --evidence-class repo-grounded-review \
+  --review-scope-file /absolute/path/to/approved-paths.txt \
+  --sharing-approval-file /absolute/path/to/sharing-approval.json \
+  --external-transfer-status blocked
 ```
+
+This exits with `state=blocked` and blocker `external_transfer_blocked` without
+probing or launching Claude. Retry at most once, and only when the first denial
+plausibly resulted from environment or approval propagation. Set
+`--transfer-attempt 2` on that retry. Do not retry or bypass a hard policy
+denial. Never claim that Claude inspected workspace files in a blocked run.
+
+## Preflight
+
+The runner owns preflight. Parent agents must call `claude-run.sh` once instead
+of composing separate version, authentication, or model-discovery commands.
+Never run `claude config get model`: it is not a supported diagnostic and can
+enter interactive behavior. Do not append `|| true` to authentication checks.
+
+Before spawning Claude, the runner resolves one executable and runs
+`claude auth status --text` through a controlling PTY in the same inherited
+environment and workspace as the real invocation. The probe has an eight-second
+default deadline and writes only normalized `preflight.json` and
+`preflight.log` fields; raw account, organization, token, and credential output
+is never persisted.
+
+Only `authenticated` permits launch. Treat the other preflight statuses as:
+
+- `not_logged_in`: the authoritative PTY probe explicitly reported logged out;
+  ask the user to authenticate.
+- `credential_store_unavailable`: the current envelope could not access the
+  credential store. In Codex Desktop on macOS, do **not** report this as logged
+  out. Retry the same runner command in an approved PTY/security envelope, or
+  give the user that exact runner command to execute in their authenticated
+  terminal. Do not replace it with another standalone probe.
+- `timed_out`: preflight exceeded its deadline and terminated its process group.
+- `cli_missing`: the resolved Claude executable does not exist.
+- `indeterminate`: preflight failed without a safe classification.
+
+All non-authenticated states fail closed before launch and remain non-successful
+in `status.json`.
 
 Prefer an existing Claude plan login on a developer machine. Do not introduce an
 API key merely because the task is headless. Billing and product behavior can
@@ -85,9 +140,15 @@ scripts/claude-run.sh run \
   --prompt-file /absolute/path/to/task.md
 ```
 
-The runner uses the configured default model unless `--model` is explicit. It
-uses `--permission-mode auto` by default so unattended work does not park on a
-manual prompt. Preserve explicit model or effort requests. Otherwise use the
+The runner uses the configured default model and effort unless the corresponding
+flag is explicit. When exact routing is required, pass both `--model` and
+`--effort`; otherwise describe the route as **configured default model** and
+**configured default effort**, never as an invented exact value. The runner
+records requested routing and, when a stream event exposes it, the actual
+resolved model in `run.env` and `status.json`.
+
+It uses `--permission-mode auto` by default so unattended work does not park on
+a manual prompt. Preserve explicit model or effort requests. Otherwise use the
 configured baseline and raise effort only when task difficulty or representative
 evidence justifies the extra cost. Before raising it, check whether the brief is
 missing a success criterion, evidence requirement, or stop condition.
@@ -100,9 +161,44 @@ scripts/claude-run.sh review \
   --prompt "Review the current changes. Findings first. Do not edit files."
 ```
 
-Review mode denies `Edit`, `Write`, and `NotebookEdit`. Claude can still run
-shell tools, so the parent must inspect the workspace after every run. The
-runner never automatically replays a Claude prompt.
+Review mode uses plan permissions, retains `Read`, `Glob`, `Grep`, and a bounded
+set of read-only shell inspections, and denies `Edit`, `Write`, `NotebookEdit`,
+common mutating shell commands, redirection, and `tee`. A generic non-repository
+run may request an explicit `--no-tools`; an empty `--tools` or
+`--allowed-tools` value is invalid, and `repo-grounded-review` rejects
+`--no-tools`. Repo-grounded review also rejects permission, allowed-tool, tool-
+set, and passthrough-argument overrides so the evidence envelope cannot be
+widened at launch.
+
+For a repository review, pass `--evidence-class repo-grounded-review` together
+with both metadata files shown above and an explicit
+`--external-transfer-status allowed`. The scope file contains one approved
+repo-relative tracked file or directory per line. The approval JSON contains
+only:
+
+```json
+{
+  "destination": "Claude Code/Anthropic",
+  "approved_scope": ["src/component"],
+  "purpose": "Review the candidate change",
+  "exclusions": [".env", "ignored files", "credentials", "unrelated paths"],
+  "current_user_approved": true
+}
+```
+
+The runner creates a fresh review workspace containing only matching regular
+tracked files, the scoped candidate diff, a scope manifest, and redacted
+approval metadata. It excludes ignored files, `.env` variants, key/credential
+files, symlinks, known secret patterns, unapproved paths, and other repositories.
+Claude keeps read/search tools inside that narrowed workspace. This narrows the
+approved scope; it does not override a hard external-transfer denial or create
+an OS sandbox.
+
+For this evidence class, a successful Claude result is not sufficient. The
+event stream must show `Read`, `Glob`, or `Grep` access inside the approved
+review workspace. Otherwise the runner fails, moves Claude's text to
+`unverified-final.md`, and replaces `final.md` with a precise no-evidence
+blocker. The runner never automatically replays a Claude prompt.
 
 ## Liveness
 
@@ -131,6 +227,10 @@ Every run writes:
 - `status.json` and compatibility `status.env`.
 - `events.jsonl`, `stdout.log`, and `stderr.log`.
 - `final.md`, `prompt.txt`, `command.txt`, and `preflight.log`.
+- Normalized `preflight.json` plus requested and resolved routing in
+  `status.json` and `run.env`.
+- `sharing-approval.json`, a sanitized `review-workspace/`, and
+  `evidence-access.json` for repo-grounded reviews.
 - `run.env`, `monitor.sh`, and `continue.sh`.
 - `child-reports/` plus parent/child transcript telemetry.
 - Workspace baseline, status, changed-file, and diff artifacts for runs that are
@@ -143,9 +243,10 @@ a terminal status and has its own finite deadline, so attachment cannot wait
 forever on stale artifacts. Raw stream JSON stays in the run artifacts instead
 of flooding the parent console.
 
-Before launch, tell the user the delegated objective and exact Claude model and
-effort. During a long run, update only at major phase changes or when evidence
-changes the plan; do not narrate routine polling.
+Before launch, tell the user the delegated objective and either the explicit
+Claude model and effort flags or that both use configured defaults. During a
+long run, update only at major phase changes or when evidence changes the plan;
+do not narrate routine polling.
 
 ## Continue
 
@@ -185,12 +286,9 @@ the current orchestrator must await and verify.
 
 ## Direct CLI And SDK
 
-For a tiny answer needed immediately, raw print mode is acceptable:
-
-```bash
-printf '%s\n' "Answer this bounded question." | \
-  claude -p --output-format json --permission-mode plan
-```
+Parent agents use the runner for ordinary print-mode work, including tiny
+answers, so preflight and artifacts keep one contract. Do not replace it with a
+raw `claude -p` command merely to save setup time.
 
 Use the Agent SDK only when building a programmatic Claude integration with
 custom tools, callbacks, or an application-owned event loop. It is unnecessary
