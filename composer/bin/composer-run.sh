@@ -1,1 +1,0 @@
-../skills/composer/bin/composer-run.sh

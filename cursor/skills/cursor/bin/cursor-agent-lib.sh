@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Source this file from composer-run.sh.
+# Source this file from cursor-run.sh.
 
 CURSOR_AGENT_BIN=""
 RESOLVED_CURSOR_AUTH=""
@@ -42,7 +42,7 @@ load_explicit_env_file() {
 check_browser_authenticated() {
   local output
   output="$(mktemp)"
-  if (unset CURSOR_API_KEY; "$CURSOR_AGENT_BIN" status --format json > "$output" 2>/dev/null) &&
+  if (unset CURSOR_API_KEY; "$CURSOR_AGENT_BIN" status --format json) > "$output" 2>/dev/null &&
     python3 - "$output" <<'PY'
 import json, sys
 try:
@@ -78,7 +78,7 @@ resolve_cursor_auth() {
 
   case "$mode" in auto|login|api-key) ;; *) echo "[FAIL] --auth must be auto, login, or api-key" >&2; return 1 ;; esac
 
-  if [[ "$mode" != "api-key" ]] && check_browser_authenticated; then
+  if [[ "$mode" != "api-key" ]] && check_browser_authenticated 2>/dev/null; then
     RESOLVED_CURSOR_AUTH="login"
     return 0
   fi

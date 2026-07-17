@@ -1,1 +1,0 @@
-../skills/composer/bin/cursor-agent-lib.sh

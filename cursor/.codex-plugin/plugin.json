@@ -1,10 +1,11 @@
 {
-  "name": "composer",
-  "version": "2.0.0",
+  "name": "cursor",
+  "version": "2.1.0",
   "description": "Run Cursor Agent headlessly with liveness artifacts, read-only review, and exact session continuation.",
   "author": {
     "name": "Andy Pai"
   },
   "repository": "https://github.com/abpai/skills",
-  "license": "MIT"
+  "license": "MIT",
+  "skills": "./skills/"
 }

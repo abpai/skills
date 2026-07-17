@@ -53,10 +53,10 @@
       "category": "Tools"
     },
     {
-      "name": "composer",
+      "name": "cursor",
       "source": {
         "source": "local",
-        "path": "./composer"
+        "path": "./cursor"
       },
       "policy": {
         "installation": "AVAILABLE",

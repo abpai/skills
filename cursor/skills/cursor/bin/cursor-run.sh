@@ -4,13 +4,13 @@ umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
-# shellcheck source=composer/skills/composer/bin/cursor-agent-lib.sh
+# shellcheck source=cursor/skills/cursor/bin/cursor-agent-lib.sh
 source "$SCRIPT_DIR/cursor-agent-lib.sh"
 
 MODE="${1:-}"
 usage() {
   cat >&2 <<'EOF'
-Usage: composer-run.sh run|review|resume [options] [-- extra-agent-args...]
+Usage: cursor-run.sh run|review|resume [options] [-- extra-agent-args...]
 
   --prompt TEXT          Prompt text passed to Cursor Agent.
   --prompt-file PATH     Prompt file passed to Cursor Agent.
@@ -44,21 +44,23 @@ esac
 PROMPT_TEXT=""
 PROMPT_FILE=""
 WORKSPACE="$PWD"
-RUN_ROOT="${COMPOSER_RUNS_DIR:-$HOME/.cursor/headless-runs}"
+RUN_ROOT="${CURSOR_RUNS_DIR:-$HOME/.cursor/headless-runs}"
 RUN_DIR=""
 RUN_DIR_FILE=""
 CONTINUE_RUN_DIR=""
 SESSION_ID=""
 MODEL=""
+RESOLVED_MODEL=""
+MODEL_EVENT_EMITTED="false"
 AUTH_MODE="auto"
 ENV_FILE="${CURSOR_ENV_FILE:-}"
 READ_ONLY="false"
 FORCE_RUN="true"
 APPROVE_MCPS="true"
-HEARTBEAT_SECONDS="${COMPOSER_HEARTBEAT_SECONDS:-15}"
-STALL_TIMEOUT_SECONDS="${COMPOSER_STALL_TIMEOUT_SECONDS:-300}"
-TIMEOUT_SECONDS="${COMPOSER_TIMEOUT_SECONDS:-2700}"
-TERM_GRACE_SECONDS="${COMPOSER_TERM_GRACE_SECONDS:-5}"
+HEARTBEAT_SECONDS="${CURSOR_HEARTBEAT_SECONDS:-15}"
+STALL_TIMEOUT_SECONDS="${CURSOR_STALL_TIMEOUT_SECONDS:-300}"
+TIMEOUT_SECONDS="${CURSOR_TIMEOUT_SECONDS:-2700}"
+TERM_GRACE_SECONDS="${CURSOR_TERM_GRACE_SECONDS:-5}"
 DRY_RUN="false"
 EXTRA_ARGS=()
 
@@ -269,16 +271,16 @@ write_status() {
   {
     printf 'state=%q\nhealth=%q\nexit_code=%q\nelapsed_seconds=%q\nstalled_for_seconds=%q\nprogress_source=%q\n' "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$source"
     printf 'pid=%q\nwrapper_pid=%q\nsession_id=%q\nworkspace=%q\nrun_dir=%q\nrun_dir_file=%q\n' "${CHILD_PID:-}" "$$" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" "$RUN_DIR_FILE"
-    printf 'model=%q\nauth=%q\nread_only=%q\nevent_bytes=%q\n' "$MODEL" "$RESOLVED_CURSOR_AUTH" "$READ_ONLY" "$bytes"
+    printf 'model=%q\nrequested_model=%q\nauth=%q\nread_only=%q\nevent_bytes=%q\n' "$RESOLVED_MODEL" "$MODEL" "$RESOLVED_CURSOR_AUTH" "$READ_ONLY" "$bytes"
     printf 'stdout_log=%q\nstderr_log=%q\nevents_log=%q\nfinal_message=%q\nmonitor_script=%q\ncontinue_script=%q\n' "$STDOUT_LOG" "$STDERR_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT"
   } > "$tmp"
   mv "$tmp" "$STATUS_FILE"
-  python3 - "$STATUS_JSON" "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$source" "${CHILD_PID:-}" "$$" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" "$RUN_DIR_FILE" "$MODEL" "$RESOLVED_CURSOR_AUTH" "$READ_ONLY" "$bytes" "$STDOUT_LOG" "$STDERR_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" <<'PY'
+  python3 - "$STATUS_JSON" "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$source" "${CHILD_PID:-}" "$$" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" "$RUN_DIR_FILE" "$RESOLVED_MODEL" "$MODEL" "$RESOLVED_CURSOR_AUTH" "$READ_ONLY" "$bytes" "$STDOUT_LOG" "$STDERR_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" <<'PY'
 import json, os, sys
 from pathlib import Path
-(path,state,health,exit_code,elapsed,stalled,source,pid,wrapper_pid,session,workspace,run_dir,run_dir_file,model,auth,read_only,event_bytes,stdout,stderr,events,final)=sys.argv[1:]
+(path,state,health,exit_code,elapsed,stalled,source,pid,wrapper_pid,session,workspace,run_dir,run_dir_file,model,requested_model,auth,read_only,event_bytes,stdout,stderr,events,final)=sys.argv[1:]
 def number(value): return int(value) if value.isdigit() else None
-data={"state":state,"health":health,"exit_code":number(exit_code),"elapsed_seconds":number(elapsed) or 0,"stalled_for_seconds":number(stalled) or 0,"progress_source":source,"pid":number(pid),"wrapper_pid":number(wrapper_pid),"session_id":session,"workspace":workspace,"run_dir":run_dir,"run_dir_file":run_dir_file,"model":model,"auth":auth,"read_only":read_only=="true","event_bytes":number(event_bytes) or 0,"stdout_log":stdout,"stderr_log":stderr,"events_log":events,"final_message":final}
+data={"state":state,"health":health,"exit_code":number(exit_code),"elapsed_seconds":number(elapsed) or 0,"stalled_for_seconds":number(stalled) or 0,"progress_source":source,"pid":number(pid),"wrapper_pid":number(wrapper_pid),"session_id":session,"workspace":workspace,"run_dir":run_dir,"run_dir_file":run_dir_file,"model":model,"requested_model":requested_model,"auth":auth,"read_only":read_only=="true","event_bytes":number(event_bytes) or 0,"stdout_log":stdout,"stderr_log":stderr,"events_log":events,"final_message":final}
 tmp=Path(path+f".tmp.{os.getpid()}")
 tmp.write_text(json.dumps(data,indent=2)+"\n",encoding="utf-8")
 tmp.replace(path)
@@ -291,33 +293,33 @@ set -euo pipefail
 RUN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 STATUS="$RUN_DIR/status.json"
 STARTED_AT="$(date +%s)"
-LIMIT="${COMPOSER_MONITOR_TIMEOUT_SECONDS:-3600}"
-case "$LIMIT" in ''|*[!0-9]*) echo "[composer-run] monitor=failed detail=invalid-timeout" >&2; exit 2 ;; esac
+LIMIT="${CURSOR_MONITOR_TIMEOUT_SECONDS:-3600}"
+case "$LIMIT" in ''|*[!0-9]*) echo "[cursor-run] monitor=failed detail=invalid-timeout" >&2; exit 2 ;; esac
 while true; do
   if [[ -f "$STATUS" ]]; then
     row="$(python3 - "$STATUS" <<'PY'
 import json,sys
 d=json.load(open(sys.argv[1]))
-print("\t".join(str(d.get(k,"")) for k in ("state","health","exit_code","elapsed_seconds","session_id","final_message","wrapper_pid")))
+print("\t".join(str(d.get(k,"")) for k in ("state","health","exit_code","elapsed_seconds","session_id","model","final_message","wrapper_pid")))
 PY
 )"
-    IFS=$'\t' read -r state health exit_code elapsed session final wrapper_pid <<< "$row"
+    IFS=$'\t' read -r state health exit_code elapsed session model final wrapper_pid <<< "$row"
     case "$state" in
       finished|failed|stalled|timed-out|interrupted|dry-run)
-        printf '[composer-run] monitor=done state=%s health=%s exit_code=%s elapsed=%ss session_id=%s final=%q\n' "$state" "$health" "$exit_code" "$elapsed" "$session" "$final"
+        printf '[cursor-run] monitor=done state=%s health=%s exit_code=%s elapsed=%ss session_id=%s model=%s final=%q\n' "$state" "$health" "$exit_code" "$elapsed" "$session" "$model" "$final"
         [[ "$exit_code" =~ ^[0-9]+$ ]] && exit "$exit_code"
         exit 1 ;;
     esac
     if [[ "$wrapper_pid" =~ ^[0-9]+$ ]] && ! kill -0 "$wrapper_pid" 2>/dev/null; then
-      printf '[composer-run] monitor=abandoned state=%s wrapper_pid=%s\n' "$state" "$wrapper_pid" >&2
+      printf '[cursor-run] monitor=abandoned state=%s wrapper_pid=%s\n' "$state" "$wrapper_pid" >&2
       exit 1
     fi
   fi
   if (( LIMIT > 0 && $(date +%s)-STARTED_AT >= LIMIT )); then
-    printf '[composer-run] monitor=timed-out timeout=%ss status=%q\n' "$LIMIT" "$STATUS" >&2
+    printf '[cursor-run] monitor=timed-out timeout=%ss status=%q\n' "$LIMIT" "$STATUS" >&2
     exit 124
   fi
-  sleep "${COMPOSER_MONITOR_POLL_SECONDS:-3}"
+  sleep "${CURSOR_MONITOR_POLL_SECONDS:-3}"
 done
 EOF
 chmod u=rwx,go= "$MONITOR_SCRIPT"
@@ -388,7 +390,7 @@ handle_signal() {
   [[ -z "${CHILD_PID:-}" ]] || terminate_process_tree "$CHILD_PID"
   write_status interrupted "$code" "$elapsed" interrupted
   RUN_FINALIZED="true"
-  echo "[composer-run] event=interrupt signal=$signal"
+  echo "[cursor-run] event=interrupt signal=$signal"
   exit "$code"
 }
 trap cleanup_on_exit EXIT
@@ -401,30 +403,64 @@ extract_result() {
 import json,os,sys
 from pathlib import Path
 events,final=map(Path,sys.argv[1:])
-result=""; session=""
+result=""; session=""; model=""
 for raw in events.read_text(encoding="utf-8",errors="replace").splitlines():
     try: event=json.loads(raw)
     except json.JSONDecodeError: continue
     if isinstance(event.get("session_id"),str): session=event["session_id"]
+    if not model and event.get("type")=="system" and event.get("subtype")=="init" and isinstance(event.get("model"),str): model=event["model"]
     if event.get("type")=="result" and isinstance(event.get("result"),str): result=event["result"]
 if result:
     tmp=Path(str(final)+f".tmp.{os.getpid()}")
     tmp.write_text(result.rstrip()+"\n",encoding="utf-8")
     tmp.replace(final)
 print(f"SESSION_ID\t{session}")
+print(f"MODEL\t{model}")
 PY
 )"
-  while IFS=$'\t' read -r key value; do [[ "$key" != "SESSION_ID" || -z "$value" ]] || SESSION_ID="$value"; done <<< "$output"
+  while IFS=$'\t' read -r key value; do
+    case "$key" in
+      SESSION_ID) [[ -z "$value" ]] || SESSION_ID="$value" ;;
+      MODEL) record_resolved_model "$value" ;;
+    esac
+  done <<< "$output"
 }
 
-printf '[composer-run] event=start run_id=%s mode=%s workspace=%q\n' "$RUN_ID" "$MODE" "$WORKSPACE"
-printf '[composer-run] event=paths run_dir=%q run_dir_file=%q status=%q status_json=%q monitor=%q continue=%q events=%q final=%q\n' "$RUN_DIR" "$RUN_DIR_FILE" "$STATUS_FILE" "$STATUS_JSON" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT" "$EVENTS_LOG" "$FINAL_MESSAGE"
+record_resolved_model() {
+  local model="$1"
+  [[ -n "$model" ]] || return 0
+  RESOLVED_MODEL="$model"
+  if [[ "$MODEL_EVENT_EMITTED" != "true" ]]; then
+    MODEL_EVENT_EMITTED="true"
+    printf '[cursor-run] event=model model=%s\n' "$RESOLVED_MODEL"
+  fi
+}
+
+refresh_resolved_model() {
+  local model
+  [[ -n "$RESOLVED_MODEL" ]] && return 0
+  model="$(python3 - "$EVENTS_LOG" <<'PY'
+import json,sys
+from pathlib import Path
+for raw in Path(sys.argv[1]).read_text(encoding="utf-8",errors="replace").splitlines():
+    try: event=json.loads(raw)
+    except json.JSONDecodeError: continue
+    if event.get("type")=="system" and event.get("subtype")=="init" and isinstance(event.get("model"),str):
+        print(event["model"])
+        break
+PY
+)"
+  record_resolved_model "$model"
+}
+
+printf '[cursor-run] event=start run_id=%s mode=%s workspace=%q\n' "$RUN_ID" "$MODE" "$WORKSPACE"
+printf '[cursor-run] event=paths run_dir=%q run_dir_file=%q status=%q status_json=%q monitor=%q continue=%q events=%q final=%q\n' "$RUN_DIR" "$RUN_DIR_FILE" "$STATUS_FILE" "$STATUS_JSON" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT" "$EVENTS_LOG" "$FINAL_MESSAGE"
 
 if ! resolve_cursor_auth "$AUTH_MODE" "$ENV_FILE"; then
   write_run_env
   write_status failed 1 0 failed 0 auth
   RUN_FINALIZED="true"
-  echo "[composer-run] event=finish state=failed exit_code=1 detail=auth"
+  echo "[cursor-run] event=finish state=failed exit_code=1 detail=auth"
   exit 1
 fi
 
@@ -437,12 +473,12 @@ fi
 capture_workspace_baseline
 write_run_env
 write_status planned "" 0 planned
-printf '[composer-run] event=ready auth=%s\n' "$RESOLVED_CURSOR_AUTH"
+printf '[cursor-run] event=ready auth=%s\n' "$RESOLVED_CURSOR_AUTH"
 
 if [[ "$DRY_RUN" == "true" ]]; then
   write_status dry-run 0 0 dry-run
   RUN_FINALIZED="true"
-  echo "[composer-run] event=dry-run exit_code=0"
+  echo "[cursor-run] event=dry-run exit_code=0"
   exit 0
 fi
 
@@ -460,7 +496,7 @@ fi
 "${process_group_cmd[@]}" > "$EVENTS_LOG" 2> "$STDERR_LOG" &
 CHILD_PID=$!
 write_status running "" 0 active 0 spawn
-printf '[composer-run] event=spawn pid=%s\n' "$CHILD_PID"
+printf '[cursor-run] event=spawn pid=%s\n' "$CHILD_PID"
 
 STOP_KIND=""
 while kill -0 "$CHILD_PID" 2>/dev/null; do
@@ -469,31 +505,33 @@ while kill -0 "$CHILD_PID" 2>/dev/null; do
   NOW="$(date +%s)"
   ELAPSED=$((NOW-STARTED_AT))
   FINGERPRINT="$(byte_count "$EVENTS_LOG"):$(workspace_progress_fingerprint)"
+  refresh_resolved_model
   SOURCE="none"
   if [[ "$FINGERPRINT" != "$PREVIOUS" ]]; then PREVIOUS="$FINGERPRINT"; LAST_PROGRESS_AT="$NOW"; SOURCE="stream-or-workspace"; fi
   STALLED_FOR=$((NOW-LAST_PROGRESS_AT))
   if (( TIMEOUT_SECONDS > 0 && ELAPSED >= TIMEOUT_SECONDS )); then
     STOP_KIND="hard"; : > "$HARD_TIMEOUT_MARKER"
     write_status running "" "$ELAPSED" hard-timeout-detected "$STALLED_FOR" deadline
-    printf '[composer-run] event=timeout-detected kind=hard pid=%s\n' "$CHILD_PID"
+    printf '[cursor-run] event=timeout-detected kind=hard pid=%s\n' "$CHILD_PID"
     terminate_process_tree "$CHILD_PID"
     break
   fi
   if (( STALL_TIMEOUT_SECONDS > 0 && STALLED_FOR >= STALL_TIMEOUT_SECONDS )); then
     STOP_KIND="stall"; printf 'silent\n' > "$STALL_MARKER"
     write_status running "" "$ELAPSED" stall-detected "$STALLED_FOR" "$SOURCE"
-    printf '[composer-run] event=stall kind=silent elapsed=%ss stalled_for=%ss pid=%s\n' "$ELAPSED" "$STALLED_FOR" "$CHILD_PID"
+    printf '[cursor-run] event=stall kind=silent elapsed=%ss stalled_for=%ss pid=%s\n' "$ELAPSED" "$STALLED_FOR" "$CHILD_PID"
     terminate_process_tree "$CHILD_PID"
     break
   fi
   write_status running "" "$ELAPSED" active "$STALLED_FOR" "$SOURCE"
-  printf '[composer-run] event=progress elapsed=%ss stalled_for=%ss event_bytes=%s\n' "$ELAPSED" "$STALLED_FOR" "$(byte_count "$EVENTS_LOG")"
+  printf '[cursor-run] event=progress elapsed=%ss stalled_for=%ss event_bytes=%s\n' "$ELAPSED" "$STALLED_FOR" "$(byte_count "$EVENTS_LOG")"
 done
 
 set +e
 wait "$CHILD_PID"; EXIT_CODE=$?
 set -e
 terminate_process_tree "$CHILD_PID"
+refresh_resolved_model
 [[ -z "$STOP_KIND" ]] || EXIT_CODE=124
 extract_result
 capture_workspace_artifacts
@@ -503,5 +541,5 @@ if [[ "$STOP_KIND" == "hard" ]]; then FINAL_STATE="timed-out"; elif [[ "$STOP_KI
 write_run_env
 write_status "$FINAL_STATE" "$EXIT_CODE" "$ELAPSED" "$FINAL_STATE" 0 finish
 RUN_FINALIZED="true"
-printf '[composer-run] event=finish state=%s exit_code=%s elapsed=%ss session_id=%s final=%q\n' "$FINAL_STATE" "$EXIT_CODE" "$ELAPSED" "$SESSION_ID" "$FINAL_MESSAGE"
+printf '[cursor-run] event=finish state=%s exit_code=%s elapsed=%ss session_id=%s model=%s final=%q\n' "$FINAL_STATE" "$EXIT_CODE" "$ELAPSED" "$SESSION_ID" "$RESOLVED_MODEL" "$FINAL_MESSAGE"
 exit "$EXIT_CODE"

@@ -1227,4 +1227,4 @@ main() {
 }
 
 main "$@"
-bash "$ROOT_DIR/scripts/test-composer-runner.sh"
+bash "$ROOT_DIR/scripts/test-cursor-runner.sh"

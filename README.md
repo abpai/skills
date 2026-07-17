@@ -28,7 +28,7 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install tutorial@abpai-skills
 /plugin install codex-exec@abpai-skills
 /plugin install codex-session@abpai-skills
-/plugin install composer@abpai-skills
+/plugin install cursor@abpai-skills
 /plugin install decision-worksheet@abpai-skills
 /plugin install status-update@abpai-skills
 /plugin install pi@abpai-skills
@@ -68,7 +68,7 @@ research and review. The debate workflow now lives inside `pi` as
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
 | **codex-exec** | Run Codex headlessly for implementation, review, monitored work, and exact continuation with durable liveness artifacts. | Yes |
 | **codex-session** | Inspect local Codex transcripts by UUID without launching Codex or contacting a model provider. | Yes |
-| **composer** | Run Cursor Agent headlessly with durable liveness, review, and exact session continuation. | Yes |
+| **cursor** | Run Cursor Agent headlessly with durable liveness, review, and exact session continuation. | Yes |
 | **pi** | Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and `/pi:debate` for structured architecture/product decisions. | Claude-only |
 
 ### Code Workflows

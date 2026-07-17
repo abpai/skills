@@ -64,20 +64,20 @@ function git(root: string, args: string[]): string {
 describe("skill metadata version sources", () => {
   test("uses model-invocable SKILL.md metadata.version and ignores hidden wrappers", () => {
     const root = makeRoot();
-    writeManifest(root, "composer", "1.4.0");
+    writeManifest(root, "cursor", "1.4.0");
     writeSkill(
       root,
-      "composer",
-      "composer",
+      "cursor",
+      "cursor",
       `
-description: Composer umbrella
+description: Cursor umbrella
 metadata:
   version: "1.4"
 `,
     );
     writeSkill(
       root,
-      "composer",
+      "cursor",
       "setup",
       `
 disable-model-invocation: true
@@ -90,7 +90,7 @@ description: Hidden setup wrapper
     );
 
     expect(collectVersionSources(root).versions).toEqual({
-      composer: "1.4",
+      cursor: "1.4",
     });
   });
 
@@ -98,13 +98,13 @@ description: Hidden setup wrapper
     const root = makeRoot();
     // Single-quoted value (valid YAML) — the resolver must strip single quotes
     // exactly as it strips double quotes, so the version source matches.
-    writeManifest(root, "composer", "1.4.0");
+    writeManifest(root, "cursor", "1.4.0");
     writeSkill(
       root,
-      "composer",
-      "composer",
+      "cursor",
+      "cursor",
       `
-description: Composer umbrella
+description: Cursor umbrella
 metadata:
   version: '1.4'
 `,
@@ -123,7 +123,7 @@ metadata:
     );
 
     expect(collectVersionSources(root).versions).toEqual({
-      composer: "1.4",
+      cursor: "1.4",
       distill: "2.0",
     });
   });
