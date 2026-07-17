@@ -1,7 +1,7 @@
 ---
 name: code
 description: "Route coding workflows through one scoped /code command. Use prepare-pr for effort-scaled PR readiness through push, simplify for behavior-preserving cleanup and high-signal test pruning of a target or a ranked whole-repo proposal, handoff for continuation prompts, and understand for an HTML code map plus a runnable real-code snippet."
-argument-hint: "[subcommand] [args] - e.g. prepare-pr --effort medium, simplify src/api, understand login flow, handoff"
+argument-hint: "[subcommand] [args] - e.g. prepare-pr --effort low, simplify src/api, understand login flow, handoff"
 # allowed-tools belongs on the umbrella because hidden wrappers never become the
 # active skill; git push and PR writes are still sealed by hooks/gate-before-push.sh.
 allowed-tools: >
@@ -14,7 +14,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "3.1.0"
+  version: "3.1.1"
 ---
 
 # Code Workflow Pack
@@ -50,7 +50,7 @@ so the user can accept the new contract explicitly.
 
 ## Routing
 
-- Use `prepare-pr.md` for PR readiness through push. It accepts `--effort low|medium|high` (default `medium`) to scale review depth while preserving risk-required gates. Natural-language requests to review and commit route to `prepare-pr --effort low`; this pack no longer has a local-only commit workflow.
+- Use `prepare-pr.md` for PR readiness through push. It accepts `--effort low|medium|high` (default `low`) to scale review depth while preserving risk-required gates. Natural-language requests to review and commit route to `prepare-pr --effort low`; this pack no longer has a local-only commit workflow.
 - Use `simplify.md` for behavior-preserving simplification, including pruning low-value tests while protecting load-bearing guards. A named path, symbol, file, or subsystem is edited and validated autonomously. Omitted scope or repository-root scope produces a ranked whole-repository proposal without edits.
 - Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
 - Use `understand.md` for tracing a specific code path into `.understand/<topic>/index.html` plus a runnable `how_<topic>_works.<ext>` that imports and executes real code. It may leave clearly tagged temporary exports in place so the snippet remains runnable.
