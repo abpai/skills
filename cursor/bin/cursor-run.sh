@@ -1,0 +1,1 @@
+../skills/cursor/bin/cursor-run.sh

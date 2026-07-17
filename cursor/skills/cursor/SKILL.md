@@ -1,27 +1,27 @@
 ---
-name: composer
+name: cursor
 description: >
-  Run, monitor, resume, or review work with Cursor Agent and Composer models.
+  Run, monitor, resume, or review work with Cursor Agent and Cursor models.
   Use when delegating bounded implementation, investigation, planning, or
   read-only review to Cursor; when durable headless artifacts are useful; or
   when continuing an exact Cursor chat from another agent workflow.
 license: MIT
 metadata:
-  version: "2.0.0"
+  version: "2.2.0"
 ---
 
-# Cursor Composer
+# Cursor
 
 Use Cursor Agent as a headless worker when a delegated task benefits from
 durable liveness and continuation. The single entrypoint is
-`bin/composer-run.sh`; there are no setup, generate, or review subskills.
+`bin/cursor-run.sh`; there are no setup, generate, or review subskills.
 
 ## Run
 
 Resolve the runner beside this `SKILL.md`:
 
 ```bash
-bin/composer-run.sh run \
+bin/cursor-run.sh run \
   --workspace "$PWD" \
   --prompt-file /absolute/path/to/task.md
 ```
@@ -34,13 +34,18 @@ user or task needs a specific model. Write-capable runs use Cursor headless
 For findings-first review:
 
 ```bash
-bin/composer-run.sh review \
+bin/cursor-run.sh review \
   --workspace "$PWD" \
   --prompt "Review the current diff. Do not edit files. Findings first."
 ```
 
 Review uses Cursor `ask` mode and never passes force or MCP approval. Treat that
 as intent-level read-only behavior, then inspect the workspace yourself.
+
+The default artifact root is `~/.cursor/headless-runs`. If that location is not
+writable, as in some agent sandboxes, pass `--run-root` with an absolute path to
+a writable temporary or workspace directory. Do not treat an artifact-path
+permission error as a Cursor authentication failure.
 
 ## Auth
 
@@ -54,6 +59,13 @@ The runner resolves auth in this order:
 It never crawls workspace or ancestor `.env` files. If no auth source works, it
 stops with the exact login/key setup choices. Never print or log the key.
 
+Browser-login visibility can be host-bound. If a sandboxed run reports missing
+auth, inspect that attempt's `runner.log`, then retry the same bounded command on
+the host before concluding that the user is logged out. Reuse one task-scoped
+`--run-dir-file` for a related sandbox/host retry chain; the runner appends every
+published run directory to `<run-dir-file>.history`. Reserve distinct pointers
+for unrelated tasks.
+
 ## Liveness
 
 Meaningful progress is a change to Cursor stream events or Git-visible tracked
@@ -66,15 +78,28 @@ if the wrapper disappears without a terminal status, and has its own finite
 deadline. Use `--run-dir-file PATH` for exact background handoff; never discover
 a global latest run.
 
+After a run starts, read its `[cursor-run] event=model` line or `status.json`'s
+`model` field and tell the user which model Cursor selected. Do not issue a
+separate model probe: Auto selection is task-specific. `requested_model` records
+an optional `--model` override separately from the resolved model.
+
 ## Artifacts
 
 Each run writes `status.json`, `status.env`, `events.jsonl`, `stdout.log`,
-`stderr.log`, `final.md`, `prompt.txt`, `command.txt`, `preflight.log`,
+`stderr.log`, `runner.log`, `final.md`, `prompt.txt`, `command.txt`,
+`preflight.log`,
 `run.env`, `monitor.sh`, and `continue.sh`. Write-capable runs also capture the
 workspace baseline, status, changed files, and diff.
 
-Raw stream JSON stays in artifacts. The parent console receives compact start,
-progress, stall, timeout, and finish events.
+Raw stream JSON stays in artifacts. `runner.log` retains wrapper state
+transitions and pre-spawn diagnostics without storing the raw account-status response. The
+parent console distinguishes meaningful `progress` from silent `heartbeat`
+events, plus stall, timeout, and finish events. `final.md` prefers the last
+complete assistant message and falls back to Cursor's result field. Cursor's
+result may concatenate intermediate progress narration before that terminal
+answer; `final.md` intentionally omits those updates. Treat it as truncated only
+when substantive final-answer material is missing, not merely because it is
+shorter than the result field.
 
 ## Continue
 
@@ -89,7 +114,7 @@ session id.
 
 ## Parent Contract
 
-Give Composer a bounded task, scope, non-goals, proof command, and stop rules.
+Give Cursor a bounded task, scope, non-goals, proof command, and stop rules.
 Let capable models plan and execute internally instead of imposing a separate
 planner/executor ceremony. The parent still owns the diff, validation, commit,
 push, PR, and merge decisions.

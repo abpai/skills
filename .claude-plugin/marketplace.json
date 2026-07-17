@@ -37,11 +37,11 @@
       "keywords": ["codex", "session", "transcript", "jsonl", "local", "read-only"]
     },
     {
-      "name": "composer",
+      "name": "cursor",
       "description": "Run Cursor Agent headlessly with liveness artifacts, read-only review, and exact session continuation.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "composer" },
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "cursor" },
       "category": "productivity",
-      "keywords": ["cursor", "composer", "headless", "implementation", "review", "liveness", "resume"]
+      "keywords": ["cursor", "headless", "implementation", "review", "liveness", "resume"]
     },
     {
       "name": "engineering",
