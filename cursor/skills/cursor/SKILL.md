@@ -61,9 +61,10 @@ stops with the exact login/key setup choices. Never print or log the key.
 
 Browser-login visibility can be host-bound. If a sandboxed run reports missing
 auth, inspect that attempt's `runner.log`, then retry the same bounded command on
-the host before concluding that the user is logged out. Use a unique
-`--run-dir-file` for each retry; the runner also appends every published run
-directory to `<run-dir-file>.history` so earlier attempts remain discoverable.
+the host before concluding that the user is logged out. Reuse one task-scoped
+`--run-dir-file` for a related sandbox/host retry chain; the runner appends every
+published run directory to `<run-dir-file>.history`. Reserve distinct pointers
+for unrelated tasks.
 
 ## Liveness
 

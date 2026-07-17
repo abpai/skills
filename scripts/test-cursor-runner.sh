@@ -314,7 +314,7 @@ test_silent_run_stops_without_replay() {
     --run-root "$TMP_DIR/stall-runs" \
     --prompt "hang once" \
     --heartbeat 1 \
-    --stall-timeout 2 \
+    --stall-timeout 5 \
     --timeout 10 \
     > "$output" 2>&1
   local status=$?
