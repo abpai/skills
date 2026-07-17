@@ -7,7 +7,7 @@ description: >
   when continuing an exact Cursor chat from another agent workflow.
 license: MIT
 metadata:
-  version: "2.1.0"
+  version: "2.2.0"
 ---
 
 # Cursor
@@ -59,6 +59,12 @@ The runner resolves auth in this order:
 It never crawls workspace or ancestor `.env` files. If no auth source works, it
 stops with the exact login/key setup choices. Never print or log the key.
 
+Browser-login visibility can be host-bound. If a sandboxed run reports missing
+auth, inspect that attempt's `runner.log`, then retry the same bounded command on
+the host before concluding that the user is logged out. Use a unique
+`--run-dir-file` for each retry; the runner also appends every published run
+directory to `<run-dir-file>.history` so earlier attempts remain discoverable.
+
 ## Liveness
 
 Meaningful progress is a change to Cursor stream events or Git-visible tracked
@@ -79,12 +85,16 @@ an optional `--model` override separately from the resolved model.
 ## Artifacts
 
 Each run writes `status.json`, `status.env`, `events.jsonl`, `stdout.log`,
-`stderr.log`, `final.md`, `prompt.txt`, `command.txt`, `preflight.log`,
+`stderr.log`, `runner.log`, `final.md`, `prompt.txt`, `command.txt`,
+`preflight.log`,
 `run.env`, `monitor.sh`, and `continue.sh`. Write-capable runs also capture the
 workspace baseline, status, changed files, and diff.
 
-Raw stream JSON stays in artifacts. The parent console receives compact start,
-progress, stall, timeout, and finish events.
+Raw stream JSON stays in artifacts. `runner.log` retains wrapper state
+transitions and pre-spawn diagnostics without storing the raw account-status response. The
+parent console distinguishes meaningful `progress` from silent `heartbeat`
+events, plus stall, timeout, and finish events. `final.md` prefers the last
+complete assistant message and falls back to Cursor's result field.
 
 ## Continue
 

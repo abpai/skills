@@ -190,6 +190,7 @@ mkdir -p "$RUN_DIR"
 if [[ -n "$RUN_DIR_FILE" ]]; then
   RUN_DIR_FILE="$(absolute_path "$RUN_DIR_FILE")"
   mkdir -p "$(dirname "$RUN_DIR_FILE")"
+  printf '%s\n' "$RUN_DIR" >> "$RUN_DIR_FILE.history"
   printf '%s\n' "$RUN_DIR" > "$RUN_DIR_FILE"
 fi
 
@@ -203,6 +204,7 @@ STATUS_FILE="$RUN_DIR/status.env"
 STATUS_JSON="$RUN_DIR/status.json"
 COMMAND_FILE="$RUN_DIR/command.txt"
 PREFLIGHT_LOG="$RUN_DIR/preflight.log"
+RUNNER_LOG="$RUN_DIR/runner.log"
 MONITOR_SCRIPT="$RUN_DIR/monitor.sh"
 CONTINUE_SCRIPT="$RUN_DIR/continue.sh"
 BASELINE_FILE="$RUN_DIR/workspace-baseline.txt"
@@ -215,9 +217,13 @@ ln "$EVENTS_LOG" "$STDOUT_LOG"
 : > "$STDERR_LOG"
 : > "$FINAL_MESSAGE"
 : > "$PREFLIGHT_LOG"
+: > "$RUNNER_LOG"
 if [[ -n "$PROMPT_TEXT" ]]; then printf '%s\n' "$PROMPT_TEXT" > "$PROMPT_RUN_FILE"; else cp "$PROMPT_FILE" "$PROMPT_RUN_FILE"; fi
 
-resolve_agent_bin || { echo "[FAIL] Cursor Agent CLI not found (agent or cursor-agent)" >&2; exit 127; }
+if ! resolve_agent_bin; then
+  echo "[FAIL] Cursor Agent CLI not found (agent or cursor-agent)" | tee -a "$RUNNER_LOG" >&2
+  exit 127
+fi
 
 agent_cmd=("$CURSOR_AGENT_BIN" -p --output-format stream-json --stream-partial-output --trust)
 if [[ "$RESUMING" == "true" ]]; then agent_cmd+=(--resume "$SESSION_ID"); fi
@@ -267,20 +273,22 @@ write_status() {
   local state="$1" exit_code="${2:-}" elapsed="${3:-0}" health="${4:-$1}" stalled_for="${5:-0}" source="${6:-none}"
   local bytes tmp
   bytes="$(byte_count "$EVENTS_LOG")"
+  printf 'state=%s health=%s exit_code=%s elapsed_seconds=%s stalled_for_seconds=%s progress_source=%s event_bytes=%s\n' \
+    "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$source" "$bytes" >> "$RUNNER_LOG"
   tmp="$(mktemp "$STATUS_FILE.tmp.XXXXXX")"
   {
     printf 'state=%q\nhealth=%q\nexit_code=%q\nelapsed_seconds=%q\nstalled_for_seconds=%q\nprogress_source=%q\n' "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$source"
     printf 'pid=%q\nwrapper_pid=%q\nsession_id=%q\nworkspace=%q\nrun_dir=%q\nrun_dir_file=%q\n' "${CHILD_PID:-}" "$$" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" "$RUN_DIR_FILE"
     printf 'model=%q\nrequested_model=%q\nauth=%q\nread_only=%q\nevent_bytes=%q\n' "$RESOLVED_MODEL" "$MODEL" "$RESOLVED_CURSOR_AUTH" "$READ_ONLY" "$bytes"
-    printf 'stdout_log=%q\nstderr_log=%q\nevents_log=%q\nfinal_message=%q\nmonitor_script=%q\ncontinue_script=%q\n' "$STDOUT_LOG" "$STDERR_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT"
+    printf 'stdout_log=%q\nstderr_log=%q\nrunner_log=%q\nevents_log=%q\nfinal_message=%q\nmonitor_script=%q\ncontinue_script=%q\n' "$STDOUT_LOG" "$STDERR_LOG" "$RUNNER_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT"
   } > "$tmp"
   mv "$tmp" "$STATUS_FILE"
-  python3 - "$STATUS_JSON" "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$source" "${CHILD_PID:-}" "$$" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" "$RUN_DIR_FILE" "$RESOLVED_MODEL" "$MODEL" "$RESOLVED_CURSOR_AUTH" "$READ_ONLY" "$bytes" "$STDOUT_LOG" "$STDERR_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" <<'PY'
+  python3 - "$STATUS_JSON" "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$source" "${CHILD_PID:-}" "$$" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" "$RUN_DIR_FILE" "$RESOLVED_MODEL" "$MODEL" "$RESOLVED_CURSOR_AUTH" "$READ_ONLY" "$bytes" "$STDOUT_LOG" "$STDERR_LOG" "$RUNNER_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" <<'PY'
 import json, os, sys
 from pathlib import Path
-(path,state,health,exit_code,elapsed,stalled,source,pid,wrapper_pid,session,workspace,run_dir,run_dir_file,model,requested_model,auth,read_only,event_bytes,stdout,stderr,events,final)=sys.argv[1:]
+(path,state,health,exit_code,elapsed,stalled,source,pid,wrapper_pid,session,workspace,run_dir,run_dir_file,model,requested_model,auth,read_only,event_bytes,stdout,stderr,runner,events,final)=sys.argv[1:]
 def number(value): return int(value) if value.isdigit() else None
-data={"state":state,"health":health,"exit_code":number(exit_code),"elapsed_seconds":number(elapsed) or 0,"stalled_for_seconds":number(stalled) or 0,"progress_source":source,"pid":number(pid),"wrapper_pid":number(wrapper_pid),"session_id":session,"workspace":workspace,"run_dir":run_dir,"run_dir_file":run_dir_file,"model":model,"requested_model":requested_model,"auth":auth,"read_only":read_only=="true","event_bytes":number(event_bytes) or 0,"stdout_log":stdout,"stderr_log":stderr,"events_log":events,"final_message":final}
+data={"state":state,"health":health,"exit_code":number(exit_code),"elapsed_seconds":number(elapsed) or 0,"stalled_for_seconds":number(stalled) or 0,"progress_source":source,"pid":number(pid),"wrapper_pid":number(wrapper_pid),"session_id":session,"workspace":workspace,"run_dir":run_dir,"run_dir_file":run_dir_file,"model":model,"requested_model":requested_model,"auth":auth,"read_only":read_only=="true","event_bytes":number(event_bytes) or 0,"stdout_log":stdout,"stderr_log":stderr,"runner_log":runner,"events_log":events,"final_message":final}
 tmp=Path(path+f".tmp.{os.getpid()}")
 tmp.write_text(json.dumps(data,indent=2)+"\n",encoding="utf-8")
 tmp.replace(path)
@@ -403,16 +411,21 @@ extract_result() {
 import json,os,sys
 from pathlib import Path
 events,final=map(Path,sys.argv[1:])
-result=""; session=""; model=""
+result=""; assistant=""; session=""; model=""
 for raw in events.read_text(encoding="utf-8",errors="replace").splitlines():
     try: event=json.loads(raw)
     except json.JSONDecodeError: continue
     if isinstance(event.get("session_id"),str): session=event["session_id"]
     if not model and event.get("type")=="system" and event.get("subtype")=="init" and isinstance(event.get("model"),str): model=event["model"]
     if event.get("type")=="result" and isinstance(event.get("result"),str): result=event["result"]
-if result:
+    if event.get("type")=="assistant" and isinstance(event.get("message"),dict):
+        content=event["message"].get("content",[])
+        text="".join(part.get("text","") for part in content if isinstance(part,dict) and part.get("type")=="text")
+        if text.strip(): assistant=text
+final_text=assistant or result
+if final_text:
     tmp=Path(str(final)+f".tmp.{os.getpid()}")
-    tmp.write_text(result.rstrip()+"\n",encoding="utf-8")
+    tmp.write_text(final_text.rstrip()+"\n",encoding="utf-8")
     tmp.replace(final)
 print(f"SESSION_ID\t{session}")
 print(f"MODEL\t{model}")
@@ -456,18 +469,27 @@ PY
 printf '[cursor-run] event=start run_id=%s mode=%s workspace=%q\n' "$RUN_ID" "$MODE" "$WORKSPACE"
 printf '[cursor-run] event=paths run_dir=%q run_dir_file=%q status=%q status_json=%q monitor=%q continue=%q events=%q final=%q\n' "$RUN_DIR" "$RUN_DIR_FILE" "$STATUS_FILE" "$STATUS_JSON" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT" "$EVENTS_LOG" "$FINAL_MESSAGE"
 
-if ! resolve_cursor_auth "$AUTH_MODE" "$ENV_FILE"; then
+AUTH_DIAGNOSTIC="$RUN_DIR/.auth-diagnostic"
+if ! resolve_cursor_auth "$AUTH_MODE" "$ENV_FILE" 2> "$AUTH_DIAGNOSTIC"; then
+  cat "$AUTH_DIAGNOSTIC" >&2
+  cat "$AUTH_DIAGNOSTIC" >> "$RUNNER_LOG"
+  rm -f "$AUTH_DIAGNOSTIC"
   write_run_env
   write_status failed 1 0 failed 0 auth
   RUN_FINALIZED="true"
   echo "[cursor-run] event=finish state=failed exit_code=1 detail=auth"
   exit 1
 fi
+rm -f "$AUTH_DIAGNOSTIC"
 
 {
   printf 'timestamp=%s\nworkspace=%s\nauth=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$WORKSPACE" "$RESOLVED_CURSOR_AUTH"
   run_with_cursor_auth "$CURSOR_AGENT_BIN" --version 2>&1 || true
-  run_with_cursor_auth "$CURSOR_AGENT_BIN" status --format json 2>&1 || true
+  if [[ "$RESOLVED_CURSOR_AUTH" == "login" ]]; then
+    printf 'status_probe=authenticated\n'
+  else
+    printf 'status_probe=skipped-api-key\n'
+  fi
   git -C "$WORKSPACE" status --short 2>/dev/null | head -40 || true
 } > "$PREFLIGHT_LOG"
 capture_workspace_baseline
@@ -524,7 +546,11 @@ while kill -0 "$CHILD_PID" 2>/dev/null; do
     break
   fi
   write_status running "" "$ELAPSED" active "$STALLED_FOR" "$SOURCE"
-  printf '[cursor-run] event=progress elapsed=%ss stalled_for=%ss event_bytes=%s\n' "$ELAPSED" "$STALLED_FOR" "$(byte_count "$EVENTS_LOG")"
+  if [[ "$SOURCE" == "none" ]]; then
+    printf '[cursor-run] event=heartbeat progress_source=none elapsed=%ss stalled_for=%ss event_bytes=%s\n' "$ELAPSED" "$STALLED_FOR" "$(byte_count "$EVENTS_LOG")"
+  else
+    printf '[cursor-run] event=progress progress_source=%s elapsed=%ss stalled_for=%ss event_bytes=%s\n' "$SOURCE" "$ELAPSED" "$STALLED_FOR" "$(byte_count "$EVENTS_LOG")"
+  fi
 done
 
 set +e

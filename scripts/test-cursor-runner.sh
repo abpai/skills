@@ -53,7 +53,7 @@ if [[ "${1:-}" == "status" ]]; then
   if [[ "${FAKE_CURSOR_LOGGED_OUT:-}" == "1" && -z "${CURSOR_API_KEY:-}" ]]; then
     printf '{"status":"unauthenticated","isAuthenticated":false}\n'
   else
-    printf '{"status":"authenticated","isAuthenticated":true}\n'
+    printf '{"status":"authenticated","isAuthenticated":true,"email":"private@example.com"}\n'
   fi
   exit 0
 fi
@@ -85,8 +85,11 @@ if [[ "${FAKE_CURSOR_HANG:-}" == "1" ]]; then
   while :; do sleep 1; done
 fi
 printf '{"type":"system","subtype":"init","session_id":"%s","model":"%s"}\n' "$session_id" "$resolved_model"
+if [[ "${FAKE_CURSOR_WITH_PROGRESS:-}" == "1" ]]; then
+  printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"fake cursor progress"}]},"session_id":"%s"}\n' "$session_id"
+fi
 printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"fake cursor final"}]},"session_id":"%s"}\n' "$session_id"
-printf '{"type":"result","subtype":"success","result":"fake cursor final","session_id":"%s"}\n' "$session_id"
+printf '{"type":"result","subtype":"success","result":"fake cursor progressfake cursor final","session_id":"%s"}\n' "$session_id"
 EOF
 chmod +x "$FAKEBIN/agent"
 
@@ -99,11 +102,13 @@ test_stream_artifacts_and_resume() {
   local output="$TMP_DIR/run-output.txt"
   local monitor_output="$TMP_DIR/monitor-output.txt"
   local continue_output="$TMP_DIR/continue-output.txt"
+  local retry_output="$TMP_DIR/retry-output.txt"
 
   setup_workspace "$workspace"
   printf 'secret prompt content\n' > "$prompt"
   FAKE_CURSOR_PROMPT_FILE="$prompt_capture" FAKE_CURSOR_ARGV_FILE="$argv_capture" \
     FAKE_CURSOR_RESOLVED_MODEL="cursor-auto-standard" \
+    FAKE_CURSOR_WITH_PROGRESS=1 \
     FAKE_CURSOR_MUTATE_FILE="$workspace/tracked.txt" PATH="$FAKEBIN:$PATH" \
     "$CURSOR_RUN" run \
       --workspace "$workspace" \
@@ -124,6 +129,11 @@ test_stream_artifacts_and_resume() {
   assert_contains "$run_dir/status.env" 'model=cursor-auto-standard'
   assert_contains "$run_dir/status.env" 'requested_model='
   assert_contains "$run_dir/final.md" "fake cursor final"
+  assert_not_contains "$run_dir/final.md" "fake cursor progress"
+  assert_contains "$run_dir/status.json" '"runner_log":'
+  assert_contains "$run_dir/runner.log" 'state=finished health=finished exit_code=0'
+  assert_contains "$run_dir/preflight.log" 'status_probe=authenticated'
+  assert_not_contains "$run_dir/preflight.log" 'private@example.com'
   assert_contains "$run_dir/workspace.diff" "changed by Cursor"
   assert_contains "$run_dir/command.txt" "--force"
   assert_contains "$run_dir/command.txt" "--approve-mcps"
@@ -145,6 +155,19 @@ test_stream_artifacts_and_resume() {
   continue_dir="$(extract_run_dir "$continue_output")"
   assert_contains "$continue_dir/command.txt" "--resume cursor-session-123"
   assert_not_contains "$continue_dir/command.txt" "--model"
+
+  PATH="$FAKEBIN:$PATH" "$CURSOR_RUN" review \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/runs" \
+    --run-dir-file "$pointer" \
+    --prompt "retry with the same pointer" \
+    --dry-run \
+    > "$retry_output" 2>&1
+  local retry_dir
+  retry_dir="$(extract_run_dir "$retry_output")"
+  [[ "$(cat "$pointer")" == "$retry_dir" ]] || fail "latest run-dir pointer mismatch"
+  assert_count "$pointer.history" "$run_dir" 1
+  assert_count "$pointer.history" "$retry_dir" 1
 
   pass "Cursor runner omits the model for default runs and exact resumes"
 }
@@ -234,6 +257,7 @@ test_auth_uses_only_explicit_sources() {
   failed_run_dir="$(extract_run_dir "$output")"
   assert_contains "$failed_run_dir/status.json" '"state": "failed"'
   assert_contains "$output" "Workspace and ancestor .env files are not"
+  assert_contains "$failed_run_dir/runner.log" "Cursor Agent CLI is not authenticated."
 
   printf 'CURSOR_API_KEY=explicit-secret\n' > "$env_file"
   env -u CURSOR_API_KEY FAKE_CURSOR_LOGGED_OUT=1 FAKE_CURSOR_REQUIRE_KEY=1 PATH="$FAKEBIN:$PATH" \
@@ -290,7 +314,7 @@ test_silent_run_stops_without_replay() {
     --run-root "$TMP_DIR/stall-runs" \
     --prompt "hang once" \
     --heartbeat 1 \
-    --stall-timeout 1 \
+    --stall-timeout 2 \
     --timeout 10 \
     > "$output" 2>&1
   local status=$?
@@ -300,6 +324,7 @@ test_silent_run_stops_without_replay() {
   run_dir="$(extract_run_dir "$output")"
   assert_contains "$run_dir/status.json" '"state": "stalled"'
   assert_contains "$output" "event=stall kind=silent"
+  assert_contains "$output" "event=heartbeat progress_source=none"
   local agent_pid
   agent_pid="$(cat "$pid_file")"
   if kill -0 "$agent_pid" 2>/dev/null; then
