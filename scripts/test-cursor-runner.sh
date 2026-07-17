@@ -89,6 +89,8 @@ if [[ "${FAKE_CURSOR_WITH_PROGRESS:-}" == "1" ]]; then
   printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"fake cursor progress"}]},"session_id":"%s"}\n' "$session_id"
 fi
 printf '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"fake cursor final"}]},"session_id":"%s"}\n' "$session_id"
+# Cursor's result can aggregate progress plus the final answer; final.md should
+# retain only the terminal assistant answer when that complete message exists.
 printf '{"type":"result","subtype":"success","result":"fake cursor progressfake cursor final","session_id":"%s"}\n' "$session_id"
 EOF
 chmod +x "$FAKEBIN/agent"

@@ -95,7 +95,11 @@ Raw stream JSON stays in artifacts. `runner.log` retains wrapper state
 transitions and pre-spawn diagnostics without storing the raw account-status response. The
 parent console distinguishes meaningful `progress` from silent `heartbeat`
 events, plus stall, timeout, and finish events. `final.md` prefers the last
-complete assistant message and falls back to Cursor's result field.
+complete assistant message and falls back to Cursor's result field. Cursor's
+result may concatenate intermediate progress narration before that terminal
+answer; `final.md` intentionally omits those updates. Treat it as truncated only
+when substantive final-answer material is missing, not merely because it is
+shorter than the result field.
 
 ## Continue
 
