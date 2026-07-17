@@ -17,7 +17,7 @@ Hidden wrapper for the `prepare-pr` subcommand. Load the module and pass
 through the user input.
 
 1. Read the sibling module `../code/prepare-pr.md`.
-2. Treat `$ARGUMENTS` as the effort, scope, and message hint; `medium` is the default effort.
+2. Treat `$ARGUMENTS` as the effort, scope, and message hint; `low` is the default effort.
 3. Follow the module's phases, bright-line rules, and output format.
 4. Stop and report if the module cannot be read; do not reconstruct the workflow from memory.
 

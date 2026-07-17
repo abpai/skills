@@ -6,7 +6,7 @@ commands, mechanical scans, or unconditional advisory UBS scan.
 
 ## Effort tiers
 
-`prepare-pr --effort medium` is the default. Effort changes the depth of an
+`prepare-pr --effort low` is the default. Effort changes the depth of an
 applicable lens, not whether known risk may be ignored. High effort still loads
 only lenses supported by the changed surface and diff intent; it does not run all
 lenses ceremonially.

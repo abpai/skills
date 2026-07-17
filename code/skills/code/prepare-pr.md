@@ -12,7 +12,7 @@ text, commit discipline) is judgment this module owns.
 ## Effort contract
 
 Parse `--effort low|medium|high` anywhere in the arguments. Default to
-`medium`; reject any other value with one concise correction. Effort changes
+`low`; reject any other value with one concise correction. Effort changes
 review depth, not the terminal state: every level commits the intended scope,
 seals, pushes, and creates or updates the PR.
 
