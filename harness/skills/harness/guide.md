@@ -216,7 +216,7 @@ enforcement.
    The starter `--fail-on error` command enforces scanner execution and error
    rules but only surfaces warning-level dead-code candidates. Call it advisory
    dead-code visibility until a maintainer explicitly chooses the broader
-   `--fail-on warning` gate or promotes selected `deslop/<rule>` overrides to
+   `--fail-on warning` gate or promotes selected `knip/<rule>` overrides to
    `error`.
 
 CI setup is done when a clean checkout installs the pinned scanner, the same

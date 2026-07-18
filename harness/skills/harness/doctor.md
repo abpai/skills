@@ -13,7 +13,7 @@ Readiness scoring of this kind is experimental — explanations matter more than
 ## Core split
 
 - `harness:docs` (`docs.md`) is the canonical source for the shared concepts: enforcement hierarchy, spec contract shape, AGENTS line gate, grounding gate, nested AGENTS decision test, Keep/Move/Delete verdicts, demonstrated-need evidence, budgets. This module applies them as audit dimensions — when judging, follow the `docs.md` definitions; deterministic symptom lists are kept local here for executability.
-- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks. In released `@andypai/harness-doctor >= 1.1.0`, that includes the `docs-structure/*` rule family plus Knip-backed dead-code discovery for unused files, exports, exported types, dependencies, devDependencies, and import cycles; earlier releases use the prior dead-code engine. Behavior inventory/ledger parseability and ID integrity join this family only once the pinned version ships the baseline rules (see **Fast path**); until then that surface falls back to `baseline.md`'s artifact parse, which is not this module hand-deriving. This module never reimplements the shipped rules or invokes Knip separately — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
+- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks. In released `@andypai/harness-doctor >= 2.0.0`, that includes the `docs-structure/*` rule family plus Knip-backed dead-code discovery for unused files, exports, exported types, dependencies, devDependencies, and import cycles; earlier releases use the prior dead-code engine. Behavior inventory/ledger parseability and ID integrity join this family only once the pinned version ships the baseline rules (see **Fast path**); until then that surface falls back to `baseline.md`'s artifact parse, which is not this module hand-deriving. This module never reimplements the shipped rules or invokes Knip separately — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
 - Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract, whether a nested grounding file still matches the code it describes (per the `docs.md` grounding gate).
 
 Do not copy Harness Doctor's implementation scripts into product repos. A
@@ -114,11 +114,11 @@ Other Harness modules route here instead of copying the commands.
    fact forward — see the baseline note under **Fast path**.
 
    The Knip-backed setup below requires a released
-   `@andypai/harness-doctor >= 1.1.0`. A source worktree may still report the
+   `@andypai/harness-doctor >= 2.0.0`. A source worktree may still report the
    pre-release package version even when a pending changeset requests `minor`;
    that is not an installable release. Do not point a product repo at the
    worktree or assume the future version. Wait for publication, install through
-   the repo's package manager, and prove the lockfile resolved `>=1.1.0`. Older
+   the repo's package manager, and prove the lockfile resolved `>=2.0.0`. Older
    pinned versions use the prior engine, so do not add Knip config on their
    behalf; upgrade the scanner first or preserve the older setup.
 
@@ -175,7 +175,7 @@ Other Harness modules route here instead of copying the commands.
    rules, while Knip-backed findings remain warnings for classification. After
    the repo has an accepted Knip config and reviewed finding corpus, require an
    explicit maintainer choice before tightening policy: `--fail-on warning`
-   blocks on every warning, while promoting selected stable `deslop/<rule>`
+   blocks on every warning, while promoting selected stable `knip/<rule>`
    overrides to `error` keeps `--fail-on error` and gates only those dead-code
    classes. Record which policy CI uses; never call the starter lane
    merge-blocking dead-code enforcement.
@@ -193,11 +193,11 @@ with a Harness severity override. If JSON reports `dead-code` in
 `skippedChecks`, dead-code coverage is missing even when the process exits `0` —
 surface its `skippedCheckReasons` prominently and do not claim a clean scan.
 
-For compatibility, Knip-backed findings retain the existing public
-`deslop/<rule>` IDs until a deliberate breaking migration. Treat `deslop` as a
-stable rule namespace, not the active engine name. Existing rule overrides keep
-working; new setup should prefer the `dead-code` tag when one setting applies to
-the whole family.
+Knip-backed findings use public `knip/<rule>` IDs. The release that introduces
+this engine removes the former `deslop/<rule>` namespace rather than retaining
+compatibility aliases. Before upgrading, rename any `deslop/*` rule overrides
+or suppressions to their matching `knip/*` IDs. Prefer the `dead-code` tag when
+one setting applies to the whole family.
 
 ## Execution policy
 
