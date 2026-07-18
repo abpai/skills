@@ -9,6 +9,18 @@ const finishLaneScript = path.join(import.meta.dir, "finish-lane.ts")
 const tempDirs: string[] = []
 const systemPath = "/usr/bin:/bin:/usr/sbin:/sbin"
 
+// Hooks such as pre-commit export GIT_DIR, GIT_INDEX_FILE, and related
+// variables for the repository they are checking. Test fixtures are separate
+// repositories, so inheriting those variables makes their Git calls operate on
+// the parent repository's common directory instead. Preserve any explicit test
+// override, but never copy an inherited Git context into a fixture process.
+function fixtureEnv(overrides: Record<string, string> = {}): NodeJS.ProcessEnv {
+  const inheritedWithoutGit = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")),
+  )
+  return { ...inheritedWithoutGit, ...overrides }
+}
+
 afterEach(() => {
   for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true })
 })
@@ -17,7 +29,7 @@ function run(command: string, args: string[], cwd: string, env: Record<string, s
   const result = spawnSync(command, args, {
     cwd,
     encoding: "utf8",
-    env: { ...process.env, ...env },
+    env: fixtureEnv(env),
   })
   if (result.status !== 0) {
     throw new Error(`command failed: ${command} ${args.join(" ")}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`)
@@ -56,10 +68,47 @@ function runFinishLane(repo: string, env: Record<string, string>): { stdout: str
   const result = spawnSync(process.execPath, [finishLaneScript, "--base", "HEAD"], {
     cwd: repo,
     encoding: "utf8",
-    env: { ...process.env, ...env },
+    env: fixtureEnv(env),
   })
   return { stdout: result.stdout ?? "", status: result.status }
 }
+
+test("fixture repos ignore inherited Git context and preserve parent config", () => {
+  const parent = makeRepo()
+  run("git", ["config", "user.name", "Parent Repository"], parent, { PATH: systemPath })
+  run("git", ["config", "user.email", "parent@example.test"], parent, { PATH: systemPath })
+  run("git", ["config", "core.bare", "false"], parent, { PATH: systemPath })
+  const parentGitDir = path.resolve(parent, run("git", ["rev-parse", "--git-dir"], parent, { PATH: systemPath }).trim())
+  const originalGitDir = process.env.GIT_DIR
+  const originalGitIndexFile = process.env.GIT_INDEX_FILE
+  const originalGitWorkTree = process.env.GIT_WORK_TREE
+
+  process.env.GIT_DIR = parentGitDir
+  process.env.GIT_INDEX_FILE = path.join(parentGitDir, "index")
+  process.env.GIT_WORK_TREE = parent
+  try {
+    const child = makeRepo()
+    expect(run("git", ["config", "user.email"], child, { PATH: systemPath }).trim()).toBe("finish-lane@example.test")
+    writeRepoFile(child, "src/shortcut.ts", "const value = body.data ?? body.result ?? body.payload\n")
+    run("git", ["add", "src/shortcut.ts"], child, { PATH: systemPath })
+    expect(scanSemanticShortcuts(child, "HEAD", []).count).toBe(1)
+    expect(fixtureEnv().GIT_DIR).toBeUndefined()
+    expect(fixtureEnv({ GIT_DIR: path.join(child, ".git") }).GIT_DIR).toBe(path.join(child, ".git"))
+  } finally {
+    for (const [name, value] of Object.entries({
+      GIT_DIR: originalGitDir,
+      GIT_INDEX_FILE: originalGitIndexFile,
+      GIT_WORK_TREE: originalGitWorkTree,
+    })) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+  }
+
+  expect(run("git", ["config", "user.name"], parent, { PATH: systemPath }).trim()).toBe("Parent Repository")
+  expect(run("git", ["config", "user.email"], parent, { PATH: systemPath }).trim()).toBe("parent@example.test")
+  expect(run("git", ["config", "core.bare"], parent, { PATH: systemPath }).trim()).toBe("false")
+})
 
 test("reports skipped when ubs is absent without noisy line counts", () => {
   const repo = makeRepo()
@@ -374,7 +423,7 @@ exit 1
   const result = spawnSync(process.execPath, [finishLaneScript, "--base", "HEAD", "--seal"], {
     cwd: repo,
     encoding: "utf8",
-    env: { ...process.env, PATH: `${fakeBin}:${systemPath}` },
+    env: fixtureEnv({ PATH: `${fakeBin}:${systemPath}` }),
   })
 
   expect(result.status).toBe(0)
@@ -503,7 +552,7 @@ test("--disarm is a clean no-op when CLAUDE_PLUGIN_DATA is unset", () => {
   const result = spawnSync(process.execPath, [finishLaneScript, "--disarm"], {
     cwd: repo,
     encoding: "utf8",
-    env: { ...process.env, PATH: systemPath, CLAUDE_PLUGIN_DATA: "" },
+    env: fixtureEnv({ PATH: systemPath, CLAUDE_PLUGIN_DATA: "" }),
   })
 
   expect(result.status).toBe(0)
@@ -522,7 +571,7 @@ test("an invalid explicit --base fails fast and writes no scope/seal artifacts",
   const result = spawnSync(process.execPath, [finishLaneScript, "--base", "orgin/main", "--seal"], {
     cwd: repo,
     encoding: "utf8",
-    env: { ...process.env, PATH: systemPath },
+    env: fixtureEnv({ PATH: systemPath }),
   })
 
   expect(result.status).not.toBe(0)
@@ -550,7 +599,7 @@ test("an explicit --base with no merge-base fails fast and writes no scope/seal 
   const result = spawnSync(process.execPath, [finishLaneScript, "--base", "basebranch", "--seal"], {
     cwd: repo,
     encoding: "utf8",
-    env: { ...process.env, PATH: systemPath },
+    env: fixtureEnv({ PATH: systemPath }),
   })
 
   expect(result.status).not.toBe(0)
@@ -567,7 +616,7 @@ test("a valid explicit --base still computes scope and seals", () => {
   const result = spawnSync(process.execPath, [finishLaneScript, "--base", "HEAD", "--seal"], {
     cwd: repo,
     encoding: "utf8",
-    env: { ...process.env, PATH: systemPath },
+    env: fixtureEnv({ PATH: systemPath }),
   })
 
   expect(result.status).toBe(0)
@@ -588,7 +637,7 @@ test("editing an untracked file's contents changes scope_hash", () => {
     const r = spawnSync(process.execPath, [finishLaneScript, "--base", "HEAD", "--seal"], {
       cwd: repo,
       encoding: "utf8",
-      env: { ...process.env, PATH: systemPath },
+      env: fixtureEnv({ PATH: systemPath }),
     })
     const match = `${r.stdout ?? ""}`.match(/scope_hash=([0-9a-f]{64})/)
     if (!match) throw new Error(`no scope_hash in output:\n${r.stdout}\n${r.stderr}`)
@@ -610,7 +659,7 @@ test("editing a dash-leading untracked file's contents changes scope_hash", () =
     const r = spawnSync(process.execPath, [finishLaneScript, "--base", "HEAD", "--seal"], {
       cwd: repo,
       encoding: "utf8",
-      env: { ...process.env, PATH: systemPath },
+      env: fixtureEnv({ PATH: systemPath }),
     })
     const match = `${r.stdout ?? ""}`.match(/scope_hash=([0-9a-f]{64})/)
     if (!match) throw new Error(`no scope_hash in output:\n${r.stdout}\n${r.stderr}`)
@@ -753,7 +802,7 @@ function runFinishLaneArgs(repo: string, args: string[], env: Record<string, str
   const result = spawnSync(process.execPath, [finishLaneScript, ...args], {
     cwd: repo,
     encoding: "utf8",
-    env: { ...process.env, PATH: systemPath, ...env },
+    env: fixtureEnv({ PATH: systemPath, ...env }),
   })
   return { stdout: result.stdout ?? "", stderr: result.stderr ?? "", status: result.status }
 }
@@ -764,7 +813,7 @@ function runHook(repo: string, pluginData: string, command = "git push"): { stat
     cwd: repo,
     encoding: "utf8",
     input: event,
-    env: { ...process.env, PATH: hookPath, CLAUDE_PLUGIN_DATA: pluginData },
+    env: fixtureEnv({ PATH: hookPath, CLAUDE_PLUGIN_DATA: pluginData }),
   })
   return { status: result.status, stdout: result.stdout ?? "" }
 }

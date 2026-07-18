@@ -82,13 +82,23 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`
 }
 
+function environmentForCwd(cwd: string): NodeJS.ProcessEnv | undefined {
+  // A caller can ask this module to inspect a repository other than the process
+  // cwd (the test fixtures do). Hook runners export GIT_* for their own
+  // repository; carrying that context into the requested cwd redirects Git
+  // reads and writes back to the hook's repository. Keep the inherited context
+  // only when executing in the process cwd, where it is intentionally valid.
+  if (cwd === process.cwd()) return undefined
+  return Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")))
+}
+
 // `output` interleaves stdout+stderr for human-facing error messages. Anything
 // parsed or hashed must use `stdout`: the gate-before-push.sh hook recomputes
 // the scope hash from `git ... 2>/dev/null` pipelines (stdout only), so folding
 // a stray git stderr warning (ambiguous refname, CRLF advice) into the hash
 // would make a correctly sealed branch permanently stale to the hook.
 function run(command: string, cwd = process.cwd()): { output: string; stdout: string; status: number } {
-  const result = spawnSync(command, { cwd, encoding: "utf8", shell: "/bin/bash" })
+  const result = spawnSync(command, { cwd, encoding: "utf8", shell: "/bin/bash", env: environmentForCwd(cwd) })
   return {
     output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
     stdout: result.stdout ?? "",

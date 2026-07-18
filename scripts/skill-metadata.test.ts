@@ -53,8 +53,15 @@ function writeSkill(root: string, plugin: string, skill: string, frontmatter: st
   );
 }
 
+function fixtureEnv(overrides: Record<string, string> = {}): NodeJS.ProcessEnv {
+  const inheritedWithoutGit = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")),
+  );
+  return { ...inheritedWithoutGit, ...overrides };
+}
+
 function git(root: string, args: string[]): string {
-  const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+  const result = spawnSync("git", args, { cwd: root, encoding: "utf8", env: fixtureEnv() });
   if (result.status !== 0) {
     throw new Error(result.stderr || result.stdout || `git ${args.join(" ")} failed`);
   }
@@ -62,6 +69,42 @@ function git(root: string, args: string[]): string {
 }
 
 describe("skill metadata version sources", () => {
+  test("isolates Git fixtures from inherited hook context", () => {
+    const parent = makeRoot();
+    git(parent, ["init"]);
+    git(parent, ["config", "user.name", "Parent Repository"]);
+    git(parent, ["config", "user.email", "parent@example.test"]);
+    git(parent, ["config", "core.bare", "false"]);
+    const originalGitDir = process.env.GIT_DIR;
+    const originalGitIndexFile = process.env.GIT_INDEX_FILE;
+    const originalGitWorkTree = process.env.GIT_WORK_TREE;
+
+    process.env.GIT_DIR = join(parent, ".git");
+    process.env.GIT_INDEX_FILE = join(parent, ".git", "index");
+    process.env.GIT_WORK_TREE = parent;
+    try {
+      const child = makeRoot();
+      git(child, ["init"]);
+      git(child, ["config", "user.name", "Fixture Repository"]);
+      expect(git(child, ["config", "user.name"])).toBe("Fixture Repository");
+      expect(fixtureEnv().GIT_DIR).toBeUndefined();
+      expect(fixtureEnv({ GIT_DIR: join(child, ".git") }).GIT_DIR).toBe(join(child, ".git"));
+    } finally {
+      for (const [name, value] of Object.entries({
+        GIT_DIR: originalGitDir,
+        GIT_INDEX_FILE: originalGitIndexFile,
+        GIT_WORK_TREE: originalGitWorkTree,
+      })) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
+
+    expect(git(parent, ["config", "user.name"])).toBe("Parent Repository");
+    expect(git(parent, ["config", "user.email"])).toBe("parent@example.test");
+    expect(git(parent, ["config", "core.bare"])).toBe("false");
+  });
+
   test("uses model-invocable SKILL.md metadata.version and ignores hidden wrappers", () => {
     const root = makeRoot();
     writeManifest(root, "cursor", "1.4.0");
