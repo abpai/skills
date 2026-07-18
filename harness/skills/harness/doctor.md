@@ -13,7 +13,7 @@ Readiness scoring of this kind is experimental — explanations matter more than
 ## Core split
 
 - `harness:docs` (`docs.md`) is the canonical source for the shared concepts: enforcement hierarchy, spec contract shape, AGENTS line gate, grounding gate, nested AGENTS decision test, Keep/Move/Delete verdicts, demonstrated-need evidence, budgets. This module applies them as audit dimensions — when judging, follow the `docs.md` definitions; deterministic symptom lists are kept local here for executability.
-- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks. In released `@andypai/harness-doctor >= 0.4.0`, that includes the `docs-structure/*` rule family plus Knip-backed dead-code discovery for unused files, exports, exported types, dependencies, devDependencies, and import cycles; earlier releases use the prior dead-code engine. Behavior inventory/ledger parseability and ID integrity join this family only once the pinned version ships the baseline rules (see **Fast path**); until then that surface falls back to `baseline.md`'s artifact parse, which is not this module hand-deriving. This module never reimplements the shipped rules or invokes Knip separately — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
+- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks. In released `@andypai/harness-doctor >= 1.1.0`, that includes the `docs-structure/*` rule family plus Knip-backed dead-code discovery for unused files, exports, exported types, dependencies, devDependencies, and import cycles; earlier releases use the prior dead-code engine. Behavior inventory/ledger parseability and ID integrity join this family only once the pinned version ships the baseline rules (see **Fast path**); until then that surface falls back to `baseline.md`'s artifact parse, which is not this module hand-deriving. This module never reimplements the shipped rules or invokes Knip separately — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
 - Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract, whether a nested grounding file still matches the code it describes (per the `docs.md` grounding gate).
 
 Do not copy Harness Doctor's implementation scripts into product repos. A
@@ -114,11 +114,11 @@ Other Harness modules route here instead of copying the commands.
    fact forward — see the baseline note under **Fast path**.
 
    The Knip-backed setup below requires a released
-   `@andypai/harness-doctor >= 0.4.0`. A source worktree may still report the
+   `@andypai/harness-doctor >= 1.1.0`. A source worktree may still report the
    pre-release package version even when a pending changeset requests `minor`;
    that is not an installable release. Do not point a product repo at the
    worktree or assume the future version. Wait for publication, install through
-   the repo's package manager, and prove the lockfile resolved `>=0.4.0`. Older
+   the repo's package manager, and prove the lockfile resolved `>=1.1.0`. Older
    pinned versions use the prior engine, so do not add Knip config on their
    behalf; upgrade the scanner first or preserve the older setup.
 
