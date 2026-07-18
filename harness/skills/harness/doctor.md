@@ -13,7 +13,7 @@ Readiness scoring of this kind is experimental — explanations matter more than
 ## Core split
 
 - `harness:docs` (`docs.md`) is the canonical source for the shared concepts: enforcement hierarchy, spec contract shape, AGENTS line gate, grounding gate, nested AGENTS decision test, Keep/Move/Delete verdicts, demonstrated-need evidence, budgets. This module applies them as audit dimensions — when judging, follow the `docs.md` definitions; deterministic symptom lists are kept local here for executability.
-- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks (the `docs-structure/*` rule family): files, routes, spec-contract existence and sections, links, byte/line budgets, banned paths, `STRUCTURE.md`, the `CLAUDE.md` shim. Behavior inventory/ledger parseability and ID integrity join this family only once the pinned version ships the baseline rules (see **Fast path**); until then that surface falls back to `baseline.md`'s artifact parse, which is not this module hand-deriving. This module never reimplements the shipped rules — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
+- The external `harness-doctor` CLI is the ONLY implementation of deterministic checks. In released `@andypai/harness-doctor >= 0.4.0`, that includes the `docs-structure/*` rule family plus Knip-backed dead-code discovery for unused files, exports, exported types, dependencies, devDependencies, and import cycles; earlier releases use the prior dead-code engine. Behavior inventory/ledger parseability and ID integrity join this family only once the pinned version ships the baseline rules (see **Fast path**); until then that surface falls back to `baseline.md`'s artifact parse, which is not this module hand-deriving. This module never reimplements the shipped rules or invokes Knip separately — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
 - Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract, whether a nested grounding file still matches the code it describes (per the `docs.md` grounding gate).
 
 Do not copy Harness Doctor's implementation scripts into product repos. A
@@ -109,29 +109,95 @@ Other Harness modules route here instead of copying the commands.
    ```
 
    Only write fields that exist on `HarnessDoctorConfig` for the pinned version;
-   an unknown key fails typecheck. `baselineCheck` is not one of them — see the
-   baseline note under **Fast path**.
+   an unknown key fails typecheck. In `0.3.0`, `baselineCheck` is not one of
+   them; re-check the pinned type and `--help` instead of carrying that release
+   fact forward — see the baseline note under **Fast path**.
+
+   The Knip-backed setup below requires a released
+   `@andypai/harness-doctor >= 0.4.0`. A source worktree may still report the
+   pre-release package version even when a pending changeset requests `minor`;
+   that is not an installable release. Do not point a product repo at the
+   worktree or assume the future version. Wait for publication, install through
+   the repo's package manager, and prove the lockfile resolved `>=0.4.0`. Older
+   pinned versions use the prior engine, so do not add Knip config on their
+   behalf; upgrade the scanner first or preserve the older setup.
+
+   Dead-code configuration is repository-owned Knip configuration, not
+   `harness.config.*`. Harness Doctor bundles and invokes Knip; do not add a
+   separate `knip` dependency or a second CI command. Preserve an existing
+   `.knip.json`, `.knip.jsonc`, `knip.json`, `knip.jsonc`, `knip.ts`, `knip.js`,
+   `knip.config.ts`, `knip.config.js`, or `package.json#knip` surface. Create one
+   only when the default discovery produces a demonstrated config gap.
+
+   Before writing that config, inspect the repo's real entry mechanisms:
+   package scripts, framework routes/plugins, workers, subprocess targets,
+   generated modules, fixtures, and workspace boundaries. Add the narrowest
+   `entry`, `project`, workspace, or ignore setting that describes those facts;
+   do not blanket-ignore a reported directory. In a monorepo, configure the
+   root workspace under `workspaces["."]` because root-level `entry` and
+   `project` are ignored. Preserve any configuration hints printed by the scan
+   in the proof report, then rerun the exact same command after each config edit.
+
+   Build a compact entry inventory before authoring a monorepo config:
+
+   | Evidence | Knip treatment |
+   | --- | --- |
+   | Package scripts, `bin`, framework/plugin routes | Confirm auto-discovery; add `entry` only when the scan proves it missed one. |
+   | Literal worker or subprocess target | Add the launched file as `entry` when Knip did not recognize the edge. |
+   | Dynamically discovered eval, fixture, migration, or generated module | Describe its real glob under the owning workspace; use `entry` when executable and `project` when analyzed source. |
+   | Generated or vendored output outside the source contract | Exclude the narrow generated path; never suppress the whole workspace. |
+
+   A repo may intentionally keep `deadCode: false` in `harness.config.*` for its
+   ordinary readiness scan while the dedicated CI script below explicitly
+   passes `--dead-code`. Preserve that two-mode setup when it is documented and
+   tested; the explicit CLI lane is the dead-code receipt.
 4. Add one package script that invokes the pinned local binary:
 
    ```json
    {
      "scripts": {
-       "harness:check": "harness-doctor --json --verbose --fail-on error"
+       "harness:check": "harness-doctor --json --verbose --dead-code --warnings --fail-on error --no-score"
      }
    }
    ```
 
 5. Run the script with the detected manager: `bun run harness:check`, `pnpm run
    harness:check`, `yarn harness:check`, or `npm run harness:check`. Select one;
-   record its exit result.
+   retain the exit result, stdout JSON, and stderr configuration hints as one
+   proof receipt. CI logs may retain both streams together; a local artifact
+   may store them separately as long as the report links the pair.
 6. Add the same package script to the repo's existing CI workflow. Do not create
    a CI system when none exists without user approval. A repository admin, not
    the agent, decides whether to make the job a required branch-protection check.
+
+   The starter command is **dead-code visibility/receipt enforcement**, not a
+   merge-blocking dead-code gate: `--fail-on error` still fails existing error
+   rules, while Knip-backed findings remain warnings for classification. After
+   the repo has an accepted Knip config and reviewed finding corpus, require an
+   explicit maintainer choice before tightening policy: `--fail-on warning`
+   blocks on every warning, while promoting selected stable `deslop/<rule>`
+   overrides to `error` keeps `--fail-on error` and gates only those dead-code
+   classes. Record which policy CI uses; never call the starter lane
+   merge-blocking dead-code enforcement.
 
 Setup is done when a clean checkout installs the pinned dependency and the same
 `harness:check` script passes locally and in CI. CI runs this deterministic
 scanner; it never runs `harness baseline`, `harness compliant`, or another agent
 workflow.
+
+Dead-code output is a lead, not deletion proof. For each candidate, inspect its
+callers, package exports, runtime loading, and nearby tests, then classify it as
+`confirmed`, `false-positive`, or `config-gap`. A config gap is repaired in the
+repo-owned Knip config and proved by rerunning `harness:check`; it is not hidden
+with a Harness severity override. If JSON reports `dead-code` in
+`skippedChecks`, dead-code coverage is missing even when the process exits `0` —
+surface its `skippedCheckReasons` prominently and do not claim a clean scan.
+
+For compatibility, Knip-backed findings retain the existing public
+`deslop/<rule>` IDs until a deliberate breaking migration. Treat `deslop` as a
+stable rule namespace, not the active engine name. Existing rule overrides keep
+working; new setup should prefer the `dead-code` tag when one setting applies to
+the whole family.
 
 ## Execution policy
 
