@@ -185,6 +185,18 @@
       "category": "Writing"
     },
     {
+      "name": "explain-concisely",
+      "source": {
+        "source": "local",
+        "path": "./explain-concisely"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Writing"
+    },
+    {
       "name": "improve-prompt",
       "source": {
         "source": "local",

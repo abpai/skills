@@ -1,0 +1,11 @@
+{
+  "name": "explain-concisely",
+  "version": "1.0.0",
+  "description": "Make explanations and instructions concise, action-first, and easy to scan without losing necessary nuance.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}

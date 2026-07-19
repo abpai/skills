@@ -31,6 +31,7 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install cursor@abpai-skills
 /plugin install decision-worksheet@abpai-skills
 /plugin install status-update@abpai-skills
+/plugin install explain-concisely@abpai-skills
 /plugin install pi@abpai-skills
 ```
 
@@ -121,6 +122,7 @@ secure-dependencies` (or `harness compliant` for end-to-end remediation);
 | **tutorial** | Write hands-on, self-verified tutorials where every step ends in a runnable action |
 | **improve-prompt** | Upgrade vague prompts into sharp, reusable prompts for planning, coding, review, and decision work |
 | **human-writer** | Edit prose to sound natural and human-written — deslop model-generated text |
+| **explain-concisely** | Make explanations and instructions concise, action-first, and easy to scan without losing necessary nuance |
 
 ## Repo Structure
 
