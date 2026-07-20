@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["agent/agent.ts", "evals/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules", "agent/skills"]
+}

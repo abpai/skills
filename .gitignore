@@ -17,3 +17,6 @@ __pycache__
 .agents/work/runs/*/reviews/
 .agents/work/runs/*/evaluations/
 .agents/work/runs/*/checkpoints/
+# Eve eval harness: generated skill packages and run artifacts (source is canonical repo SKILL.md)
+harness/eve/agent/skills/
+harness/eve/.eve/
