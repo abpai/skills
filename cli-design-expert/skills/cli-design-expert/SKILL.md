@@ -159,7 +159,7 @@ Design is complete when the command model, help skeleton, output contract,
 exit-code behavior, config precedence, TTY behavior, and destructive-action
 safety path are all specified.
 
-## Procedure: Review an existing CLI
+## Reviewing an existing CLI
 
 Produce two outputs.
 

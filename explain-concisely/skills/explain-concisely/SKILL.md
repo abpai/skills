@@ -4,7 +4,7 @@ disable-model-invocation: true
 description: >
   Turn explanations, instructions, debugging guidance, plans, and status updates
   into concise, action-first responses that are easy to scan and act on. Use
-  for a concise, brief, or low-cognitive-load answer. Preserve necessary
+  for a concise, brief, low-cognitive-load, or ADHD-friendly answer. Preserve necessary
   nuance, safety warnings, and requested depth.
 license: MIT
 metadata:
