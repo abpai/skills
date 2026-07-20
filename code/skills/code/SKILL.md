@@ -20,7 +20,7 @@ metadata:
 
 # Code Workflow Pack
 
-This umbrella skill is the model-invocable entry point for the pack and the single scoped `/code` command users see in the `/` menu. Each workflow also ships as its own `code/skills/<name>/SKILL.md`, but those per-command skills set `disable-model-invocation: true`, `user-invocable: false`, and `metadata.internal: true`, so they stay out of the model's auto-invocation, out of the `/` menu (no unscoped `/<name>` duplicates of the umbrella), and out of flat-list installers like the `npx skills` installer used by Codex. Reach any workflow through this umbrella — the subcommand router below maps `/code <name>` to the matching module. The workflow modules referenced below live beside this `SKILL.md` as flat support files.
+This umbrella skill is the explicit, human-invoked entry point for the pack and the single scoped `/code` command users see in the `/` menu. Like every entrypoint here it sets `disable-model-invocation: true` (and `policy.allow_implicit_invocation: false` for Codex), so it runs only when a human invokes it. Each workflow also ships as its own `code/skills/<name>/SKILL.md`; those per-command skills additionally set `user-invocable: false` and `metadata.internal: true`, so they stay out of the `/` menu (no unscoped `/<name>` duplicates of the umbrella) and out of flat-list installers like the `npx skills` installer used by Codex. Reach any workflow through this umbrella — the subcommand router below maps `/code <name>` to the matching module. The workflow modules referenced below live beside this `SKILL.md` as flat support files.
 
 ## Subcommand invocation
 

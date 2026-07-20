@@ -9,9 +9,11 @@ metadata:
 
 # Engineering Workflow Pack
 
-This umbrella skill is the model-invocable entry point for the engineering
-workflow pack and the single scoped `/engineering` command users see in the `/`
-menu. Hidden wrappers stay out of model routing, menus, and flat-list
+This umbrella skill is the explicit, human-invoked entry point for the
+engineering workflow pack and the single scoped `/engineering` command users see
+in the `/` menu. Like every entrypoint here it is explicit-only
+(`disable-model-invocation: true`; `policy.allow_implicit_invocation: false` for
+Codex). Hidden wrappers additionally stay out of menus and flat-list
 installers; reach every workflow through `/engineering <name>`.
 
 ## Subcommand invocation

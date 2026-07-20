@@ -9,7 +9,7 @@ metadata:
 
 # Harness Workflow Pack
 
-This umbrella skill is the model-invocable entry point for agent harness work: the designed repository environment that lets coding agents find the right code, owner, invariant, and validation path quickly — and prove their work end-to-end. Verification loops are the product; docs are the routing layer.
+This umbrella skill is the explicit, human-invoked entry point for agent harness work: the designed repository environment that lets coding agents find the right code, owner, invariant, and validation path quickly — and prove their work end-to-end. Verification loops are the product; docs are the routing layer.
 
 Hidden wrappers stay out of model routing, menus, and flat-list installers.
 Reach every workflow through this umbrella; the workflow modules referenced

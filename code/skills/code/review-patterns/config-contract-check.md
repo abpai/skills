@@ -7,7 +7,7 @@ surface.
 ## When this gate applies
 
 - Any change under `.claude-plugin/`, `.codex-plugin/`, `versions.json`, a
-  model-invocable `SKILL.md` `metadata.version`, or a plugin manifest description.
+  public `SKILL.md` `metadata.version`, or a plugin manifest description.
 - A skill moved into/out of `skills/`, a new `commands/*.md`, or new/edited
   wrapper frontmatter (`disable-model-invocation`, `user-invocable`,
   `metadata.internal`).
@@ -20,7 +20,7 @@ surface.
 
 1. **Version bump is a FOUR-file fan-out, not one manifest.** A plugin version
    lives in `<plugin>/.claude-plugin/plugin.json`,
-   `<plugin>/.codex-plugin/plugin.json`, the model-invocable `SKILL.md`
+   `<plugin>/.codex-plugin/plugin.json`, the public `SKILL.md`
    `metadata.version` (when the plugin has one), AND root `versions.json`. Miss
    any one and users *silently never receive the update*. "Versions agree" is not
    enough — open all four files and confirm each carries the bump. A one-manifest
