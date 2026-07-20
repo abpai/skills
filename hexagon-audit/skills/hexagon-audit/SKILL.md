@@ -1,9 +1,9 @@
 ---
 name: hexagon-audit
 disable-model-invocation: true
-description: Audit Ports & Adapters / hexagonal architecture boundaries in packages/ + adapters/ monorepos. Use for hexagon compliance, port/adapter separation, inward dependency flow, peer-adapter imports, and vendor SDK leaks.
+description: Audit Ports & Adapters / hexagonal architecture boundaries in packages/ + adapters/ monorepos. Use for inward dependency flow violations, peer-adapter imports, and vendor SDK leaks.
 metadata:
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Hexagon Audit

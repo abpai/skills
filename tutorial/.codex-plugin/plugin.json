@@ -1,6 +1,6 @@
 {
   "name": "tutorial",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Write hands-on, self-verified tutorials where every step ends in a runnable action.",
   "author": {
     "name": "Andy Pai"

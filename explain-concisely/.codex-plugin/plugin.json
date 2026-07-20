@@ -1,6 +1,6 @@
 {
   "name": "explain-concisely",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Make explanations and instructions concise, action-first, and easy to scan without losing necessary nuance.",
   "author": {
     "name": "Andy Pai"

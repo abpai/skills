@@ -7,7 +7,7 @@ description: >-
   generic, over-polished, promotional, repetitive, or too tidy.
 metadata:
   author: Andy Pai
-  version: "1.4.2"
+  version: "1.4.3"
   upstream_skill: "https://github.com/blader/humanizer"
   tags: "writing editing humanize voice anti-slop GEO"
 ---
@@ -29,14 +29,12 @@ pass, or explaining remaining patterns.
 
 ## Review flow
 
-1. Read once for meaning and tone.
-2. Mark the spots that feel inflated, repetitive, vague, or too tidy.
-3. Revise in a second pass using the pattern catalog as a checklist, not a script.
-4. Read aloud and trim anything that still feels synthetic.
+Read once for meaning and tone before editing, then revise using the pattern
+catalog as a checklist, not a script. Finish with a read-aloud pass.
 
-This flow is complete when the intended meaning and register are preserved,
-suspect spans have been handled, and the final read-aloud pass no longer sounds
-inflated, vague, or synthetic.
+Done when meaning and register are preserved, every inflated, repetitive,
+vague, or too-tidy span has been handled, and the read-aloud pass no longer
+sounds synthetic.
 
 ## Heuristics
 

@@ -4,13 +4,12 @@ disable-model-invocation: true
 description: >
   Turn explanations, instructions, debugging guidance, plans, and status updates
   into concise, action-first responses that are easy to scan and act on. Use
-  when the user asks for a concise, brief, direct, plain-language, low-cognitive-load,
-  or ADHD-friendly answer; asks what to do next; or invokes explain-concisely.
-  Preserve necessary nuance, safety warnings, and requested depth.
+  for a concise, brief, or low-cognitive-load answer. Preserve necessary
+  nuance, safety warnings, and requested depth.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.1"
+  version: "1.0.2"
   upstream_author: Ayoub Ghriss
   upstream_license: MIT
   upstream_skill: "https://github.com/ayghri/i-have-adhd/blob/72c33eee81ea439cf01991e93729adfce2ffc99e/skills/i-have-adhd/SKILL.md"

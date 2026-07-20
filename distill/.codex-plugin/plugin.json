@@ -1,6 +1,6 @@
 {
   "name": "distill",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Iteratively decompose complex systems into their essential primitives. Use for codebases, papers, transcripts, or any complex system.",
   "author": {
     "name": "Andy Pai"

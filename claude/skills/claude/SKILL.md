@@ -2,15 +2,14 @@
 name: claude
 disable-model-invocation: true
 description: >
-  Run Claude Code from Codex as a headless external worker. Use only for explicit
-  requests to ask, delegate to, run, or review with Claude; continue a Claude
-  session with new work; monitor Claude runs or named subagents; use native
-  Claude background agents; or choose between CLI and Agent SDK execution. For
-  local transcript inspection, use claude-session.
+  Run Claude Code from Codex as a headless external worker: delegate, run, or
+  review a task with Claude, continue an existing session, monitor runs and
+  named subagents, or launch native background agents. For local transcript
+  inspection only, use claude-session instead.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "2.2.1"
+  version: "2.2.2"
 ---
 
 # Claude Code CLI

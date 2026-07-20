@@ -11,7 +11,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.2"
+  version: "1.1.3"
   upstream_skill: "https://github.com/ogiberstein/lateral-thinking-skill"
 ---
 
@@ -22,38 +22,14 @@ Generate novel, testable ideas by finding mechanisms that transfer across fields
 Adapted from [ogiberstein/lateral-thinking-skill](https://github.com/ogiberstein/lateral-thinking-skill),
 with a repo-native rewrite for portability and clearer boundaries with nearby skills.
 
-Use this skill when ordinary analysis is already exhausted and the user needs a
-good second or third lens, not a recap of the obvious first one.
+Assume ordinary analysis is already exhausted. Deliver a second or third lens,
+not a recap of the obvious first one.
 
-## Invocation Choice
+## When the mechanism is muddy
 
-Use `lateral-thinking` for requests like:
-
-- "What are we missing?"
-- "Go deeper"
-- "Think laterally"
-- "Think cross-domain"
-- "We keep trying the obvious fixes and nothing changes"
-- "Give me non-obvious ideas"
-
-Typical fit:
-
-- product and strategy dead ends
-- system design problems with repeated failure patterns
-- research ideation
-- policy, operations, growth, or process problems that feel trapped in local optimization
-
-Use `distill` first if the user needs a clean explanation of what a system *is*.
-Answer directly for ordinary brainstorming, literature review, or standard
-best-practices requests.
-
-`distill` compresses a system to its essential primitives. `lateral-thinking`
-uses those primitives to generate non-obvious hypotheses.
-
-When both apply:
-
-1. Distill the problem first if the mechanism is still muddy
-2. Then use lateral thinking on the clarified skeleton
+If the problem's mechanism is still unclear, run `distill` first to compress
+it to essential primitives, then apply lateral thinking to the clarified
+skeleton. Skip straight to the workflow below if the skeleton is already clear.
 
 ## Ring Model
 

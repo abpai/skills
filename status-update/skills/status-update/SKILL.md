@@ -1,12 +1,12 @@
 ---
 name: status-update
 disable-model-invocation: true
-description: Summarize a long-running agent task as a concise, evidence-backed snapshot of completed outcomes, current activity, remaining work, friction, surprises, and any required user action. Use when the user asks for a status update, progress report, catch-up, what has been done, what is active, what is left, why work is taking so long, what blockers or issues exist, what improvements are locked in, or whether anything surprising changed the plan.
+description: Summarize a long-running or multi-agent task as a concise, evidence-backed snapshot of what's done, active, and left, plus friction, surprises, and required user action. Use for status updates and progress reports; pass `detailed` for the expanded report or a scope to narrow it to part of the task.
 argument-hint: "[detailed] [scope to report on]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.2"
+  version: "1.0.3"
   tags: "status progress long-running agents blockers handoff operations"
 ---
 
@@ -31,12 +31,12 @@ restart commands, deploy, or otherwise alter the task merely to report it.
 
 Inspect the smallest set of live sources that can answer the request:
 
-1. Read the task's current plan or goal, recent turns, active worker states, and
-   running command output.
-2. Check repository, PR, CI, or runtime state when a claim depends on it.
-3. Prefer current primary evidence over earlier commentary, plans, worker
-   claims, docs, or memory.
-4. State important unknowns instead of filling gaps with a plausible story.
+- Read the task's current plan or goal, recent turns, active worker states, and
+  running command output.
+- Check repository, PR, CI, or runtime state when a claim depends on it.
+- Prefer current primary evidence over earlier commentary, plans, worker
+  claims, docs, or memory.
+- State important unknowns instead of filling gaps with a plausible story.
 
 When reporting another Codex task, resolve the exact task first and read its
 recent turns. When reporting this task, use the current conversation and live

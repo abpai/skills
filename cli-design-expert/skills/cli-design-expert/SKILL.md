@@ -5,7 +5,7 @@ description: "Design, review, or refactor command-line interfaces for usability 
 license: CC-BY-SA-4.0
 compatibility: Works with any CLI language/framework. Best with an args parser library and POSIX conventions (stdout/stderr, exit codes, signals). See references/CLI_GUIDELINES.md.
 metadata:
-  version: "1.2.2"
+  version: "1.2.3"
   author: "cli-guidelines-community"
   upstream_guidelines: "https://clig.dev"
   reference_file: "references/CLI_GUIDELINES.md"
@@ -73,9 +73,9 @@ Treat any failure below as P0.
 - What are the core objects and verbs?
 - What must stay stable for automation (output format, exit codes, flags)?
 
-## Procedure: Design a new CLI (or add a command)
+## Designing a new CLI (or adding a command)
 
-### Step 1: Propose a command model
+### Command model
 
 - Keep the initial surface area small.
 - Choose one model and stay consistent:
@@ -86,7 +86,7 @@ Deliverable:
 
 - List of commands with one-line purposes.
 
-### Step 2: Decide positional args vs flags
+### Positional args vs flags
 
 Heuristic:
 
@@ -98,7 +98,7 @@ Deliverable:
 
 - Usage line + args/flags tables per command.
 
-### Step 3: Define output contract (human + machine)
+### Output contract (human + machine)
 
 - Define exactly what goes to stdout vs stderr.
 - Provide at least one machine-readable mode when helpful (commonly `--json`).
@@ -111,7 +111,7 @@ Deliverable:
 - Exit-code map
 - High-level `--json` schema (if supported)
 
-### Step 4: Write help text and examples
+### Help text and examples
 
 - `-h/--help` must work even when other args are wrong.
 - If run incorrectly, show a short error + the relevant usage + "use --help".
@@ -121,7 +121,7 @@ Deliverable:
 
 - Draft help text for top-level and relevant subcommands.
 
-### Step 5: Define errors and safety
+### Errors and safety
 
 - Errors must be actionable: what failed, why, and how to fix it.
 - Do not hide important failures behind generic codes or stack traces unless `--debug` is enabled.
@@ -131,7 +131,7 @@ Deliverable:
 
 - Error-message patterns + safety/confirmation design.
 
-### Step 6: Specify interactivity and TTY rules
+### Interactivity and TTY rules
 
 - Only prompt when stdin is a TTY.
 - If piped input is supported, read it. If not, fail quickly with guidance.
@@ -141,7 +141,7 @@ Deliverable:
 
 - TTY behavior table (TTY vs non-TTY).
 
-### Step 7: Add config and env vars (only if needed)
+### Config and env vars (only if needed)
 
 Use explicit precedence to avoid hidden config behavior:
 

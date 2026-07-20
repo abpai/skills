@@ -15,12 +15,12 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "3.1.2"
+  version: "3.1.3"
 ---
 
 # Code Workflow Pack
 
-This umbrella skill is the explicit, human-invoked entry point for the pack and the single scoped `/code` command users see in the `/` menu. Like every entrypoint here it sets `disable-model-invocation: true` (and `policy.allow_implicit_invocation: false` for Codex), so it runs only when a human invokes it. Each workflow also ships as its own `code/skills/<name>/SKILL.md`; those per-command skills additionally set `user-invocable: false` and `metadata.internal: true`, so they stay out of the `/` menu (no unscoped `/<name>` duplicates of the umbrella) and out of flat-list installers like the `npx skills` installer used by Codex. Reach any workflow through this umbrella — the subcommand router below maps `/code <name>` to the matching module. The workflow modules referenced below live beside this `SKILL.md` as flat support files.
+This umbrella skill is the pack's explicit, human-invoked entry point — the single `/code` command in the `/` menu. It sets `disable-model-invocation: true` (`policy.allow_implicit_invocation: false` for Codex), so it runs only on human invocation. Each workflow also ships as its own `code/skills/<name>/SKILL.md` with `user-invocable: false` and `metadata.internal: true`, keeping per-command duplicates out of the `/` menu and out of flat-list installers like Codex's `npx skills`. Reach every workflow through this umbrella: the subcommand router below maps `/code <name>` to its module, each living beside this `SKILL.md` as a flat support file.
 
 ## Subcommand invocation
 

@@ -1,12 +1,12 @@
 ---
 name: decision-worksheet
 disable-model-invocation: true
-description: Capture concise user feedback notes or build evidence-backed decision worksheets. Use when the user asks to record a correction, capture feedback about agent behavior, review many similar items one-by-one, triage keep/cut/unsubscribe/approve decisions, or says "go through X and let me decide on each."
+description: Capture a verbatim feedback/correction note, or build a self-contained HTML decision worksheet for triaging many similar items (keep/cut/unsubscribe/approve) one-by-one with evidence and rationale.
 argument-hint: "[feedback text or scope to review]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.1"
+  version: "1.1.2"
   tags: "decision review worksheet feedback capture triage ratify-override"
 ---
 

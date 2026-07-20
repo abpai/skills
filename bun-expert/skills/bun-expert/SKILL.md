@@ -10,7 +10,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.4.3"
+  version: "1.4.4"
   upstream_skill: "https://bun.com/docs"
   tags: "bun javascript typescript runtime server bundler test image webview"
 ---
@@ -303,11 +303,11 @@ resource-management syntax; browser and Node targets still lower it.
 
 ## Node.js Migration Checklist
 
-1. Install Bun and run `bun install`.
-2. Keep existing Node APIs where they work; Bun is highly Node-compatible.
-3. Replace tooling incrementally (`bun test`, `bun build`, `bun run`).
-4. Adopt Bun-native APIs where they simplify code (`Bun.serve`, `sql`, `redis`, `s3`, `Bun.$`).
-5. Run your full tests in CI on Bun before removing Node-specific fallbacks.
+Install Bun and run `bun install` first. Then, incrementally: keep existing
+Node APIs where they already work (Bun is highly Node-compatible), replace
+tooling (`bun test`, `bun build`, `bun run`), and adopt Bun-native APIs where
+they simplify code (`Bun.serve`, `sql`, `redis`, `s3`, `Bun.$`). Always run the
+full test suite in CI on Bun before removing any Node-specific fallback.
 
 Migration is complete when the lockfile is updated, the chosen Bun commands run
 locally, CI executes the same commands, and any retained Node fallback is named

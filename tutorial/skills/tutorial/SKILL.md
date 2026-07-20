@@ -3,9 +3,8 @@ name: tutorial
 disable-model-invocation: true
 description: >
   Write hands-on, self-verified, code-first tutorials where every step ends in a
-  runnable action and the reader finishes able to do the thing. Use when the
-  user asks for a tutorial, "show me how to", a step-by-step guide, setup
-  walkthrough, or a teach-me-to-build path where the reader follows along.
+  runnable action and the reader finishes able to do the thing. Use for
+  step-by-step guides and setup walkthroughs the reader follows along with.
 argument-hint: "[topic or concept to teach]"
 allowed-tools:
   - Read
@@ -17,7 +16,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Tutorial

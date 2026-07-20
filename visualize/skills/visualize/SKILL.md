@@ -3,13 +3,13 @@ name: visualize
 disable-model-invocation: true
 description: >-
   Generate self-contained HTML visualizations that teach systems, plans, code
-  flows, architectures, comparisons, timelines, and concepts. Use when the user
-  asks to visualize, diagram, make a visual explainer, or create an interactive
-  walkthrough where the visual artifact is the deliverable.
+  flows, architectures, comparisons, timelines, and concepts. Use when the
+  visual artifact itself — a diagram, explainer, or interactive walkthrough —
+  is the deliverable.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.3.2"
+  version: "1.3.3"
   upstream_skill: https://github.com/nicobailon/visual-explainer
 ---
 
