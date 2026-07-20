@@ -1,10 +1,11 @@
 ---
 name: improve-prompt
+disable-model-invocation: true
 description: Improve, rewrite, or sharpen prompts into reusable instructions. Use when the user has a rough request, wants a prompt template, needs less vagueness, sycophancy, or success theater in a planning, coding, review, eval, or decision prompt, or asks for a trustworthy final-summary or handoff prompt. Do not use for light copyediting, grammar cleanup, or humanizing prose.
 argument-hint: "[draft prompt or rough goal]"
 metadata:
   author: Andy Pai
-  version: "1.3.1"
+  version: "1.3.2"
   tags: "prompting prompt-engineering rewriting agent-workflows handoff"
 ---
 

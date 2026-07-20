@@ -1,3 +1,5 @@
+policy:
+  allow_implicit_invocation: false
 interface:
   display_name: "Status Update"
   short_description: "Understand long-running agent work quickly."

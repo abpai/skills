@@ -1,3 +1,5 @@
+policy:
+  allow_implicit_invocation: false
 interface:
   display_name: "Explain Concisely"
   short_description: "Make answers concise, actionable, and easy to scan."

@@ -1,16 +1,19 @@
 ---
 name: engineering
+disable-model-invocation: true
 description: "Route engineering-practice workflows through one scoped /engineering command. Use grill-me to stress-test a plan, tdd for behavior-first red/green/refactor, zoom-out for orientation, improve-architecture for deeper modules, defined-terms for DDD glossaries, complexity-report for read-only complexity findings, and reduce for plan simplification."
 argument-hint: "[subcommand] [args] - e.g. tdd add retries, complexity-report src/, reduce ship onboarding"
 metadata:
-  version: "2.0.0"
+  version: "2.0.1"
 ---
 
 # Engineering Workflow Pack
 
-This umbrella skill is the model-invocable entry point for the engineering
-workflow pack and the single scoped `/engineering` command users see in the `/`
-menu. Hidden wrappers stay out of model routing, menus, and flat-list
+This umbrella skill is the explicit, human-invoked entry point for the
+engineering workflow pack and the single scoped `/engineering` command users see
+in the `/` menu. Like every entrypoint here it is explicit-only
+(`disable-model-invocation: true`; `policy.allow_implicit_invocation: false` for
+Codex). Hidden wrappers additionally stay out of menus and flat-list
 installers; reach every workflow through `/engineering <name>`.
 
 ## Subcommand invocation

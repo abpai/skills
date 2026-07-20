@@ -1,14 +1,15 @@
 ---
 name: harness
+disable-model-invocation: true
 description: "Route agent-harness workflows through one scoped /harness command. Use guide for scenario-based first-audit, adoption, CI, self-review, and tune-up instructions; baseline to inventory production behavior at repo scale; docs for agent-ready guidance; doctor for verification-first readiness and diff audits; compliant for end-to-end remediation including dependency hardening; secure-dependencies for lockfile and supply-chain policy; capture to pin one behavior surface; onboard for autonomous-ready manifests; evals for proof-menu cases; and dogfood for skill hardening."
 argument-hint: "[subcommand] [args] - e.g. guide, baseline, docs, doctor, compliant, secure-dependencies, capture, onboard, evals, dogfood"
 metadata:
-  version: "1.8.1"
+  version: "1.8.2"
 ---
 
 # Harness Workflow Pack
 
-This umbrella skill is the model-invocable entry point for agent harness work: the designed repository environment that lets coding agents find the right code, owner, invariant, and validation path quickly — and prove their work end-to-end. Verification loops are the product; docs are the routing layer.
+This umbrella skill is the explicit, human-invoked entry point for agent harness work: the designed repository environment that lets coding agents find the right code, owner, invariant, and validation path quickly — and prove their work end-to-end. Verification loops are the product; docs are the routing layer.
 
 Hidden wrappers stay out of model routing, menus, and flat-list installers.
 Reach every workflow through this umbrella; the workflow modules referenced

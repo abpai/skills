@@ -1,5 +1,6 @@
 ---
 name: code
+disable-model-invocation: true
 description: "Route coding workflows through one scoped /code command. Use prepare-pr for effort-scaled PR readiness through push, simplify for behavior-preserving cleanup and high-signal test pruning of a target or a ranked whole-repo proposal, handoff for continuation prompts, and understand for an HTML code map plus a runnable real-code snippet."
 argument-hint: "[subcommand] [args] - e.g. prepare-pr --effort low, simplify src/api, understand login flow, handoff"
 # allowed-tools belongs on the umbrella because hidden wrappers never become the
@@ -14,12 +15,12 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "3.1.1"
+  version: "3.1.2"
 ---
 
 # Code Workflow Pack
 
-This umbrella skill is the model-invocable entry point for the pack and the single scoped `/code` command users see in the `/` menu. Each workflow also ships as its own `code/skills/<name>/SKILL.md`, but those per-command skills set `disable-model-invocation: true`, `user-invocable: false`, and `metadata.internal: true`, so they stay out of the model's auto-invocation, out of the `/` menu (no unscoped `/<name>` duplicates of the umbrella), and out of flat-list installers like the `npx skills` installer used by Codex. Reach any workflow through this umbrella — the subcommand router below maps `/code <name>` to the matching module. The workflow modules referenced below live beside this `SKILL.md` as flat support files.
+This umbrella skill is the explicit, human-invoked entry point for the pack and the single scoped `/code` command users see in the `/` menu. Like every entrypoint here it sets `disable-model-invocation: true` (and `policy.allow_implicit_invocation: false` for Codex), so it runs only when a human invokes it. Each workflow also ships as its own `code/skills/<name>/SKILL.md`; those per-command skills additionally set `user-invocable: false` and `metadata.internal: true`, so they stay out of the `/` menu (no unscoped `/<name>` duplicates of the umbrella) and out of flat-list installers like the `npx skills` installer used by Codex. Reach any workflow through this umbrella — the subcommand router below maps `/code <name>` to the matching module. The workflow modules referenced below live beside this `SKILL.md` as flat support files.
 
 ## Subcommand invocation
 

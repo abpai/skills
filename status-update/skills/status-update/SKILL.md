@@ -1,11 +1,12 @@
 ---
 name: status-update
+disable-model-invocation: true
 description: Summarize a long-running agent task as a concise, evidence-backed snapshot of completed outcomes, current activity, remaining work, friction, surprises, and any required user action. Use when the user asks for a status update, progress report, catch-up, what has been done, what is active, what is left, why work is taking so long, what blockers or issues exist, what improvements are locked in, or whether anything surprising changed the plan.
 argument-hint: "[detailed] [scope to report on]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.1"
+  version: "1.0.2"
   tags: "status progress long-running agents blockers handoff operations"
 ---
 

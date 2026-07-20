@@ -1,5 +1,6 @@
 ---
 name: codex-session
+disable-model-invocation: true
 description: >
   Locate, read, and summarize local Codex CLI transcripts by session or rollout
   UUID. Use when the user supplies a Codex session ID or asks what a Codex
@@ -9,7 +10,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Codex Session
