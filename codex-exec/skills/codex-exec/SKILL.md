@@ -1,5 +1,6 @@
 ---
 name: codex-exec
+disable-model-invocation: true
 description: >
   Launch or monitor the Codex CLI as a headless worker. Use only for explicit
   requests to ask, delegate to, run, or review with Codex; resume or continue a
@@ -9,7 +10,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "2.2.0"
+  version: "2.2.1"
 ---
 
 # Codex CLI

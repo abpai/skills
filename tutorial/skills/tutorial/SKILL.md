@@ -1,5 +1,6 @@
 ---
 name: tutorial
+disable-model-invocation: true
 description: >
   Write hands-on, self-verified, code-first tutorials where every step ends in a
   runnable action and the reader finishes able to do the thing. Use when the
@@ -16,7 +17,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Tutorial

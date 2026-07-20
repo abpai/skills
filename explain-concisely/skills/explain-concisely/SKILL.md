@@ -1,5 +1,6 @@
 ---
 name: explain-concisely
+disable-model-invocation: true
 description: >
   Turn explanations, instructions, debugging guidance, plans, and status updates
   into concise, action-first responses that are easy to scan and act on. Use
@@ -9,7 +10,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.0"
+  version: "1.0.1"
   upstream_author: Ayoub Ghriss
   upstream_license: MIT
   upstream_skill: "https://github.com/ayghri/i-have-adhd/blob/72c33eee81ea439cf01991e93729adfce2ffc99e/skills/i-have-adhd/SKILL.md"

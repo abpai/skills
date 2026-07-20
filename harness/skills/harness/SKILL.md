@@ -1,9 +1,10 @@
 ---
 name: harness
+disable-model-invocation: true
 description: "Route agent-harness workflows through one scoped /harness command. Use guide for scenario-based first-audit, adoption, CI, self-review, and tune-up instructions; baseline to inventory production behavior at repo scale; docs for agent-ready guidance; doctor for verification-first readiness and diff audits; compliant for end-to-end remediation including dependency hardening; secure-dependencies for lockfile and supply-chain policy; capture to pin one behavior surface; onboard for autonomous-ready manifests; evals for proof-menu cases; and dogfood for skill hardening."
 argument-hint: "[subcommand] [args] - e.g. guide, baseline, docs, doctor, compliant, secure-dependencies, capture, onboard, evals, dogfood"
 metadata:
-  version: "1.8.1"
+  version: "1.8.2"
 ---
 
 # Harness Workflow Pack
