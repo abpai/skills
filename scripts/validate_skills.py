@@ -273,11 +273,22 @@ def validate_skill_md(
                 "'user-invocable: false' (wrappers must stay out of the Claude Code "
                 "/ menu so the umbrella is the only scoped entry)"
             )
-    elif internal and user_invocable == "false":
-        rep.fail(
-            f"{path}: command-only internal skills must omit 'user-invocable' or "
-            "set it to true so humans can invoke them explicitly"
-        )
+    elif not is_umbrella:
+        # Umbrella-less pack (pi): the phase commands are the only entrypoints,
+        # so they stay human-invocable, but they must keep metadata.internal so
+        # flat-list installers do not surface them as standalone skills.
+        if not internal:
+            rep.fail(
+                f"{path}: phase command in an umbrella-less pack requires "
+                "'metadata.internal: true' (keeps the phase out of flat-list "
+                "installers like npx skills/Codex; add a metadata block with "
+                "'internal: true')"
+            )
+        if user_invocable == "false":
+            rep.fail(
+                f"{path}: command-only internal skills must omit 'user-invocable' or "
+                "set it to true so humans can invoke them explicitly"
+            )
     elif user_invocable == "false":
         rep.fail(
             f"{path}: public explicit-only skills must omit 'user-invocable' or "
@@ -293,6 +304,7 @@ def validate_openai_yaml(path: Path, skill_name: str, rep: Reporter) -> None:
     # runs apply the same quoting and indentation contract.
     portable_interface: dict[str, str] = {}
     portable_policy: dict[str, bool] = {}
+    policy_malformed = False
     in_interface = False
     in_policy = False
     for line in text.splitlines():
@@ -307,6 +319,10 @@ def validate_openai_yaml(path: Path, skill_name: str, rep: Reporter) -> None:
         if (in_interface or in_policy) and line and not line[0].isspace():
             in_interface = False
             in_policy = False
+        # Blank lines and comments are structural noise in either block; the
+        # two blocks are commonly separated by a blank line.
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
         if in_policy:
             match = re.fullmatch(r"  allow_implicit_invocation:\s*(true|false)\s*", line)
             if match is None:
@@ -314,10 +330,13 @@ def validate_openai_yaml(path: Path, skill_name: str, rep: Reporter) -> None:
                     f"{path}: policy must contain exactly two-space indented "
                     "allow_implicit_invocation: false"
                 )
-                return
+                # Keep scanning so interface problems surface in the same run
+                # instead of one per fix-and-rerun cycle.
+                policy_malformed = True
+                continue
             portable_policy["allow_implicit_invocation"] = match.group(1) == "true"
             continue
-        if not in_interface or not line.strip() or line.lstrip().startswith("#"):
+        if not in_interface:
             continue
         match = re.fullmatch(r'  ([a-z_]+):\s*"([^"]*)"\s*', line)
         if match is None:
@@ -350,11 +369,12 @@ def validate_openai_yaml(path: Path, skill_name: str, rep: Reporter) -> None:
 
     policy = data.get("policy")
     if not isinstance(policy, dict) or policy.get("allow_implicit_invocation") is not False:
-        rep.fail(
-            f"{path}: must set policy.allow_implicit_invocation: false "
-            "so Codex does not invoke this skill implicitly"
-        )
-        return
+        # A malformed portable policy line already reported the specific defect.
+        if not policy_malformed:
+            rep.fail(
+                f"{path}: must set policy.allow_implicit_invocation: false "
+                "so Codex does not invoke this skill implicitly"
+            )
 
     interface = data.get("interface")
     if interface is None:

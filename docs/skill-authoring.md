@@ -76,9 +76,22 @@ metadata:
 `scripts/validate-skills.sh` enforces this wrapper shape and the explicit-only
 policy for every entrypoint. It fails when a hidden wrapper omits
 `metadata.internal: true`, and for packs with an umbrella it also requires
-`user-invocable: false`. Command-only Pi phase skills retain their existing
-`metadata.internal: true` packaging marker but remain human-invocable because
-Pi has no umbrella router.
+`user-invocable: false`. Command-only Pi phase skills must also carry
+`metadata.internal: true` — the validator requires it — but they stay
+human-invocable because Pi has no umbrella router.
+
+Both fields are product features, not repo conventions. Check the upstream
+specs before changing this shape:
+
+- `disable-model-invocation` and `user-invocable`:
+  https://code.claude.com/docs/en/skills#control-who-invokes-a-skill
+- `policy.allow_implicit_invocation` (defaults to `true`; setting `false` keeps
+  explicit `$skill` invocation working while suppressing prompt-matched
+  invocation): https://learn.chatgpt.com/docs/build-skills
+
+`agents/openai.yaml` upstream also accepts `dependencies` and further
+`interface` keys. This repo validates only `policy` plus the three `interface`
+fields it requires; other keys pass through untouched.
 
 Keep wrappers tiny. They should load the module, pass arguments, stop if the
 module cannot be read, and preserve only one or two workflow-specific invariants.
