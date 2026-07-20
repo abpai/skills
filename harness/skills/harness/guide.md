@@ -195,9 +195,16 @@ enforcement.
 2. Load `doctor.md` and follow **Pinned scanner and CI setup**. Select one exact
    package-manager command; do not copy the whole recipe into the response.
 3. Write only config fields that exist on the pinned scanner's
-   `HarnessDoctorConfig`, per `doctor.md` setup step 3. No released scanner
-   enforces behavior-baseline integrity, so CI cannot prove it — say so rather
-   than implying the baseline is enforced.
+   `HarnessDoctorConfig`, per `doctor.md` setup step 3. If that pinned type and
+   `--help` do not expose behavior-baseline enforcement, CI cannot prove it —
+   say so rather than implying the baseline is enforced. When dead-code
+   discovery is in scope, keep Knip behind Harness Doctor, preserve or add the
+   repo-owned Knip config described there, and ensure the package script
+   includes both `--dead-code` and `--warnings`; otherwise warning-only
+   dead-code findings may be filtered before the analysis runs. Include
+   `--no-score` so this
+   deterministic CI lane does not call the score/share service, and retain its
+   stdout JSON plus stderr hints as one proof receipt.
 4. If the repo has no CI system from any provider, authoring the first workflow
    is its own approval-gated step, not an edit to an existing job: it commits the
    repo to triggers, a runner image, and checkout/setup steps this skill does not
@@ -206,10 +213,15 @@ enforcement.
    the `harness:check` invocation to that system.
 5. Ask a repository administrator whether the passing CI job should become a
    required branch-protection check. Do not attempt that policy change silently.
+   The starter `--fail-on error` command enforces scanner execution and error
+   rules but only surfaces warning-level dead-code candidates. Call it advisory
+   dead-code visibility until a maintainer explicitly chooses the broader
+   `--fail-on warning` gate or promotes selected `knip/<rule>` overrides to
+   `error`.
 
-CI setup is done when a clean checkout installs the pinned scanner and the same
-`harness:check` command passes locally and in CI. CI runs facts; an agent runs
-the semantic workflows.
+CI setup is done when a clean checkout installs the pinned scanner, the same
+`harness:check` command passes locally and in CI, and no requested dead-code pass
+appears in `skippedChecks`. CI runs facts; an agent runs the semantic workflows.
 
 ## Tutorial: agent self-review
 
