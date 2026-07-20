@@ -3,6 +3,15 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 CLAUDE_RUN="$ROOT_DIR/claude/skills/claude/scripts/claude-run.sh"
+
+# Pre-commit exports GIT_* for the checkout it is validating. This suite builds
+# independent repositories below TMP_DIR, so that inherited context redirects
+# their fixture Git commands back to the checkout. No test needs a Git override;
+# remove only inherited Git context before creating any fixture.
+for git_env in "${!GIT_@}"; do
+  unset "$git_env"
+done
+
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/claude-runner-test.XXXXXX")"
 trap 'rm -rf "$TMP_DIR"' EXIT
 

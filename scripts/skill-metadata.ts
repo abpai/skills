@@ -6,7 +6,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, join, relative, sep } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { spawnSync } from "node:child_process";
 
 type JsonObject = Record<string, unknown>;
@@ -349,11 +349,21 @@ function parseRoot(args: string[]): { root: string; args: string[] } {
   return { root, args: rest };
 }
 
+function environmentForRoot(root: string): NodeJS.ProcessEnv | undefined {
+  // A caller can inspect a temporary repository through --root. Hook runners
+  // export GIT_* for their checkout, which would redirect that inspection away
+  // from the requested root. Preserve the inherited context only for the
+  // process repository, where it is intentionally valid.
+  if (resolve(root) === process.cwd()) return undefined;
+  return Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")));
+}
+
 function git(root: string, args: string[], { input, allowFail }: { input?: string; allowFail?: boolean } = {}): string {
   const result = spawnSync("git", args, {
     cwd: root,
     input,
     encoding: "utf8",
+    env: environmentForRoot(root),
   });
   if (result.error) {
     throw result.error;
