@@ -1,5 +1,6 @@
 ---
 name: claude
+disable-model-invocation: true
 description: >
   Run Claude Code from Codex as a headless external worker. Use only for explicit
   requests to ask, delegate to, run, or review with Claude; continue a Claude
@@ -9,7 +10,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "2.2.0"
+  version: "2.2.1"
 ---
 
 # Claude Code CLI

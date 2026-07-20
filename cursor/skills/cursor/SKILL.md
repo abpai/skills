@@ -1,5 +1,6 @@
 ---
 name: cursor
+disable-model-invocation: true
 description: >
   Run, monitor, resume, or review work with Cursor Agent and Cursor models.
   Use when delegating bounded implementation, investigation, planning, or
@@ -7,7 +8,7 @@ description: >
   when continuing an exact Cursor chat from another agent workflow.
 license: MIT
 metadata:
-  version: "2.2.1"
+  version: "2.2.2"
 ---
 
 # Cursor

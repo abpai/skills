@@ -237,10 +237,16 @@ def validate_skill_md(
     internal = _detect_internal(fm_lines)
     is_umbrella = skill_name == plugin_name
 
-    # Finding 9: when a plugin has an umbrella, EVERY non-umbrella sibling skill
-    # is a per-command wrapper and MUST be hidden — disable-model-invocation +
-    # metadata.internal + user-invocable: false. `pi` has no umbrella, so its
-    # phase commands fall into the elif branch. See CLAUDE.md.
+    if not disable_mi:
+        rep.fail(
+            f"{path}: every skill entrypoint must set "
+            "'disable-model-invocation: true'; skills are human-invoked only"
+        )
+
+    # A grouped pack's leaf entries are implementation shims. Pi remains a
+    # command-only exception: its phase skills retain metadata.internal for
+    # flat-installer packaging but stay human-invocable because it has no
+    # umbrella router.
     if has_umbrella and not is_umbrella:
         if has_allowed_tools:
             rep.fail(
@@ -267,28 +273,50 @@ def validate_skill_md(
                 "'user-invocable: false' (wrappers must stay out of the Claude Code "
                 "/ menu so the umbrella is the only scoped entry)"
             )
-    elif disable_mi and not internal:
+    elif internal and user_invocable == "false":
         rep.fail(
-            f"{path}: 'disable-model-invocation: true' requires 'metadata.internal: "
-            "true' (hide user-only wrappers from flat-list installers like npx "
-            "skills/Codex; add a metadata block with 'internal: true')"
+            f"{path}: command-only internal skills must omit 'user-invocable' or "
+            "set it to true so humans can invoke them explicitly"
+        )
+    elif user_invocable == "false":
+        rep.fail(
+            f"{path}: public explicit-only skills must omit 'user-invocable' or "
+            "set it to true"
         )
 
 
 def validate_openai_yaml(path: Path, skill_name: str, rep: Reporter) -> None:
-    """Validate optional Codex UI metadata stored beside a skill."""
+    """Validate required Codex policy and optional UI metadata beside a skill."""
     text = path.read_text(encoding="utf-8")
 
     # Enforce the portable subset even when PyYAML is available so local and CI
     # runs apply the same quoting and indentation contract.
     portable_interface: dict[str, str] = {}
+    portable_policy: dict[str, bool] = {}
     in_interface = False
+    in_policy = False
     for line in text.splitlines():
         if line == "interface:":
             in_interface = True
+            in_policy = False
             continue
-        if in_interface and line and not line[0].isspace():
-            break
+        if line == "policy:":
+            in_policy = True
+            in_interface = False
+            continue
+        if (in_interface or in_policy) and line and not line[0].isspace():
+            in_interface = False
+            in_policy = False
+        if in_policy:
+            match = re.fullmatch(r"  allow_implicit_invocation:\s*(true|false)\s*", line)
+            if match is None:
+                rep.fail(
+                    f"{path}: policy must contain exactly two-space indented "
+                    "allow_implicit_invocation: false"
+                )
+                return
+            portable_policy["allow_implicit_invocation"] = match.group(1) == "true"
+            continue
         if not in_interface or not line.strip() or line.lstrip().startswith("#"):
             continue
         match = re.fullmatch(r'  ([a-z_]+):\s*"([^"]*)"\s*', line)
@@ -310,15 +338,29 @@ def validate_openai_yaml(path: Path, skill_name: str, rep: Reporter) -> None:
         # Keep the required interface contract enforceable in the repo's
         # supported no-PyYAML environment. Strict YAML validation remains an
         # additional gate when PyYAML is installed.
-        data = {"interface": portable_interface} if in_interface else {}
+        data = {}
+        if portable_interface:
+            data["interface"] = portable_interface
+        if portable_policy:
+            data["policy"] = portable_policy
 
     if not isinstance(data, dict):
         rep.fail(f"{path}: must contain a YAML mapping")
         return
 
+    policy = data.get("policy")
+    if not isinstance(policy, dict) or policy.get("allow_implicit_invocation") is not False:
+        rep.fail(
+            f"{path}: must set policy.allow_implicit_invocation: false "
+            "so Codex does not invoke this skill implicitly"
+        )
+        return
+
     interface = data.get("interface")
+    if interface is None:
+        return
     if not isinstance(interface, dict):
-        rep.fail(f"{path}: missing 'interface' mapping")
+        rep.fail(f"{path}: interface must be a mapping when present")
         return
 
     for field in ("display_name", "short_description", "default_prompt"):
@@ -586,7 +628,12 @@ def validate_plugin(plugin_dir: Path, rep: Reporter) -> None:
             ),
         )
         openai_yaml = skill_file.parent / "agents" / "openai.yaml"
-        if openai_yaml.is_file():
+        if not openai_yaml.is_file():
+            rep.fail(
+                f"{skill_file}: missing agents/openai.yaml with "
+                "policy.allow_implicit_invocation: false"
+            )
+        else:
             run_guarded(
                 rep,
                 str(openai_yaml),

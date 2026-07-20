@@ -1,5 +1,6 @@
 ---
 name: bun-expert
+disable-model-invocation: true
 description: >
   Bun runtime guidance for JavaScript and TypeScript projects. Use when
   starting Bun projects, managing packages, building HTTP servers, using Bun
@@ -9,7 +10,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.4.2"
+  version: "1.4.3"
   upstream_skill: "https://bun.com/docs"
   tags: "bun javascript typescript runtime server bundler test image webview"
 ---

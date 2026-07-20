@@ -1,5 +1,6 @@
 ---
 name: distill
+disable-model-invocation: true
 description: >
   Decompose a complex system into essential primitives and a compressed mental model.
   Use when the user asks to distill, boil down, find core abstractions, get the
@@ -16,7 +17,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2.1"
+  version: "1.2.2"
 ---
 
 # Distill
