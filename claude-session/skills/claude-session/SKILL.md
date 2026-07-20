@@ -1,5 +1,6 @@
 ---
 name: claude-session
+disable-model-invocation: true
 description: >
   Locate, read, and summarize local Claude Code transcripts by session UUID.
   Use first whenever the user supplies a Claude session ID — even alongside
@@ -10,7 +11,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # Claude Session

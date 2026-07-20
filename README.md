@@ -197,9 +197,14 @@ material that should be bundled without becoming separate skills.
 > [skills command-name rules](https://code.claude.com/docs/en/skills#how-a-skill-gets-its-command-name)
 > ("Use `skills/` for new plugins").
 
+Every skill entrypoint in this marketplace is explicit-only: humans invoke it
+with `$skill` in Codex or `/skill` in Claude. `SKILL.md` sets
+`disable-model-invocation: true` for Claude and the skill-local
+`agents/openai.yaml` sets `policy.allow_implicit_invocation: false` for Codex.
+
 The pattern for a grouped workflow pack:
 
-- `skills/<plugin>/SKILL.md` — the model-invocable **umbrella** skill that
+- `skills/<plugin>/SKILL.md` — the explicit human-invoked **umbrella** skill that
   collapses to `/<plugin>` (the single scoped entry in the `/` menu) and routes
   `/<plugin> <workflow>` to the bundled workflow modules (`skills/<plugin>/*.md`,
   which are loose support files, not skills).
@@ -214,7 +219,12 @@ The pattern for a grouped workflow pack:
   leaving wrappers user-invocable sprawls those leaf-name entries across the menu
   where they collide with each other and with built-ins (e.g. a pack's `/review`
   next to the built-in `/review`). (A pack with no umbrella, like `pi`, keeps its
-  phase commands user-invocable since there is no router to fall back to.)
+  phase commands user-invocable since there is no router to fall back to; their
+  `metadata.internal` marker is retained for installer packaging.)
+
+The umbrella directly reads its bundled Markdown modules and review patterns
+after the human invocation. Those modules are not entrypoint skills and do not
+need their own invocation policy.
 
 If you reintroduce a `commands/` directory, the namespaced commands disappear.
 Keep new workflows as `skills/<name>/SKILL.md`.
@@ -372,11 +382,12 @@ validation script below, which checks both Claude and Codex manifests.
 This repo includes a comprehensive validator at `scripts/validate-skills.sh` that checks:
 
 - Claude and Codex plugin manifests (name, version, description, paths)
-- SKILL.md frontmatter (name, description, version metadata for
-  model-invocable skills)
-- Agent frontmatter and grouped-pack wrapper invariants (a wrapper with
-  `disable-model-invocation` must also set `metadata.internal`, and
-  `user-invocable: false` when its pack has an umbrella)
+- SKILL.md frontmatter (name, description, explicit-only Claude policy, and
+  version metadata for public umbrella skills)
+- Skill-local Codex policy (`agents/openai.yaml` must set
+  `policy.allow_implicit_invocation: false`) and grouped-pack wrapper
+  invariants (wrappers with an umbrella require `metadata.internal: true` and
+  `user-invocable: false`)
 - Both marketplace.json catalogs (completeness and consistency)
 - versions.json (all skills present with matching versions)
 - docs/index.html catalog cards, versions, and plugin counts

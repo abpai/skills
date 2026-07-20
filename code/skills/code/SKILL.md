@@ -1,5 +1,6 @@
 ---
 name: code
+disable-model-invocation: true
 description: "Route coding workflows through one scoped /code command. Use prepare-pr for effort-scaled PR readiness through push, simplify for behavior-preserving cleanup and high-signal test pruning of a target or a ranked whole-repo proposal, handoff for continuation prompts, and understand for an HTML code map plus a runnable real-code snippet."
 argument-hint: "[subcommand] [args] - e.g. prepare-pr --effort low, simplify src/api, understand login flow, handoff"
 # allowed-tools belongs on the umbrella because hidden wrappers never become the
@@ -14,7 +15,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "3.1.1"
+  version: "3.1.2"
 ---
 
 # Code Workflow Pack

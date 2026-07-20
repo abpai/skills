@@ -1,9 +1,10 @@
 ---
 name: engineering
+disable-model-invocation: true
 description: "Route engineering-practice workflows through one scoped /engineering command. Use grill-me to stress-test a plan, tdd for behavior-first red/green/refactor, zoom-out for orientation, improve-architecture for deeper modules, defined-terms for DDD glossaries, complexity-report for read-only complexity findings, and reduce for plan simplification."
 argument-hint: "[subcommand] [args] - e.g. tdd add retries, complexity-report src/, reduce ship onboarding"
 metadata:
-  version: "2.0.0"
+  version: "2.0.1"
 ---
 
 # Engineering Workflow Pack
