@@ -1,8 +1,11 @@
 name: Validate PR
 
 on:
+  # Deliberately unfiltered by base branch. Restricting to `branches: [main]`
+  # meant a PR stacked on another branch ran zero checks, which is how #100
+  # merged unvalidated. Stacked work is exactly where validation is easiest to
+  # skip by accident, so every PR runs the same gate regardless of its base.
   pull_request:
-    branches: [main]
 
 jobs:
   validate-skills:
