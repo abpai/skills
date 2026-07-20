@@ -14,9 +14,10 @@ There are two different `agents/` conventions:
 
 - `<plugin>/agents/*.md` contains Claude agent definitions and is a plugin-root
   runtime directory.
-- `<plugin>/skills/<skill>/agents/openai.yaml` contains optional Codex UI
-  metadata for that skill, including its display name, short description, and
-  default prompt. It stays beside the owning `SKILL.md`; do not move it to the
+- `<plugin>/skills/<skill>/agents/openai.yaml` contains the required Codex
+  invocation policy (`policy.allow_implicit_invocation: false`) and may also
+  contain UI metadata such as display name, short description, and default
+  prompt. It stays beside the owning `SKILL.md`; do not move it to the
   plugin-root `agents/` directory.
 
 `scripts/validate-skills.sh` validates both surfaces independently.
@@ -44,10 +45,22 @@ https://code.claude.com/docs/en/skills#how-a-skill-gets-its-command-name
 
 ## Grouped workflow packs
 
-Grouped workflow packs use two layers:
+Every skill entrypoint is explicit-only across both products:
 
-- `skills/<plugin>/SKILL.md`: model-invocable umbrella skill that routes to flat
-  sibling workflow modules such as `./prepare-pr.md`.
+```yaml
+# SKILL.md (Claude)
+disable-model-invocation: true
+
+# agents/openai.yaml (Codex)
+policy:
+  allow_implicit_invocation: false
+```
+
+Public skills remain human-invocable (omit `user-invocable` or set it to
+`true`). Grouped workflow packs use two layers:
+
+- `skills/<plugin>/SKILL.md`: explicit human-invoked umbrella skill that routes
+  to flat sibling workflow modules such as `./prepare-pr.md`.
 - `skills/<workflow>/SKILL.md`: hidden per-command wrapper that loads the
   umbrella module via `../<plugin>/<workflow>.md` and passes arguments through.
 
@@ -60,13 +73,34 @@ metadata:
   internal: true
 ```
 
-`scripts/validate-skills.sh` enforces this wrapper shape. It fails when a hidden
-wrapper omits `metadata.internal: true`, and for packs with an umbrella it also
-requires `user-invocable: false`.
+`scripts/validate-skills.sh` enforces this wrapper shape and the explicit-only
+policy for every entrypoint. It fails when a hidden wrapper omits
+`metadata.internal: true`, and for packs with an umbrella it also requires
+`user-invocable: false`. Command-only Pi phase skills must also carry
+`metadata.internal: true` — the validator requires it — but they stay
+human-invocable because Pi has no umbrella router.
+
+Both fields are product features, not repo conventions. Check the upstream
+specs before changing this shape:
+
+- `disable-model-invocation` and `user-invocable`:
+  https://code.claude.com/docs/en/skills#control-who-invokes-a-skill
+- `policy.allow_implicit_invocation` (defaults to `true`; setting `false` keeps
+  explicit `$skill` invocation working while suppressing prompt-matched
+  invocation): https://learn.chatgpt.com/docs/build-skills
+
+`agents/openai.yaml` upstream also accepts `dependencies` and further
+`interface` keys. This repo validates only `policy` plus the three `interface`
+fields it requires; other keys pass through untouched.
 
 Keep wrappers tiny. They should load the module, pass arguments, stop if the
 module cannot be read, and preserve only one or two workflow-specific invariants.
 Broad tool allowlists belong on the umbrella, not the wrapper.
+
+Routed Markdown modules and review patterns are support files, not skill
+entrypoints. Once a human explicitly invokes an umbrella (for example,
+`$code prepare-pr` in Codex or `/code prepare-pr` in Claude), the umbrella
+loads those files directly; they do not need separate invocation policies.
 
 Umbrellas should accept `<plugin> <workflow> ...` and `<plugin> --<workflow> ...`,
 strip a leading `--`, match the first token against known workflow names, and
@@ -119,7 +153,7 @@ that dogfood was intentionally skipped and why.
 
 When changing a plugin, bump its version source so users receive the update:
 
-- model-invocable skills: `metadata.version` in the public `SKILL.md`
+- public skills: `metadata.version` in the public `SKILL.md`
 - command-only plugins: `.claude-plugin/plugin.json` version
 - plugin manifests: `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json`
 - root version index: `versions.json`

@@ -1,5 +1,6 @@
 ---
 name: visualize
+disable-model-invocation: true
 description: >-
   Generate self-contained HTML visualizations that teach systems, plans, code
   flows, architectures, comparisons, timelines, and concepts. Use when the user
@@ -8,7 +9,7 @@ description: >-
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.3.1"
+  version: "1.3.2"
   upstream_skill: https://github.com/nicobailon/visual-explainer
 ---
 

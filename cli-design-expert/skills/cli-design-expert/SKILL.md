@@ -1,10 +1,11 @@
 ---
 name: cli-design-expert
+disable-model-invocation: true
 description: "Design, review, or refactor command-line interfaces for usability and automation. Use for help text, args/flags, stdout vs stderr, exit codes, TTY behavior, config precedence, and safe handling of secrets and destructive actions."
 license: CC-BY-SA-4.0
 compatibility: Works with any CLI language/framework. Best with an args parser library and POSIX conventions (stdout/stderr, exit codes, signals). See references/CLI_GUIDELINES.md.
 metadata:
-  version: "1.2.1"
+  version: "1.2.2"
   author: "cli-guidelines-community"
   upstream_guidelines: "https://clig.dev"
   reference_file: "references/CLI_GUIDELINES.md"

@@ -225,6 +225,33 @@ if ! resolve_agent_bin; then
   exit 127
 fi
 
+known_model_ids() {
+  local ids
+  ids="$("$CURSOR_AGENT_BIN" models 2>/dev/null |
+    sed $'s/\033\\[[0-9;]*m//g' |
+    awk 'NF { print $1 }')"
+  # Only a list carrying Cursor's always-present `auto` id is trustworthy enough
+  # to reject a run over. Anything else means the probe failed or the output
+  # format moved, and Cursor itself stays the authority on valid ids.
+  grep -qxF auto <<<"$ids" || return 1
+  printf '%s\n' "$ids"
+}
+
+# Cursor rejects an unknown --model at spawn, which costs a run directory and
+# reads like a generic failure. Reject it here instead, while the available ids
+# are still cheap to show. Fails open: an unreadable model list never blocks.
+if [[ -n "$MODEL" ]]; then
+  if MODEL_IDS="$(known_model_ids)" && ! grep -qxF "$MODEL" <<<"$MODEL_IDS"; then
+    {
+      printf '[FAIL] unknown --model %s\n' "$MODEL"
+      printf 'Run `%s models` for the full list. Closest ids:\n' "$CURSOR_AGENT_BIN"
+      grep -iF "${MODEL%%[-.]*}" <<<"$MODEL_IDS" | head -8 | sed 's/^/  /'
+      printf 'Omit --model to use the model already selected in Cursor.\n'
+    } | tee -a "$RUNNER_LOG" >&2
+    exit 2
+  fi
+fi
+
 agent_cmd=("$CURSOR_AGENT_BIN" -p --output-format stream-json --stream-partial-output --trust)
 if [[ "$RESUMING" == "true" ]]; then agent_cmd+=(--resume "$SESSION_ID"); fi
 [[ -z "$MODEL" ]] || agent_cmd+=(--model "$MODEL")
@@ -568,4 +595,10 @@ write_run_env
 write_status "$FINAL_STATE" "$EXIT_CODE" "$ELAPSED" "$FINAL_STATE" 0 finish
 RUN_FINALIZED="true"
 printf '[cursor-run] event=finish state=%s exit_code=%s elapsed=%ss session_id=%s model=%s final=%q\n' "$FINAL_STATE" "$EXIT_CODE" "$ELAPSED" "$SESSION_ID" "$RESOLVED_MODEL" "$FINAL_MESSAGE"
+# A run that dies before Cursor answers leaves final.md empty, so the parent sees
+# only an exit code. Echo the stderr tail so the reason arrives with the failure.
+if [[ "$FINAL_STATE" == "failed" && ! -s "$FINAL_MESSAGE" && -s "$STDERR_LOG" ]]; then
+  printf '[cursor-run] event=failure-reason stderr_log=%q\n' "$STDERR_LOG"
+  tail -c 2000 "$STDERR_LOG" | sed 's/^/[cursor-run] stderr| /'
+fi
 exit "$EXIT_CODE"

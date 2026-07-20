@@ -1,14 +1,15 @@
 ---
 name: harness
+disable-model-invocation: true
 description: "Route agent-harness workflows through one scoped /harness command. Use guide for scenario-based first-audit, adoption, CI, self-review, and tune-up instructions; baseline to inventory production behavior at repo scale; docs for agent-ready guidance; doctor for verification-first readiness and diff audits; compliant for end-to-end remediation including dependency hardening; secure-dependencies for lockfile and supply-chain policy; capture to pin one behavior surface; onboard for autonomous-ready manifests; evals for proof-menu cases; and dogfood for skill hardening."
 argument-hint: "[subcommand] [args] - e.g. guide, baseline, docs, doctor, compliant, secure-dependencies, capture, onboard, evals, dogfood"
 metadata:
-  version: "1.8.0"
+  version: "1.8.2"
 ---
 
 # Harness Workflow Pack
 
-This umbrella skill is the model-invocable entry point for agent harness work: the designed repository environment that lets coding agents find the right code, owner, invariant, and validation path quickly — and prove their work end-to-end. Verification loops are the product; docs are the routing layer.
+This umbrella skill is the explicit, human-invoked entry point for agent harness work: the designed repository environment that lets coding agents find the right code, owner, invariant, and validation path quickly — and prove their work end-to-end. Verification loops are the product; docs are the routing layer.
 
 Hidden wrappers stay out of model routing, menus, and flat-list installers.
 Reach every workflow through this umbrella; the workflow modules referenced
@@ -30,7 +31,7 @@ Known subcommands: `guide`, `baseline`, `docs`, `doctor`, `compliant`, `secure-d
 - Use `guide.md` when a human or agent asks how to use Harness, what to run first, whether workflows differ, what belongs in CI, how to self-review, or when to run a tune-up. It selects a scenario and gives exact operations, human gates, expected artifacts, and done criteria without executing mutating workflows by default.
 - Use `baseline.md` to prepare an existing production repo for agents at fleet scale: run a Gate 0 toolchain check, scout functionality and existing proof, create/refresh `docs/BEHAVIOR_INVENTORY.md`, stop for file-based human ratification, capture confirmed behavior into characterization tests/snapshots, and write `docs/BEHAVIOR_LEDGER.md`. Stage overrides: `status`, `scout`, `inventory`, `inventory --refresh`, `capture`.
 - Use `docs.md` to make a repo ergonomic for agent-driven execution: the spec contract (`docs/SPEC_CONTRACT.md`), prose-to-enforcement conversion, a tiny `AGENTS.md` router with a `CLAUDE.md` shim, and earned doc surfaces. The module defines the full process. Per-task intake (interview-to-SPEC.md) happens outside the repo and is out of scope.
-- Use `doctor.md` for readiness audits and diff-scoped self-review: it runs the external `harness-doctor` CLI when available, executes the repo's validation commands per its execution policy, checks spec-contract and behavior-ledger alignment, scores the seven dimensions (D1-D7, including D7 safety/blast-radius), and reports recommendation-first with finding IDs, tiers, and proof of what actually ran. `doctor diff` maps changed files to behavior IDs and required ledger proofs.
+- Use `doctor.md` for readiness audits and diff-scoped self-review: it runs the external `harness-doctor` CLI when available, configures its Knip-backed dead-code pass through repository-owned Knip config, executes the repo's validation commands per its execution policy, checks spec-contract and behavior-ledger alignment, scores the seven dimensions (D1-D7, including D7 safety/blast-radius), and reports recommendation-first with finding IDs, tiers, and proof of what actually ran. `doctor diff` maps changed files to behavior IDs and required ledger proofs.
 - Use `compliant.md` (aliases: `overhaul`; natural-language "make this repo harness compliant") for an end-to-end pass: audit with `doctor.md`, remediate guidance and enforcement with `docs.md`, apply `secure-dependencies.md`, then re-audit to verify.
 - Use `secure-dependencies.md` to harden dependency resolution, lockfile use, update-bot cooldowns, lifecycle scripts, and CI install commands for the ecosystems actually present.
 - Use `capture.md` to characterize one current behavior surface with tests/snapshots **before** an agent changes legacy or under-tested code — the safety net that lets an agent tell a fix from a regression. It also has row mode for `baseline.md` (`BehaviorRow` in, `LedgerRow` out). Standalone capture outputs a capture report and coverage-gap report; only row mode updates `docs/BEHAVIOR_LEDGER.md`.

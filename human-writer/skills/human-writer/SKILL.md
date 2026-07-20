@@ -1,12 +1,13 @@
 ---
 name: human-writer
+disable-model-invocation: true
 description: >-
   Rewrite AI-sounding drafts into natural, specific prose. Use when asked to
   humanize, deslop, or remove model-generated patterns, or when prose feels
   generic, over-polished, promotional, repetitive, or too tidy.
 metadata:
   author: Andy Pai
-  version: "1.4.1"
+  version: "1.4.2"
   upstream_skill: "https://github.com/blader/humanizer"
   tags: "writing editing humanize voice anti-slop GEO"
 ---

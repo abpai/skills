@@ -49,7 +49,7 @@ export class MetadataError extends Error {
 interface SkillInfo {
   path: string;
   name: string;
-  disabled: boolean;
+  internal: boolean;
   version: string | null;
 }
 
@@ -140,19 +140,6 @@ function frontmatterLines(text: string): string[] {
   return out;
 }
 
-function topLevelValue(lines: string[], key: string): string | null {
-  const prefix = `${key}:`;
-  for (const line of lines) {
-    if (!line || line[0] === " " || line[0] === "\t" || line[0] === "#") {
-      continue;
-    }
-    if (line.startsWith(prefix)) {
-      return line.slice(prefix.length).trim().replace(/^["']|["']$/g, "");
-    }
-  }
-  return null;
-}
-
 function metadataVersion(lines: string[]): string | null {
   let inMetadata = false;
   for (const line of lines) {
@@ -165,9 +152,9 @@ function metadataVersion(lines: string[]): string | null {
       inMetadata = false;
     }
     if (inMetadata) {
-      // Tolerate any indentation and single- OR double-quoted values, matching
-      // topLevelValue()'s quote handling, so a strict-YAML-valid but
-      // differently-styled `metadata.version` resolves the same here.
+      // Tolerate any indentation and single- OR double-quoted values so a
+      // strict-YAML-valid but differently-styled `metadata.version` resolves
+      // to the same source.
       const match = line.match(/^\s+version:\s*(.*)$/);
       if (match) {
         return match[1].trim().replace(/^["']|["']$/g, "");
@@ -177,12 +164,29 @@ function metadataVersion(lines: string[]): string | null {
   return null;
 }
 
+function metadataInternal(lines: string[]): boolean {
+  let inMetadata = false;
+  for (const line of lines) {
+    if (line.startsWith("metadata:")) {
+      inMetadata = true;
+      continue;
+    }
+    if (inMetadata && line && !/^\s/.test(line)) {
+      inMetadata = false;
+    }
+    if (inMetadata && /^\s+internal:\s*true\s*$/.test(line)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function skillInfo(path: string): SkillInfo {
   const lines = frontmatterLines(readFileSync(path, "utf8"));
   return {
     path,
     name: basename(dirname(path)),
-    disabled: topLevelValue(lines, "disable-model-invocation") === "true",
+    internal: metadataInternal(lines),
     version: metadataVersion(lines),
   };
 }
@@ -202,7 +206,11 @@ function normalizeManifestVersion(version: string): string {
 }
 
 function versionedSkillSources(plugin: PluginInfo): SkillInfo[] {
-  return pluginSkills(plugin).filter((skill) => !skill.disabled);
+  // Explicit-only public skills still own the plugin's version. Model
+  // invocation is an interface policy, not a packaging boundary. Hidden
+  // wrappers remain manifest-only, as do command-only packs such as pi whose
+  // phases are all marked internal.
+  return pluginSkills(plugin).filter((skill) => !skill.internal);
 }
 
 export function collectVersionSources(root = process.cwd()): VersionSourceSet {
@@ -282,7 +290,7 @@ export function writeVersionsJson(root = process.cwd(), output = "versions.json"
   return Object.keys(collectVersionSources(root).versions).length;
 }
 
-function firstModelInvocableSkillVersion(plugin: PluginInfo): string | null {
+function firstPublicSkillVersion(plugin: PluginInfo): string | null {
   for (const skill of versionedSkillSources(plugin)) {
     if (skill.version) {
       return skill.version;
@@ -295,7 +303,7 @@ export function syncPluginManifestVersions(root = process.cwd()): SyncResult {
   const updated: ManifestUpdate[] = [];
 
   for (const plugin of listPlugins(root)) {
-    const skillVersion = firstModelInvocableSkillVersion(plugin);
+    const skillVersion = firstPublicSkillVersion(plugin);
     if (!skillVersion) {
       continue;
     }
@@ -485,7 +493,7 @@ function main(): void {
           console.error(`::error::${line}`);
         }
         console.error("");
-        console.error("Fix: bump metadata.version in the model-invocable SKILL.md, or version in .claude-plugin/plugin.json for command-only plugins.");
+        console.error("Fix: bump metadata.version in the public SKILL.md, or version in .claude-plugin/plugin.json for command-only plugins.");
         process.exit(1);
       }
       console.log(`Checked ${result.checked} plugin(s). All changed plugins have proper version bumps.`);

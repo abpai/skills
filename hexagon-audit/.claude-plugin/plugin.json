@@ -1,6 +1,6 @@
 {
   "name": "hexagon-audit",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Audit Ports & Adapters (Hexagonal Architecture) compliance in a packages/ + adapters/ monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports.",
   "author": {
     "name": "Andy Pai"

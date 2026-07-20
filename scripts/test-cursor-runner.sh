@@ -42,6 +42,14 @@ if [[ "${1:-}" == "--version" ]]; then
   echo "agent fake 1.0"
   exit 0
 fi
+if [[ "${1:-}" == "models" ]]; then
+  if [[ "${FAKE_CURSOR_UNREADABLE_MODELS:-}" == "1" ]]; then
+    echo "models unavailable" >&2
+    exit 1
+  fi
+  printf 'auto - Auto (default)\ntest-model - Test Model\ncursor-grok-4.5-high - Cursor Grok 4.5 High\n'
+  exit 0
+fi
 if [[ "${1:-}" == "status" ]]; then
   if [[ "${FAKE_CURSOR_CRASH_ON_STATUS:-}" == "1" ]]; then
     kill -SEGV "$$"
@@ -83,6 +91,10 @@ if [[ "${FAKE_CURSOR_HANG:-}" == "1" ]]; then
   [[ -z "${FAKE_CURSOR_PID_FILE:-}" ]] || printf '%s' "$$" > "$FAKE_CURSOR_PID_FILE"
   [[ "${FAKE_CURSOR_IGNORE_TERM:-}" != "1" ]] || trap '' TERM
   while :; do sleep 1; done
+fi
+if [[ "${FAKE_CURSOR_FAIL_AFTER_SPAWN:-}" == "1" ]]; then
+  echo "Cannot use this model: bogus. Available models: auto, test-model" >&2
+  exit 1
 fi
 printf '{"type":"system","subtype":"init","session_id":"%s","model":"%s"}\n' "$session_id" "$resolved_model"
 if [[ "${FAKE_CURSOR_WITH_PROGRESS:-}" == "1" ]]; then
@@ -214,6 +226,69 @@ test_explicit_model_override_continues() {
   pass "Cursor runner preserves explicit model overrides on exact resumes"
 }
 
+test_unknown_model_is_rejected_before_spawn() {
+  local workspace="$TMP_DIR/unknown-model-workspace"
+  local output="$TMP_DIR/unknown-model-output.txt"
+  local fallthrough_output="$TMP_DIR/unreadable-models-output.txt"
+  setup_workspace "$workspace"
+
+  set +e
+  PATH="$FAKEBIN:$PATH" "$CURSOR_RUN" run \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/unknown-model-runs" \
+    --prompt "guessing a model alias should not cost a run" \
+    --model "grok" \
+    --dry-run \
+    > "$output" 2>&1
+  local status=$?
+  set -e
+  [[ "$status" == "2" ]] || fail "expected unknown-model exit 2, got $status"
+  assert_contains "$output" "[FAIL] unknown --model grok"
+  assert_contains "$output" "cursor-grok-4.5-high"
+  assert_contains "$output" "Omit --model to use the model already selected in Cursor."
+  assert_not_contains "$output" "event=spawn"
+
+  # An unreadable model list must never block a run Cursor would have accepted.
+  FAKE_CURSOR_UNREADABLE_MODELS=1 PATH="$FAKEBIN:$PATH" "$CURSOR_RUN" run \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/unreadable-models-runs" \
+    --prompt "unverifiable model list falls through to Cursor" \
+    --model "some-future-model" \
+    --dry-run \
+    > "$fallthrough_output" 2>&1
+  local fallthrough_dir
+  fallthrough_dir="$(extract_run_dir "$fallthrough_output")"
+  assert_contains "$fallthrough_dir/command.txt" "--model some-future-model"
+
+  pass "Cursor runner rejects unknown models pre-spawn and fails open when unverifiable"
+}
+
+test_failed_run_surfaces_stderr_reason() {
+  local workspace="$TMP_DIR/stderr-reason-workspace"
+  local output="$TMP_DIR/stderr-reason-output.txt"
+  setup_workspace "$workspace"
+
+  set +e
+  FAKE_CURSOR_FAIL_AFTER_SPAWN=1 PATH="$FAKEBIN:$PATH" "$CURSOR_RUN" run \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/stderr-reason-runs" \
+    --prompt "a run that dies before answering must say why" \
+    --heartbeat 1 \
+    --timeout 10 \
+    > "$output" 2>&1
+  local status=$?
+  set -e
+  [[ "$status" == "1" ]] || fail "expected spawn failure exit 1, got $status"
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_contains "$run_dir/status.json" '"state": "failed"'
+  [[ ! -s "$run_dir/final.md" ]] || fail "expected an empty final.md for a run that never answered"
+  assert_contains "$output" "event=failure-reason"
+  assert_contains "$output" "[cursor-run] stderr| Cannot use this model: bogus."
+
+  pass "Cursor runner echoes the stderr reason when a run dies before answering"
+}
+
 test_review_is_read_only() {
   local workspace="$TMP_DIR/review-workspace"
   local output="$TMP_DIR/review-output.txt"
@@ -338,6 +413,8 @@ test_silent_run_stops_without_replay() {
 
 test_stream_artifacts_and_resume
 test_explicit_model_override_continues
+test_unknown_model_is_rejected_before_spawn
+test_failed_run_surfaces_stderr_reason
 test_review_is_read_only
 test_auth_uses_only_explicit_sources
 test_browser_auth_probe_hides_crash_diagnostics

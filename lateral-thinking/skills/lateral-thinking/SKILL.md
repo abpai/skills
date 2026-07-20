@@ -1,5 +1,6 @@
 ---
 name: lateral-thinking
+disable-model-invocation: true
 description: >
   Generate non-obvious hypotheses by decomposing a problem to its mechanism and
   raiding distant fields for transferable patterns. Use when the user asks what
@@ -10,7 +11,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.1"
+  version: "1.1.2"
   upstream_skill: "https://github.com/ogiberstein/lateral-thinking-skill"
 ---
 

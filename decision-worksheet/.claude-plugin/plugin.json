@@ -1,6 +1,6 @@
 {
   "name": "decision-worksheet",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Capture concise feedback notes, or build evidence-backed HTML worksheets that let users ratify or override recommended verdicts and export the decisions back.",
   "author": {
     "name": "Andy Pai"

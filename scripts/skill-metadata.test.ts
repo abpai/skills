@@ -105,7 +105,7 @@ describe("skill metadata version sources", () => {
     expect(git(parent, ["config", "core.bare"])).toBe("false");
   });
 
-  test("uses model-invocable SKILL.md metadata.version and ignores hidden wrappers", () => {
+  test("uses an explicit-only public SKILL.md metadata.version and ignores hidden wrappers", () => {
     const root = makeRoot();
     writeManifest(root, "cursor", "1.4.0");
     writeSkill(
@@ -113,6 +113,7 @@ describe("skill metadata version sources", () => {
       "cursor",
       "cursor",
       `
+disable-model-invocation: true
 description: Cursor umbrella
 metadata:
   version: "1.4"
@@ -134,6 +135,26 @@ description: Hidden setup wrapper
 
     expect(collectVersionSources(root).versions).toEqual({
       cursor: "1.4",
+    });
+  });
+
+  test("uses an explicit-only public skill even when its name differs from the plugin", () => {
+    const root = makeRoot();
+    writeManifest(root, "tools", "1.0.0");
+    writeSkill(
+      root,
+      "tools",
+      "helper",
+      `
+disable-model-invocation: true
+description: Public helper command
+metadata:
+  version: "2.3.4"
+`,
+    );
+
+    expect(collectVersionSources(root).versions).toEqual({
+      helper: "2.3.4",
     });
   });
 
@@ -171,7 +192,7 @@ metadata:
     });
   });
 
-  test("uses plugin manifest version for command-only plugins", () => {
+  test("uses plugin manifest version for explicit Pi phase commands without an umbrella", () => {
     const root = makeRoot();
     writeManifest(root, "pi", "0.11.1");
     writeSkill(
@@ -232,7 +253,7 @@ metadata:
     );
   });
 
-  test("syncs model-invocable skill versions to both manifests with semver normalization", () => {
+  test("syncs public explicit-only skill versions to both manifests with semver normalization", () => {
     const root = makeRoot();
     writeManifest(root, "distill", "1.0.0");
     writeSkill(

@@ -14,7 +14,10 @@ top-level folder is a plugin shipping `.claude-plugin/plugin.json` and usually
 
 - Namespaced commands must be skill subdirectories, never plugin-root
   `commands/`: `<plugin>/skills/<name>/SKILL.md` produces `/<plugin>:<name>`.
-- Grouped workflow packs use one model-invocable umbrella skill
+- Every skill entrypoint is human-invocable only: set
+  `disable-model-invocation: true` in `SKILL.md` and
+  `policy.allow_implicit_invocation: false` in its local
+  `agents/openai.yaml`. Grouped workflow packs use one explicit umbrella skill
   (`skills/<plugin>/SKILL.md`) plus hidden per-command wrappers
   (`skills/<workflow>/SKILL.md`) with `disable-model-invocation: true`,
   `user-invocable: false`, and `metadata.internal: true`.
@@ -31,7 +34,7 @@ top-level folder is a plugin shipping `.claude-plugin/plugin.json` and usually
 ## Packaging
 
 When you change a plugin, bump its version source and sync the public bundle:
-`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, model-invocable
+`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, public
 `SKILL.md` `metadata.version` when present, `.claude-plugin/marketplace.json`,
 `.agents/plugins/marketplace.json` when applicable, `versions.json`,
 `README.md`, and `docs/index.html`.

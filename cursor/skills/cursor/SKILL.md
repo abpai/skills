@@ -1,5 +1,6 @@
 ---
 name: cursor
+disable-model-invocation: true
 description: >
   Run, monitor, resume, or review work with Cursor Agent and Cursor models.
   Use when delegating bounded implementation, investigation, planning, or
@@ -7,7 +8,7 @@ description: >
   when continuing an exact Cursor chat from another agent workflow.
 license: MIT
 metadata:
-  version: "2.2.0"
+  version: "2.2.2"
 ---
 
 # Cursor
@@ -26,10 +27,18 @@ bin/cursor-run.sh run \
   --prompt-file /absolute/path/to/task.md
 ```
 
-The runner uses Cursor's configured default model. Pass `--model` only when the
-user or task needs a specific model. Write-capable runs use Cursor headless
-`--force --trust --approve-mcps`; use `--read-only`, `review`,
-`--no-force`, or `--no-approve-mcps` to narrow that authority.
+Omit `--model`. The run then uses the model the user already selected in Cursor,
+which is the intended default and the reason they configured one. Pass `--model`
+only when the user names a model for this run; a routing preference in your own
+operating instructions is not that request, and neither is your judgment that
+another model suits the task. When the user does name one, resolve its exact id
+with `cursor-agent models` before passing it — Cursor accepts only ids from that
+list and rejects everything else, so a plausible-looking alias like `grok` or
+`sonnet` fails the run rather than resolving to the family you meant.
+
+Write-capable runs use Cursor headless `--force --trust --approve-mcps`; use
+`--read-only`, `review`, `--no-force`, or `--no-approve-mcps` to narrow that
+authority.
 
 For findings-first review:
 
