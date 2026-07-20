@@ -1,0 +1,21 @@
+{
+  "name": "@abpai/skills-eve-evals",
+  "private": true,
+  "type": "module",
+  "description": "Non-blocking behavioral-contract eval lane for the skills marketplace, running real model sessions against packaged SKILL.md dirs via Eve.",
+  "scripts": {
+    "prepare-skills": "bun scripts/prepare-skills.ts",
+    "typecheck": "tsc --noEmit",
+    "list": "eve eval --list",
+    "eval": "eve eval",
+    "eval:smoke": "eve eval smoke --strict",
+    "eval:live": "eve eval --tag live --strict"
+  },
+  "dependencies": {
+    "eve": "0.26.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5.6.0"
+  }
+}
