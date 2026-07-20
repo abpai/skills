@@ -4,13 +4,13 @@ name: Eve skill evals
 # packaged SKILL.md dirs via Eve, so it complements — never replaces — the
 # structural validate-skills.sh gate and the manual Claude/Codex dogfood.
 # It is intentionally NOT a required check: Eve is public preview (pinned in
-# harness/eve/package.json) and live evals need a model key.
+# evals/eve/package.json) and live evals need a model key.
 
 on:
   pull_request:
     paths:
       - "**/skills/**/SKILL.md"
-      - "harness/eve/**"
+      - "evals/eve/**"
       - ".github/workflows/eve-evals.yml"
   push:
     branches: [main]
@@ -28,7 +28,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: harness/eve
+        working-directory: evals/eve
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -62,7 +62,7 @@ jobs:
     timeout-minutes: 25
     defaults:
       run:
-        working-directory: harness/eve
+        working-directory: evals/eve
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -90,6 +90,6 @@ jobs:
         with:
           name: eve-eval-results
           path: |
-            harness/eve/.eve/evals/
-            harness/eve/.eve/junit.xml
+            evals/eve/.eve/evals/
+            evals/eve/.eve/junit.xml
           if-no-files-found: ignore

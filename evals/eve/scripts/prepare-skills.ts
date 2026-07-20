@@ -22,6 +22,8 @@ const SKILLS: Record<string, string> = {
   code: "code/skills/code",
   "hexagon-audit": "hexagon-audit/skills/hexagon-audit",
   "codex-session": "codex-session/skills/codex-session",
+  // Seeded for the add-a-skill flow (README) and as a routing distractor; no eval
+  // loads it yet — intentional, not a dead entry. Add its eval under evals/ later.
   "status-update": "status-update/skills/status-update",
 }
 
