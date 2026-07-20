@@ -23,7 +23,7 @@ place the "description as trigger" principle is genuinely exercised.
 ## Layout
 
 ```
-harness/eve/
+evals/eve/
 ├── agent/
 │   ├── agent.ts            # mockModel without a key; real model when ANTHROPIC_API_KEY is set
 │   ├── instructions.md
