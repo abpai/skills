@@ -82,13 +82,27 @@ function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`
 }
 
+function gitEnvironment(): NodeJS.ProcessEnv {
+  // Never let an inherited Git context (GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE,
+  // …) reach the commands this module runs. A hook runner exports GIT_* for its
+  // own repository; carrying that into a `run(cwd)` call redirects Git reads and
+  // writes back to the hook's repository instead of `cwd`. Stripping GIT_* is
+  // production-equivalent — Git rediscovers the same repository from `cwd` (a
+  // hook's cwd is that repository's working tree) — while keeping test fixtures,
+  // and any other non-cwd repository this module inspects, isolated no matter
+  // what the caller inherited. Stripping unconditionally also covers module
+  // helpers that run at the default cwd (e.g. gitRefExists), which a
+  // cwd-conditional strip would miss.
+  return Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith("GIT_")))
+}
+
 // `output` interleaves stdout+stderr for human-facing error messages. Anything
 // parsed or hashed must use `stdout`: the gate-before-push.sh hook recomputes
 // the scope hash from `git ... 2>/dev/null` pipelines (stdout only), so folding
 // a stray git stderr warning (ambiguous refname, CRLF advice) into the hash
 // would make a correctly sealed branch permanently stale to the hook.
 function run(command: string, cwd = process.cwd()): { output: string; stdout: string; status: number } {
-  const result = spawnSync(command, { cwd, encoding: "utf8", shell: "/bin/bash" })
+  const result = spawnSync(command, { cwd, encoding: "utf8", shell: "/bin/bash", env: gitEnvironment() })
   return {
     output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
     stdout: result.stdout ?? "",
