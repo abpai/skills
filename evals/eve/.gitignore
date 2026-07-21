@@ -1,0 +1,4 @@
+# Local env files (may hold gateway/API keys) — never commit.
+# A bare `.env` at repo root does NOT cover `.env.local`, so pin it here.
+.env
+.env*.local
