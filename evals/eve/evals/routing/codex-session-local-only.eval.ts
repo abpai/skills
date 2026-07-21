@@ -8,12 +8,12 @@ import { satisfies } from "eve/evals/expect"
 // Note: `\bcodex\b` false-matches path segments like `codex-session` (hyphen is
 // a word boundary), so we use a negative lookahead for `-session`.
 //
-// OBSERVED FLAKY under gpt-5.6-luna (~2-3 of 4 runs pass; verified 2026-07-21).
-// The matcher is correct — on a failing run the model genuinely reached for the
-// Codex CLI / a provider instead of the local parser to inspect the session. That
-// is real signal that codex-session's Local-Only Guard is not fully robust under
-// this model, NOT a harness defect. This non-blocking lane keeps it as a watch
-// item; gate it on a best-of-N threshold once a repeat loop lands.
+// RELIABILITY HISTORY: measured 2/6 pass under gpt-5.6-luna on 2026-07-21 — the
+// model fell back to the `codex` CLI when the parser reported the (fabricated)
+// rollout not-found. Root-caused to a gap in the Local-Only Guard and fixed in
+// codex-session 1.0.2 (explicit "not-found -> report and STOP, no codex/provider
+// fallback"). Re-measured 6/6 after the fix. This eval caught a real behavioral
+// weakness, not a harness flake — the eval lane working as intended.
 export default defineEval({
   description: "codex-session loads for a session ask without launching Codex or a model provider.",
   tags: ["live", "routing", "codex-session", "local-only"],
