@@ -9,9 +9,11 @@
     "list": "eve eval --list",
     "eval": "eve eval",
     "eval:smoke": "eve eval smoke --strict",
-    "eval:live": "eve eval --tag live --strict"
+    "eval:live": "eve eval --tag live --strict",
+    "ablate": "bun scripts/ablate.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.13",
     "eve": "0.26.0"
   },
   "devDependencies": {

@@ -76,11 +76,14 @@ jobs:
         run: bun run prepare-skills
       - name: Run live behavioral evals
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Subject model is `openai/gpt-5.6-luna` via the direct OpenAI provider
+          # (agent/agent.ts); the judge shares this key. A raw OpenAI `sk-` key
+          # reaches gpt-5.6-luna directly — the Vercel gateway is not involved.
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         # No key configured => no live model => skip without failing the lane.
         run: |
-          if [ -z "${ANTHROPIC_API_KEY}" ]; then
-            echo "::notice::ANTHROPIC_API_KEY not set — skipping live evals (non-blocking lane)."
+          if [ -z "${OPENAI_API_KEY}" ]; then
+            echo "::notice::OPENAI_API_KEY not set — skipping live evals (non-blocking lane)."
             exit 0
           fi
           bun run eval:live --junit .eve/junit.xml

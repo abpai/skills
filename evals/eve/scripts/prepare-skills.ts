@@ -8,23 +8,64 @@
 // Claude/Codex host keys (`disable-model-invocation`, `user-invocable`,
 // `allowed-tools`, `argument-hint`, `name`, ...). The body is copied verbatim,
 // so behavioral contracts are tested exactly; only the host-specific frontmatter
-// is dropped. Sibling files (references/, scripts/, assets/) copy as-is.
+// is dropped. Sibling files (references/, scripts/, assets/, flat `*.md`
+// workflow modules beside an umbrella SKILL.md) copy as-is.
+//
+// Variant modes (ablation harness):
+//   --ablate <ablationId>  materialize with the named heading span removed
+//   --omit <skillId>       materialize everything except that skill
+// Both hard-error on a silent no-op (missing heading, or byte-identical output).
 import { cpSync, mkdirSync, rmSync, existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { ABLATIONS } from "../ablations/manifest"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const eveRoot = resolve(here, "..")
 const repoRoot = resolve(eveRoot, "..", "..")
 
 // skill id (Eve's `agent/skills/<id>/`) -> canonical repo package dir
-const SKILLS: Record<string, string> = {
+export const SKILLS: Record<string, string> = {
   code: "code/skills/code",
+  engineering: "engineering/skills/engineering",
+  harness: "harness/skills/harness",
   "hexagon-audit": "hexagon-audit/skills/hexagon-audit",
   "codex-session": "codex-session/skills/codex-session",
-  // Seeded for the add-a-skill flow (README) and as a routing distractor; no eval
-  // loads it yet — intentional, not a dead entry. Add its eval under evals/ later.
+  "claude-session": "claude-session/skills/claude-session",
+  distill: "distill/skills/distill",
+  "lateral-thinking": "lateral-thinking/skills/lateral-thinking",
+  "decision-worksheet": "decision-worksheet/skills/decision-worksheet",
+  "human-writer": "human-writer/skills/human-writer",
+  "improve-prompt": "improve-prompt/skills/improve-prompt",
+  "explain-concisely": "explain-concisely/skills/explain-concisely",
+  tutorial: "tutorial/skills/tutorial",
+  // Routing distractor + add-a-skill README seed; no dedicated eval yet.
   "status-update": "status-update/skills/status-update",
+}
+
+// Out of scope for this lane (comment for authors): output-quality / host-specific
+// skills — visualize, impeccable, frontend-design, dataviz, artifact-* — Eve can't
+// grade visual output and their contracts aren't portable; manual dogfood owns them.
+
+function parseArgs(argv: string[]): { ablateId?: string; omitId?: string } {
+  let ablateId: string | undefined
+  let omitId: string | undefined
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i]
+    if (a === "--ablate") {
+      ablateId = argv[++i]
+      if (!ablateId) throw new Error("prepare-skills: --ablate requires an ablation id")
+    } else if (a === "--omit") {
+      omitId = argv[++i]
+      if (!omitId) throw new Error("prepare-skills: --omit requires a skill id")
+    } else if (a.startsWith("-")) {
+      throw new Error(`prepare-skills: unknown flag ${a}`)
+    }
+  }
+  if (ablateId && omitId) {
+    throw new Error("prepare-skills: pass --ablate or --omit, not both")
+  }
+  return { ablateId, omitId }
 }
 
 // Extract the frontmatter `description` value, handling inline and folded/block
@@ -54,33 +95,141 @@ function stripFrontmatter(md: string): string {
   return m ? m[1] : md
 }
 
-const dest = join(eveRoot, "agent", "skills")
-if (existsSync(dest)) rmSync(dest, { recursive: true, force: true })
-mkdirSync(dest, { recursive: true })
-
-let count = 0
-for (const [id, rel] of Object.entries(SKILLS)) {
-  const src = join(repoRoot, rel)
-  const srcSkill = join(src, "SKILL.md")
-  if (!existsSync(srcSkill)) {
-    throw new Error(`prepare-skills: missing SKILL.md at ${rel} (repo layout changed?)`)
-  }
-  const canonical = readFileSync(srcSkill, "utf8")
-  const description = extractDescription(canonical)
-  if (!description) throw new Error(`prepare-skills: empty description for ${id}`)
-
-  // Copy sibling files (references/, scripts/, assets/), skipping SKILL.md.
-  const skillDest = join(dest, id)
-  mkdirSync(skillDest, { recursive: true })
-  for (const entry of readdirSync(src, { withFileTypes: true })) {
-    if (entry.name === "SKILL.md") continue
-    cpSync(join(src, entry.name), join(skillDest, entry.name), { recursive: true })
-  }
-
-  // Emit an Eve-shaped SKILL.md: description-only frontmatter + verbatim body.
-  const eveSkill = `---\ndescription: >-\n  ${description}\n---\n\n${stripFrontmatter(canonical).trimStart()}`
-  writeFileSync(join(skillDest, "SKILL.md"), eveSkill)
-  count++
-  console.log(`  materialized ${id} <- ${rel}`)
+function buildEveSkill(description: string, body: string): string {
+  return `---\ndescription: >-\n  ${description}\n---\n\n${body.trimStart()}`
 }
-console.log(`prepare-skills: ${count} skill package(s) into agent/skills/`)
+
+/** Remove from `## Heading` through the next same-or-higher heading. */
+export function removeHeadingSpan(
+  body: string,
+  heading: string,
+): { result: string; found: boolean } {
+  const wanted = heading.replace(/^#+\s*/, "").trim()
+  const lines = body.split("\n")
+  let start = -1
+  let startLevel = 0
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^(#{2,})\s+(.*)$/)
+    if (!m) continue
+    if (m[2].trim() === wanted) {
+      start = i
+      startLevel = m[1].length
+      break
+    }
+  }
+  if (start === -1) return { result: body, found: false }
+  let end = lines.length
+  for (let i = start + 1; i < lines.length; i++) {
+    const m = lines[i].match(/^(#{1,})\s+/)
+    if (m && m[1].length <= startLevel) {
+      end = i
+      break
+    }
+  }
+  const next = [...lines.slice(0, start), ...lines.slice(end)]
+  // Collapse runs of blank lines left by the cut.
+  const collapsed: string[] = []
+  for (const line of next) {
+    if (line === "" && collapsed[collapsed.length - 1] === "") continue
+    collapsed.push(line)
+  }
+  return { result: collapsed.join("\n"), found: true }
+}
+
+function materialize(): void {
+  const { ablateId, omitId } = parseArgs(process.argv.slice(2))
+
+  let ablation: (typeof ABLATIONS)[number] | undefined
+  if (ablateId) {
+    ablation = ABLATIONS.find((a) => a.id === ablateId)
+    if (!ablation) {
+      throw new Error(
+        `prepare-skills: unknown ablation id "${ablateId}" (known: ${ABLATIONS.map((a) => a.id).join(", ")})`,
+      )
+    }
+    if (!ablation.span) {
+      throw new Error(
+        `prepare-skills: ablation "${ablateId}" has no span — use --omit ${ablation.skillId} for retirement checks`,
+      )
+    }
+    if ("lines" in ablation.span) {
+      throw new Error(
+        `prepare-skills: line-span ablations are not implemented (ablation "${ablateId}")`,
+      )
+    }
+    if (!(ablation.skillId in SKILLS)) {
+      throw new Error(`prepare-skills: ablation "${ablateId}" skillId "${ablation.skillId}" not in SKILLS map`)
+    }
+  }
+  if (omitId && !(omitId in SKILLS)) {
+    throw new Error(`prepare-skills: --omit "${omitId}" is not in the SKILLS map`)
+  }
+
+  const dest = join(eveRoot, "agent", "skills")
+  if (existsSync(dest)) rmSync(dest, { recursive: true, force: true })
+  mkdirSync(dest, { recursive: true })
+
+  let count = 0
+  for (const [id, rel] of Object.entries(SKILLS)) {
+    if (omitId && id === omitId) {
+      console.log(`  omitted ${id}`)
+      continue
+    }
+
+    const src = join(repoRoot, rel)
+    const srcSkill = join(src, "SKILL.md")
+    if (!existsSync(srcSkill)) {
+      throw new Error(`prepare-skills: missing SKILL.md at ${rel} (repo layout changed?)`)
+    }
+    const canonical = readFileSync(srcSkill, "utf8")
+    const description = extractDescription(canonical)
+    if (!description) throw new Error(`prepare-skills: empty description for ${id}`)
+
+    const skillDest = join(dest, id)
+    mkdirSync(skillDest, { recursive: true })
+    for (const entry of readdirSync(src, { withFileTypes: true })) {
+      if (entry.name === "SKILL.md") continue
+      cpSync(join(src, entry.name), join(skillDest, entry.name), { recursive: true })
+    }
+
+    const baselineBody = stripFrontmatter(canonical)
+    const baseline = buildEveSkill(description, baselineBody)
+    let eveSkill = baseline
+    let note = ""
+
+    if (ablation && ablation.skillId === id && ablation.span && "heading" in ablation.span) {
+      const { result, found } = removeHeadingSpan(baselineBody, ablation.span.heading)
+      if (!found) {
+        throw new Error(
+          `prepare-skills: ablation "${ablation.id}" heading "## ${ablation.span.heading}" not found in ${id}`,
+        )
+      }
+      eveSkill = buildEveSkill(description, result)
+      if (eveSkill === baseline) {
+        throw new Error(
+          `prepare-skills: ablation "${ablation.id}" is a silent no-op — materialized SKILL.md is byte-identical to baseline`,
+        )
+      }
+      note = ` [ablated: ## ${ablation.span.heading}]`
+    }
+
+    writeFileSync(join(skillDest, "SKILL.md"), eveSkill)
+    count++
+    console.log(`  materialized ${id} <- ${rel}${note}`)
+  }
+
+  if (ablation && omitId === undefined) {
+    // Ensure the target skill was actually in the map and processed.
+    const targetRel = SKILLS[ablation.skillId]
+    if (!targetRel) {
+      throw new Error(`prepare-skills: ablation target skill "${ablation.skillId}" missing from SKILLS`)
+    }
+  }
+
+  const mode = ablateId ? ` (ablate ${ablateId})` : omitId ? ` (omit ${omitId})` : ""
+  console.log(`prepare-skills: ${count} skill package(s) into agent/skills/${mode}`)
+}
+
+if (import.meta.main) {
+  materialize()
+}

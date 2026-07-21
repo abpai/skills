@@ -8,6 +8,6 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["agent/agent.ts", "evals/**/*.ts", "scripts/**/*.ts"],
+  "include": ["agent/agent.ts", "evals/**/*.ts", "scripts/**/*.ts", "ablations/**/*.ts"],
   "exclude": ["node_modules", "agent/skills"]
 }

@@ -1,0 +1,16 @@
+import { defineEval } from "eve/evals"
+import { notLoadedSkill } from "../support/loaded"
+
+// Positive: compress a system to essential primitives (distill), not a line-by-line tour.
+export default defineEval({
+  description: "distill loads for a compressed mental-model request; lateral-thinking does not.",
+  tags: ["live", "routing", "distill"],
+  async test(t) {
+    const turn = await t.send(
+      "Compress our payment-orchestration service down to the essential primitives " +
+        "I need to hold in my head — not a file-by-file walkthrough.",
+    )
+    t.loadedSkill("distill")
+    t.check(turn.toolCalls, notLoadedSkill("lateral-thinking"))
+  },
+})
