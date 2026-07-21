@@ -3,7 +3,7 @@ name: hexagon-audit
 disable-model-invocation: true
 description: Audit Ports & Adapters / hexagonal architecture boundaries in packages/ + adapters/ monorepos. Use for inward dependency flow violations, peer-adapter imports, and vendor SDK leaks.
 metadata:
-  version: "1.0.4"
+  version: "1.0.5"
 ---
 
 # Hexagon Audit
@@ -132,13 +132,6 @@ Produce a single markdown report with these sections:
 
 ## Layout Notes
 
-- Common project rule for this layout: interfaces live in `packages/<name>/`;
-  implementations live in `adapters/<name>/`; adapters depend on interface
-  packages, never on each other.
-- An "inner-core" package (e.g. a runnable harness core) may contain code as
-  long as I/O sits behind abstract ports.
-- Shared infrastructure packages (e.g. an MCP toolkit) are not pure ports —
-  classify their role explicitly when vendor SDKs appear there.
 - Storage/provider-shaped code under `packages/` deserves extra scrutiny: it can
   look adapter-shaped even when it is consumed as shared infrastructure.
 - Companion repos outside the monorepo are out of scope unless the user includes
