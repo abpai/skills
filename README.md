@@ -31,7 +31,6 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install cursor@abpai-skills
 /plugin install decision-worksheet@abpai-skills
 /plugin install status-update@abpai-skills
-/plugin install pi@abpai-skills
 ```
 
 ### Codex
@@ -53,11 +52,6 @@ Codex public plugin-directory publishing is still documented as coming soon, so
 the Codex path in this repo is repo-local rather than the Claude-style remote
 marketplace flow above.
 
-`pi` is intentionally excluded from the Codex marketplace in this repo. It is a
-Claude-native workflow that shells out to the `codex` CLI for second-provider
-research and review. The debate workflow now lives inside `pi` as
-`/pi:debate`, so it is Claude-only too.
-
 ## Plugins
 
 ### Planning & Reasoning
@@ -69,7 +63,6 @@ research and review. The debate workflow now lives inside `pi` as
 | **codex-exec** | Run Codex headlessly for implementation, review, monitored work, and exact continuation with durable liveness artifacts. | Yes |
 | **codex-session** | Inspect local Codex transcripts by UUID without launching Codex or contacting a model provider. | Yes |
 | **cursor** | Run Cursor Agent headlessly with durable liveness, review, and exact session continuation. | Yes |
-| **pi** | Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and `/pi:debate` for structured architecture/product decisions. | Claude-only |
 
 ### Code Workflows
 
@@ -167,13 +160,6 @@ abpai/skills/
 │       ├── baseline/          ← /harness:baseline wrapper
 │       ├── doctor/            ← /harness:doctor wrapper
 │       └── docs/              ← /harness:docs wrapper
-├── pi/                        ← intentional Claude-only exception
-│   ├── .claude-plugin/plugin.json
-│   ├── agents/
-│   ├── internal/
-│   │   ├── debate/
-│   │   └── protocol/
-│   └── skills/<phase>/        ← /pi:plan, /pi:execute, /pi:review, /pi:debate
 └── README.md
 ```
 
@@ -216,10 +202,7 @@ The pattern for a grouped workflow pack:
   leaf name** (`/<workflow>`) even though the command itself is namespaced;
   leaving wrappers user-invocable sprawls those leaf-name entries across the menu
   where they collide with each other and with built-ins (e.g. a pack's `/review`
-  next to the built-in `/review`). (A pack with no umbrella, like `pi`, keeps its
-  phase commands user-invocable since there is no router to fall back to; their
-  `metadata.internal` marker is retained for installer packaging.)
-
+  next to the built-in `/review`).
 The umbrella directly reads its bundled Markdown modules and review patterns
 after the human invocation. Those modules are not entrypoint skills and do not
 need their own invocation policy.
@@ -312,8 +295,7 @@ Open the plugin directory with `codex /plugins` — the repo marketplace appears
 there, and you install the Codex-compatible plugins from it (it is not a fully
 automatic install).
 
-`pi` stays Claude-only in this repo and therefore does not appear in the Codex
-marketplace list. The grouped workflow packs, including `engineering` and
+The grouped workflow packs, including `engineering` and
 `harness`, are Codex-compatible as single umbrella skills. Claude also gets the
 namespaced command wrappers such as `/engineering:*` and `/harness:*`.
 

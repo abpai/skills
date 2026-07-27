@@ -121,13 +121,6 @@
       "keywords": ["prompting", "prompt-engineering", "rewriting", "agents", "handoff"]
     },
     {
-      "name": "pi",
-      "description": "Claude-native planner/generator/evaluator harness with UI layout planning, screenshot-backed review, and structured debate.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "pi" },
-      "category": "productivity",
-      "keywords": ["planning", "debate", "generator", "evaluator", "workflow", "ui", "layout", "review", "codex"]
-    },
-    {
       "name": "tutorial",
       "description": "Write hands-on, self-verified tutorials where every step ends in a runnable action and the reader finishes able to do the thing.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "tutorial" },
