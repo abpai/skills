@@ -134,6 +134,24 @@ using fn = mock(() => "hello");
 // fn is automatically restored when scope exits
 ```
 
+### Fake timers
+
+```typescript
+import { test, expect, useFakeTimers, advanceTimersByTime } from "bun:test";
+
+test("fake timers", () => {
+  useFakeTimers({ now: new Date("2026-01-01") });
+  let fired = false;
+  setTimeout(() => (fired = true), 1000);
+  advanceTimersByTime(1000);
+  expect(fired).toBe(true);
+});
+```
+
+Also available: `setSystemTime`, `advanceTimersToNextTimer`, `runAllTimers`,
+`runOnlyPendingTimers`, `clearAllTimers`, `getTimerCount`, `isFakeTimers`, and
+`useRealTimers` to restore real timers.
+
 ### Module mocking
 
 ```typescript
@@ -180,7 +198,23 @@ bun README.md
 
 Use HTML entrypoints for Bun's zero-config frontend dev server. Use Markdown
 entrypoints when you want terminal rendering without adding a separate Markdown
-CLI.
+CLI. `bun --hot index.html` also drives hot module replacement (React Fast
+Refresh included) via `import.meta.hot` in application code.
+
+### Compile-time feature flags
+
+```typescript
+import { feature } from "bun:bundle";
+
+if (feature("PREMIUM")) {
+  initPremiumFeatures();
+}
+```
+
+`feature()` calls are replaced with `true`/`false` at bundle time, so disabled
+branches are eliminated entirely when minifying. Set flags with
+`bun build --feature=PREMIUM`, `bun run --feature=DEBUG`, or
+`bun test --feature=MOCK_API`.
 
 ### JavaScript API
 

@@ -474,14 +474,54 @@ const sharedSecret = await crypto.subtle.deriveBits(
 );
 ```
 
+### YAML
+
+```typescript
+import { YAML } from "bun";
+
+const config = YAML.parse(await Bun.file("./config.yaml").text());
+const text = YAML.stringify({ name: "app", replicas: 3 });
+```
+
+Multi-document YAML (`---`-separated) returns an array from `parse()`.
+
+### Compression streams
+
+```typescript
+const compressed = new Response(data).body!.pipeThrough(
+  new CompressionStream("zstd"),
+);
+const decompressed = new Response(compressed).body!.pipeThrough(
+  new DecompressionStream("zstd"),
+);
+```
+
+`CompressionStream`/`DecompressionStream` support `"gzip"`, `"deflate"`,
+`"deflate-raw"`, `"brotli"`, and `"zstd"`.
+
+### Secrets
+
+```typescript
+import { secrets } from "bun";
+
+await secrets.set({ service: "my-cli", name: "api-token" }, token);
+const stored = await secrets.get({ service: "my-cli", name: "api-token" });
+await secrets.delete({ service: "my-cli", name: "api-token" });
+```
+
+Backed by Keychain (macOS), libsecret (Linux), and Windows Credential
+Manager. Experimental; API may change.
+
 ### Other built-ins to check before adding dependencies
 
 - `Bun.Glob` for fast glob scanning.
 - `Bun.Archive` for tarball creation/extraction.
 - `Bun.JSONC`, `Bun.JSON5`, and `Bun.JSONL` for nonstandard JSON formats.
 - `Bun.CSRF` for CSRF token generation/verification.
-- `Bun.semver`, `Bun.color`, `Bun.escapeHTML`, `Bun.stringWidth`, and
-  `Bun.wrapAnsi` for common utility needs.
+- `Bun.semver`, `Bun.color`, `Bun.escapeHTML`, `Bun.stringWidth`,
+  `Bun.wrapAnsi`, and `Bun.stripANSI` for common utility needs.
+- `URLPattern` (standard Web API) for declarative URL matching.
+- `DisposableStack`/`AsyncDisposableStack` (TC39) for resource cleanup.
 
 ---
 

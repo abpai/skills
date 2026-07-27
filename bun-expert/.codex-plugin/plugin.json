@@ -1,6 +1,6 @@
 {
   "name": "bun-expert",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "description": "Expert guidance for JavaScript/TypeScript development with the Bun runtime. Covers project setup, package management, HTTP servers, latest built-in APIs, testing, bundling, and migration from Node.js.",
   "author": {
     "name": "Andy Pai"
