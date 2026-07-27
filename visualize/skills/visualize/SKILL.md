@@ -9,7 +9,7 @@ description: >-
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.3.2"
+  version: "1.3.3"
   upstream_skill: https://github.com/nicobailon/visual-explainer
 ---
 
@@ -62,9 +62,10 @@ Why this shape: working memory holds only a few new items at a time. The gist gi
 3. **Read `./templates/base.html`** to absorb the tech stack, the HTML-effectiveness style, and the arc components. Read it each time, do not rely on memory.
 4. **Pick the format** from the Format Guide and record the choice before writing.
 5. For Mermaid diagrams with 10+ nodes, read `./references/mermaid-tips.md`, include Mermaid.js, and keep the graph definition in a plain constant — but first ask whether a 10+ node diagram belongs in the Walkthrough at all (usually it belongs in Depth, or split across steps).
-6. **Write** to `~/.agent/diagrams/<descriptive-name>.html` and open in the browser.
+6. Before writing the `<script type="module">` block, read `./references/htm-authoring.md` for htm escaping and entity-safety rules.
+7. **Write** to `~/.agent/diagrams/<descriptive-name>.html` and open in the browser.
 
-The workflow is complete when the file exists, the first screen passes the gist test (see Before Delivering), browser console is clean, and the final response names the file path, the audience, and the visuals included.
+The workflow is complete when the file exists, the first screen passes the success test above, browser console is clean, and the final response names the file path, the audience, and the visuals included.
 
 ## Format Guide
 
@@ -82,74 +83,20 @@ A dense two-column comparison as the opening visual is the classic expert's-view
 
 ## Tech Stack
 
-Every generated file uses:
-
-- **Preact + htm** — ESM CDN imports, no build step
-- **Plain CSS custom properties** — no build step or generated CSS
-- **System fonts** — serif display, sans body, mono metadata
-- **Mermaid.js CDN** — add only when the selected format requires a large graph
-
-No other dependencies. No build step.
+Every generated file uses Preact + htm via ESM CDN imports, no build step — see `./templates/base.html`. Add Mermaid.js only when the selected format requires a large graph.
 
 For the full HTML-effectiveness design tokens (colors, typography, layout, motion), see `./references/design-system.md`.
 
 ## Principles
 
-- **Teach, don't display** — the reader's understanding is the deliverable, the HTML is the medium
-- **One primary visual anchor** per request, plus supporting evidence visuals when reviewing a plan or system
-- **Adapt the base template** — don't start from scratch; it already implements the arc
 - **Correct over pretty** — the visualization must accurately represent the information
 - **Interactive when it helps** comprehension (step-through, hover, collapse) — never interaction for its own sake
-- **Export when the page edits data** — include copy as JSON/Markdown/prompt when the artifact is a tuner or editor
 - **Never use `innerHTML` with user-provided content** (XSS prevention)
-
-## Avoiding Escaped Backticks in Output
-
-The Write tool can corrupt JavaScript template literals, writing literal `\`` and `\${` instead of real backticks and interpolations. This breaks all htm tagged templates. To prevent it:
-
-1. **Extract data into separate `const` variables** above the htm templates. Mermaid chart definition strings, config arrays, long text — declare them as plain constants first, then reference the variable inside `html\`...\``.
-2. **Keep htm expressions simple.** Pass variables by reference (`${myVar}`, `${myArray.map(...)}`). Do not build complex multi-line strings or nested template literals inline within an `html\`...\`` block.
-3. **Verify after writing.** Re-read the first 30 lines of the `<script type="module">` block in the written file and confirm there are no escaped sequences (`\`` or `\${`). If Chrome DevTools MCP is available, check the browser console for `SyntaxError` after opening the file.
-
-## Avoiding Visible HTML Entity Text
-
-Inside an `htm` tagged template, entity spellings such as `&gt;`, `&lt;`, and
-`&amp;` are passed to Preact as ordinary text and escaped again. The rendered page
-then shows the spelling itself, such as `-&gt;`, instead of the intended symbol.
-
-- Write non-structural visible symbols directly in `html\`...\`` templates:
-  `→`, `←`, `›`, `>`, `&`, and so on. A visible `<` is the exception because
-  `htm` treats it as markup; render it through an expression such as `${'<'}`
-  (or a named string variable) and let Preact escape it. Use the same expression
-  approach for dynamic text.
-- Use HTML entities only in browser-parsed markup outside `<script>` blocks.
-  JavaScript source — including plain string constants and `htm` templates —
-  does not decode them for you.
-- Before delivery, inspect the rendered page text for visible entity spellings.
-  If the browser console is available, run
-  `document.body.innerText.match(/&(?:#\d+|#x[\da-f]+|[a-z][a-z0-9]+);/gi)`;
-  any match must be intentional or replaced with safe text that renders the
-  character the reader should see.
 
 ## Before Delivering
 
-Run these checks against the finished file, in order:
+Re-check the Gist, jargon gate, arc hierarchy, and density budget above against the finished file. Then confirm:
 
-1. **Gist test** — read only the first screen. Can someone with zero context say what this is and why it matters? Is every word on that screen plain English?
-2. **Jargon scan** — find each term of art on the page. Is its plain-words meaning established before (or at) its first appearance? Is it in the glossary?
-3. **Hierarchy test** — could a reader stop after the Gist and leave with a correct (if shallow) model? Stop after the Walkthrough with a working model? Is Depth collapsed?
-4. **Density check** — any visual with more than 7 primary elements? Any text in a visual under 13px?
-5. **First screen test** — is the gist + anchor visual visible without scrolling?
-6. **File opens cleanly** — no console errors, no broken fonts.
-7. **Rendered text is clean** — no accidental visible entity spellings such as `&gt;`, `&lt;`, or `&amp;`.
-8. **Format branch followed** — selected format, extra references, and dependencies match the artifact.
-
-## Output
-
-Write to `~/.agent/diagrams/` with a descriptive filename (`auth-flow.html`, `pipeline-overview.html`).
-
-Open in browser:
-- macOS: `open ~/.agent/diagrams/filename.html`
-- Linux: `xdg-open ~/.agent/diagrams/filename.html`
-
-Tell the user the file path, the audience you wrote it for, and the arc you used (gist → steps → depth → recap).
+1. **File opens cleanly** — no console errors, no broken fonts.
+2. **Rendered text is clean** — no accidental visible entity spellings such as `&gt;`, `&lt;`, or `&amp;`.
+3. **Format branch followed** — selected format, extra references, and dependencies match the artifact.
