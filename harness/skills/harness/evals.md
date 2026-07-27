@@ -12,8 +12,7 @@ gradeable agent tests.
 This module produces **seed specs** in the shape the factory's eval system
 consumes; it does not run or grade evals — the runner and graders live on the
 factory side. The proof-row format and the eval-seed field mapping are defined
-in `./INTERFACES.md` in installed skills, mirrored at `../../INTERFACES.md` in
-the source checkout.
+in `./INTERFACES.md`.
 
 ## Process
 

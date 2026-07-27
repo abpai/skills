@@ -47,10 +47,8 @@ fixing.
 ### 3. Repair the smallest durable surface
 
 For each real gap, walk `docs.md`'s enforcement hierarchy top-down and fix the
-smallest durable surface: prefer a test/lint/script/route over prose, tighten an
-ambiguous instruction, add the missing route, or beautify an illegible failure
-message that burned the run. Repair the skill, do not append a warning — a
-warning is the thing that bloats and degrades adherence.
+smallest durable surface it names. Repair the skill, do not append a warning —
+a warning is the thing that bloats and degrades adherence.
 
 ### 4. Loop until clean
 

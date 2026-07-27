@@ -4,7 +4,7 @@ disable-model-invocation: true
 description: "Route agent-harness workflows through one scoped /harness command. Use guide for scenario-based first-audit, adoption, CI, self-review, and tune-up instructions; baseline to inventory production behavior at repo scale; docs for agent-ready guidance; doctor for verification-first readiness and diff audits; compliant for end-to-end remediation including dependency hardening; secure-dependencies for lockfile and supply-chain policy; capture to pin one behavior surface; onboard for autonomous-ready manifests; evals for proof-menu cases; and dogfood for skill hardening."
 argument-hint: "[subcommand] [args] - e.g. guide, baseline, docs, doctor, compliant, secure-dependencies, capture, onboard, evals, dogfood"
 metadata:
-  version: "1.8.2"
+  version: "1.8.3"
 ---
 
 # Harness Workflow Pack
@@ -35,7 +35,7 @@ Known subcommands: `guide`, `baseline`, `docs`, `doctor`, `compliant`, `secure-d
 - Use `compliant.md` (aliases: `overhaul`; natural-language "make this repo harness compliant") for an end-to-end pass: audit with `doctor.md`, remediate guidance and enforcement with `docs.md`, apply `secure-dependencies.md`, then re-audit to verify.
 - Use `secure-dependencies.md` to harden dependency resolution, lockfile use, update-bot cooldowns, lifecycle scripts, and CI install commands for the ecosystems actually present.
 - Use `capture.md` to characterize one current behavior surface with tests/snapshots **before** an agent changes legacy or under-tested code — the safety net that lets an agent tell a fix from a regression. It also has row mode for `baseline.md` (`BehaviorRow` in, `LedgerRow` out). Standalone capture outputs a capture report and coverage-gap report; only row mode updates `docs/BEHAVIOR_LEDGER.md`.
-- Use `onboard.md` to project an audited repo into a machine-readable `autonomous-ready` manifest a downstream factory can consume, gated on the loop-readiness verdict. Emits the manifest plus an onboarding checklist. Schema in `./INTERFACES.md` in installed skills, with `../../INTERFACES.md` as the source-checkout mirror.
+- Use `onboard.md` to project an audited repo into a machine-readable `autonomous-ready` manifest a downstream factory can consume, gated on the loop-readiness verdict. Emits the manifest plus an onboarding checklist. Schema in `./INTERFACES.md`.
 - Use `evals.md` to seed eval cases from the spec-contract proof menu — one gradeable eval seed per proof row. Produces seed specs; the runner/grader lives on the factory side.
 - Use `dogfood.md` to harden a skill (or the harness) by running it under a sub-agent, reviewing the transcript for friction, and repairing the smallest durable surface until runs come out clean. Harness is the patchable target; automated feedback ingestion is the factory's job.
 
