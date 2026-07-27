@@ -4,42 +4,28 @@ This repo is a Claude Code plugin marketplace plus a Codex plugin repo. Each
 top-level folder is a plugin shipping `.claude-plugin/plugin.json` and usually
 `.codex-plugin/plugin.json`.
 
-## Where to look
+Authoring, structure, and packaging rules live in `docs/skill-authoring.md`.
+Read it before you create or restructure a skill. `scripts/validate-skills.sh`
+enforces most of them.
 
-- Detailed skill authoring and packaging rules: `docs/skill-authoring.md`
-- Dogfood workflow for skill hardening: `harness/skills/harness/dogfood.md`
-- Command-shim rationale: README section ["Why every namespaced command is a `skills/<name>/SKILL.md`"](README.md#why-every-namespaced-command-is-a-skillsnameskillmd)
+## Invariants
 
-## Rules
+- Namespaced commands are skill subdirectories
+  (`<plugin>/skills/<name>/SKILL.md` → `/<plugin>:<name>`), never plugin-root
+  `commands/`.
+- Every skill entrypoint is human-invocable only: `disable-model-invocation:
+  true` in `SKILL.md`, `policy.allow_implicit_invocation: false` in its
+  `agents/openai.yaml`.
+- No runtime self-update checks or installer side effects in skill bodies.
 
-- Namespaced commands must be skill subdirectories, never plugin-root
-  `commands/`: `<plugin>/skills/<name>/SKILL.md` produces `/<plugin>:<name>`.
-- Every skill entrypoint is human-invocable only: set
-  `disable-model-invocation: true` in `SKILL.md` and
-  `policy.allow_implicit_invocation: false` in its local
-  `agents/openai.yaml`. Grouped workflow packs use one explicit umbrella skill
-  (`skills/<plugin>/SKILL.md`) plus hidden per-command wrappers
-  (`skills/<workflow>/SKILL.md`) with `disable-model-invocation: true`,
-  `user-invocable: false`, and `metadata.internal: true`.
-- Keep skill `description` trigger-focused, workflow steps explicit about done
-  criteria, and installed-skill paths relative to their copied cache location.
-- Do not add runtime self-update checks or installer side effects to ordinary
-  skill bodies.
-- For skill behavior, routing, workflow-step, or instruction changes, run a real
-  subagent dogfood pass before claiming the skill is ready. Review the
-  transcript, patch the smallest durable surface that caused friction, and rerun
-  until the next representative task converges cleanly.
-- Pure packaging/version-only changes may skip dogfood, but say so in the proof.
+## Process
 
-## Packaging
-
-When you change a plugin, bump its version source and sync the public bundle:
-`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, public
-`SKILL.md` `metadata.version` when present, `.claude-plugin/marketplace.json`,
-`.agents/plugins/marketplace.json` when applicable, `versions.json`,
-`README.md`, and `docs/index.html`.
-
-Run the validation lane:
+- Skill behavior or instruction changes need a real subagent dogfood pass
+  (`harness/skills/harness/dogfood.md`) before you call the skill ready.
+  Packaging/version-only changes may skip it — say so in the proof.
+- When you change a plugin, bump its version in `.claude-plugin/plugin.json`
+  and run the validation lane. The lane syncs the other version surfaces and
+  fails on what it cannot fix:
 
 ```bash
 scripts/sync-plugin-versions.sh
