@@ -4,10 +4,20 @@
  * For each manifest entry:
  *   - heading ablation → `prepare-skills --ablate <id>`, run `guardedBy` evals
  *   - retirement check → `prepare-skills --omit <skillId>`, run `retirement` evals
- * Classify SURVIVED (all pass) vs KILLED (any fail). Always restore baseline in
- * `finally` so a crashed run never leaves `agent/skills/` mutated.
  *
- * Usage: `bun run ablate` (requires OPENAI_API_KEY for live grades).
+ * Classifications:
+ *   KILLED     — an eval failed. The cut text is load-bearing and now guarded.
+ *   SURVIVED   — every eval passed AND the eval needs the skill to pass. The
+ *                cut text really is a no-op for this contract: a cut candidate.
+ *   UNGUARDED  — every eval passed, but they also pass with the skill entirely
+ *                omitted. The eval measures the base model, not the skill, so
+ *                it can say nothing about this text. Not a cut candidate —
+ *                write a discriminating eval first.
+ *
+ * Always restore baseline in `finally` so a crashed run never leaves
+ * `agent/skills/` mutated.
+ *
+ * Usage: `bun run ablate [<id>…]` (requires OPENAI_API_KEY for live grades).
  */
 import { spawnSync } from "node:child_process"
 import { dirname, resolve } from "node:path"
@@ -17,9 +27,16 @@ import { ABLATIONS, type Ablation } from "../ablations/manifest"
 const here = dirname(fileURLToPath(import.meta.url))
 const eveRoot = resolve(here, "..")
 
+type EvalAssertion = {
+  name: string
+  passed?: boolean
+  severity?: string
+}
+
 type EvalVerdict = {
   id: string
   verdict: string
+  assertions?: EvalAssertion[]
 }
 
 type EvalRunSummary = {
@@ -31,10 +48,12 @@ type EvalRunSummary = {
   results: EvalVerdict[]
 }
 
+type Classification = "SURVIVED" | "KILLED" | "UNGUARDED" | "ERROR"
+
 type Row = {
   id: string
   mode: "ablate" | "omit"
-  classification: "SURVIVED" | "KILLED" | "ERROR"
+  classification: Classification
   detail: string
   hypothesis: string
 }
@@ -71,18 +90,13 @@ function restoreBaseline(): void {
   prepare([])
 }
 
-/** Pull the pretty-printed summary object out of eve's mixed stdout (logs + JSON). */
-function extractJsonObject(stdout: string): unknown {
-  const marked = stdout.search(/\n\{\n/)
-  const start = marked >= 0 ? marked + 1 : stdout.indexOf("{")
-  if (start < 0) {
-    throw new Error(`eve eval --json produced no JSON object\nstdout:\n${stdout.slice(0, 500)}`)
-  }
+/** Read one balanced `{…}` starting at `start`; null if it never closes. */
+function readBalancedObject(text: string, start: number): string | null {
   let depth = 0
   let inString = false
   let escape = false
-  for (let i = start; i < stdout.length; i++) {
-    const ch = stdout[i]
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
     if (inString) {
       if (escape) escape = false
       else if (ch === "\\") escape = true
@@ -93,10 +107,43 @@ function extractJsonObject(stdout: string): unknown {
     else if (ch === "{") depth++
     else if (ch === "}") {
       depth--
-      if (depth === 0) return JSON.parse(stdout.slice(start, i + 1))
+      if (depth === 0) return text.slice(start, i + 1)
     }
   }
-  throw new Error("eve eval --json: unclosed JSON object in stdout")
+  return null
+}
+
+/**
+ * Pull the summary object out of eve's mixed stdout (logs + JSON).
+ *
+ * Eve interleaves human-readable logs with the `--json` summary, and those logs
+ * can themselves contain `{`. Anchoring on the FIRST candidate locked onto a
+ * log fragment and died with "unclosed JSON object" mid-sweep (2026-07-27), so
+ * scan candidates newest-first and accept the first that both parses and
+ * carries `results[]` — the summary is emitted last.
+ */
+function extractJsonObject(stdout: string): unknown {
+  const starts: number[] = []
+  for (let i = 0; i < stdout.length; i++) {
+    if (stdout[i] === "{" && (i === 0 || stdout[i - 1] === "\n")) starts.push(i)
+  }
+  if (stdout.indexOf("{") >= 0 && starts.length === 0) starts.push(stdout.indexOf("{"))
+
+  for (let i = starts.length - 1; i >= 0; i--) {
+    const slice = readBalancedObject(stdout, starts[i])
+    if (!slice) continue
+    try {
+      const parsed = JSON.parse(slice)
+      if (parsed && typeof parsed === "object" && Array.isArray((parsed as EvalRunSummary).results)) {
+        return parsed
+      }
+    } catch {
+      // Not the summary — keep scanning older candidates.
+    }
+  }
+  throw new Error(
+    `eve eval --json: no summary object with results[] in stdout\nstdout tail:\n${stdout.slice(-800)}`,
+  )
 }
 
 /** Run named evals via `eve eval <id…> --json`; return parsed summary. */
@@ -115,6 +162,34 @@ function classify(summary: EvalRunSummary): "SURVIVED" | "KILLED" {
   )
   if (anyFail || summary.failed > 0 || (summary.errored ?? 0) > 0) return "KILLED"
   return "SURVIVED"
+}
+
+/**
+ * Negative control for a SURVIVED result.
+ *
+ * SURVIVED is ambiguous: the cut directive may be a genuine no-op, OR the eval
+ * may never have depended on the skill in the first place. Those look identical
+ * in the table, and only one of them means "safe to delete."
+ *
+ * So before reporting SURVIVED, re-run the same evals with the whole skill
+ * omitted. `loadedSkill(...)` gates fail mechanically when the skill is absent,
+ * so they are excluded — every OTHER gate passing means the base model already
+ * produced the graded behavior unaided, and this eval cannot testify about the
+ * skill's text at all.
+ *
+ * Measured 2026-07-27: `contracts/code-simplify-proposal-no-edits` scored 4/5
+ * with `code` fully omitted — only the `loadedSkill` gate failed. Without this
+ * control its SURVIVED reads as "delete the Scope contract section."
+ */
+function controlPassesWithoutSkill(ids: readonly string[], skillId: string): boolean {
+  prepare(["--omit", skillId])
+  const summary = runEvals(ids)
+  return summary.results.every((r) => {
+    const assertions = r.assertions ?? []
+    // No assertion detail means we cannot prove non-discrimination; don't claim it.
+    if (assertions.length === 0) return false
+    return assertions.every((a) => a.passed === true || /^loadedSkill\(/.test(a.name))
+  })
 }
 
 function formatEvalLine(summary: EvalRunSummary): string {
@@ -140,15 +215,29 @@ function runEntry(entry: Ablation): Row {
     if ("lines" in entry.span) {
       throw new Error(`${entry.id}: line-span ablations are not implemented`)
     }
-    console.log(`\n══ ablate ${entry.id}  (## ${entry.span.heading}) ══`)
+    console.log(
+      `\n══ ablate ${entry.id}  (${entry.span.file ?? "SKILL.md"} ## ${entry.span.heading}) ══`,
+    )
     prepare(["--ablate", entry.id])
     const summary = runEvals(entry.guardedBy)
-    const classification = classify(summary)
+    let classification: Classification = classify(summary)
+    let detail = formatEvalLine(summary)
+
+    // A SURVIVED is only meaningful if the eval could ever have failed for
+    // want of this skill. Prove that before reporting it as a cut candidate.
+    if (classification === "SURVIVED") {
+      console.log(`   control: re-running ${entry.guardedBy.join(", ")} with ${entry.skillId} omitted…`)
+      if (controlPassesWithoutSkill(entry.guardedBy, entry.skillId)) {
+        classification = "UNGUARDED"
+        detail = `${detail} (passes without ${entry.skillId})`
+      }
+    }
+
     return {
       id: entry.id,
       mode: "ablate",
       classification,
-      detail: formatEvalLine(summary),
+      detail,
       hypothesis: entry.hypothesis,
     }
   }
@@ -185,9 +274,23 @@ function main(): void {
     process.exit(2)
   }
 
+  // Optional id filter: `bun run ablate <id> [<id>...]`. A full sweep is one
+  // live model session per guarded eval, so re-running a single entry after
+  // editing its eval should not cost the whole manifest.
+  const only = process.argv.slice(2).filter((a) => !a.startsWith("-"))
+  const unknown = only.filter((id) => !ABLATIONS.some((a) => a.id === id))
+  if (unknown.length > 0) {
+    console.error(
+      `ablate: unknown ablation id(s): ${unknown.join(", ")}\n` +
+        `known: ${ABLATIONS.map((a) => a.id).join(", ")}`,
+    )
+    process.exit(2)
+  }
+  const selected = only.length > 0 ? ABLATIONS.filter((a) => only.includes(a.id)) : ABLATIONS
+
   const rows: Row[] = []
   try {
-    for (const entry of ABLATIONS) {
+    for (const entry of selected) {
       try {
         rows.push(runEntry(entry))
       } catch (err) {
