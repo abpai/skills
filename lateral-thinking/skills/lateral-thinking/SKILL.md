@@ -11,7 +11,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.2"
+  version: "1.1.3"
   upstream_skill: "https://github.com/ogiberstein/lateral-thinking-skill"
 ---
 
@@ -23,37 +23,10 @@ Adapted from [ogiberstein/lateral-thinking-skill](https://github.com/ogiberstein
 with a repo-native rewrite for portability and clearer boundaries with nearby skills.
 
 Use this skill when ordinary analysis is already exhausted and the user needs a
-good second or third lens, not a recap of the obvious first one.
-
-## Invocation Choice
-
-Use `lateral-thinking` for requests like:
-
-- "What are we missing?"
-- "Go deeper"
-- "Think laterally"
-- "Think cross-domain"
-- "We keep trying the obvious fixes and nothing changes"
-- "Give me non-obvious ideas"
-
-Typical fit:
-
-- product and strategy dead ends
-- system design problems with repeated failure patterns
-- research ideation
-- policy, operations, growth, or process problems that feel trapped in local optimization
-
-Use `distill` first if the user needs a clean explanation of what a system *is*.
-Answer directly for ordinary brainstorming, literature review, or standard
-best-practices requests.
-
-`distill` compresses a system to its essential primitives. `lateral-thinking`
-uses those primitives to generate non-obvious hypotheses.
-
-When both apply:
-
-1. Distill the problem first if the mechanism is still muddy
-2. Then use lateral thinking on the clarified skeleton
+good second or third lens, not a recap of the obvious first one. `distill`
+compresses a system to its essential primitives; `lateral-thinking` uses those
+primitives to generate non-obvious hypotheses. If both apply, distill first,
+then run lateral thinking on the clarified skeleton.
 
 ## Ring Model
 
@@ -72,11 +45,8 @@ it helps make the lateral leap understandable.
 
 Strip away jargon and restate the raw mechanics of the problem in 2-3 sentences.
 
-Examples:
-
-- Product: "We ship features, users sample them once, then their behavior snaps back."
-- Engineering: "A disruption is brief, but recovery is slow enough that the next disruption lands before the system has reset."
-- Operations: "The metric is managed locally, but each local optimization worsens the whole system."
+Example: "We ship features, users sample them once, then their behavior snaps
+back."
 
 If the framing is ambiguous, high-stakes, or likely to drift, confirm the skeleton
 with the user before going deeper. Otherwise, proceed with the explicit stated
@@ -105,19 +75,13 @@ feedback loops, and a likely regulator or missing variable.
 
 ### 3. Generate Ring 2 discoveries
 
-Produce 3-5 non-obvious observations about the parts themselves:
-
-- hidden modulators
-- missing feedback terms
-- untracked constraints
-- misaligned incentives
-- timing dependencies
-
-These should already feel sharper than a normal domain-only answer.
+Produce 3-5 non-obvious observations about the parts themselves. These should
+already feel sharper than a normal domain-only answer.
 
 ### 4. Run a cross-domain raid
 
-Search for the same mechanism in distant fields. Good source domains include:
+Search for the same mechanism in distant fields. Good source domains include,
+among others:
 
 - biology and ecology
 - control systems and physics
@@ -159,7 +123,7 @@ two borrowed mechanisms.
 This step is complete when each surviving hypothesis has a falsifier or concrete
 test, and intersections are named separately from standalone ideas.
 
-### 7. Kill weak ideas
+### 7. Rank and kill
 
 Run an adversarial pass on every surviving hypothesis:
 
@@ -168,58 +132,23 @@ Run an adversarial pass on every surviving hypothesis:
 - is this already known and discredited elsewhere?
 - does it produce an actionable next step?
 
-Downrank or kill ideas that fail these tests.
+Kill or downrank ideas that fail these tests. Rank survivors by mechanistic
+plausibility, domain distance, and testability. Penalize obvious domain advice,
+ideas already tried, hand-wavy suggestions with no test, and ideas far outside
+the user's practical reach. Judge reach against the authority the user's own
+framing implies; ask only if the ranking turns on it.
 
-### 8. Rank and recommend
+This step is complete when every hypothesis carries a verdict (survives,
+downranked, or killed), and the survivors are ranked.
 
-Prioritize by:
+### 8. Recommend actions
 
-- mechanistic plausibility
-- domain distance
-- testability
-
-Penalize:
-
-- obvious domain advice
-- ideas already tried
-- hand-wavy suggestions with no test
-- ideas far outside the user's practical reach
+Turn the top-ranked survivors into two to four concrete next steps. Each step
+names what to do and which hypothesis it tests.
 
 ## Output Format
 
-```markdown
-## Lateral Thinking: [Problem]
-
-### Mechanism Skeleton
-[Working problem skeleton]
-
-### Ring 2 Discoveries
-- ...
-
-### Ring 3 Hypotheses
-#### Hypothesis 1: [Name]
-- Source field:
-- Non-obvious connection:
-- Mechanism chain:
-- Why not already standard:
-- Adjacent evidence:
-- Test:
-- Estimated impact:
-
-### Hypothesis Intersections
-- ...
-
-### Adversarial Review
-- [Hypothesis]: SURVIVES / DOWNRANKED / KILLED
-
-### Cross-Domain Pointers
-- ...
-
-### Recommended Actions
-1. ...
-2. ...
-3. ...
-```
+Follow the template in [references/output-format.md](references/output-format.md).
 
 ## Output Choice
 
@@ -229,21 +158,8 @@ report. Use cards for Ring 2 discoveries and Ring 3 hypotheses, show source
 fields as labels, make tests/falsifiers visible, and group intersections so the
 user can compare candidates side by side.
 
-## Guardrails
-
-- Favor mechanism transfer over decorative analogy
-- Every surviving idea must imply a concrete test or next step
-- Do not turn this into a standard literature review
-- Do not spend the answer rehashing Ring 0-1 advice
-- Novelty is useful only if it survives the adversarial pass
-
 ## Iteration
 
-If the best hypothesis changes the way the problem should be framed, run one more
-cycle with the updated skeleton.
-
-Stop when:
-
-- the skeleton stabilizes
-- a second pass adds little
-- the user has enough to test
+If the best hypothesis reframes the problem, run one more cycle with the
+updated skeleton. Stop when the skeleton stabilizes, another pass adds little,
+or the user has enough to test.
