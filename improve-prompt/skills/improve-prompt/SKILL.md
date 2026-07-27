@@ -5,7 +5,7 @@ description: Improve, rewrite, or sharpen prompts into reusable instructions for
 argument-hint: "[draft prompt or rough goal]"
 metadata:
   author: Andy Pai
-  version: "1.3.3"
+  version: "1.3.4"
   tags: "prompting prompt-engineering rewriting agent-workflows handoff"
 ---
 
@@ -23,8 +23,8 @@ The goal is a **sharp prompt produced fast** via a short back-and-forth with the
 - **Rough goal** — missing deliverable, context, or constraints. Go to step 2.
 - **Already specialized** (decision memo, coding task, review, spec, final summary) — check `references/patterns.md` for a matching template, then go to step 2 or 3.
 
-This step is complete when the input is classified as clear, rough, or
-specialized, and any needed reference pattern has been selected.
+Complete once the input is classified and any needed reference pattern is
+selected.
 
 ### 2. Interview (only if needed)
 

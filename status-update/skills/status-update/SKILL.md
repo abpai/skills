@@ -6,7 +6,7 @@ argument-hint: "[detailed] [scope to report on]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.3"
+  version: "1.0.4"
   tags: "status progress long-running agents blockers handoff operations"
 ---
 
@@ -18,30 +18,22 @@ selecting any bold label.
 
 ## Read the request
 
-Arguments are `[detailed] [scope to report on]`, and the user's own words carry
-the same meaning ("give me the detail", "just the deploy work"). A `detailed`
-token, or an equivalent ask for depth, selects the expanded report in
+`detailed` (or an equivalent ask for depth) selects the expanded report in
 [Expand only on request](#expand-only-on-request); anything else is the scope.
-With no argument and no stated scope, write the quick update for the whole task.
+No argument and no stated scope means the quick update for the whole task.
 
 ## Establish current truth
 
 Treat a status request as read-only. Do not interrupt workers, edit files,
 restart commands, deploy, or otherwise alter the task merely to report it.
 
-Inspect the smallest set of live sources that can answer the request:
-
-1. Read the task's current plan or goal, recent turns, active worker states, and
-   running command output.
-2. Check repository, PR, CI, or runtime state when a claim depends on it.
-3. Prefer current primary evidence over earlier commentary, plans, worker
-   claims, docs, or memory.
-4. State important unknowns instead of filling gaps with a plausible story.
+Prefer current primary evidence — repository, PR, CI, or runtime state — over
+earlier commentary, plans, worker claims, docs, or memory. State important
+unknowns instead of filling gaps with a plausible story.
 
 When reporting another Codex task, resolve the exact task first and read its
-recent turns. When reporting this task, use the current conversation and live
-execution state. Do not ask an active worker for a redundant status report when
-its existing state and evidence are sufficient.
+recent turns; don't ask an active worker for a redundant status report when its
+existing state is enough.
 
 ## Classify the work honestly
 
@@ -87,9 +79,6 @@ then `On track`. A stall the user can clear — a credential, a permission, a
 decision — is `Waiting on you`, not `Blocked`; reserve `Blocked` for a stall
 that no user action can clear, such as a third-party outage or an upstream fix.
 
-If nothing is currently executing but autonomous work remains, say `Idle`,
-explain why, and do not disguise it as active.
-
 Apply the signal to the scope the user asked about. If a long task drifted into
 several programs, name the scope in the opening sentence. A documented handoff
 does not make the original outcome complete unless the user explicitly changed
@@ -100,14 +89,13 @@ narrow and broad verdicts in one sentence instead of silently choosing one.
 ## Write the quick update
 
 Keep the default around 150-250 words even when the underlying task is large.
-Use at most three Done bullets, three Left items, two Friction bullets, and two
-Surprises. Give **Active now** one bullet per genuinely live workstream — never
-drop a live workstream to save a line — and if more than three are running,
-group the smaller ones into one bullet and name the count. Collapse related
-outcomes before adding detail. Use short bullets, concrete outcomes, and bold
-noun labels that the user can select for follow-up. Omit empty optional
-sections except `Surprises`, which should say `None that changed the plan` when
-the user explicitly asked about surprises.
+Give **Active now** one bullet per genuinely live workstream — never drop a
+live workstream to save a line — and if more than three are running, group the
+smaller ones into one bullet and name the count. Collapse related outcomes
+before adding detail. Use short bullets, concrete outcomes, and bold noun
+labels that the user can select for follow-up. Omit empty optional sections
+except `Surprises`, which should say `None that changed the plan` when the user
+explicitly asked about surprises.
 
 Use this shape:
 
@@ -160,13 +148,5 @@ judgment, and unknowns distinguishable.
 
 ## Final checks
 
-Before sending, confirm that:
-
-- the opening verdict matches the evidence;
-- completed work is not confused with attempted work;
-- current activity is genuinely live or clearly labeled idle/stalled;
-- remaining work includes the next meaningful proof or decision gate;
-- friction explains impact and response, not just an error message;
-- surprises are decision-relevant;
-- user action appears only when truly required;
-- the update can be understood without reading prior commentary.
+Before sending, confirm the update can be understood without reading prior
+commentary.
