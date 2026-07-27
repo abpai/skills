@@ -37,7 +37,6 @@ export const SKILLS: Record<string, string> = {
   "decision-worksheet": "decision-worksheet/skills/decision-worksheet",
   "human-writer": "human-writer/skills/human-writer",
   "improve-prompt": "improve-prompt/skills/improve-prompt",
-  "explain-concisely": "explain-concisely/skills/explain-concisely",
   tutorial: "tutorial/skills/tutorial",
   // Routing distractor + add-a-skill README seed; no dedicated eval yet.
   "status-update": "status-update/skills/status-update",
