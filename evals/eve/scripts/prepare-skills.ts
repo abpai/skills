@@ -35,7 +35,6 @@ export const SKILLS: Record<string, string> = {
   claude: "claude/skills/claude",
   distill: "distill/skills/distill",
   "lateral-thinking": "lateral-thinking/skills/lateral-thinking",
-  "decision-worksheet": "decision-worksheet/skills/decision-worksheet",
   "human-writer": "human-writer/skills/human-writer",
   "improve-prompt": "improve-prompt/skills/improve-prompt",
   tutorial: "tutorial/skills/tutorial",

@@ -29,7 +29,6 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install codex-exec@abpai-skills
 /plugin install codex-session@abpai-skills
 /plugin install cursor@abpai-skills
-/plugin install decision-worksheet@abpai-skills
 /plugin install status-update@abpai-skills
 ```
 
@@ -82,7 +81,6 @@ marketplace flow above.
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **decision-worksheet** | Capture concise agent-behavior feedback notes, or inventory a real scope and build one self-contained HTML worksheet to ratify or override a recommended verdict per item |
 | **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; use `/harness guide` to pick the right workflow for your situation, `/harness baseline` to inventory production behavior, `/harness doctor` for readiness or diff self-review, `/harness secure-dependencies` for supply-chain policy, and `/harness compliant` for end-to-end remediation |
 | **status-update** | Turn long-running agent work into a concise, evidence-backed snapshot of what is done, active, left, slowing progress, or newly surprising |
 
