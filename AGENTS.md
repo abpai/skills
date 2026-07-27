@@ -23,9 +23,10 @@ enforces most of them.
 - Skill behavior or instruction changes need a real subagent dogfood pass
   (`harness/skills/harness/dogfood.md`) before you call the skill ready.
   Packaging/version-only changes may skip it — say so in the proof.
-- When you change a plugin, bump its version in `.claude-plugin/plugin.json`
-  and run the validation lane. The lane syncs the other version surfaces and
-  fails on what it cannot fix:
+- When you change a plugin, bump its version at the source the tooling reads —
+  `metadata.version` in the public `SKILL.md`, or `.claude-plugin/plugin.json`
+  for command-only plugins — then run the validation lane. The lane syncs the
+  other version surfaces and fails on what it cannot fix:
 
 ```bash
 scripts/sync-plugin-versions.sh
