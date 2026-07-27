@@ -2,11 +2,10 @@
 name: codex-session
 disable-model-invocation: true
 description: >
-  Locate, read, and summarize local Codex CLI transcripts by session or rollout
-  UUID. Use when the user supplies a Codex session ID or asks what a Codex
-  session did, said, decided, or contained; renders bounded recent context and
-  opt-in tool summaries. Local-only: never launches Codex or contacts a model
-  provider.
+  Locate, read, and summarize local Codex CLI transcripts by session or
+  rollout UUID — bounded recent context plus opt-in tool summaries.
+  Local-only: never launches Codex or contacts a model provider; use
+  codex-exec to run or resume with new work.
 license: MIT
 metadata:
   author: Andy Pai

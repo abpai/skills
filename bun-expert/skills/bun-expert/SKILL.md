@@ -2,15 +2,14 @@
 name: bun-expert
 disable-model-invocation: true
 description: >
-  Bun runtime guidance for JavaScript and TypeScript projects. Use when
-  starting Bun projects, managing packages, building HTTP servers, using Bun
-  APIs (`Bun.serve`, SQL, S3, Redis, `Bun.Image`, `Bun.WebView`, `Bun.$`),
-  testing, bundling, migrating from Node.js, or troubleshooting Bun-specific
-  behavior.
+  Bun runtime guidance for JavaScript and TypeScript projects — package
+  management, HTTP servers, Bun-specific APIs (`Bun.serve`, SQL, S3, Redis,
+  `Bun.Image`, `Bun.WebView`, `Bun.$`), testing, bundling, and migrating from
+  Node.js.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.4.4"
+  version: "1.4.5"
   upstream_skill: "https://bun.com/docs"
   tags: "bun javascript typescript runtime server bundler test image webview"
 ---

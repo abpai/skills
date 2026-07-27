@@ -2,13 +2,12 @@
 name: cursor
 disable-model-invocation: true
 description: >
-  Run, monitor, resume, or review work with Cursor Agent and Cursor models.
-  Use when delegating bounded implementation, investigation, planning, or
-  read-only review to Cursor; when durable headless artifacts are useful; or
-  when continuing an exact Cursor chat from another agent workflow.
+  Run, monitor, resume, or review work with Cursor Agent and Cursor models —
+  bounded implementation, investigation, planning, or read-only review, with
+  durable headless artifacts and exact chat continuation.
 license: MIT
 metadata:
-  version: "2.2.2"
+  version: "2.2.3"
 ---
 
 # Cursor

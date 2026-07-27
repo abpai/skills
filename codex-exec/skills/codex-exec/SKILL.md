@@ -2,15 +2,14 @@
 name: codex-exec
 disable-model-invocation: true
 description: >
-  Launch or monitor the Codex CLI as a headless worker. Use only for explicit
-  requests to ask, delegate to, run, or review with Codex; resume or continue a
-  Codex session only with new work; perform implementation or second opinions;
-  or monitor long-running Codex work. For a bare resume with no new task, or
-  local transcript inspection, use codex-session.
+  Launch or monitor the Codex CLI as a headless worker for delegated
+  implementation, review, or a second opinion, and to resume a session with
+  new work. For a bare resume with no new task, or local transcript
+  inspection, use codex-session.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "2.2.1"
+  version: "2.2.2"
 ---
 
 # Codex CLI

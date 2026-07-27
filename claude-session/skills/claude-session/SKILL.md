@@ -2,16 +2,14 @@
 name: claude-session
 disable-model-invocation: true
 description: >
-  Locate, read, and summarize local Claude Code transcripts by session UUID.
-  Use first whenever the user supplies a Claude session ID — even alongside
-  follow-on work — or asks what a Claude session did, said, decided, or
-  contained; renders bounded recent context, opt-in tool summaries, and child
-  subagent transcript paths. Local-only: never runs Claude or contacts
-  Anthropic; any follow-on execution remains a separate step.
+  Locate, read, and summarize local Claude Code transcripts by session
+  UUID — bounded recent context, opt-in tool summaries, and child subagent
+  transcript paths. Local-only: never runs Claude or contacts Anthropic; use
+  claude to run or resume with new work.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.2"
+  version: "1.1.3"
 ---
 
 # Claude Session

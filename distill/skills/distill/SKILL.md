@@ -2,11 +2,10 @@
 name: distill
 disable-model-invocation: true
 description: >
-  Decompose a complex system into essential primitives and a compressed mental model.
-  Use when the user asks to distill, boil down, find core abstractions, get the
-  "Karpathy version", or understand a codebase, architecture, paper, transcript, or
-  document set without a line-by-line walkthrough. Prefer lateral-thinking when
-  the user needs non-obvious hypotheses or cross-domain mechanism transfer.
+  Decompose a complex system (codebase, architecture, paper, transcript, or
+  document set) into essential primitives and a compressed mental model,
+  without a line-by-line walkthrough. Prefer lateral-thinking for non-obvious
+  hypotheses or cross-domain mechanism transfer.
 allowed-tools:
   - Read
   - Glob
@@ -17,7 +16,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2.3"
+  version: "1.2.4"
 ---
 
 # Distill

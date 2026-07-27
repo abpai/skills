@@ -2,10 +2,8 @@
 name: tutorial
 disable-model-invocation: true
 description: >
-  Write hands-on, self-verified, code-first tutorials where every step ends in a
-  runnable action and the reader finishes able to do the thing. Use when the
-  user asks for a tutorial, "show me how to", a step-by-step guide, setup
-  walkthrough, or a teach-me-to-build path where the reader follows along.
+  Write hands-on, self-verified, code-first tutorials where every step ends
+  in a runnable action and the reader finishes able to do the thing.
 argument-hint: "[topic or concept to teach]"
 allowed-tools:
   - Read
