@@ -32,6 +32,7 @@ export const SKILLS: Record<string, string> = {
   "hexagon-audit": "hexagon-audit/skills/hexagon-audit",
   "codex-session": "codex-session/skills/codex-session",
   "claude-session": "claude-session/skills/claude-session",
+  claude: "claude/skills/claude",
   distill: "distill/skills/distill",
   "lateral-thinking": "lateral-thinking/skills/lateral-thinking",
   "decision-worksheet": "decision-worksheet/skills/decision-worksheet",
