@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "skills": {
-    "bun-expert": "1.4.3",
+    "bun-expert": "1.4.4",
     "claude": "2.2.2",
     "claude-session": "1.1.2",
     "cli-design-expert": "1.2.2",
