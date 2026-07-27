@@ -1,11 +1,11 @@
 ---
 name: cli-design-expert
 disable-model-invocation: true
-description: "Design, review, or refactor command-line interfaces for usability and automation. Use for help text, args/flags, stdout vs stderr, exit codes, TTY behavior, config precedence, and safe handling of secrets and destructive actions."
+description: "Design or review a command-line interface for usability and automation, backed by the clig.dev guidelines — help text, flags, output streams, exit codes, safety, and scriptability."
 license: CC-BY-SA-4.0
 compatibility: Works with any CLI language/framework. Best with an args parser library and POSIX conventions (stdout/stderr, exit codes, signals). See references/CLI_GUIDELINES.md.
 metadata:
-  version: "1.2.2"
+  version: "1.2.3"
   author: "cli-guidelines-community"
   upstream_guidelines: "https://clig.dev"
   reference_file: "references/CLI_GUIDELINES.md"
@@ -13,219 +13,57 @@ metadata:
 
 # CLI Design Expert
 
-Use this skill to design, refactor, or audit CLIs that are:
+Design, review, or refactor CLIs against the [clig.dev](https://clig.dev)
+conventions. Load `references/CLI_GUIDELINES.md` for anything past the P0s and
+rubric below: command model, args-vs-flags, help text, TTY behavior, config
+precedence, signals, and worked examples all live there.
 
-- Human-friendly for interactive use
-- Predictable in scripts and CI
-- Safe for destructive operations
-- Clear in output, errors, and exit semantics
+## P0s — flag any of these first
 
-Primary reference: `references/CLI_GUIDELINES.md`.
+- Never accept secrets via flags (they leak via `ps` and shell history). Use
+  stdin, a secret-file flag, or an OS keychain instead.
+- Every interactive prompt needs a non-interactive path (flag/arg/file/stdin)
+  and a `--no-input` to disable prompting entirely.
+- Destructive actions need confirmation that scales with risk, plus a
+  scriptable bypass (`--force`/`--yes`).
 
-## Working stance
+## Standard flags
 
-Be direct and engineering-first. If a design is fragile, ambiguous, or hostile to automation, call it out and propose concrete fixes.
+`--json`, `--no-color`, `--no-input`, `-q`/`--quiet`, `-v`/`--verbose`,
+`-n`/`--dry-run`.
 
-## Non-negotiable checks (fast fail)
+## Error message shape
 
-Treat any failure below as P0.
-
-1. Non-interactive path is required
-
-- Never make an interactive prompt the only input path.
-- Every prompt needs a non-interactive alternative (flag/arg/file/stdin).
-- If `stdin` is not a TTY, do not prompt. Fail with actionable guidance and required flags.
-- Provide `--no-input` (or equivalent) to disable prompts.
-
-1. Secrets safety
-
-- Never accept secrets via flags (leaks via `ps` and shell history).
-- Prefer stdin, `--secret-file`, OS keychain, or a TTY-only prompt with a non-interactive alternative.
-
-1. Scriptability and CI behavior
-
-- Detect TTY and adapt output and interactivity.
-- Disable spinners/animations when stdout is not a TTY.
-- Disable color when stdout/stderr are not TTY, when `NO_COLOR` is set, when `TERM=dumb`, or when `--no-color` is passed.
-- Keep stdout clean for data; send status/progress/logging to stderr.
-
-1. Output streams and exit codes
-
-- Primary pipeable output goes to stdout.
-- Logs, warnings, progress, and errors go to stderr.
-- Exit 0 on success; non-zero on failure. Map non-zero codes to meaningful failure categories.
-
-1. Risk-scaled safeguards
-
-- For destructive actions, use confirmations that scale with risk.
-- Support a scriptable bypass (e.g., `--force` or `--yes`), and consider `--confirm="resource-name"` for severe actions.
-- Offer `--dry-run` for risky or complex state changes when possible.
-
-1. Signals and cancellation
-
-- Ctrl-C (SIGINT) should exit quickly with immediate feedback.
-- Timebox cleanup and allow a second Ctrl-C to force exit if cleanup is slow.
-
-## Quick triage questions
-
-- Who is the user: interactive human, script/CI, or both?
-- What is the job-to-be-done: query/list state, or change state?
-- What are the core objects and verbs?
-- What must stay stable for automation (output format, exit codes, flags)?
-
-## Procedure: Design a new CLI (or add a command)
-
-### Step 1: Propose a command model
-
-- Keep the initial surface area small.
-- Choose one model and stay consistent:
-- Single command + flags for simple tools.
-- Subcommands (often noun-verb or verb-noun) for multi-task tools.
-
-Deliverable:
-
-- List of commands with one-line purposes.
-
-### Step 2: Decide positional args vs flags
-
-Heuristic:
-
-- Use positional args only for obvious primary object(s) where order is standard and unambiguous.
-- If two positionals can be confused (similar shape/meaning) or order is not obvious, use flags instead.
-- Prefer long flags. Use short flags only for the most common options, and keep them consistent across commands.
-
-Deliverable:
-
-- Usage line + args/flags tables per command.
-
-### Step 3: Define output contract (human + machine)
-
-- Define exactly what goes to stdout vs stderr.
-- Provide at least one machine-readable mode when helpful (commonly `--json`).
-- Keep human-readable output scannable and useful.
-
-Deliverable:
-
-- `stdout` content
-- `stderr` content
-- Exit-code map
-- High-level `--json` schema (if supported)
-
-### Step 4: Write help text and examples
-
-- `-h/--help` must work even when other args are wrong.
-- If run incorrectly, show a short error + the relevant usage + "use --help".
-- Lead help with examples (common first). Provide a docs/support path in top-level help.
-
-Deliverable:
-
-- Draft help text for top-level and relevant subcommands.
-
-### Step 5: Define errors and safety
-
-- Errors must be actionable: what failed, why, and how to fix it.
-- Do not hide important failures behind generic codes or stack traces unless `--debug` is enabled.
-- For state changes, give explicit feedback about what happened (or what would happen in `--dry-run`).
-
-Deliverable:
-
-- Error-message patterns + safety/confirmation design.
-
-### Step 6: Specify interactivity and TTY rules
-
-- Only prompt when stdin is a TTY.
-- If piped input is supported, read it. If not, fail quickly with guidance.
-- Provide clear quiet and verbose modes if logs exist.
-
-Deliverable:
-
-- TTY behavior table (TTY vs non-TTY).
-
-### Step 7: Add config and env vars (only if needed)
-
-Use explicit precedence to avoid hidden config behavior:
-
-1. Flags
-2. Environment variables
-3. Project-level config
-4. User-level config (XDG, e.g. `~/.config/<tool>/config`)
-5. System-wide config
-
-Deliverable:
-
-- Config keys + precedence + storage locations.
-
-Design is complete when the command model, help skeleton, output contract,
-exit-code behavior, config precedence, TTY behavior, and destructive-action
-safety path are all specified.
-
-## Procedure: Review an existing CLI
-
-Produce two outputs.
-
-### A) Scorecard (0-2 each)
-
-- Command structure and naming
-- Args/flags clarity
-- Help discoverability (examples first)
-- stdout/stderr correctness
-- Exit-code discipline
-- Scriptability (non-TTY behavior)
-- Machine-output mode (when appropriate)
-- Safety (`--dry-run`, confirmations)
-- Secrets handling
-- Signal handling (Ctrl-C)
-- Config precedence (if applicable)
-- Future-proofing (avoid time bombs)
-
-### B) Prioritized fixes
-
-- P0: correctness, safety, and scriptability failures
-- P1: usability and discoverability issues
-- P2: polish and consistency
-
-Review is complete when each P0/P1 finding cites command output, help text, or
-source evidence; names a concrete change; and includes a validation command or
-manual check.
-
-## Optional HTML CLI Map
-
-For large CLIs, multi-command redesigns, or reviews that compare several command models, create a self-contained HTML CLI map. Use it for command cards, stdout/stderr contracts, TTY behavior tables, safety-risk badges, and before/after help text.
-
-Keep machine-readable schemas and final command specs in text. Use HTML when the user needs to scan the surface area visually.
-
-## Templates
-
-### Help skeleton
-
-NAME
-<tool> - <one line value prop>
-
-USAGE
-<tool> <command> [options] <args>
-
-EXAMPLES
-<tool> <command> ...
-<tool> <command> ... --json | jq .
-
-OPTIONS
--h, --help Show help
---json Output machine-readable JSON (if supported)
---no-color Disable color
---no-input Disable prompts
--q, --quiet Reduce non-essential output (if supported)
--v, --verbose Increase logging (if supported)
--n, --dry-run Describe changes without applying them (if supported)
-
-SUPPORT
-<docs / issues link>
-
-### Error skeleton
-
-Error: <what failed in plain language>.
+```
+Error: <what failed, in plain language>.
 Cause: <most likely reason>.
 Fix: <exact next step / command / flag>.
+```
 
-## References
+## Design mode
 
-- Full guideline text: `references/CLI_GUIDELINES.md`
+A finished design specifies: command model, args/flags tables, the
+stdout/stderr contract, an exit-code map, draft help text, error and safety
+design, TTY behavior, and config precedence (if any config exists). Pull the
+criteria for each from `references/CLI_GUIDELINES.md`.
+
+Done when all of those are specified and the P0s above are satisfied.
+
+## Review mode
+
+Score each 0-2: command structure and naming; args/flags clarity; help
+discoverability (examples first); stdout/stderr correctness; exit-code
+discipline; scriptability (non-TTY behavior); machine-output mode (when
+appropriate); safety (`--dry-run`, confirmations); secrets handling; signal
+handling (Ctrl-C); config precedence (if applicable); future-proofing.
+
+Then list fixes by severity: P0 correctness/safety/scriptability failures, P1
+usability/discoverability issues, P2 polish/consistency.
+
+Done when every P0/P1 finding cites command output, help text, or source
+evidence; names a concrete change; and includes a validation command or manual
+check.
+
+## Reference
+
+Full guideline text: `references/CLI_GUIDELINES.md`.
