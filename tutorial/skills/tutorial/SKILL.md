@@ -15,7 +15,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Tutorial

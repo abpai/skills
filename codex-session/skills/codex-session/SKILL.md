@@ -9,7 +9,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Codex Session
