@@ -78,6 +78,8 @@ Exactly one verdict opens the update, so resolve overlaps by this order:
 then `On track`. A stall the user can clear — a credential, a permission, a
 decision — is `Waiting on you`, not `Blocked`; reserve `Blocked` for a stall
 that no user action can clear, such as a third-party outage or an upstream fix.
+Work the team could simply do next is not blocked, however large: it is `Left`,
+and the verdict reflects whatever else is true.
 
 Apply the signal to the scope the user asked about. If a long task drifted into
 several programs, name the scope in the opening sentence. A documented handoff
@@ -104,7 +106,8 @@ Use this shape:
 
 **Done**
 
-- **<outcome label> (locked in):** <what changed and the strongest compact proof>.
+- **<outcome label>:** <what changed and the strongest compact proof>. Add
+  `(locked in)` to the label only when the user asked what is locked in.
 
 **Active now**
 
