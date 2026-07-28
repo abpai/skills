@@ -46,7 +46,12 @@ function assertKnown(names: readonly string[]): void {
   }
 }
 
-type Call = { readonly name?: string; readonly status?: string; readonly output?: unknown }
+type Call = {
+  readonly name?: string
+  readonly status?: string
+  readonly input?: { readonly command?: string }
+  readonly output?: unknown
+}
 
 function asCalls(value: unknown): readonly Call[] | null {
   return Array.isArray(value) ? (value as Call[]) : null
@@ -104,8 +109,8 @@ export function noFailedShell(allow: readonly string[] = []) {
       if (c.name !== "bash") return false
       const out = c.output as { exitCode?: number } | undefined
       if (out?.exitCode === undefined || out.exitCode === 0) return false
-      const cmd = JSON.stringify(c)
-      return !allow.some((a) => cmd.includes(a))
+      const command = c.input?.command ?? ""
+      return !allow.some((a) => command.includes(a))
     })
   }, label)
 }

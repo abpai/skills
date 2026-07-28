@@ -1,13 +1,18 @@
 # Hand-off: Eve eval lane, prose-compliance → outcome
 
 **PR:** [#127](https://github.com/abpai/skills/pull/127) · base `simplify/trim-eng` · MERGEABLE
-**Scope of this hand-off:** the 10 commits from `b045c9b` to `50ef58a`.
+**Scope of this hand-off:** the original 10 commits from `b045c9b` to `50ef58a`,
+plus the reviewer fixes described below.
 
 ## Read this first
 
-**One eval is intentionally red.** `outcomes/code-simplify-protects-guards` fails,
-and the failure is a real defect in `code/skills/code/simplify.md`, not a broken
-test. Do not fix it by softening the gate. Details in [The open decision](#the-open-decision).
+The open pruning defect is fixed at three levels: skill instructions, fixture
+enforcement, and verifier isolation. Deterministic controls and two clean
+subagent dogfood runs pass.
+
+The external live-provider eval was not rerun during review. It sends
+repo-derived prompts and fixtures to an external model provider, so it needs
+explicit authorization. Do not report that lane as green until it runs.
 
 ## Why the work happened
 
@@ -62,10 +67,15 @@ one out.
 `evals/outcomes/`, tagged `outcome`. The model gets a fixture in the prompt,
 returns real work, and that work is **executed against a suite it never saw**.
 
-**Verification runs on the host, never in the sandbox.** A `hidden/` directory
-inside `/workspace` is readable by the subject's own `bash` and `glob`. Eve also
-gives the eval driver no sandbox handle — `ctx.getSandbox()` exists only inside
-authored runtime execution. Running on the host answers both.
+**Model-produced code never runs on the host.** The subject sandbox does not
+receive the hidden suite. After the model replies, the eval driver mounts the
+candidate and hidden suite read-only in a second restricted Docker container.
+That container has no network, no host secrets, a read-only root, no Linux
+capabilities, process and memory limits, and a non-root user.
+
+This is isolation from accidental host access, not a security boundary for
+hostile code. The candidate can inspect files mounted in its verifier container,
+so the hidden suite is an outcome check, not an anti-cheating boundary.
 
 ### 5. Incidental fixes
 
@@ -89,50 +99,68 @@ authored runtime execution. Running on the host answers both.
 | judge (`closedQA`) calls | 20, down from 22 |
 | fixtures | `normalize-config`, `prune-tests` |
 
-**Green:** everything except the two noted below.
-**Red on purpose:** `outcomes/code-simplify-protects-guards`.
+**Green:** deterministic controls, typecheck, mock smoke, and two clean
+subagent dogfood runs.
+**Live-provider status:** not rerun after the reviewer fix.
 **Red, pre-existing, not caused by this work:** `contracts/distill-default-format`
 — proved with a control (removed my instructions change, still failed 3/3).
 
-## The open decision
+## Reviewer resolution
 
 `outcomes/code-simplify-protects-guards` grades a real test-pruning pass by
 **mutation score** — three faults planted in the module, each guarded by one
 protected test. A suite that drops a guard goes green against its fault.
 
-Measured across three runs with the skill present:
+Review found that the verifier did not enforce its stated compile-time proof.
+The fixture was JavaScript, and the `@ts-expect-error` line was never passed to
+TypeScript. A comment marker was the only gate.
 
-- noise pruned ✓
-- environment-gated shim kept ✓
-- all three planted faults still caught ✓
-- **`@ts-expect-error` compile-time type proof deleted — 3 times out of 3** ✗
+The fix:
 
-The prose eval for the same contract
-(`contracts/code-simplify-protects-load-bearing-tests`) **passes**. Asked to
-*classify* the eight tests, the model says it would keep the type proof. Asked
-to *actually prune*, it deletes it.
+- gives the fixture a checked JSDoc contract;
+- runs `tsc --allowJs --checkJs --noEmit` in the restricted verifier container;
+- keeps runtime, typecheck, mutation, and required-marker results separate;
+- makes `simplify.md` map each protected test to its real enforcement lane;
+- warns that a green default test run is not coverage proof for compile-time or
+  environment-gated guards.
 
-**Decision needed:** strengthen `simplify.md` so the type-proof category
-survives a real pruning pass, or drop the category as unenforceable. This is a
-skill change, not an eval change.
+Deterministic controls prove that the full fixture passes and that deleting only
+the directive leaves runtime green but makes typecheck fail. Two fresh subagent
+dogfood runs reduced eight tests to five and kept the runtime boundary, missing
+session case, secret/public shape, compile-time proof, and environment-gated
+quota guard.
+
+The exact live-provider outcome remains unverified after these changes.
 
 ## What a reviewer should check
 
-1. **The red eval is the finding, not a bug.** Read the header comment in
-   `evals/outcomes/code-simplify-protects-guards.eval.ts`.
-2. **`normalize-config` is UNGUARDED and labelled as such.** With `code` omitted
+1. **The verifier has two isolation layers.** The subject container cannot see
+   the hidden suite. Model-produced code runs only in the second restricted
+   container. Review the image pin and Docker limits in
+   `evals/support/outcome.ts`.
+2. **The compile-time guard is real.** Delete only `@ts-expect-error`; runtime
+   stays green and `typecheckGreen` becomes false.
+3. **`normalize-config` is UNGUARDED and labelled as such.** With `code` omitted
    entirely, all its outcome gates still pass — the base model tidies a small
    module correctly unaided. It proves the machinery, not the skill. Kept
    deliberately; do not cite it as evidence the rubric works.
-3. **Fixture design rule.** `prune-tests` originally labelled each test
+4. **Fixture design rule.** `prune-tests` originally labelled each test
    `// N. PROTECTED —` / `// N. NOISE —`. With the answer key present, both the
    skill run and the omit control passed everything. **Fixtures must not
    narrate their own grading.**
-4. **Every new fixture needs the four-candidate validation** before it is
+5. **Every new fixture needs the four-candidate validation** before it is
    trusted — unchanged input, careless rewrite, correct rewrite, no code block.
    Two must fail. See the README table.
-5. **The omit control is mandatory.** A green outcome eval means nothing until
+6. **The omit control is mandatory.** A green outcome eval means nothing until
    you have shown it fails without the skill.
+
+## Dogfood ledger
+
+| pass | observation | cause | result |
+|---|---|---|---|
+| first | behavior was correct, but Git evidence was unavailable | the temporary target was not a Git repository | fixture corrected |
+| second | eight tests reduced to five; every runtime, typecheck, and gated lane passed | none | clean |
+| third | same five-test result and proof; no material instruction friction | none | clean |
 
 ## Known operational issue
 
@@ -150,12 +178,14 @@ they are recoverable if anything is needed from them.
   conversions (`onboard-verdict-gate`, `scanner-unavailable`), and the routing
   restructure.
 - `contracts/distill-default-format` is still red and unexplained.
-- No PR carries the `run-evals` label, so the hardened CI lane has never had a
-  genuine run.
+- The post-fix live-provider outcome eval has not run.
 
 ## Cost note
 
 Do not assume the suite is cheaper. Outcome runs add tool turns, and merging
-eval files does not remove model calls. `bun run` auto-loads `.env.local`, so
-**every local run is live and billed, including `eval:smoke`** — the mock path
-is effectively unreachable.
+eval files does not remove model calls. Bun auto-loads `.env.local`. To force
+the mock smoke path when that file contains provider keys, run:
+
+```bash
+OPENAI_API_KEY= ANTHROPIC_API_KEY= bun run eval:smoke
+```

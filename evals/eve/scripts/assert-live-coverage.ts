@@ -62,10 +62,12 @@ if (expected === 0) {
 if (ran === 0) {
   fail(`JUnit reports 0 tests but ${expected} live evals are defined`)
 }
-if (ran < expected) {
+if (ran !== expected) {
+  const direction = ran < expected ? "only " : ""
   fail(
-    `only ${ran} of ${expected} live evals ran. The lane is guarding less than ` +
-      `it defines; investigate discovery before trusting a green result.`,
+    `${direction}${ran} of ${expected} live evals ran. The report and discovered ` +
+      `suite do not match; investigate discovery or stale evidence before ` +
+      `trusting a green result.`,
   )
 }
 

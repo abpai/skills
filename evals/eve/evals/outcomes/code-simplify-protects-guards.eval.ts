@@ -10,7 +10,7 @@ import { fixtureFile, verifyPruning } from "../support/outcome"
 // passed, because any competent model tidies a small module correctly.
 //
 // This fixture targets the opposite: a decision where the base model's ordinary
-// judgment is WRONG and only the skill's rule saves it.
+// judgment is wrong and the skill must change the result.
 //
 // Contract (code/skills/code/simplify.md, "Review passes" #7 Test signal):
 // "Protect security and identity guards, public wire/CLI/API goldens, no-drift
@@ -41,8 +41,7 @@ import { fixtureFile, verifyPruning } from "../support/outcome"
 // The env flag is set during verification on purpose: a test skipped in CI
 // today is still a real guard when the flag turns on, and pruning it because it
 // "never runs" is precisely the mistake being measured.
-// ---------------------------------------------------------------------------
-// MEASURED 2026-07-28. This eval is RED on purpose, and the failure is real.
+// REVIEWED 2026-07-28. The original live result found a real instruction gap:
 //
 //   with `code` present, 3 runs   the env-gated shim SURVIVES, the noise is
 //                                 pruned, every planted fault stays caught —
@@ -51,22 +50,25 @@ import { fixtureFile, verifyPruning } from "../support/outcome"
 //   with `code` omitted           the same deletion, plus the mechanical
 //                                 skill-absent failures
 //
-// So `simplify`'s protected-category list does not, in practice, save a
-// compile-time type proof. The prose eval for the same contract
+// The prose eval for the same contract
 // (contracts/code-simplify-protects-load-bearing-tests) passes: asked to
 // CLASSIFY the eight tests, the model correctly says it would keep the type
 // proof. Asked to actually prune, it deletes it.
 //
-// That gap between what the skill can recite and what it does is the entire
-// reason this lane exists. Do not "fix" this eval by softening the gate. Either
-// simplify.md needs to make the type-proof category survive a real pruning
-// pass, or the category should be dropped as unenforceable.
+// Review also found that the verifier did not run TypeScript. The directive was
+// guarded only by a required text marker. The fix strengthens simplify.md,
+// gives source.js a checked JSDoc contract, and runs `tsc --allowJs --checkJs`
+// before runtime and mutation checks. Deleting only the directive now leaves
+// runtime green but makes typecheck fail.
+//
+// Two clean subagent dogfood runs kept the type proof and the gated shim while
+// deleting all three noise tests. The exact live-provider eval has not been
+// rerun after the fix, so do not describe it as live-green yet.
 //
 // Note the fixture originally labelled each test `// N. PROTECTED —` and
 // `// N. NOISE —`, which handed the model the answer and made both the skill
 // and the omit control pass everything. Fixtures must not narrate their own
 // grading.
-// ---------------------------------------------------------------------------
 const FIXTURE = "prune-tests"
 
 /** Text that must survive pruning. The type proof has no runtime signal. */
@@ -89,7 +91,8 @@ export default defineEval({
         "Use `code simplify` in test-pruning mode on this test file. Return the",
         "complete pruned test file as one JavaScript code block, ready to run.",
         "Remove what is genuinely redundant. Keep the file importing from",
-        "`./source.js` and keep it passing.",
+        "`./source.js` and keep it passing. CI checks this JavaScript test with",
+        "`tsc --allowJs --checkJs --noEmit` before it runs `node --test`.",
         "",
         "",
         "Here is the module under test, for context — do not modify it:",
@@ -124,8 +127,22 @@ export default defineEval({
     t.check(
       result,
       satisfies(
-        (r: unknown) => (r as typeof result).suiteGreen,
-        "the pruned suite still passes against the unmutated module",
+        (r: unknown) => (r as typeof result).error === undefined,
+        `the isolated verifier completed${result.error ? ` (${result.error})` : ""}`,
+      ),
+    )
+    t.check(
+      result,
+      satisfies(
+        (r: unknown) => (r as typeof result).runtimeGreen,
+        "the pruned runtime suite still passes against the unmutated module",
+      ),
+    )
+    t.check(
+      result,
+      satisfies(
+        (r: unknown) => (r as typeof result).typecheckGreen,
+        "the pruned suite still passes its compile-time type check",
       ),
     )
     // The load-bearing gate. Every planted fault must still be caught.

@@ -54,6 +54,10 @@ jobs:
         run: bun run prepare-skills
       - name: Typecheck eval files against Eve types
         run: bun run typecheck
+      - name: Prove live coverage controls
+        run: bun run test:coverage
+      - name: Prove outcome verifier isolation
+        run: bun run test:outcome-isolation
       - name: Discover evals
         run: bun run list
       - name: Smoke eval (mock model, no secrets)
@@ -135,8 +139,12 @@ jobs:
           # auto-select it if EVE_EVAL_PROVIDER is ever dropped.
           if [ "${EVE_EVAL_PROVIDER}" = "anthropic" ]; then unset OPENAI_API_KEY; fi
 
-          # shellcheck disable=SC2086 # EVAL_FILTER is intentionally word-split.
-          bunx eve eval ${EVAL_FILTER:---tag live} --strict --junit .eve/junit.xml
+          if [ -n "${EVAL_FILTER}" ]; then
+            read -r -a eval_args <<< "${EVAL_FILTER}"
+          else
+            eval_args=(--tag live)
+          fi
+          bunx eve eval "${eval_args[@]}" --strict --junit .eve/junit.xml
       # `--strict` catches failing evals and an empty tag match, but not a run
       # that quietly executes fewer evals than the suite defines. Compare what
       # ran against what `eve eval --list` discovers. Skipped for a filtered

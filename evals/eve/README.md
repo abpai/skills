@@ -158,13 +158,19 @@ whose output is a checkable artifact. The model receives a fixture in the
 prompt, returns real work, and that work is executed against a suite it never
 saw.
 
-**Verification runs on the host, never in the sandbox.** The obvious design
-seeds the fixture into `/workspace` with a `hidden/` directory beside it — but
-the subject has `bash`, `glob`, and `read_file` pointed at that same directory,
-so "hidden" tests are readable by the thing being graded. Eve also gives the
-eval driver no sandbox handle: `ctx.getSandbox()` exists only inside authored
-runtime execution, not inside `test(t)`. Running the suite on the host answers
-both problems at once.
+**Model output never executes on the host.** The obvious design seeds the
+fixture into the subject's `/workspace` with a `hidden/` directory beside it,
+but the subject has `bash`, `glob`, and `read_file` there. Eve also gives the
+eval driver no handle to that sandbox. The verifier instead starts a second
+container after the reply exists. It uses a pinned Node image, no network, a
+read-only bind mount and root filesystem, no Linux capabilities, a non-root
+user, and CPU, memory, process, output, and time limits. The container receives
+no host secrets.
+
+The hidden suite is absent from the prompt and subject sandbox. It is mounted
+read-only only after generation. Candidate code can still inspect files inside
+its verifier container at runtime, so this is an outcome check for normal model
+behavior, not a security boundary against an artifact designed to cheat.
 
 A fixture is only worth having if a careless answer fails it. `normalize-config`
 carries three planted subtleties — a falsy-but-valid `0`, an early return that
@@ -186,13 +192,14 @@ Fixture layout:
 
 ```
 fixtures/<name>/input.js        # sent to the model verbatim, inside the prompt
-fixtures/<name>/hidden.test.js  # never sent, never enters the sandbox
+fixtures/<name>/hidden.test.js  # mounted read-only only after the reply exists
 ```
 
 ## What is proven
 
 - **Proven (always-on / secretless):** `prepare-skills` normalizes the real
-  SKILL.md bodies, the eval files typecheck against Eve `0.26.0`, all evals
+  SKILL.md bodies, the eval files typecheck against Eve `0.26.0`, the live
+  coverage controls and outcome verifier isolation test pass, all evals
   discover, and the mock smoke eval boots the server and passes.
 - **Proven (live, `OPENAI_API_KEY`):** the original contract evals
   (`code/argument-form-equivalence`, `code/removed-command-migration`,
@@ -201,7 +208,9 @@ fixtures/<name>/hidden.test.js  # never sent, never enters the sandbox
   gate; `bun run eval:live` is the whole-lane acceptance check.
 
 Eve is public preview — the version is pinned in `package.json` and the
-lockfile; bump it deliberately.
+lockfile; bump it deliberately. The verifier's Node image is pinned by digest
+in `evals/support/outcome.ts`; update it deliberately and rerun
+`bun run test:outcome-isolation`.
 
 ## Ablation
 

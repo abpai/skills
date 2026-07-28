@@ -131,13 +131,17 @@ For a narrow scope:
 
 Treat test pruning as simplification, not as a separate command:
 
-1. Inventory the target tests by area and capture before counts. Establish the
-   pristine pass/fail baseline using the invocation CI actually uses; for a small
-   scope, run the narrow CI-equivalent command first, but still finish with the
-   repository gate required by the blast radius.
+1. Inventory the target tests by area and capture before counts. Map each
+   candidate to its actual enforcer: runtime tests, type checking or build, lint,
+   or a gated lane. Establish the pristine baseline for each relevant enforcer.
+   A green default test command is not coverage evidence for compile-time or
+   environment-gated guards.
 2. Apply the rubric autonomously within the named scope. Delete clearly low-value
    cases or whole files, conservatively clarify survivors, and keep borderline or
-   load-bearing guards with an explicit reason. Do not weaken meaningful
+   load-bearing guards with an explicit reason. Treat assertion-free, skipped,
+   and compile-only tests as unresolved until you check their enforcing lane.
+   Preserve `@ts-expect-error`, type-test, and gated-shim guards unless their
+   contract or enforcement is proven obsolete. Do not weaken meaningful
    assertions just to reduce counts.
 3. For a large named scope, calibrate on one representative slice before scaling.
    If subagents are used, give them non-overlapping test-file lists and the same

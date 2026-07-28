@@ -12,7 +12,20 @@ export function verifyToken(token, now) {
   return { ok: true, status: 200 }
 }
 
-/** Public /v1/orders response. The field set is a wire contract. */
+/**
+ * @typedef {{
+ *   id: string,
+ *   total: number,
+ *   currency: string,
+ *   status: string,
+ *   secret?: string
+ * }} Order
+ */
+
+/**
+ * Public /v1/orders response. The field set is a wire contract.
+ * @param {Order} order
+ */
 export function orderResponse(order) {
   return { id: order.id, total: order.total, currency: order.currency, status: order.status }
 }

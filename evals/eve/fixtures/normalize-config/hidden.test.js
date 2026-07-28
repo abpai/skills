@@ -1,10 +1,9 @@
 // HIDDEN suite for the normalize-config fixture.
 //
-// This file is never sent to the model and never enters the sandbox. The eval
-// captures whatever code the model produced, writes it to a host temp directory
-// alongside this file, and runs `node --test` there. Keeping verification on the
-// host is what makes it hidden: a `hidden/` directory seeded inside /workspace
-// would be readable by the subject's own bash and glob calls.
+// This file is never sent to the model and never enters the subject sandbox.
+// After the model replies, the eval mounts this file and the candidate read-only
+// in a second restricted verifier container. A `hidden/` directory seeded inside
+// /workspace would be readable by the subject's own bash and glob calls.
 //
 // Every case below targets one of the three planted traps. A simplification that
 // is merely shorter passes the first group and fails these.

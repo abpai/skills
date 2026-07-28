@@ -6,7 +6,7 @@
  * code correct. This module closes that gap for skills whose output is a
  * checkable artifact.
  *
- * ## Why verification runs on the host
+ * ## Why verification runs outside the subject sandbox
  *
  * The obvious design seeds a fixture into the sandbox with a `hidden/` directory
  * of tests beside it. That is not hidden: the subject has `bash`, `glob`, and
@@ -16,11 +16,11 @@
  * Eve also gives the eval driver no sandbox handle — `ctx.getSandbox()` exists
  * only inside authored runtime execution, not inside `test(t)`.
  *
- * Both problems have one answer: never put the verification in the sandbox. The
- * fixture source travels to the model inside the prompt, the model's output
- * comes back in the reply, and the hidden suite runs here on the host against
- * the extracted code. The subject cannot read, edit, or disable a test file it
- * never had access to.
+ * Both problems have one answer: never put the verification in the subject
+ * sandbox. The fixture source travels to the model inside the prompt, the
+ * model's output comes back in the reply, and the hidden suite runs in a second,
+ * locked-down Docker container. The model never sees the hidden suite before it
+ * produces the artifact, and the artifact never executes on the host.
  *
  * ## What a pass requires
  *
@@ -28,11 +28,27 @@
  * alone would reward deleting anything. `verifyCandidate` reports both, plus
  * whether the exports still exist, and the eval gates on the combination.
  */
-import { execFileSync } from "node:child_process"
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
+import { spawnSync } from "node:child_process"
+import { randomUUID } from "node:crypto"
+import {
+  chmodSync,
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+
+const OUTCOME_IMAGE =
+  process.env.EVE_OUTCOME_IMAGE ??
+  "node@sha256:af01d58b748ec92b1d6e8e11429aad424fd1e68c848185399dca0596a1ab8f5c"
+const MAX_CANDIDATE_BYTES = 128 * 1024
+const MAX_RUN_OUTPUT_BYTES = 1024 * 1024
 
 /**
  * Locate `fixtures/` without trusting this file's own path.
@@ -60,6 +76,155 @@ function findFixtureRoot(): string {
 }
 
 export const FIXTURE_ROOT: string = findFixtureRoot()
+const EVAL_ROOT = dirname(FIXTURE_ROOT)
+
+type ContainerRun = {
+  readonly passed: boolean
+  readonly output: string
+  readonly infrastructureError?: string
+}
+
+function dockerClientEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {}
+  for (const key of ["PATH", "HOME", "DOCKER_HOST", "DOCKER_CONTEXT", "XDG_CONFIG_HOME"]) {
+    if (process.env[key] !== undefined) env[key] = process.env[key]
+  }
+  return env
+}
+
+function runInVerifier(
+  dir: string,
+  command: readonly string[],
+  opts: {
+    readonly env?: Readonly<Record<string, string>>
+    readonly mountDependencies?: boolean
+  } = {},
+): ContainerRun {
+  const name = `eve-outcome-${process.pid}-${randomUUID().slice(0, 12)}`
+  const args = [
+    "run",
+    "--rm",
+    "--name",
+    name,
+    "--network",
+    "none",
+    "--read-only",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--pids-limit",
+    "64",
+    "--memory",
+    "256m",
+    "--cpus",
+    "1",
+    "--user",
+    "65534:65534",
+    "--tmpfs",
+    "/tmp:rw,noexec,nosuid,size=16m",
+    "--mount",
+    `type=bind,src=${resolve(dir)},dst=/work,readonly`,
+    "--workdir",
+    "/work",
+  ]
+
+  if (opts.mountDependencies) {
+    const dependencies = join(EVAL_ROOT, "node_modules")
+    if (!existsSync(join(dependencies, "typescript", "bin", "tsc"))) {
+      return {
+        passed: false,
+        output: "",
+        infrastructureError: `TypeScript is not installed under ${dependencies}`,
+      }
+    }
+    args.push("--mount", `type=bind,src=${resolve(dependencies)},dst=/deps,readonly`)
+  }
+
+  for (const [key, value] of Object.entries(opts.env ?? {})) {
+    args.push("--env", `${key}=${value}`)
+  }
+
+  args.push(
+    OUTCOME_IMAGE,
+    "timeout",
+    "-s",
+    "KILL",
+    "15s",
+    ...command,
+  )
+
+  const result = spawnSync("docker", args, {
+    encoding: "utf8",
+    timeout: 120_000,
+    maxBuffer: MAX_RUN_OUTPUT_BYTES,
+    env: dockerClientEnv(),
+    stdio: ["ignore", "pipe", "pipe"],
+  })
+
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`
+  const dockerClientFailure =
+    /permission denied while trying to connect to the docker API|cannot connect to the docker daemon|error during connect/i.test(
+      output,
+    )
+  if (result.error || result.status === null || result.status === 125 || dockerClientFailure) {
+    // The inner timeout bounds candidate execution. This cleanup is for a
+    // Docker daemon or client failure that outlives that bound.
+    spawnSync("docker", ["rm", "--force", name], {
+      encoding: "utf8",
+      timeout: 10_000,
+      env: dockerClientEnv(),
+      stdio: "ignore",
+    })
+    const cause =
+      result.error?.message ??
+      (result.signal ? `docker exited on ${result.signal}` : output.trim() || "docker failed")
+    return {
+      passed: false,
+      output,
+      infrastructureError: cause.slice(0, 500),
+    }
+  }
+
+  return { passed: result.status === 0, output }
+}
+
+function runRuntimeSuite(dir: string, env?: Readonly<Record<string, string>>): ContainerRun {
+  return runInVerifier(dir, ["node", "--test", "--test-reporter=tap"], { env })
+}
+
+function runTypecheck(dir: string): ContainerRun {
+  return runInVerifier(
+    dir,
+    [
+      "node",
+      "/deps/typescript/bin/tsc",
+      "--noEmit",
+      "--allowJs",
+      "--checkJs",
+      "--skipLibCheck",
+      "--module",
+      "NodeNext",
+      "--moduleResolution",
+      "NodeNext",
+      "--target",
+      "ES2022",
+      "--types",
+      "node",
+      "--typeRoots",
+      "/deps/@types",
+      "suite.test.js",
+      "source.js",
+    ],
+    { mountDependencies: true },
+  )
+}
+
+function candidateError(candidate: string): string | undefined {
+  const bytes = Buffer.byteLength(candidate)
+  if (bytes <= MAX_CANDIDATE_BYTES) return undefined
+  return `candidate is ${bytes} bytes; limit is ${MAX_CANDIDATE_BYTES}`
+}
 
 export type Fixture = {
   /** Directory name under `fixtures/`. */
@@ -80,8 +245,10 @@ export function fixtureFile(name: string, file: string): string {
 
 export type PruneVerification = {
   readonly extracted: boolean
-  /** The pruned suite still passes against unmutated source. */
-  readonly suiteGreen: boolean
+  /** Runtime tests still pass against unmutated source. */
+  readonly runtimeGreen: boolean
+  /** Compile-time checks still pass against unmutated source. */
+  readonly typecheckGreen: boolean
   /** Mutants the pruned suite still catches. */
   readonly killed: readonly string[]
   /** Mutants that now go undetected — a guard was pruned away. */
@@ -96,21 +263,6 @@ export type PruneVerification = {
 
 function countTests(source: string): number {
   return [...source.matchAll(/^\s*test\s*\(/gm)].length
-}
-
-function runSuite(dir: string): boolean {
-  try {
-    execFileSync("node", ["--test", "--test-reporter=tap"], {
-      cwd: dir,
-      encoding: "utf8",
-      timeout: 60_000,
-      env: { ...process.env, FEATURE_BETA_PRICING: "1" },
-      stdio: ["ignore", "pipe", "pipe"],
-    })
-    return true
-  } catch {
-    return false
-  }
 }
 
 /**
@@ -141,7 +293,8 @@ export function verifyPruning(
   if (candidate === null) {
     return {
       extracted: false,
-      suiteGreen: false,
+      runtimeGreen: false,
+      typecheckGreen: false,
       killed: [],
       survived: [],
       noiseKept: [],
@@ -151,26 +304,87 @@ export function verifyPruning(
     }
   }
 
+  const oversized = candidateError(candidate)
+  if (oversized) {
+    return {
+      extracted: true,
+      runtimeGreen: false,
+      typecheckGreen: false,
+      killed: [],
+      survived: [],
+      noiseKept: [],
+      missingMarkers: [],
+      tests: { before, after: countTests(candidate) },
+      error: oversized,
+    }
+  }
+
   const fixtureDir = join(FIXTURE_ROOT, fixtureName)
   const mutantDir = join(fixtureDir, "mutants")
   const mutants = readdirSync(mutantDir).filter((f) => f.endsWith(".js"))
   const dir = mkdtempSync(join(tmpdir(), `eve-prune-${fixtureName}-`))
+  chmodSync(dir, 0o755)
   try {
     writeFileSync(join(dir, "suite.test.js"), `${candidate}\n`)
+    writeFileSync(join(dir, "package.json"), '{"type":"module"}\n')
     cpSync(join(fixtureDir, "source.js"), join(dir, "source.js"))
-    const suiteGreen = runSuite(dir)
+    const runtime = runRuntimeSuite(dir, { FEATURE_BETA_PRICING: "1" })
+    const typecheck = runTypecheck(dir)
+
+    const infrastructureError = runtime.infrastructureError ?? typecheck.infrastructureError
+    if (infrastructureError) {
+      return {
+        extracted: true,
+        runtimeGreen: false,
+        typecheckGreen: false,
+        killed: [],
+        survived: [],
+        noiseKept: opts.noiseNames.filter((n) => candidate.includes(n)),
+        missingMarkers: opts.requiredMarkers.filter((m) => !candidate.includes(m)),
+        tests: { before, after: countTests(candidate) },
+        error: infrastructureError,
+      }
+    }
+
+    if (!runtime.passed || !typecheck.passed) {
+      return {
+        extracted: true,
+        runtimeGreen: runtime.passed,
+        typecheckGreen: typecheck.passed,
+        killed: [],
+        survived: [],
+        noiseKept: opts.noiseNames.filter((n) => candidate.includes(n)),
+        missingMarkers: opts.requiredMarkers.filter((m) => !candidate.includes(m)),
+        tests: { before, after: countTests(candidate) },
+      }
+    }
 
     const killed: string[] = []
     const survived: string[] = []
     for (const mutant of mutants) {
       cpSync(join(mutantDir, mutant), join(dir, "source.js"))
       // A mutant is killed when the suite FAILS against it.
-      ;(runSuite(dir) ? survived : killed).push(mutant.replace(/\.js$/, ""))
+      const run = runRuntimeSuite(dir, { FEATURE_BETA_PRICING: "1" })
+      if (run.infrastructureError) {
+        return {
+          extracted: true,
+          runtimeGreen: true,
+          typecheckGreen: true,
+          killed,
+          survived,
+          noiseKept: opts.noiseNames.filter((n) => candidate.includes(n)),
+          missingMarkers: opts.requiredMarkers.filter((m) => !candidate.includes(m)),
+          tests: { before, after: countTests(candidate) },
+          error: run.infrastructureError,
+        }
+      }
+      ;(run.passed ? survived : killed).push(mutant.replace(/\.js$/, ""))
     }
 
     return {
       extracted: true,
-      suiteGreen,
+      runtimeGreen: true,
+      typecheckGreen: true,
       killed,
       survived,
       noiseKept: opts.noiseNames.filter((n) => candidate.includes(n)),
@@ -224,9 +438,9 @@ function parseFailures(tap: string): string[] {
 /**
  * Run a fixture's hidden suite against code the model produced.
  *
- * The candidate and the hidden suite are copied into a fresh host temp
- * directory, so a run cannot see or disturb the fixture sources, and two evals
- * running concurrently cannot collide.
+ * The candidate and hidden suite are copied into a fresh temp directory, then
+ * mounted read-only into an isolated verifier container. Runs cannot disturb
+ * fixture sources or collide with each other.
  */
 export function verifyCandidate(fixture: Fixture, reply: string): Verification {
   const before = significantLines(fixtureInput(fixture))
@@ -244,43 +458,58 @@ export function verifyCandidate(fixture: Fixture, reply: string): Verification {
     }
   }
 
+  const oversized = candidateError(candidate)
+  if (oversized) {
+    return {
+      extracted: true,
+      testsPass: false,
+      failures: [],
+      exportsIntact: false,
+      lines: { before, after: significantLines(candidate) },
+      error: oversized,
+    }
+  }
+
   const exportsIntact = fixture.exports.every((name) =>
     new RegExp(`\\b${name}\\b`).test(candidate),
   )
   const lines = { before, after: significantLines(candidate) }
   const dir = mkdtempSync(join(tmpdir(), `eve-outcome-${fixture.name}-`))
+  chmodSync(dir, 0o755)
   try {
     writeFileSync(join(dir, "candidate.js"), `${candidate}\n`)
+    writeFileSync(join(dir, "package.json"), '{"type":"module"}\n')
     cpSync(join(FIXTURE_ROOT, fixture.name, "hidden.test.js"), join(dir, "hidden.test.js"))
 
-    let tap: string
-    let testsPass: boolean
-    try {
-      tap = execFileSync("node", ["--test", "--test-reporter=tap"], {
-        cwd: dir,
-        encoding: "utf8",
-        timeout: 60_000,
-        stdio: ["ignore", "pipe", "pipe"],
-      })
-      testsPass = true
-    } catch (err) {
-      // node --test exits non-zero when any test fails; that is a result, not a
-      // harness error, and its TAP output is still on stdout.
-      const e = err as { stdout?: string; stderr?: string }
-      tap = e.stdout ?? ""
-      testsPass = false
-      if (tap === "") {
-        return {
-          extracted: true,
-          testsPass: false,
-          failures: [],
-          exportsIntact,
-          lines,
-          error: `node --test produced no output: ${(e.stderr ?? "").slice(0, 300)}`,
-        }
+    const run = runRuntimeSuite(dir)
+    if (run.infrastructureError) {
+      return {
+        extracted: true,
+        testsPass: false,
+        failures: [],
+        exportsIntact,
+        lines,
+        error: run.infrastructureError,
       }
     }
-    return { extracted: true, testsPass, failures: parseFailures(tap), exportsIntact, lines }
+    const failures = parseFailures(run.output)
+    if (!run.passed && failures.length === 0) {
+      return {
+        extracted: true,
+        testsPass: false,
+        failures,
+        exportsIntact,
+        lines,
+        error: `node --test failed without a named test failure: ${run.output.slice(0, 500)}`,
+      }
+    }
+    return {
+      extracted: true,
+      testsPass: run.passed,
+      failures,
+      exportsIntact,
+      lines,
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

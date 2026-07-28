@@ -13,9 +13,8 @@ import { fixtureInput, verifyCandidate, type Fixture } from "../support/outcome"
 // for a model that can recite the rubric and would still break the code.
 //
 // Here the model receives a genuinely messy module and returns a simplified one.
-// The returned code is then run against a suite it never saw, on the host,
-// outside the sandbox entirely — see support/outcome.ts for why hiding tests
-// inside /workspace does not work.
+// The returned code is then run against a suite it never saw, in a second,
+// locked-down container outside the subject sandbox — see support/outcome.ts.
 //
 // The fixture is built to punish carelessness, not verbosity. Three planted
 // subtleties survive only a simplification that reads what it is changing:
@@ -103,6 +102,13 @@ export default defineEval({
       satisfies(
         (r: unknown) => (r as typeof result).extracted,
         `reply contains a fenced code block${result.error ? ` (${result.error})` : ""}`,
+      ),
+    )
+    t.check(
+      result,
+      satisfies(
+        (r: unknown) => (r as typeof result).error === undefined,
+        `the isolated verifier completed${result.error ? ` (${result.error})` : ""}`,
       ),
     )
     t.check(
