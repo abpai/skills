@@ -29,7 +29,7 @@
  * whether the exports still exist, and the eval gates on the combination.
  */
 import { execFileSync } from "node:child_process"
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -71,6 +71,115 @@ export type Fixture = {
 /** The messy source a fixture hands to the model, verbatim. */
 export function fixtureInput(fixture: Fixture): string {
   return readFileSync(join(FIXTURE_ROOT, fixture.name, "input.js"), "utf8")
+}
+
+/** Read any file from a fixture directory, for fixtures with several inputs. */
+export function fixtureFile(name: string, file: string): string {
+  return readFileSync(join(FIXTURE_ROOT, name, file), "utf8")
+}
+
+export type PruneVerification = {
+  readonly extracted: boolean
+  /** The pruned suite still passes against unmutated source. */
+  readonly suiteGreen: boolean
+  /** Mutants the pruned suite still catches. */
+  readonly killed: readonly string[]
+  /** Mutants that now go undetected — a guard was pruned away. */
+  readonly survived: readonly string[]
+  /** Noise tests the model was expected to remove but kept. */
+  readonly noiseKept: readonly string[]
+  /** Tests whose text must survive, checked by substring. */
+  readonly missingMarkers: readonly string[]
+  readonly tests: { readonly before: number; readonly after: number }
+  readonly error?: string
+}
+
+function countTests(source: string): number {
+  return [...source.matchAll(/^\s*test\s*\(/gm)].length
+}
+
+function runSuite(dir: string): boolean {
+  try {
+    execFileSync("node", ["--test", "--test-reporter=tap"], {
+      cwd: dir,
+      encoding: "utf8",
+      timeout: 60_000,
+      env: { ...process.env, FEATURE_BETA_PRICING: "1" },
+      stdio: ["ignore", "pipe", "pipe"],
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Grade a test-pruning pass by MUTATION SCORE, not by which tests remain.
+ *
+ * Asserting that specific test names survived would grade the model's naming.
+ * What actually matters is whether the behaviors are still guarded: for each
+ * planted fault in `mutants/`, the pruned suite must still fail. A suite that
+ * deleted the guard for a fault goes green against it, and that is the failure.
+ *
+ * The env-gated flag is set here on purpose. A test skipped in CI today is
+ * still a real guard when the flag turns on; pruning it because it "never runs"
+ * is exactly the mistake this measures.
+ */
+export function verifyPruning(
+  fixtureName: string,
+  reply: string,
+  opts: {
+    /** Substrings that must still appear in the pruned suite. */
+    readonly requiredMarkers: readonly string[]
+    /** Test names that are genuine noise and should be gone. */
+    readonly noiseNames: readonly string[]
+  },
+): PruneVerification {
+  const before = countTests(fixtureFile(fixtureName, "input.test.js"))
+  const empty = { before, after: 0 }
+  const candidate = extractCodeBlock(reply)
+  if (candidate === null) {
+    return {
+      extracted: false,
+      suiteGreen: false,
+      killed: [],
+      survived: [],
+      noiseKept: [],
+      missingMarkers: [],
+      tests: empty,
+      error: "no fenced code block in the reply",
+    }
+  }
+
+  const fixtureDir = join(FIXTURE_ROOT, fixtureName)
+  const mutantDir = join(fixtureDir, "mutants")
+  const mutants = readdirSync(mutantDir).filter((f) => f.endsWith(".js"))
+  const dir = mkdtempSync(join(tmpdir(), `eve-prune-${fixtureName}-`))
+  try {
+    writeFileSync(join(dir, "suite.test.js"), `${candidate}\n`)
+    cpSync(join(fixtureDir, "source.js"), join(dir, "source.js"))
+    const suiteGreen = runSuite(dir)
+
+    const killed: string[] = []
+    const survived: string[] = []
+    for (const mutant of mutants) {
+      cpSync(join(mutantDir, mutant), join(dir, "source.js"))
+      // A mutant is killed when the suite FAILS against it.
+      ;(runSuite(dir) ? survived : killed).push(mutant.replace(/\.js$/, ""))
+    }
+
+    return {
+      extracted: true,
+      suiteGreen,
+      killed,
+      survived,
+      noiseKept: opts.noiseNames.filter((n) => candidate.includes(n)),
+      missingMarkers: opts.requiredMarkers.filter((m) => !candidate.includes(m)),
+      tests: { before, after: countTests(candidate) },
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
 }
 
 export type Verification = {
