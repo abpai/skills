@@ -14,7 +14,19 @@ on:
       - ".github/workflows/eve-evals.yml"
   push:
     branches: [main]
+  # Manual trigger for the live lane. Live evals cost real tokens, so they are
+  # OFF by default and run only when asked for — see the `live-evals` job.
   workflow_dispatch:
+    inputs:
+      provider:
+        description: "Subject model provider"
+        type: choice
+        options: [openai, anthropic]
+        default: openai
+      filter:
+        description: "Eval ids to run (space-separated; blank = whole live suite)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -47,16 +59,32 @@ jobs:
       - name: Smoke eval (mock model, no secrets)
         run: bun run eval:smoke
 
-  # Live behavioral evals against a real model. Secrets are withheld from fork
-  # and Dependabot PRs by GitHub; skip cleanly there rather than failing, and
-  # never use pull_request_target + contributor checkout (a "pwn request").
+  # Live behavioral evals against a real model. OPT-IN ONLY — these cost real
+  # tokens, so they never run just because a PR was opened. Two ways to ask:
+  #
+  #   1. Actions -> "Eve skill evals" -> Run workflow. Pick the branch, the
+  #      provider, and optionally a subset of eval ids. Or from a terminal:
+  #        gh workflow run eve-evals.yml --ref <branch> \
+  #          -f provider=anthropic -f filter=contracts/harness-d7-safety-cap
+  #   2. Add the `run-evals` label to a same-repo PR. Useful once a stack has
+  #      been squashed into a single PR and is ready for a real check.
+  #
+  # `harness-smoke` still runs on every PR: it is free, needs no secrets, and
+  # catches harness rot. Only this job spends money.
+  #
+  # Fork and Dependabot PRs can never reach this job — GitHub withholds secrets
+  # from them, the label path requires a same-repo head, and the workflow uses
+  # `pull_request`, never `pull_request_target` + contributor checkout (a "pwn
+  # request").
   live-evals:
     needs: harness-smoke
     if: >
-      github.event_name != 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
       (
+        github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name == github.repository &&
-        github.actor != 'dependabot[bot]'
+        github.actor != 'dependabot[bot]' &&
+        contains(github.event.pull_request.labels.*.name, 'run-evals')
       )
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -76,46 +104,46 @@ jobs:
         run: bun run prepare-skills
       - name: Run live behavioral evals
         env:
-          # Subject model is `openai/gpt-5.6-luna` via the direct OpenAI provider
-          # (agent/agent.ts); the judge shares this key. A raw OpenAI `sk-` key
-          # reaches gpt-5.6-luna directly — the Vercel gateway is not involved.
+          # Subject model per provider (agent/agent.ts); the judge shares the
+          # same key. `openai` reaches gpt-5.6-luna — a Codex model — directly
+          # with a raw `sk-` key; the Vercel gateway is not involved.
+          # `anthropic` reaches claude-sonnet-5, the other half of the audience.
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          # Set this repository variable to `true` only for a fork that has no
-          # key and accepts running without behavioral coverage.
-          ALLOW_MISSING_EVAL_KEY: ${{ vars.ALLOW_MISSING_EVAL_KEY }}
-        # This job already skips forks and Dependabot via the `if:` above, so a
-        # missing key here is a misconfigured secret, not an expected condition.
-        # It used to exit 0 and paint the lane green while testing nothing —
-        # a revoked or expired key would have silently disabled every eval.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Defaults to openai for the label path, which has no inputs.
+          EVE_EVAL_PROVIDER: ${{ inputs.provider || 'openai' }}
+          EVAL_FILTER: ${{ inputs.filter }}
+        # Reaching this job means someone asked for it, so a missing key is a
+        # misconfigured secret, never an expected condition. This used to exit 0
+        # with a notice, which painted the lane green while running nothing — the
+        # secret was in fact absent for this repo's first 22 stacked PRs and
+        # every one of them reported a passing live-evals check.
         run: |
-          if [ -z "${OPENAI_API_KEY}" ]; then
-            if [ "${ALLOW_MISSING_EVAL_KEY}" = "true" ]; then
-              echo "::notice::OPENAI_API_KEY not set and ALLOW_MISSING_EVAL_KEY=true — skipping live evals."
-              exit 0
-            fi
-            echo "::error::OPENAI_API_KEY is not set, so no eval ran. Secrets are"
-            echo "::error::available to this job, so this is a misconfiguration."
-            echo "::error::Set the secret, or set repository variable"
-            echo "::error::ALLOW_MISSING_EVAL_KEY=true to accept an untested lane."
+          case "${EVE_EVAL_PROVIDER}" in
+            openai)    key="${OPENAI_API_KEY}";    secret_name="OPENAI_API_KEY" ;;
+            anthropic) key="${ANTHROPIC_API_KEY}"; secret_name="ANTHROPIC_API_KEY" ;;
+            *) echo "::error::EVE_EVAL_PROVIDER='${EVE_EVAL_PROVIDER}' is not openai or anthropic."; exit 1 ;;
+          esac
+
+          if [ -z "${key}" ]; then
+            echo "::error::${secret_name} is not set, so no eval ran."
+            echo "::error::Add the repository secret, or re-run selecting a provider whose key exists."
             exit 1
           fi
-          bun run eval:live --junit .eve/junit.xml
+
+          # Unset the other provider's key so agent.ts cannot silently
+          # auto-select it if EVE_EVAL_PROVIDER is ever dropped.
+          if [ "${EVE_EVAL_PROVIDER}" = "anthropic" ]; then unset OPENAI_API_KEY; fi
+
+          # shellcheck disable=SC2086 # EVAL_FILTER is intentionally word-split.
+          bunx eve eval ${EVAL_FILTER:---tag live} --strict --junit .eve/junit.xml
       # `--strict` catches failing evals and an empty tag match, but not a run
       # that quietly executes fewer evals than the suite defines. Compare what
-      # ran against what `eve eval --list` discovers.
+      # ran against what `eve eval --list` discovers. Skipped for a filtered
+      # run, where running a subset is the whole point.
       - name: Assert live evals actually ran
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ALLOW_MISSING_EVAL_KEY: ${{ vars.ALLOW_MISSING_EVAL_KEY }}
-        # Guard inline, not with `if:` — a step-level `env` is not in scope for
-        # an `if:` expression, so `env.OPENAI_API_KEY != ''` would always be
-        # false and silently skip this check.
-        run: |
-          if [ -z "${OPENAI_API_KEY}" ] && [ "${ALLOW_MISSING_EVAL_KEY}" = "true" ]; then
-            echo "::notice::live evals were skipped by opt-out; nothing to assert."
-            exit 0
-          fi
-          bun scripts/assert-live-coverage.ts .eve/junit.xml
+        if: ${{ !inputs.filter }}
+        run: bun scripts/assert-live-coverage.ts .eve/junit.xml
       - name: Upload eval evidence
         if: always()
         uses: actions/upload-artifact@v4

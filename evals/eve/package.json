@@ -10,6 +10,7 @@
     "eval": "eve eval",
     "eval:smoke": "eve eval smoke --strict",
     "eval:live": "eve eval --tag live --strict",
+    "eval:live:claude": "EVE_EVAL_PROVIDER=anthropic eve eval --tag live --strict",
     "ablate": "bun scripts/ablate.ts"
   },
   "dependencies": {

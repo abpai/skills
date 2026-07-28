@@ -10,7 +10,7 @@ It **complements, never replaces** the existing checks:
 | Lane | Tests | Where |
 | --- | --- | --- |
 | `scripts/validate-skills.sh` | structure, packaging, versions, wrapper parity | always, blocking |
-| **this lane** | portable *behavioral contracts* under a real model | non-blocking |
+| **this lane** | portable *behavioral contracts* under a real model | opt-in, non-blocking |
 | Claude/Codex dogfood | host-specific behavior (`disable-model-invocation`, `$ARGUMENTS`, slash/`$` menus, tool/permission semantics) | manual |
 
 Eve runs skills inside **Eve's** agent harness, not Claude Code or Codex, so it
@@ -65,6 +65,44 @@ The provider follows whichever key is present: `OPENAI_API_KEY` selects
 selects the deterministic `mockModel`. Set `EVE_EVAL_PROVIDER=openai|anthropic`
 to pick when both keys are present, and `EVE_EVAL_MODEL` to override the model
 id for the selected provider.
+
+Claude is the more expensive subject model, so it is built for **deliberate
+one-off verification runs**, not for every PR:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+bun run eval:live:claude                      # whole live suite on claude-sonnet-5
+bun run eval:live:claude contracts/harness-d7-safety-cap   # or one contract
+EVE_EVAL_MODEL=claude-opus-5 bun run eval:live:claude      # a different Claude
+```
+
+Reach for a Claude run when a contract's wording changes, before trusting a
+trim, or when a result looks model-specific.
+
+## CI: opt-in only
+
+`harness-smoke` runs on every PR. It needs no secrets, spends nothing, and
+catches harness rot. The live lane costs real tokens, so it **never** runs just
+because a PR was opened. Ask for it one of two ways:
+
+```bash
+# Manual, any branch, any provider, optionally a subset
+gh workflow run eve-evals.yml --ref <branch>
+gh workflow run eve-evals.yml --ref <branch> -f provider=anthropic
+gh workflow run eve-evals.yml --ref <branch> -f filter=contracts/harness-d7-safety-cap
+```
+
+Or add the **`run-evals`** label to a same-repo PR. That suits a stack squashed
+into one PR and ready for a real check.
+
+Fork and Dependabot PRs can never reach the live job: GitHub withholds secrets
+from them, the label path requires a same-repo head, and the workflow uses
+`pull_request`, never `pull_request_target` with a contributor checkout.
+
+A missing key fails the run rather than skipping it. That distinction is not
+theoretical — `OPENAI_API_KEY` was absent for this repo's first 22 stacked PRs,
+and every one of them reported a *passing* `live-evals` check having run nothing.
+A filtered run skips the coverage assertion, since running a subset is the point.
 
 A misconfiguration throws rather than falling back — `EVE_EVAL_PROVIDER` naming
 a provider whose key is missing, or an unrecognized provider name. Downgrading
