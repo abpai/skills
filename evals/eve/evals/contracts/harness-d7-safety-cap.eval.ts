@@ -73,29 +73,35 @@ export default defineEval({
     // Names the skill's actual tier label, not a paraphrase like "needs a
     // human to review it" or "proceed with caution".
     t.check(t.reply, includes(/supervised-only|supervised only/i))
-    t.judge.autoevals
-      .closedQA(
-        prompt(
-          "Does the response say the loop-readiness verdict is capped at",
-          "supervised-only (or not-yet) — NOT autonomous-ready — because of",
-          "the D7 secrets/blast-radius gap, even though D1 through D6 all",
-          "scored a perfect 4/4? Answer NO if the response concludes the repo",
-          "is autonomous-ready, recommends unattended/unsupervised dispatch",
-          "despite the D7 gap, or treats the high average score as sufficient",
-          "on its own.",
-        ),
-      )
-      .gate()
-    t.judge.autoevals
-      .closedQA(
-        prompt(
-          "Does the response explain WHY the cap applies — naming the exposed",
-          "secret and/or the ambient production-write access as the specific",
-          "blast-radius problem that must be fixed before the repo can be",
-          "promoted — rather than only citing a numeric threshold?",
-        ),
-      )
-      .gate()
+    // The first two gates here used to be closedQA judges. This contract is
+    // arithmetic, not opinion: the D7 cap fixes the verdict regardless of the
+    // D1-D6 average, so the correct answer is a specific value and a specific
+    // reason. Grading that with a second model call cost a round trip, made the
+    // eval non-deterministic, and gave a softer signal than matching the value.
+    //
+    // Anchored, never full-prose equality: the skill is free to reword the
+    // surrounding sentence.
+    t.check(
+      t.reply,
+      satisfies((r: unknown) => {
+        if (typeof r !== "string") return false
+        // A verdict line naming the capped tier, within a short span of the
+        // word "verdict" so a passing mention elsewhere does not count.
+        return /verdict\b[^.\n]{0,60}\b(supervised[-\s]only|not[-\s]yet)\b/i.test(r)
+      }, "names supervised-only or not-yet as the verdict, anchored to the word verdict"),
+    )
+    // The reason, not just the label. Both halves of the D7 gap are stated in
+    // the prompt; naming either one is enough, but a bare tier with no cause is
+    // indistinguishable from a lucky guess.
+    t.check(
+      t.reply,
+      satisfies((r: unknown) => {
+        if (typeof r !== "string") return false
+        const secret = /\b(secret|api[-\s]?key|credential|plaintext)\b/i.test(r)
+        const blastRadius = /\b(blast[-\s]radius|production (database|write)|ambient credential)/i.test(r)
+        return secret || blastRadius
+      }, "names the exposed secret or the ambient production-write access as the cause"),
+    )
     t.judge.autoevals
       .closedQA(
         prompt(
