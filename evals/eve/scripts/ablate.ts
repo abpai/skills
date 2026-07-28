@@ -159,7 +159,16 @@ function extractJsonObject(stdout: string): unknown {
   )
 }
 
-/** Run named evals via `eve eval <id…> --json`; return parsed summary. */
+/**
+ * Run named evals via `eve eval <id…> --json`; return parsed summary.
+ *
+ * Invokes the `eve` binary directly, never `bun run eval`. The package
+ * scripts re-run prepare-skills first so a hand-run eval can't grade a stale
+ * copy of a skill — but here the tree has been deliberately mutated by the
+ * caller (a heading cut, or a whole skill omitted), and re-preparing would
+ * restore it and silently grade the unmutated pack. Every entry would come
+ * back SURVIVED.
+ */
 function runEvals(ids: readonly string[]): EvalRunSummary {
   const r = run(["bunx", "eve", "eval", ...ids, "--json"])
   const summary = extractJsonObject(r.stdout) as EvalRunSummary

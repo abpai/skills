@@ -50,13 +50,20 @@ evals that load it.
 
 ```bash
 bun install
-bun run prepare-skills          # generate agent/skills/ from canonical repo sources
 bun run typecheck               # eval files vs real Eve types
 bun run list                    # discover evals
 bun run eval:smoke              # boot proof under mockModel — no API key needed
 set -a; . ./.env.local; set +a  # loads OPENAI_API_KEY (gitignored)
 bun run eval:live               # live behavioral evals against gpt-5.6-luna
 ```
+
+Every `eval*` script re-runs `prepare-skills` first (~50ms), so an eval always
+grades the skill sources as they are on disk right now. Edit a `SKILL.md` and
+re-run — there is no stale-copy step to remember. `bun run prepare-skills` on
+its own is still there for inspecting the materialized tree.
+
+`ablate` is the exception: it prepares a *deliberately mutated* tree, so it
+calls the `eve` binary directly rather than going through these scripts.
 
 ### Choosing the model
 
