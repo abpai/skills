@@ -13,11 +13,24 @@
  *                omitted. The eval measures the base model, not the skill, so
  *                it can say nothing about this text. Not a cut candidate —
  *                write a discriminating eval first.
+ *   FLAKY      — with `--runs N`, the same ablated build both killed and
+ *                survived. Neither label is a verdict; raise N or treat the
+ *                entry as unmeasured.
+ *
+ * READ THIS BEFORE TRUSTING A SINGLE SWEEP. Live grading is non-deterministic,
+ * and not marginally so: two consecutive identical sweeps on 2026-07-27
+ * disagreed on 5 of 12 entries. One run is close to a coin flip for roughly half
+ * the manifest. Use `--runs 3` (or more) before acting on any result, and treat
+ * FLAKY as "no signal yet" rather than a weak KILLED.
+ *
+ * Ablation is also not the last word on a trim. The stronger check is to re-run
+ * the guarding evals AFTER the edit and see them pass — that tests the text you
+ * actually shipped, not a synthetic deletion of it.
  *
  * Always restore baseline in `finally` so a crashed run never leaves
  * `agent/skills/` mutated.
  *
- * Usage: `bun run ablate [<id>…]` (requires OPENAI_API_KEY for live grades).
+ * Usage: `bun run ablate [--runs N] [<id>…]` (needs a model key for live grades).
  */
 import { spawnSync } from "node:child_process"
 import { dirname, resolve } from "node:path"
@@ -48,7 +61,7 @@ type EvalRunSummary = {
   results: EvalVerdict[]
 }
 
-type Classification = "SURVIVED" | "KILLED" | "UNGUARDED" | "ERROR"
+type Classification = "SURVIVED" | "KILLED" | "UNGUARDED" | "FLAKY" | "ERROR"
 
 type Row = {
   id: string
@@ -196,7 +209,7 @@ function formatEvalLine(summary: EvalRunSummary): string {
   return summary.results.map((e) => `${e.id}:${e.verdict}`).join(", ")
 }
 
-function runEntry(entry: Ablation): Row {
+function runEntry(entry: Ablation, runs: number): Row {
   if (entry.retirement && entry.retirement.length > 0 && !entry.span) {
     console.log(`\n══ omit ${entry.skillId}  (${entry.id}) ══`)
     prepare(["--omit", entry.skillId])
@@ -216,15 +229,36 @@ function runEntry(entry: Ablation): Row {
       throw new Error(`${entry.id}: line-span ablations are not implemented`)
     }
     console.log(
-      `\n══ ablate ${entry.id}  (${entry.span.file ?? "SKILL.md"} ## ${entry.span.heading}) ══`,
+      `\n══ ablate ${entry.id}  (${entry.span.file ?? "SKILL.md"} ## ${entry.span.heading})` +
+        `${runs > 1 ? `  ×${runs}` : ""} ══`,
     )
     prepare(["--ablate", entry.id])
-    const summary = runEvals(entry.guardedBy)
-    let classification: Classification = classify(summary)
-    let detail = formatEvalLine(summary)
+
+    // Repeat the same ablated build. Live grading is non-deterministic, and the
+    // scale of that is not a footnote: two consecutive identical sweeps on
+    // 2026-07-27 disagreed on 5 of 12 entries. A single run is a coin flip for
+    // roughly half the manifest, so a lone KILLED or SURVIVED is not a verdict.
+    const votes: ("SURVIVED" | "KILLED")[] = []
+    let lastSummary: EvalRunSummary | undefined
+    for (let i = 0; i < runs; i++) {
+      lastSummary = runEvals(entry.guardedBy)
+      votes.push(classify(lastSummary))
+      if (runs > 1) console.log(`   run ${i + 1}/${runs}: ${votes[i]}`)
+    }
+
+    const killed = votes.filter((v) => v === "KILLED").length
+    const survived = votes.length - killed
+    let classification: Classification =
+      killed > 0 && survived > 0 ? "FLAKY" : killed > 0 ? "KILLED" : "SURVIVED"
+    let detail =
+      runs > 1
+        ? `KILLED ${killed}/${runs}, SURVIVED ${survived}/${runs}`
+        : formatEvalLine(lastSummary!)
 
     // A SURVIVED is only meaningful if the eval could ever have failed for
     // want of this skill. Prove that before reporting it as a cut candidate.
+    // FLAKY needs no control: it already killed at least once, so the eval
+    // demonstrably reacts to the skill.
     if (classification === "SURVIVED") {
       console.log(`   control: re-running ${entry.guardedBy.join(", ")} with ${entry.skillId} omitted…`)
       if (controlPassesWithoutSkill(entry.guardedBy, entry.skillId)) {
@@ -277,7 +311,23 @@ function main(): void {
   // Optional id filter: `bun run ablate <id> [<id>...]`. A full sweep is one
   // live model session per guarded eval, so re-running a single entry after
   // editing its eval should not cost the whole manifest.
-  const only = process.argv.slice(2).filter((a) => !a.startsWith("-"))
+  const argv = process.argv.slice(2)
+
+  // `--runs N` repeats each ablated build N times and reports the vote split.
+  // Default 1 keeps a sweep cheap; raise it before acting on any single result.
+  let runs = 1
+  const runsFlag = argv.findIndex((a) => a === "--runs")
+  if (runsFlag >= 0) {
+    const raw = argv[runsFlag + 1]
+    runs = Number(raw)
+    if (!Number.isInteger(runs) || runs < 1) {
+      console.error(`ablate: --runs expects a positive integer, got "${raw}"`)
+      process.exit(2)
+    }
+    argv.splice(runsFlag, 2)
+  }
+
+  const only = argv.filter((a) => !a.startsWith("-"))
   const unknown = only.filter((id) => !ABLATIONS.some((a) => a.id === id))
   if (unknown.length > 0) {
     console.error(
@@ -292,7 +342,7 @@ function main(): void {
   try {
     for (const entry of selected) {
       try {
-        rows.push(runEntry(entry))
+        rows.push(runEntry(entry, runs))
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error(`ablate: entry ${entry.id} errored: ${message}`)

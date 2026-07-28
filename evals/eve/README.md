@@ -150,12 +150,37 @@ restores the baseline `agent/skills/` in `finally`.
 | **KILLED** | an eval failed | the text is load-bearing and now regression-guarded |
 | **SURVIVED** | every eval passed, *and* the evals need the skill to pass | genuine cut candidate |
 | **UNGUARDED** | every eval passed, but they also pass with the skill omitted | the eval measures the base model — write a discriminating eval before touching the text |
+| **FLAKY** | with `--runs N`, the same build both killed and survived | no signal yet; raise `N` or treat the entry as unmeasured |
 
 ```bash
 set -a; . ./.env.local; set +a
-bun run ablate                       # whole manifest
-bun run ablate code-simplify-scope-contract   # one entry
+bun run ablate                                 # whole manifest, 1 run each
+bun run ablate --runs 3                        # vote across 3 runs — do this
+bun run ablate --runs 3 code-simplify-scope-contract   # one entry
 ```
+
+### One run is not a verdict
+
+Live grading is non-deterministic, and not marginally so. Two consecutive
+identical sweeps on 2026-07-27 disagreed on **5 of 12 entries** — a coin flip
+for roughly half the manifest. A concrete example at `--runs 3`:
+
+```
+engineering-tdd-anti-horizontal-slices
+   run 1/3: KILLED
+   run 2/3: SURVIVED
+   run 3/3: KILLED
+   → FLAKY (KILLED 2/3, SURVIVED 1/3)
+```
+
+So `--runs 3` or higher before acting on anything, and read FLAKY as "not yet
+measured" rather than a weak KILLED.
+
+**Ablation is also not the last word on a trim.** The stronger check is to make
+the edit and re-run the guarding evals: that tests the text you actually
+shipped, rather than a synthetic deletion of it. Every pack trimmed in this
+repo was validated that way, which is why the flakiness above did not lead
+anything astray.
 
 **Why UNGUARDED exists.** A passing eval does not prove the skill caused the
 behavior. On 2026-07-27 `contracts/code-simplify-proposal-no-edits` scored 4/5
