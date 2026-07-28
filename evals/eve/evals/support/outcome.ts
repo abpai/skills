@@ -44,9 +44,9 @@ import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const OUTCOME_IMAGE =
+export const OUTCOME_IMAGE =
   process.env.EVE_OUTCOME_IMAGE ??
-  "node@sha256:af01d58b748ec92b1d6e8e11429aad424fd1e68c848185399dca0596a1ab8f5c"
+  "node@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d"
 const MAX_CANDIDATE_BYTES = 128 * 1024
 const MAX_RUN_OUTPUT_BYTES = 1024 * 1024
 
@@ -106,6 +106,8 @@ function runInVerifier(
     "--rm",
     "--name",
     name,
+    "--pull",
+    "never",
     "--network",
     "none",
     "--read-only",

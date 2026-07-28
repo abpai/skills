@@ -210,7 +210,8 @@ fixtures/<name>/hidden.test.js  # mounted read-only only after the reply exists
 Eve is public preview — the version is pinned in `package.json` and the
 lockfile; bump it deliberately. The verifier's Node image is pinned by digest
 in `evals/support/outcome.ts`; update it deliberately and rerun
-`bun run test:outcome-isolation`.
+`bun run outcome:pull`, then `bun run test:outcome-isolation`. Verifier runs use
+`--pull never`, so image setup is separate from candidate execution.
 
 ## Ablation
 

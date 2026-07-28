@@ -56,6 +56,8 @@ jobs:
         run: bun run typecheck
       - name: Prove live coverage controls
         run: bun run test:coverage
+      - name: Pull pinned outcome verifier image
+        run: bun run outcome:pull
       - name: Prove outcome verifier isolation
         run: bun run test:outcome-isolation
       - name: Discover evals
