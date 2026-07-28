@@ -130,6 +130,22 @@ turn with no token spend — the always-on check that catches harness rot.
 skipped, not failed. Subject model is `gpt-5.6-luna` via the direct OpenAI
 provider (`OPENAI_API_KEY`).
 
+### When every eval suddenly times out
+
+Eve accumulates per-run workflow state under `.eve/.workflow-data` and never
+prunes it. It grows without bound: on 2026-07-28 it reached 568 MB across 89,718
+files, and at that size every eval — including prose evals that normally finish
+in seconds — timed out past 280s. Eve warns about it first, in a line that is
+easy to read as noise:
+
+```
+[eve:dev] N active local Workflow run(s) reference development generations that
+no longer exist ... remove ".eve/.workflow-data" to discard
+```
+
+Both `.eve/.workflow-data` and `.eve/evals/` are untracked caches. Delete them
+when runs get slow; the next run rebuilds what it needs.
+
 ## Outcome evals
 
 Most evals here grade prose: the model is asked what a skill would do, and the

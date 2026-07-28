@@ -35,6 +35,33 @@ import { fixtureInput, verifyCandidate, type Fixture } from "../support/outcome"
 // returning the input unchanged; a line-count drop alone would reward deleting
 // the hard parts. The unchanged input scores 37 -> 37 lines and the careless
 // rewrite scores 37 -> 2 with four failures. Neither passes.
+// ---------------------------------------------------------------------------
+// MEASURED 2026-07-28: this fixture is UNGUARDED. Do not cite it as evidence
+// that `simplify`'s rubric works.
+//
+// The machinery is proven. Live with the skill present it passes 8/8, and the
+// model returned a genuinely correct simplification: `??` rather than `||` so
+// 0 survives, the empty-window early return kept, `>=` for warn against `>` for
+// block. 37 -> 21 significant lines, hidden suite green.
+//
+// But two controls say it is not testing the skill:
+//
+//   ablate "Review passes" from simplify.md  -> this eval still PASSED
+//   omit the `code` skill entirely           -> all four outcome gates PASSED
+//                                               (only loadedSkill and the
+//                                               missing-skill tool errors fail)
+//
+// The base model simplifies this fixture correctly unaided, so the eval cannot
+// testify about any of simplify's text.
+//
+// What a discriminating fixture needs: a decision where the base model's
+// default differs from the skill's rule. Preserving behavior while tidying a
+// small module is not one — competent models already do it. The rubric's
+// load-bearing part is the PROTECTED-CATEGORY list for test pruning, where an
+// unaided pass deletes a security guard or a golden alongside genuine noise.
+// The next fixture should hand over a real mixed test suite and prune it for
+// real, then check which guards survived.
+// ---------------------------------------------------------------------------
 const FIXTURE: Fixture = {
   name: "normalize-config",
   exports: ["normalizeConfig", "classify"],

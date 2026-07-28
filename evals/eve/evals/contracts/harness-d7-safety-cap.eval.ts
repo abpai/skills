@@ -85,10 +85,12 @@ export default defineEval({
       t.reply,
       satisfies((r: unknown) => {
         if (typeof r !== "string") return false
-        // A verdict line naming the capped tier, within a short span of the
-        // word "verdict" so a passing mention elsewhere does not count.
-        return /verdict\b[^.\n]{0,60}\b(supervised[-\s]only|not[-\s]yet)\b/i.test(r)
-      }, "names supervised-only or not-yet as the verdict, anchored to the word verdict"),
+        // Anchor to a verdict LABEL, so a tier mentioned in passing elsewhere
+        // does not count. The skill's own label is "Loop-readiness"
+        // (harness/doctor.md); "verdict" is accepted too so a future rewording
+        // of the surrounding sentence does not break this.
+        return /(loop[-\s]?readiness|verdict)\b[^.\n]{0,60}\b(supervised[-\s]only|not[-\s]yet)\b/i.test(r)
+      }, "states supervised-only or not-yet on a Loop-readiness/verdict line"),
     )
     // The reason, not just the label. Both halves of the D7 gap are stated in
     // the prompt; naming either one is enough, but a bare tier with no cause is
