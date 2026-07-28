@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { includes, satisfies } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (lateral-thinking/skills/lateral-thinking/SKILL.md:141-144;
 // references/output-format.md:28-31): workflow step 8 "Recommend actions"
@@ -17,14 +18,16 @@ export default defineEval({
   tags: ["live", "lateral-thinking", "contract"],
   async test(t) {
     await t.send(
-      "The checkout inventory-reservation job is well understood: it locks stock " +
-        "rows, calls the payment API, then commits. Under flash-sale load the locks " +
-        "pile up, payments time out, and we retry — which makes lock contention worse. " +
-        "We've already tried shorter lock TTLs, more retries with jitter, and a bigger " +
-        "Redis cache in front of inventory reads; all three failed the same way. " +
-        "Don't compress the architecture — generate non-obvious cross-domain hypotheses " +
-        "for the underlying mechanism, all the way through to concrete next steps I " +
+      prompt(
+        "The checkout inventory-reservation job is well understood: it locks stock",
+        "rows, calls the payment API, then commits. Under flash-sale load the locks",
+        "pile up, payments time out, and we retry — which makes lock contention worse.",
+        "We've already tried shorter lock TTLs, more retries with jitter, and a bigger",
+        "Redis cache in front of inventory reads; all three failed the same way.",
+        "Don't compress the architecture — generate non-obvious cross-domain hypotheses",
+        "for the underlying mechanism, all the way through to concrete next steps I",
         "should take.",
+      ),
     )
     t.succeeded()
     t.loadedSkill("lateral-thinking")

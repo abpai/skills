@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { includes, satisfies } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (code/skills/code/simplify.md, "Scope contract"):
 //
@@ -31,12 +32,14 @@ export default defineEval({
   tags: ["live", "code", "contract"],
   async test(t) {
     const turn = await t.send(
-      "If I run `code simplify` with no path, file, directory, or symbol named " +
-        "— just the bare command with nothing after it — does that mean you'll " +
-        "start editing files in my repository right away? Explain what you would " +
-        "actually do first, without doing it yet. And if instead I ran " +
-        "`code simplify src/foo.ts`, naming one specific file, would you handle " +
+      prompt(
+        "If I run `code simplify` with no path, file, directory, or symbol named",
+        "— just the bare command with nothing after it — does that mean you'll",
+        "start editing files in my repository right away? Explain what you would",
+        "actually do first, without doing it yet. And if instead I ran",
+        "`code simplify src/foo.ts`, naming one specific file, would you handle",
         "that the same way — proposal only, no edits — or differently?",
+      ),
     )
     t.succeeded()
     t.loadedSkill("code")
@@ -55,25 +58,29 @@ export default defineEval({
     )
     t.judge.autoevals
       .closedQA(
-        "Does the response explain that running `code simplify` with no path, " +
-          "file, directory, or symbol scope produces a ranked proposal (a batch of " +
-          "candidate simplifications for the user to review), and explicitly says " +
-          "it will NOT edit any files until the user selects or approves a slice " +
-          "from that proposal? A response that says it will start editing files " +
-          "immediately, or that never mentions withholding edits until the user " +
+        prompt(
+          "Does the response explain that running `code simplify` with no path,",
+          "file, directory, or symbol scope produces a ranked proposal (a batch of",
+          "candidate simplifications for the user to review), and explicitly says",
+          "it will NOT edit any files until the user selects or approves a slice",
+          "from that proposal? A response that says it will start editing files",
+          "immediately, or that never mentions withholding edits until the user",
           "picks something, counts as NO.",
+        ),
       )
       .gate()
     t.judge.autoevals
       .closedQA(
-        "Does the response say that naming one specific file (`src/foo.ts`) is " +
-          "handled DIFFERENTLY from the bare, scope-omitted command — that a named " +
-          "file/directory/symbol scope is inspected, simplified, validated, and " +
-          "the worthwhile changes applied autonomously, without waiting for the " +
-          "user to select or approve anything first? Answer NO if the response " +
-          "says the named-file case is handled the same way as the omitted-scope " +
-          "case (e.g. still only a proposal, or still asks before editing), or " +
+        prompt(
+          "Does the response say that naming one specific file (`src/foo.ts`) is",
+          "handled DIFFERENTLY from the bare, scope-omitted command — that a named",
+          "file/directory/symbol scope is inspected, simplified, validated, and",
+          "the worthwhile changes applied autonomously, without waiting for the",
+          "user to select or approve anything first? Answer NO if the response",
+          "says the named-file case is handled the same way as the omitted-scope",
+          "case (e.g. still only a proposal, or still asks before editing), or",
           "does not address the named-file case at all.",
+        ),
       )
       .gate()
   },

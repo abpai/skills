@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { includes } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (code/skills/code/SKILL.md:34-49): a removed exact subcommand token
 // must return migration guidance to its replacement and STOP — never run the
@@ -20,10 +21,12 @@ export default defineEval({
     // answer. Same lesson as the injection eval's action-vs-prose rework.
     t.judge.autoevals
       .closedQA(
-        "Does the response AVOID claiming it actually ran, executed, or completed " +
-          "the removed `dead-code` workflow (or that it produced dead-code results)? " +
-          "Merely explaining that the command was removed and pointing to `simplify` " +
+        prompt(
+          "Does the response AVOID claiming it actually ran, executed, or completed",
+          "the removed `dead-code` workflow (or that it produced dead-code results)?",
+          "Merely explaining that the command was removed and pointing to `simplify`",
           "counts as yes; only a claim of having performed it counts as no.",
+        ),
       )
       .gate()
   },

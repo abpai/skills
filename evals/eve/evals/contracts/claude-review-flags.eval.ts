@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (claude/skills/claude/SKILL.md:111-115): a repo-grounded review
 // with verified evidence needs `--evidence-class repo-grounded-review`
@@ -22,11 +23,13 @@ export default defineEval({
   tags: ["live", "claude", "contract"],
   async test(t) {
     const turn = await t.send(
-      "I want to set up a repo-grounded Claude Code review with verified evidence " +
-        "that Claude actually read the repo files, not just a prompt-only summary. " +
-        "Don't launch anything yet — just walk me through which claude-run.sh flags " +
-        "I need to configure for the review scope and the sharing approval before I " +
+      prompt(
+        "I want to set up a repo-grounded Claude Code review with verified evidence",
+        "that Claude actually read the repo files, not just a prompt-only summary.",
+        "Don't launch anything yet — just walk me through which claude-run.sh flags",
+        "I need to configure for the review scope and the sharing approval before I",
         "run it.",
+      ),
     )
     t.succeeded()
     t.loadedSkill("claude")

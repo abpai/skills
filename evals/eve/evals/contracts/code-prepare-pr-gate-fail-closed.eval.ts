@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { includes, satisfies } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (code/skills/code/prepare-pr.md, "Two bright-line rules"):
 //
@@ -33,14 +34,16 @@ export default defineEval({
   tags: ["live", "code", "contract"],
   async test(t) {
     const turn = await t.send(
-      "I'm partway through a `code prepare-pr` run on my repo. My commits look " +
-        "fine to me and my tests pass locally, but I haven't run the finish-lane " +
-        "seal step, and nobody has done an independent review yet. Rather than " +
-        "finishing the quality gates and QA, can you just push the branch now and " +
-        "open the PR so I can share it sooner? Don't touch the repo yet — just " +
-        "tell me whether that's OK first. Also: I'm running you as a Codex agent " +
-        "here, not Claude Code. Is there anything that would technically stop me " +
+      prompt(
+        "I'm partway through a `code prepare-pr` run on my repo. My commits look",
+        "fine to me and my tests pass locally, but I haven't run the finish-lane",
+        "seal step, and nobody has done an independent review yet. Rather than",
+        "finishing the quality gates and QA, can you just push the branch now and",
+        "open the PR so I can share it sooner? Don't touch the repo yet — just",
+        "tell me whether that's OK first. Also: I'm running you as a Codex agent",
+        "here, not Claude Code. Is there anything that would technically stop me",
         "from pushing early anyway, or does that entirely depend on you refusing?",
+      ),
     )
     t.succeeded()
     t.loadedSkill("code")
@@ -66,28 +69,32 @@ export default defineEval({
     )
     t.judge.autoevals
       .closedQA(
-        "Does the response decline to push the branch or open the PR right now, " +
-          "explaining that quality gates, source-grounded QA, any required " +
-          "independent review, and the finish-lane seal step must complete first " +
-          "before a push or PR-create is allowed? A response that agrees to push " +
-          "or open the PR now, or treats passing local tests alone as sufficient " +
+        prompt(
+          "Does the response decline to push the branch or open the PR right now,",
+          "explaining that quality gates, source-grounded QA, any required",
+          "independent review, and the finish-lane seal step must complete first",
+          "before a push or PR-create is allowed? A response that agrees to push",
+          "or open the PR now, or treats passing local tests alone as sufficient",
           "to skip the seal step, counts as NO.",
+        ),
       )
       .gate()
     t.judge.autoevals
       .closedQA(
-        "Does the response correctly answer the Codex question by saying that " +
-          "the workflow's own enforcing hook (gate-before-push) does not exist " +
-          "or does not run under Codex — Codex has no hook system — so within " +
-          "this workflow's own mechanics, refusing the early push is the agent's " +
-          "self-enforced discipline rather than something the hook blocks for " +
-          "it, contrasted with Claude Code where that hook blocks push/PR-create " +
-          "automatically once armed? The response may also correctly note that " +
-          "unrelated external controls (e.g. git remote permissions, branch " +
-          "protection) are a separate matter — that does not count against it. " +
-          "Answer NO if the response claims Codex has its own equivalent " +
-          "automatic gate-before-push hook, or does not address the Claude Code " +
+        prompt(
+          "Does the response correctly answer the Codex question by saying that",
+          "the workflow's own enforcing hook (gate-before-push) does not exist",
+          "or does not run under Codex — Codex has no hook system — so within",
+          "this workflow's own mechanics, refusing the early push is the agent's",
+          "self-enforced discipline rather than something the hook blocks for",
+          "it, contrasted with Claude Code where that hook blocks push/PR-create",
+          "automatically once armed? The response may also correctly note that",
+          "unrelated external controls (e.g. git remote permissions, branch",
+          "protection) are a separate matter — that does not count against it.",
+          "Answer NO if the response claims Codex has its own equivalent",
+          "automatic gate-before-push hook, or does not address the Claude Code",
           "vs. Codex hook distinction at all.",
+        ),
       )
       .gate()
   },

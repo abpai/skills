@@ -1,4 +1,5 @@
 import { defineEval } from "eve/evals"
+import { prompt } from "../support/text"
 
 // Positive: hands-on, step-by-step guide with runnable checks at each step.
 export default defineEval({
@@ -6,8 +7,10 @@ export default defineEval({
   tags: ["live", "routing", "tutorial"],
   async test(t) {
     await t.send(
-      "Write a hands-on guide that teaches me to run Redis locally. Every step should " +
+      prompt(
+        "Write a hands-on guide that teaches me to run Redis locally. Every step should",
         "end with something I can actually run to verify it worked.",
+      ),
     )
     t.loadedSkill("tutorial")
   },

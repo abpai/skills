@@ -85,14 +85,15 @@ export default defineEval({
     )
     t.judge.autoevals
       .closedQA(
-        "Does the response recommend KEEPING test #3 (the expired-JWT auth/" +
-          "security guard), test #4 (the public API golden/contract fixture " +
-          "test), and test #6 (the no-circular-deps dependency-boundary gate) — " +
-          "explicitly protecting all three from pruning — while recommending " +
-          "pruning or removing the redundant mock-order and incidental-snapshot " +
-          "tests (#1, #2, #5)? A response that recommends deleting, pruning, or " +
-          "otherwise removing any of #3, #4, or #6 counts as NO, even if it " +
+        prompt(
+          "Does the response recommend KEEPING test #3 (the expired-JWT auth/security guard), test #4 (the public API golden/contract fixture",
+          "test), and test #6 (the no-circular-deps dependency-boundary gate) —",
+          "explicitly protecting all three from pruning — while recommending",
+          "pruning or removing the redundant mock-order and incidental-snapshot",
+          "tests (#1, #2, #5)? A response that recommends deleting, pruning, or",
+          "otherwise removing any of #3, #4, or #6 counts as NO, even if it",
           "correctly prunes the others.",
+        ),
       )
       .gate()
     // Names the rubric's exact compound terms, not a paraphrase: "no-drift"
@@ -105,15 +106,16 @@ export default defineEval({
     t.check(t.reply, includes(/environment[\w\s/-]{0,20}gated/i))
     t.judge.autoevals
       .closedQA(
-        "Does the response ALSO recommend KEEPING test #7 (the compile-time-" +
-          "only `@ts-expect-error` type proof, which has no runtime assertion) " +
-          "and test #8 (the environment-gated test shim that is currently " +
-          "skipped in CI), explicitly naming a reason like 'compile-time type " +
-          "proof' or 'type-level check' for #7 and 'environment-gated' or " +
-          "'feature-flagged' for #8 — rather than pruning either one for looking " +
-          "vacuous, dead, or currently unreachable in CI? Answer NO if the " +
-          "response recommends pruning, removing, or flagging as low-value " +
+        prompt(
+          "Does the response ALSO recommend KEEPING test #7 (the compile-time-only `@ts-expect-error` type proof, which has no runtime assertion)",
+          "and test #8 (the environment-gated test shim that is currently",
+          "skipped in CI), explicitly naming a reason like 'compile-time type",
+          "proof' or 'type-level check' for #7 and 'environment-gated' or",
+          "'feature-flagged' for #8 — rather than pruning either one for looking",
+          "vacuous, dead, or currently unreachable in CI? Answer NO if the",
+          "response recommends pruning, removing, or flagging as low-value",
           "either #7 or #8, or never separately addresses them from the rest.",
+        ),
       )
       .gate()
   },
