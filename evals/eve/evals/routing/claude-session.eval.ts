@@ -11,5 +11,8 @@ export default defineEval({
     )
     t.loadedSkill("claude-session")
     t.check(turn.toolCalls, notLoadedSkill("codex-session"))
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (distill/skills/distill/SKILL.md:107-108): Conceptual Map is "the
 // default; use it for any input unless a format below is requested or its
@@ -18,11 +19,13 @@ export default defineEval({
   tags: ["live", "distill", "contract"],
   async test(t) {
     await t.send(
-      "Distill this codebase for me in one pass, no back-and-forth needed: it's a " +
-        "small job-queue library with three pieces — a Producer that enqueues jobs, " +
-        "a Redis-backed Queue, and a Worker pool that pulls jobs, runs handlers, and " +
-        "retries on failure. I just want the core mental model. I have no preference " +
+      prompt(
+        "Distill this codebase for me in one pass, no back-and-forth needed: it's a",
+        "small job-queue library with three pieces — a Producer that enqueues jobs,",
+        "a Redis-backed Queue, and a Worker pool that pulls jobs, runs handlers, and",
+        "retries on failure. I just want the core mental model. I have no preference",
         "on output format — just give me what fits best.",
+      ),
     )
     t.succeeded()
     t.loadedSkill("distill")
@@ -49,5 +52,8 @@ export default defineEval({
         )
       }, "does not ask the user which output format to use"),
     )
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

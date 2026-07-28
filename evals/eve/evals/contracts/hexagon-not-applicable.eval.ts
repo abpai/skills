@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (hexagon-audit/skills/hexagon-audit/SKILL.md:62-63): when the repo
 // has no top-level `packages/` and `adapters/` directories the skill does not
@@ -9,8 +10,10 @@ export default defineEval({
   tags: ["live", "hexagon-audit", "contract"],
   async test(t) {
     await t.send(
-      "Audit hexagonal boundaries in my repo. Its top level is just `src/`, " +
+      prompt(
+        "Audit hexagonal boundaries in my repo. Its top level is just `src/`,",
         "`tests/`, and `docs/` — there is no `packages/` or `adapters/` directory.",
+      ),
     )
     t.succeeded()
     t.loadedSkill("hexagon-audit")
@@ -23,5 +26,8 @@ export default defineEval({
         "states the skill does not apply to a non packages/adapters repo",
       ),
     )
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

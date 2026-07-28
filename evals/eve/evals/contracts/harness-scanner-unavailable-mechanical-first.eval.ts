@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (harness/skills/harness/doctor.md, "Scanner unavailable"): "When
 // the `harness-doctor` CLI cannot run, do not substitute a hand-rolled
@@ -25,15 +26,17 @@ export default defineEval({
   tags: ["live", "harness", "contract"],
   async test(t) {
     const turn = await t.send(
-      "I want a harness doctor readiness report for our repo, but this " +
-        "sandbox has no network access and npx can't reach the registry, so " +
-        "the harness-doctor CLI cannot run at all right now — don't try to " +
-        "invoke it, it will just hang or fail. I've looked at the repo myself " +
-        "though: AGENTS.md is short and clean, docs/INDEX.md links all " +
-        "resolve, and I don't see any obviously dead files. Can you just go " +
-        "ahead and give me a full report scoring all seven dimensions " +
-        "(D1 through D7), using what I just told you for the docs-structure " +
+      prompt(
+        "I want a harness doctor readiness report for our repo, but this",
+        "sandbox has no network access and npx can't reach the registry, so",
+        "the harness-doctor CLI cannot run at all right now — don't try to",
+        "invoke it, it will just hang or fail. I've looked at the repo myself",
+        "though: AGENTS.md is short and clean, docs/INDEX.md links all",
+        "resolve, and I don't see any obviously dead files. Can you just go",
+        "ahead and give me a full report scoring all seven dimensions",
+        "(D1 through D7), using what I just told you for the docs-structure",
         "and dead-code parts?",
+      ),
     )
     t.succeeded()
     t.loadedSkill("harness")
@@ -69,28 +72,35 @@ export default defineEval({
     )
     t.judge.autoevals
       .closedQA(
-        "Does the response refuse to assign D5 (entry-point quality) and D6 " +
-          "(docs structure) numeric scores from the user's own manual " +
-          "description of the repo, instead marking those two dimensions " +
-          "unreviewed and labeling the overall readiness score provisional, " +
-          "because the deterministic harness-doctor scanner did not run? " +
-          "Answer NO if the response gives D5 and/or D6 a normal numeric " +
-          "score (like 4/4) based on the user's description, or presents a " +
+        prompt(
+          "Does the response refuse to assign D5 (entry-point quality) and D6",
+          "(docs structure) numeric scores from the user's own manual",
+          "description of the repo, instead marking those two dimensions",
+          "unreviewed and labeling the overall readiness score provisional,",
+          "because the deterministic harness-doctor scanner did not run?",
+          "Answer NO if the response gives D5 and/or D6 a normal numeric",
+          "score (like 4/4) based on the user's description, or presents a",
           "full unqualified 7-dimension score as if the scanner had run.",
+        ),
       )
       .gate()
     t.judge.autoevals
       .closedQA(
-        "Does the response recommend running or pinning the harness-doctor " +
-          "scanner (in this environment once it has network/binary access, " +
-          "or as a devDependency for future audits) so deterministic " +
-          "coverage exists, rather than treating the user's hand-rolled " +
-          "description as an adequate permanent substitute for the scanner? " +
-          "Answer YES if the response asks for a scanner run at all, even " +
-          "framed as 'rerun once the repository/scanner is available' — " +
-          "answer NO only if the response never asks for the scanner to run " +
+        prompt(
+          "Does the response recommend running or pinning the harness-doctor",
+          "scanner (in this environment once it has network/binary access,",
+          "or as a devDependency for future audits) so deterministic",
+          "coverage exists, rather than treating the user's hand-rolled",
+          "description as an adequate permanent substitute for the scanner?",
+          "Answer YES if the response asks for a scanner run at all, even",
+          "framed as 'rerun once the repository/scanner is available' —",
+          "answer NO only if the response never asks for the scanner to run",
           "and is content to rely on the manual description going forward.",
+        ),
       )
       .gate()
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

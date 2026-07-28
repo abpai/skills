@@ -63,5 +63,8 @@ export default defineEval({
         })
       }, "no tool call greps/finds over ~/.claude instead of running the parser"),
     )
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })
