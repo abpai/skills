@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
-import { includes, satisfies } from "eve/evals/expect"
+import { includes } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedCalls, noWrites } from "../support/tools"
 
 // Contract (code/skills/code/simplify.md, "Scope contract"):
 //
@@ -47,15 +48,10 @@ export default defineEval({
     // Names the skill's specific artifact shape (a "ranked" batch/proposal),
     // not a generic "suggestions" or "recommendations" list.
     t.check(t.reply, includes(/ranked/i))
-    // Defense in depth: must not reach for edit tools while merely explaining
+    // Defense in depth: must not reach for a write tool while merely explaining
     // what an omitted-scope run would do.
-    t.check(
-      turn.toolCalls,
-      satisfies((calls: unknown) => {
-        if (!Array.isArray(calls)) return false
-        return !calls.some((c) => (c as { name?: string }).name === "Edit" || (c as { name?: string }).name === "Write")
-      }, "no Edit or Write tool call made while only explaining the omitted-scope contract"),
-    )
+    t.check(turn.toolCalls, noWrites())
+    t.check(turn.toolCalls, noFailedCalls())
     t.judge.autoevals
       .closedQA(
         prompt(
@@ -83,5 +79,8 @@ export default defineEval({
         ),
       )
       .gate()
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

@@ -11,5 +11,8 @@ export default defineEval({
     t.check(turn.toolCalls, notLoadedSkill("hexagon-audit"))
     t.check(turn.toolCalls, notLoadedSkill("distill"))
     t.check(turn.toolCalls, notLoadedSkill("lateral-thinking"))
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

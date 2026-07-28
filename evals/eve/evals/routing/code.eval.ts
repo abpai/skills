@@ -19,5 +19,8 @@ export default defineEval({
     t.loadedSkill("code")
     t.check(turn.toolCalls, notLoadedSkill("engineering"))
     t.check(turn.toolCalls, notLoadedSkill("harness"))
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

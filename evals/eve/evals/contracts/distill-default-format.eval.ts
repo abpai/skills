@@ -52,5 +52,8 @@ export default defineEval({
         )
       }, "does not ask the user which output format to use"),
     )
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

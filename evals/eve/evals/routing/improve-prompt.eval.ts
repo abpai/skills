@@ -15,5 +15,8 @@ export default defineEval({
     )
     t.loadedSkill("improve-prompt")
     t.check(turn.toolCalls, notLoadedSkill("human-writer"))
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

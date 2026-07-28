@@ -70,5 +70,8 @@ export default defineEval({
         return /perf-\d+/i.test(r)
       }, "reply includes a stable finding id like perf-001"),
     )
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

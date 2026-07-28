@@ -45,5 +45,8 @@ export default defineEval({
         return steps.length >= 2 && steps.length <= 6
       }, "reply has a Recommended Actions section with 2-6 numbered concrete next steps"),
     )
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

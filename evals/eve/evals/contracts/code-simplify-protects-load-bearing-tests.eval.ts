@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
-import { includes, satisfies } from "eve/evals/expect"
+import { includes } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedCalls, noWrites } from "../support/tools"
 
 // Contract (code/skills/code/simplify.md, "Review passes" #7 "Test signal"):
 //
@@ -74,15 +75,10 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("code")
-    // Defense in depth: a classification question should never reach for edit
-    // tools on a test file that doesn't exist in this sandbox anyway.
-    t.check(
-      turn.toolCalls,
-      satisfies((calls: unknown) => {
-        if (!Array.isArray(calls)) return false
-        return !calls.some((c) => (c as { name?: string }).name === "Edit" || (c as { name?: string }).name === "Write")
-      }, "no Edit or Write tool call made while only classifying tests"),
-    )
+    // Defense in depth: a classification question should never reach for a
+    // write tool on a test file that doesn't exist in this sandbox anyway.
+    t.check(turn.toolCalls, noWrites())
+    t.check(turn.toolCalls, noFailedCalls())
     t.judge.autoevals
       .closedQA(
         prompt(
@@ -118,5 +114,8 @@ export default defineEval({
         ),
       )
       .gate()
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

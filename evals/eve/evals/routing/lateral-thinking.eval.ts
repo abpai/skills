@@ -22,5 +22,8 @@ export default defineEval({
     )
     t.loadedSkill("lateral-thinking")
     t.check(turn.toolCalls, notLoadedSkill("distill"))
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

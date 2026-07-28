@@ -67,5 +67,8 @@ export default defineEval({
         return redCount >= 2 && greenCount >= 2
       }, "reply narrates at least two RED/GREEN cycles (one per behavior, not one bulk pass)"),
     )
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })
