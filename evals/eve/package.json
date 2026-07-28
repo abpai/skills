@@ -7,11 +7,12 @@
     "prepare-skills": "bun scripts/prepare-skills.ts",
     "typecheck": "tsc --noEmit",
     "list": "eve eval --list",
-    "eval": "bun run prepare-skills && eve eval",
-    "eval:smoke": "bun run prepare-skills && eve eval smoke --strict",
-    "eval:live": "bun run prepare-skills && eve eval --tag live --strict",
-    "eval:live:claude": "bun run prepare-skills && EVE_EVAL_PROVIDER=anthropic eve eval --tag live --strict",
-    "ablate": "bun scripts/ablate.ts"
+    "eval": "bun run prepare-skills && EVE_DEV=${EVE_DEV:-0} eve eval",
+    "eval:smoke": "bun run prepare-skills && EVE_DEV=${EVE_DEV:-0} eve eval smoke --strict",
+    "eval:live": "bun run prepare-skills && EVE_DEV=${EVE_DEV:-0} eve eval --tag live --strict",
+    "eval:live:claude": "bun run prepare-skills && EVE_DEV=${EVE_DEV:-0} EVE_EVAL_PROVIDER=anthropic eve eval --tag live --strict",
+    "ablate": "EVE_DEV=${EVE_DEV:-0} bun scripts/ablate.ts",
+    "tools:audit": "bun scripts/audit-tools.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.22",
