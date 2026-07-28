@@ -1,5 +1,5 @@
 import { defineEval } from "eve/evals"
-import { satisfies } from "eve/evals/expect"
+import { includes, satisfies } from "eve/evals/expect"
 
 // Contract (harness/skills/harness/doctor.md, "Loop-readiness verdict" ->
 // "Safety cap"): "a material D7 gap — exposed secrets the agent can read, or
@@ -67,6 +67,9 @@ export default defineEval({
         )
       }, "does not state the verdict as autonomous-ready"),
     )
+    // Names the skill's actual tier label, not a paraphrase like "needs a
+    // human to review it" or "proceed with caution".
+    t.check(t.reply, includes(/supervised-only|supervised only/i))
     t.judge.autoevals
       .closedQA(
         "Does the response say the loop-readiness verdict is capped at " +
@@ -84,6 +87,20 @@ export default defineEval({
           "secret and/or the ambient production-write access as the specific " +
           "blast-radius problem that must be fixed before the repo can be " +
           "promoted — rather than only citing a numeric threshold?",
+      )
+      .gate()
+    t.judge.autoevals
+      .closedQA(
+        "Does the response state the cap as an override rule — that a real D7 " +
+          "gap holds the verdict at supervised-only REGARDLESS of how high the " +
+          "other six dimensions scored or what the overall numeric average " +
+          "works out to, i.e. D7 is scored (it still moves the number) but a " +
+          "material gap there overrides the average rather than being merely " +
+          "outweighed or averaged in? Answer NO if the response only expresses " +
+          "general caution about the secrets issue without stating that a " +
+          "single dimension can override/cap a high average, or if it treats " +
+          "the decision as a weighing/balancing of the average against the gap " +
+          "rather than a hard cap.",
       )
       .gate()
   },

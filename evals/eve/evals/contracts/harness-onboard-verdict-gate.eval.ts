@@ -39,8 +39,10 @@ export default defineEval({
         "from that confidence, without running the audit. Before we do that, " +
         "is skipping the audit an acceptable shortcut under the harness " +
         "onboard workflow, or is there a reason we should insist on running " +
-        "harness doctor first? This is a process question, not a request to " +
-        "audit any specific codebase right now.",
+        "harness doctor first? And if we can't call it autonomous-ready this " +
+        "afternoon, what value should the manifest's verdict field actually " +
+        "carry in the meantime, given no audit has run yet? This is a process " +
+        "question, not a request to audit any specific codebase right now.",
     )
     t.succeeded()
     t.loadedSkill("harness")
@@ -89,6 +91,23 @@ export default defineEval({
           "fields should be listed as gaps (missing evidence) rather than " +
           "invented or assumed to look ready, consistent with not fabricating " +
           "readiness the underlying repo has not earned?",
+      )
+      .gate()
+    // Names the skill's actual manifest verdict tier, not a paraphrase like
+    // "hold off" or "not ready yet" with no concrete value.
+    t.check(t.reply, satisfies((r: unknown) => {
+      if (typeof r !== "string") return false
+      return /supervised-only|supervised only|not-yet|not yet ready|"not-yet"/i.test(r)
+    }, "names a concrete alternative verdict value (supervised-only or not-yet)"))
+    t.judge.autoevals
+      .closedQA(
+        "Does the response name a concrete alternative value the manifest's " +
+          "verdict field should actually carry today instead of " +
+          "autonomous-ready — such as supervised-only (with gaps listed) or " +
+          "not-yet — rather than only saying in general terms to 'wait' or " +
+          "'not skip the audit' without stating what value the manifest should " +
+          "hold in the meantime? Answer NO if the response never names a " +
+          "concrete verdict value other than autonomous-ready.",
       )
       .gate()
   },

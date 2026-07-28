@@ -1,5 +1,5 @@
 import { defineEval } from "eve/evals"
-import { satisfies } from "eve/evals/expect"
+import { includes, satisfies } from "eve/evals/expect"
 
 // Contract (code/skills/code/simplify.md, "Review passes" #7 "Test signal"):
 //
@@ -35,7 +35,7 @@ export default defineEval({
     const turn = await t.send(
       "I'm about to run `code simplify` in test-pruning mode over one test file. " +
         "Don't touch anything yet — just tell me, under the pack's test-pruning " +
-        "rubric, which of these six tests you would prune and which you would " +
+        "rubric, which of these eight tests you would prune and which you would " +
         "keep, and why:\n\n" +
         "1. `test_add_returns_sum` — calls add(2,3), asserts it equals 5, and also " +
         "asserts the exact internal call order of a mock the function happens to " +
@@ -50,7 +50,15 @@ export default defineEval({
         "5. `test_add_returns_sum_snapshot` — an incidental Jest snapshot of the " +
         "same add() call, with no assertions beyond 'matches snapshot'.\n" +
         "6. `test_no_circular_deps` — a dependency-boundary/no-drift gate that " +
-        "fails the build if module A imports module B.",
+        "fails the build if module A imports module B.\n" +
+        "7. `test_create_order_rejects_wrong_type` — contains only a " +
+        "`// @ts-expect-error` line passing a wrong-typed argument to " +
+        "createOrder(); it asserts nothing at runtime and nothing executes — it " +
+        "only fails to compile if the type error goes away.\n" +
+        "8. `test_beta_pricing_rounding` — skipped entirely unless " +
+        "`process.env.FEATURE_BETA_PRICING` is set, which it isn't in CI yet; " +
+        "when it does run, it checks the new pricing engine's rounding. Right " +
+        "now it never actually executes in the pipeline.",
     )
     t.succeeded()
     t.loadedSkill("code")
@@ -73,6 +81,27 @@ export default defineEval({
           "tests (#1, #2, #5)? A response that recommends deleting, pruning, or " +
           "otherwise removing any of #3, #4, or #6 counts as NO, even if it " +
           "correctly prunes the others.",
+      )
+      .gate()
+    // Names the rubric's exact compound terms, not a paraphrase: "no-drift"
+    // for #6 and "environment-gated" for #8. A model reasoning about these
+    // cases from unaided general judgment (not the pack's named categories)
+    // tends to land on close-but-different phrasing — e.g. "architectural/
+    // dependency-boundary gate" without "no-drift", or "feature-gated"
+    // instead of "environment-gated".
+    t.check(t.reply, includes(/no-drift/i))
+    t.check(t.reply, includes(/environment[\w\s/-]{0,20}gated/i))
+    t.judge.autoevals
+      .closedQA(
+        "Does the response ALSO recommend KEEPING test #7 (the compile-time-" +
+          "only `@ts-expect-error` type proof, which has no runtime assertion) " +
+          "and test #8 (the environment-gated test shim that is currently " +
+          "skipped in CI), explicitly naming a reason like 'compile-time type " +
+          "proof' or 'type-level check' for #7 and 'environment-gated' or " +
+          "'feature-flagged' for #8 — rather than pruning either one for looking " +
+          "vacuous, dead, or currently unreachable in CI? Answer NO if the " +
+          "response recommends pruning, removing, or flagging as low-value " +
+          "either #7 or #8, or never separately addresses them from the rest.",
       )
       .gate()
   },
