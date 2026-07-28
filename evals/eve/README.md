@@ -130,6 +130,49 @@ turn with no token spend — the always-on check that catches harness rot.
 skipped, not failed. Subject model is `gpt-5.6-luna` via the direct OpenAI
 provider (`OPENAI_API_KEY`).
 
+## Outcome evals
+
+Most evals here grade prose: the model is asked what a skill would do, and the
+answer is checked for the right vocabulary and the right decision. That catches
+a trim which breaks a contract's wording. It cannot catch a skill whose advice
+is simply wrong, because nothing the skill produces is ever run.
+
+Outcome evals (`evals/outcomes/`, tagged `outcome`) close that gap for skills
+whose output is a checkable artifact. The model receives a fixture in the
+prompt, returns real work, and that work is executed against a suite it never
+saw.
+
+**Verification runs on the host, never in the sandbox.** The obvious design
+seeds the fixture into `/workspace` with a `hidden/` directory beside it — but
+the subject has `bash`, `glob`, and `read_file` pointed at that same directory,
+so "hidden" tests are readable by the thing being graded. Eve also gives the
+eval driver no sandbox handle: `ctx.getSandbox()` exists only inside authored
+runtime execution, not inside `test(t)`. Running the suite on the host answers
+both problems at once.
+
+A fixture is only worth having if a careless answer fails it. `normalize-config`
+carries three planted subtleties — a falsy-but-valid `0`, an early return that
+looks redundant, and two branches differing by one operator — and the hidden
+suite targets exactly those. Validate any new fixture on four candidates before
+trusting it:
+
+| candidate | hidden tests | lines | expected |
+|---|---|---|---|
+| the unchanged input | pass | 37 → 37 | **fail** the reduction gate |
+| the careless rewrite | fail | 37 → 2 | **fail** the behavior gate |
+| a correct simplification | pass | 37 → 12 | **pass** |
+| a reply with no code block | — | — | **fail** extraction |
+
+Gate on both halves. Green tests alone reward returning the input unchanged; a
+line-count drop alone rewards deleting the hard parts.
+
+Fixture layout:
+
+```
+fixtures/<name>/input.js        # sent to the model verbatim, inside the prompt
+fixtures/<name>/hidden.test.js  # never sent, never enters the sandbox
+```
+
 ## What is proven
 
 - **Proven (always-on / secretless):** `prepare-skills` normalizes the real
