@@ -80,13 +80,42 @@ jobs:
           # (agent/agent.ts); the judge shares this key. A raw OpenAI `sk-` key
           # reaches gpt-5.6-luna directly — the Vercel gateway is not involved.
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        # No key configured => no live model => skip without failing the lane.
+          # Set this repository variable to `true` only for a fork that has no
+          # key and accepts running without behavioral coverage.
+          ALLOW_MISSING_EVAL_KEY: ${{ vars.ALLOW_MISSING_EVAL_KEY }}
+        # This job already skips forks and Dependabot via the `if:` above, so a
+        # missing key here is a misconfigured secret, not an expected condition.
+        # It used to exit 0 and paint the lane green while testing nothing —
+        # a revoked or expired key would have silently disabled every eval.
         run: |
           if [ -z "${OPENAI_API_KEY}" ]; then
-            echo "::notice::OPENAI_API_KEY not set — skipping live evals (non-blocking lane)."
-            exit 0
+            if [ "${ALLOW_MISSING_EVAL_KEY}" = "true" ]; then
+              echo "::notice::OPENAI_API_KEY not set and ALLOW_MISSING_EVAL_KEY=true — skipping live evals."
+              exit 0
+            fi
+            echo "::error::OPENAI_API_KEY is not set, so no eval ran. Secrets are"
+            echo "::error::available to this job, so this is a misconfiguration."
+            echo "::error::Set the secret, or set repository variable"
+            echo "::error::ALLOW_MISSING_EVAL_KEY=true to accept an untested lane."
+            exit 1
           fi
           bun run eval:live --junit .eve/junit.xml
+      # `--strict` catches failing evals and an empty tag match, but not a run
+      # that quietly executes fewer evals than the suite defines. Compare what
+      # ran against what `eve eval --list` discovers.
+      - name: Assert live evals actually ran
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ALLOW_MISSING_EVAL_KEY: ${{ vars.ALLOW_MISSING_EVAL_KEY }}
+        # Guard inline, not with `if:` — a step-level `env` is not in scope for
+        # an `if:` expression, so `env.OPENAI_API_KEY != ''` would always be
+        # false and silently skip this check.
+        run: |
+          if [ -z "${OPENAI_API_KEY}" ] && [ "${ALLOW_MISSING_EVAL_KEY}" = "true" ]; then
+            echo "::notice::live evals were skipped by opt-out; nothing to assert."
+            exit 0
+          fi
+          bun scripts/assert-live-coverage.ts .eve/junit.xml
       - name: Upload eval evidence
         if: always()
         uses: actions/upload-artifact@v4
