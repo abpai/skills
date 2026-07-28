@@ -13,6 +13,7 @@
     "ablate": "bun scripts/ablate.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.22",
     "@ai-sdk/openai": "^4.0.13",
     "eve": "0.26.0"
   },

@@ -58,6 +58,27 @@ set -a; . ./.env.local; set +a  # loads OPENAI_API_KEY (gitignored)
 bun run eval:live               # live behavioral evals against gpt-5.6-luna
 ```
 
+### Choosing the model
+
+The provider follows whichever key is present: `OPENAI_API_KEY` selects
+`gpt-5.6-luna`, `ANTHROPIC_API_KEY` selects `claude-sonnet-5`, and no key at all
+selects the deterministic `mockModel`. Set `EVE_EVAL_PROVIDER=openai|anthropic`
+to pick when both keys are present, and `EVE_EVAL_MODEL` to override the model
+id for the selected provider.
+
+A misconfiguration throws rather than falling back — `EVE_EVAL_PROVIDER` naming
+a provider whose key is missing, or an unrecognized provider name. Downgrading
+silently to the mock would let a whole live suite "pass" against a stub.
+
+**Why both providers matter.** Every plugin here ships to two products, so the
+contracts have two real targets. `gpt-5.6-luna` is a Codex model, so the
+existing lane already covers the Codex side directly — it is not a stand-in.
+What it cannot cover is Claude, which is the other half of the audience and the
+one the `disable-model-invocation` / `user-invocable` frontmatter is written
+for. Running the same contracts on both is the point.
+
+The Anthropic path is wired but has not yet been run — it needs a key.
+
 `bun run eval:smoke` boots a local Eve dev server (Docker sandbox) and grades a
 turn with no token spend — the always-on check that catches harness rot.
 `live` evals need a real model to route and load skills; without a key they are
