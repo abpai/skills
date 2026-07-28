@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { includes, satisfies } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (code/skills/code/simplify.md, "Review passes" #7 "Test signal"):
 //
@@ -33,32 +34,43 @@ export default defineEval({
   tags: ["live", "code", "contract"],
   async test(t) {
     const turn = await t.send(
-      "I'm about to run `code simplify` in test-pruning mode over one test file. " +
-        "Don't touch anything yet — just tell me, under the pack's test-pruning " +
-        "rubric, which of these eight tests you would prune and which you would " +
-        "keep, and why:\n\n" +
-        "1. `test_add_returns_sum` — calls add(2,3), asserts it equals 5, and also " +
-        "asserts the exact internal call order of a mock the function happens to " +
-        "use internally.\n" +
-        "2. `test_add_called_mock_order` — a near-duplicate of #1 that only " +
-        "re-asserts the same internal mock was called before another mock, with " +
-        "no difference in observable behavior covered.\n" +
-        "3. `test_auth_token_rejects_expired` — asserts the auth middleware " +
-        "returns 401 for an expired JWT; a security/identity guard.\n" +
-        "4. `test_public_api_response_shape` — a golden test asserting the public " +
-        "`/v1/orders` JSON response shape byte-for-byte against a stored fixture.\n" +
-        "5. `test_add_returns_sum_snapshot` — an incidental Jest snapshot of the " +
-        "same add() call, with no assertions beyond 'matches snapshot'.\n" +
-        "6. `test_no_circular_deps` — a dependency-boundary/no-drift gate that " +
-        "fails the build if module A imports module B.\n" +
-        "7. `test_create_order_rejects_wrong_type` — contains only a " +
-        "`// @ts-expect-error` line passing a wrong-typed argument to " +
-        "createOrder(); it asserts nothing at runtime and nothing executes — it " +
-        "only fails to compile if the type error goes away.\n" +
-        "8. `test_beta_pricing_rounding` — skipped entirely unless " +
-        "`process.env.FEATURE_BETA_PRICING` is set, which it isn't in CI yet; " +
-        "when it does run, it checks the new pricing engine's rounding. Right " +
+      prompt(
+        "I'm about to run `code simplify` in test-pruning mode over one test file.",
+        "Don't touch anything yet — just tell me, under the pack's test-pruning",
+        "rubric, which of these eight tests you would prune and which you would",
+        "keep, and why:",
+        "",
+        "",
+        "1. `test_add_returns_sum` — calls add(2,3), asserts it equals 5, and also",
+        "asserts the exact internal call order of a mock the function happens to",
+        "use internally.",
+        "",
+        "2. `test_add_called_mock_order` — a near-duplicate of #1 that only",
+        "re-asserts the same internal mock was called before another mock, with",
+        "no difference in observable behavior covered.",
+        "",
+        "3. `test_auth_token_rejects_expired` — asserts the auth middleware",
+        "returns 401 for an expired JWT; a security/identity guard.",
+        "",
+        "4. `test_public_api_response_shape` — a golden test asserting the public",
+        "`/v1/orders` JSON response shape byte-for-byte against a stored fixture.",
+        "",
+        "5. `test_add_returns_sum_snapshot` — an incidental Jest snapshot of the",
+        "same add() call, with no assertions beyond 'matches snapshot'.",
+        "",
+        "6. `test_no_circular_deps` — a dependency-boundary/no-drift gate that",
+        "fails the build if module A imports module B.",
+        "",
+        "7. `test_create_order_rejects_wrong_type` — contains only a",
+        "`// @ts-expect-error` line passing a wrong-typed argument to",
+        "createOrder(); it asserts nothing at runtime and nothing executes — it",
+        "only fails to compile if the type error goes away.",
+        "",
+        "8. `test_beta_pricing_rounding` — skipped entirely unless",
+        "`process.env.FEATURE_BETA_PRICING` is set, which it isn't in CI yet;",
+        "when it does run, it checks the new pricing engine's rounding. Right",
         "now it never actually executes in the pipeline.",
+      ),
     )
     t.succeeded()
     t.loadedSkill("code")
