@@ -35,6 +35,24 @@ A child assistant event with `message.stop_reason = "end_turn"` and text content
 is a completed child report. The parent may not yet have consumed it; compare
 child and parent transcript activity instead of declaring the whole turn done.
 
+## Preflight
+
+Before spawning Claude, the runner resolves one executable and runs
+`claude auth status --text` through a controlling PTY in the same inherited
+environment and workspace as the real invocation. The probe has an eight-second
+default deadline (`CLAUDE_PREFLIGHT_TIMEOUT_SECONDS`) and writes only
+normalized `preflight.json` and `preflight.log` fields; raw account,
+organization, token, and credential output is never persisted.
+
+Non-`credential_store_unavailable` failure statuses:
+
+- `not_logged_in`: the authoritative PTY probe explicitly reported logged out;
+  ask the user to authenticate.
+- `timed_out`: preflight exceeded its deadline and terminated its process
+  group.
+- `cli_missing`: the resolved Claude executable does not exist.
+- `indeterminate`: preflight failed without a safe classification.
+
 ## Permissions
 
 - `auto`: classifier-backed unattended execution; default for delegated work.
@@ -52,7 +70,8 @@ Tool controls:
 The runner rejects semantically empty `--tools` and `--allowed-tools` values.
 Use its explicit `--no-tools` flag only for generic non-repository work. Review
 mode supplies `Read`, `Glob`, `Grep`, and bounded read-only Bash rules while
-denying direct edit tools and common shell mutation paths. Repo-grounded review
+denying direct edit tools (`Edit`, `Write`, `NotebookEdit`) and common shell
+mutation paths (redirection, `tee`, mutating commands). Repo-grounded review
 owns its exact plan/tool policy and rejects caller-supplied allowed-tool,
 permission, tool-set, and passthrough-argument overrides.
 
@@ -66,6 +85,61 @@ can change; inspect local help and account access instead of hardcoding a model.
 
 Effort choices currently include `low`, `medium`, `high`, `xhigh`, and `max`.
 Use higher effort deliberately rather than as wrapper ceremony.
+
+The runner records requested routing and, when a stream event exposes it, the
+actual resolved model in `run.env` and `status.json`.
+
+## Liveness
+
+Inactivity and deadline timeouts terminate the Claude process group, escalating
+from TERM to KILL after `CLAUDE_TERM_GRACE_SECONDS` (default 5s).
+
+## Artifacts
+
+Every run writes:
+
+- `status.json` and compatibility `status.env`.
+- `events.jsonl`, `stdout.log`, and `stderr.log`.
+- `final.md`, `prompt.txt`, `command.txt`, and `preflight.log`.
+- Normalized `preflight.json` plus requested and resolved routing in
+  `status.json` and `run.env`.
+- `sharing-approval.json`, a sanitized `review-workspace/`, and
+  `evidence-access.json` for repo-grounded reviews.
+- `run.env`, `monitor.sh`, and `continue.sh`.
+- `child-reports/` plus parent/child transcript telemetry.
+- Workspace baseline, status, changed-file, and diff artifacts for runs that are
+  not marked read-only.
+
+## Repo-Grounded Review
+
+Blocked-transfer example:
+
+```bash
+scripts/claude-run.sh review \
+  --workspace "$PWD" \
+  --prompt-file /absolute/path/to/task.md \
+  --evidence-class repo-grounded-review \
+  --review-scope-file /absolute/path/to/approved-paths.txt \
+  --sharing-approval-file /absolute/path/to/sharing-approval.json \
+  --external-transfer-status blocked
+```
+
+The approval JSON contains only:
+
+```json
+{
+  "destination": "Claude Code/Anthropic",
+  "approved_scope": ["src/component"],
+  "purpose": "Review the candidate change",
+  "exclusions": [".env", "ignored files", "credentials", "unrelated paths"],
+  "current_user_approved": true
+}
+```
+
+The runner builds the review workspace from only matching regular tracked
+files, the scoped candidate diff, a scope manifest, and redacted approval
+metadata. It excludes ignored files, `.env` variants, key/credential files,
+symlinks, known secret patterns, unapproved paths, and other repositories.
 
 ## Native Background Agents
 
