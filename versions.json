@@ -14,10 +14,10 @@
     "harness": "1.8.2",
     "hexagon-audit": "1.0.4",
     "human-writer": "1.4.3",
-    "improve-prompt": "1.3.3",
+    "improve-prompt": "1.3.4",
     "lateral-thinking": "1.1.4",
-    "status-update": "1.0.3",
+    "status-update": "1.0.4",
     "tutorial": "1.0.4",
-    "visualize": "1.3.4"
+    "visualize": "1.3.5"
   }
 }

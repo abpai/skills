@@ -8,7 +8,7 @@ description: >-
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.3.4"
+  version: "1.3.5"
   upstream_skill: https://github.com/nicobailon/visual-explainer
 ---
 
@@ -22,9 +22,7 @@ The success test is not "does it look good" — it is: **a reader with zero prio
 
 ## Why explainers fail (read this before generating)
 
-You know the subject deeply by the time you generate, so the natural failure mode is the *expert's view*: a dense diagram full of terms of art, every section at the same level, all of it visible at once. Experts read that fine. Learners bounce off it.
-
-People learn in the opposite order: plain idea first, then a concrete example, then the mechanism, then the edge cases. The Explainer Arc below forces that inversion. Deviate only when the reader is better served — never because the subject "is technical."
+By generation time you know the subject too well, so the default output is the *expert's view* — a dense diagram, every section at the same level, all of it visible at once. The Explainer Arc below forces the opposite order. Deviate only when the reader is better served — never because the subject "is technical."
 
 ## The Explainer Arc (default structure for teaching pages)
 
@@ -34,8 +32,6 @@ When the artifact's job is to **explain or teach** — a system, plan, proposal,
 2. **The Walkthrough** — the mechanism as a step-through or numbered sequence, **one idea per step** (3–6 steps). Each step pairs a visual with a caption that states the *takeaway*, not a label. The reader should be able to predict step N+1 from step N.
 3. **Depth on demand** — exact schemas, edge cases, file paths, configuration, caveats — all real, all present, but **collapsed by default**. A reader who stops before this layer still leaves with a correct mental model; a reader who needs the details finds them without hunting.
 4. **The Recap** — 2–4 "what to remember" points, plus a short glossary of every term of art the page introduced.
-
-Why this shape: working memory holds only a few new items at a time. The gist gives the reader a scaffold; each walkthrough step attaches one new idea to it; depth stays out of the way until asked for. A flat page makes the reader build the hierarchy themselves — which is exactly the work the explainer was supposed to do.
 
 **Scope:** working surfaces (prompt/config tuners, editors, review queues, dashboards) are not teaching pages — the arc does not apply to them. The jargon gate and density budget below still do. A lone requested artifact ("just give me a flowchart of X") also skips the arc — but keep the caption-states-takeaway rule.
 
@@ -56,7 +52,7 @@ Why this shape: working memory holds only a few new items at a time. The gist gi
 
 ## Workflow
 
-1. **Name the audience in one line** ("a PM new to OAuth", "a senior eng reviewing this proposal") — infer it from context or ask. Then **write the Gist sentence first, for that audience**. It is the hardest part; if the gist doesn't land, nothing after it will.
+1. **Name the audience in one line** ("a PM new to OAuth", "a senior eng reviewing this proposal") — infer it from context or ask. Then **write the Gist sentence first, for that audience**.
 2. **Outline the arc** before writing HTML: gist sentence, the 3–6 walkthrough steps (one idea each), what goes behind Depth collapsibles, the recap points and glossary terms. (For working surfaces, define the visual job instead: subject, audience, detail level, primary visual anchor.)
 3. **Read `./templates/base.html`** to absorb the tech stack, the HTML-effectiveness style, and the arc components. Read it each time, do not rely on memory.
 4. **Pick the format** from the Format Guide and record the choice before writing.
@@ -82,20 +78,10 @@ A dense two-column comparison as the opening visual is the classic expert's-view
 
 ## Tech Stack
 
-Every generated file uses Preact + htm via ESM CDN imports, no build step — see `./templates/base.html`. Add Mermaid.js only when the selected format requires a large graph.
+Every generated file uses Preact + htm via ESM CDN imports, no build step — see `./templates/base.html`. Add Mermaid.js only when the selected format requires a large graph. Never use `innerHTML` with user-provided content (XSS prevention).
 
 For the full HTML-effectiveness design tokens (colors, typography, layout, motion), see `./references/design-system.md`.
 
-## Principles
-
-- **Correct over pretty** — the visualization must accurately represent the information
-- **Interactive when it helps** comprehension (step-through, hover, collapse) — never interaction for its own sake
-- **Never use `innerHTML` with user-provided content** (XSS prevention)
-
 ## Before Delivering
 
-Re-check the Gist, jargon gate, arc hierarchy, and density budget above against the finished file. Then confirm:
-
-1. **File opens cleanly** — no console errors, no broken fonts.
-2. **Rendered text is clean** — no accidental visible entity spellings such as `&gt;`, `&lt;`, or `&amp;`.
-3. **Format branch followed** — selected format, extra references, and dependencies match the artifact.
+Confirm the file opens with no console errors or broken fonts, rendered text has no visible entity spellings (`&gt;`, `&lt;`, `&amp;`), and the chosen format's extra references and dependencies match the artifact.
