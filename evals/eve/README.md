@@ -83,16 +83,53 @@ lockfile; bump it deliberately.
 Mutation-testing for skill directives. The manifest in `ablations/manifest.ts`
 lists heading spans (or `--omit` retirement checks) with the evals that should
 detect them. `bun run ablate` materializes each variant, runs the listed evals
-via `eve eval <id> --json`, classifies **SURVIVED** (all pass → no-op / uncovered
-/ retirement candidate) vs **KILLED** (an eval fails → load-bearing), prints a
-table, and always restores the baseline `agent/skills/` in `finally`.
+via `eve eval <id> --json`, classifies the result, prints a table, and always
+restores the baseline `agent/skills/` in `finally`.
+
+| Result | Meaning | Action |
+| --- | --- | --- |
+| **KILLED** | an eval failed | the text is load-bearing and now regression-guarded |
+| **SURVIVED** | every eval passed, *and* the evals need the skill to pass | genuine cut candidate |
+| **UNGUARDED** | every eval passed, but they also pass with the skill omitted | the eval measures the base model — write a discriminating eval before touching the text |
 
 ```bash
 set -a; . ./.env.local; set +a
-bun run ablate
+bun run ablate                       # whole manifest
+bun run ablate code-simplify-scope-contract   # one entry
 ```
+
+**Why UNGUARDED exists.** A passing eval does not prove the skill caused the
+behavior. On 2026-07-27 `contracts/code-simplify-proposal-no-edits` scored 4/5
+with the `code` skill *entirely omitted* — only the mechanical `loadedSkill`
+gate failed. Read without a control, its SURVIVED says "delete the Scope
+contract section," when what it actually shows is that the base model already
+answers that question correctly. So on every SURVIVED the harness re-runs the
+same evals with the skill omitted, ignoring `loadedSkill(...)` gates (those
+fail mechanically when the skill is absent). If the rest still pass, the entry
+is UNGUARDED and its result is not evidence about the text.
+
+To make an eval discriminating, grade something the base model does *not* do
+by default: a repo-specific flag, an exact output shape, a named threshold, a
+refusal the model would otherwise not make.
+
+A heading span targets `SKILL.md` by default. Grouped workflow packs (`code`,
+`engineering`, `harness`) keep almost every behavioral contract in a flat
+sibling module beside the umbrella, so name the module with `file`:
+
+```ts
+span: { file: "simplify.md", heading: "Scope contract" }
+```
+
+The cut is applied to the materialized copy under `agent/skills/`; canonical
+repo sources are never mutated. `file` must stay inside the skill package.
 
 `--omit` retirement entries must list **outcome-only** evals in `retirement`
 (no `loadedSkill` gate — that fails mechanically when the skill is absent).
-Heading ablations hard-error if the heading is missing or the variant is
-byte-identical to baseline (silent no-ops must not be reported as SURVIVED).
+Heading ablations hard-error if the file is missing, the heading is missing, or
+the variant is byte-identical to baseline (silent no-ops must not be reported
+as SURVIVED).
+
+**Coverage before ablation.** SURVIVED means "no-op **or uncovered**". Running
+ablation against a skill with no `guardedBy` evals reports SURVIVED for
+everything, which reads exactly like "safe to delete". Write the covering eval
+first, then ablate.

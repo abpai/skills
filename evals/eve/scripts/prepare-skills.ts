@@ -12,9 +12,12 @@
 // workflow modules beside an umbrella SKILL.md) copy as-is.
 //
 // Variant modes (ablation harness):
-//   --ablate <ablationId>  materialize with the named heading span removed
+//   --ablate <ablationId>  materialize with the named heading span removed —
+//                          from SKILL.md, or from a sibling workflow module
+//                          when the ablation span names a `file`
 //   --omit <skillId>       materialize everything except that skill
-// Both hard-error on a silent no-op (missing heading, or byte-identical output).
+// Both hard-error on a silent no-op (missing file, missing heading, or
+// byte-identical output).
 import { cpSync, mkdirSync, rmSync, existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -96,6 +99,13 @@ function stripFrontmatter(md: string): string {
 
 function buildEveSkill(description: string, body: string): string {
   return `---\ndescription: >-\n  ${description}\n---\n\n${body.trimStart()}`
+}
+
+/** Reject an ablation `file` that would write outside the materialized package. */
+function isInsidePackage(packageDir: string, candidate: string): boolean {
+  const root = resolve(packageDir)
+  const target = resolve(candidate)
+  return target === root || target.startsWith(root + "/")
 }
 
 /** Remove from `## Heading` through the next same-or-higher heading. */
@@ -197,19 +207,51 @@ function materialize(): void {
     let note = ""
 
     if (ablation && ablation.skillId === id && ablation.span && "heading" in ablation.span) {
-      const { result, found } = removeHeadingSpan(baselineBody, ablation.span.heading)
-      if (!found) {
-        throw new Error(
-          `prepare-skills: ablation "${ablation.id}" heading "## ${ablation.span.heading}" not found in ${id}`,
-        )
+      const { heading } = ablation.span
+      const targetFile = ablation.span.file ?? "SKILL.md"
+
+      if (targetFile === "SKILL.md") {
+        const { result, found } = removeHeadingSpan(baselineBody, heading)
+        if (!found) {
+          throw new Error(
+            `prepare-skills: ablation "${ablation.id}" heading "## ${heading}" not found in ${id}`,
+          )
+        }
+        eveSkill = buildEveSkill(description, result)
+        if (eveSkill === baseline) {
+          throw new Error(
+            `prepare-skills: ablation "${ablation.id}" is a silent no-op — materialized SKILL.md is byte-identical to baseline`,
+          )
+        }
+      } else {
+        // Sibling workflow module beside the umbrella (already copied above).
+        // Mutate the copy in agent/skills/, never the canonical repo source.
+        const modulePath = join(skillDest, targetFile)
+        if (!isInsidePackage(skillDest, modulePath)) {
+          throw new Error(
+            `prepare-skills: ablation "${ablation.id}" file "${targetFile}" escapes the skill package`,
+          )
+        }
+        if (!existsSync(modulePath)) {
+          throw new Error(
+            `prepare-skills: ablation "${ablation.id}" file "${targetFile}" not found in ${id} package`,
+          )
+        }
+        const before = readFileSync(modulePath, "utf8")
+        const { result, found } = removeHeadingSpan(before, heading)
+        if (!found) {
+          throw new Error(
+            `prepare-skills: ablation "${ablation.id}" heading "## ${heading}" not found in ${id}/${targetFile}`,
+          )
+        }
+        if (result === before) {
+          throw new Error(
+            `prepare-skills: ablation "${ablation.id}" is a silent no-op — ${targetFile} is byte-identical to baseline`,
+          )
+        }
+        writeFileSync(modulePath, result)
       }
-      eveSkill = buildEveSkill(description, result)
-      if (eveSkill === baseline) {
-        throw new Error(
-          `prepare-skills: ablation "${ablation.id}" is a silent no-op — materialized SKILL.md is byte-identical to baseline`,
-        )
-      }
-      note = ` [ablated: ## ${ablation.span.heading}]`
+      note = ` [ablated: ${targetFile} ## ${heading}]`
     }
 
     writeFileSync(join(skillDest, "SKILL.md"), eveSkill)
