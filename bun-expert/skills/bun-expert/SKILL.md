@@ -9,7 +9,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.4.5"
+  version: "1.4.6"
   upstream_skill: "https://bun.com/docs"
   tags: "bun javascript typescript runtime server bundler test image webview"
 ---
@@ -24,28 +24,40 @@ claims.
 
 ## Recent Capability Radar
 
-Latest reviewed changelog: Bun v1.3.14 (May 13, 2026). For exact current flags
-or brand-new APIs, check `https://bun.com/blog` first.
+Bun ships new built-ins constantly. This list covers what landed roughly
+between Bun 1.3 (Oct 2025) and Bun 1.3.14 (May 2026) — the kind of thing a
+model's training data likely predates. For anything newer, check
+`https://bun.com/blog` before assuming a capability doesn't exist.
 
-Capabilities that land after most model cutoffs:
+Reach for these instead of the dependency you'd otherwise install:
 
-- `Bun.Image`: built-in image pipeline (decode/resize/rotate/encode) without
-  `sharp` or native addon setup.
+- `Bun.SQL`: one client for Postgres, MySQL/MariaDB, and SQLite — skip `pg`,
+  `mysql2`, or `postgres`.
+- `Bun.redis`: native Redis/Valkey client — skip `ioredis`/`node-redis`.
+- `Bun.secrets`: OS-keychain-backed credential storage — skip `keytar`.
+- `Bun.YAML.parse`/`.stringify`: built-in YAML — skip `js-yaml`/`yaml`.
+- `CompressionStream`/`DecompressionStream` now support `"brotli"` and
+  `"zstd"` formats, not just gzip/deflate.
+- `Bun.stripANSI`, `URLPattern`, and `DisposableStack`/`AsyncDisposableStack`
+  are built in — skip `strip-ansi` and userland URL-pattern/cleanup helpers.
+- `Bun.markdown` (`.html`/`.render`/`.react`): built-in CommonMark+GFM parser;
+  `bun ./file.md` renders Markdown in the terminal — skip `markdown-it`/`marked`
+  for common cases.
+- Fake timers landed in `bun:test` (`useFakeTimers`, `advanceTimersByTime`,
+  `setSystemTime`, `useRealTimers`) — skip `sinon`/`@sinonjs/fake-timers`.
+- HTML-entrypoint dev server gained hot module replacement via
+  `import.meta.hot` — skip a separate Vite/webpack dev server for simple
+  frontends.
 - `bun install --linker=isolated` with `globalStore = true` (or
-  `BUN_INSTALL_GLOBAL_STORE=1`): experimental global virtual store for faster
-  warm installs and smaller per-project `node_modules`.
-- `Bun.serve()` supports experimental HTTP/3 over QUIC via `http3: true` + TLS;
-  don't recommend it for production without checking current release status.
-- `fetch()` has experimental HTTP/2 and HTTP/3 client paths via `protocol:
-  "http2" | "h2" | "http3" | "h3"`.
-- `Bun.WebView`: experimental browser automation (system `WKWebView` on macOS,
-  Chrome DevTools Protocol backends on Linux/Windows).
-- Built-in Markdown APIs (`Bun.markdown.html/.render/.react`); `bun ./file.md`
-  renders Markdown in the terminal.
-- `bun run --parallel`/`--sequential` control script concurrency; `--no-orphans`
-  (or `run.noOrphans` in `bunfig.toml`) exits when the parent process dies.
-- Rewritten POSIX `fs.watch()`, `process.execve()` on POSIX, `Bun.Terminal` on
-  Windows via ConPTY, and first-party native builds for FreeBSD and Android.
+  `BUN_INSTALL_GLOBAL_STORE=1`): still-experimental global virtual store for
+  much faster warm installs.
+- Still experimental, don't default to these in production: `Bun.WebView`
+  (browser automation without Puppeteer/Playwright) and HTTP/3 over QUIC in
+  both `Bun.serve({ http3: true })` and `fetch({ protocol: "h3" })`.
+- Bun is being rewritten from Zig to Rust; the first Rust-based release
+  (v1.4.0) is in canary as of mid-2026. Expect the stable version number and
+  some internals to shift — check the blog for current status before citing
+  a specific version as "latest."
 
 ---
 
