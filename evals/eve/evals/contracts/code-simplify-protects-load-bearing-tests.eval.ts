@@ -2,6 +2,7 @@ import { defineEval } from "eve/evals"
 import { includes } from "eve/evals/expect"
 import { prompt } from "../support/text"
 import { noFailedCalls, noWrites } from "../support/tools"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (code/skills/code/simplify.md, "Review passes" #7 "Test signal"):
 //
@@ -91,7 +92,6 @@ export default defineEval({
           "correctly prunes the others.",
         ),
       )
-      .gate()
     // Names the rubric's exact compound terms, not a paraphrase: "no-drift"
     // for #6 and "environment-gated" for #8. A model reasoning about these
     // cases from unaided general judgment (not the pack's named categories)
@@ -113,9 +113,8 @@ export default defineEval({
           "either #7 or #8, or never separately addresses them from the rest.",
         ),
       )
-      .gate()
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

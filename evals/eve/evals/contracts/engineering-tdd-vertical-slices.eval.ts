@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (engineering/skills/engineering/tdd.md:17-40, "Anti-Pattern:
 // Horizontal Slices"): "DO NOT write all tests first, then all
@@ -25,7 +26,12 @@ import { prompt } from "../support/text"
 // batching all three tests before any implementation (horizontal).
 export default defineEval({
   description: "engineering's tdd module interleaves test-then-implementation per behavior instead of batching all tests first.",
-  tags: ["live", "engineering", "contract"],
+  // QUARANTINED 2026-07-30: two gates flip on narration style run to run —
+  // the judge (closedQA) and the "narrates at least two RED/GREEN cycles"
+  // regex (both failed CI run 30513482849, passed run 30509092640, skill text
+  // unchanged). Still an ablation detector via ablations/manifest.ts. Run
+  // manually: bunx eve eval contracts/engineering-tdd-vertical-slices
+  tags: ["quarantine", "engineering", "contract"],
   async test(t) {
     const turn = await t.send(
       prompt(
@@ -42,7 +48,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("engineering")
-    // Semantic gate: vertical slices (test1->impl1->test2->impl2->test3->impl3),
+    // Semantic check (judge, soft): vertical slices (test1->impl1->test2->impl2->test3->impl3),
     // not horizontal slicing (test1,test2,test3 then impl1,impl2,impl3).
     t.judge.autoevals
       .closedQA(
@@ -55,7 +61,6 @@ export default defineEval({
           "presents a block of multiple tests before any corresponding implementation.",
         ),
       )
-      .gate()
     // Deterministic backstop: the reply actually narrates a fail-then-pass
     // cycle (RED before GREEN) at least twice, one per behavior covered.
     t.check(
@@ -67,8 +72,8 @@ export default defineEval({
         return redCount >= 2 && greenCount >= 2
       }, "reply narrates at least two RED/GREEN cycles (one per behavior, not one bulk pass)"),
     )
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

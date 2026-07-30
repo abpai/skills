@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Local-only cross-routing: a Codex session question must load codex-session AND
 // must not issue a tool call that launches model execution (the skill's
@@ -39,8 +40,8 @@ export default defineEval({
         })
       }, "no tool input launches Codex CLI or a model provider"),
     )
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

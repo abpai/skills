@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { includes } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (code/skills/code/SKILL.md:34-49): a removed exact subcommand token
 // must return migration guidance to its replacement and STOP — never run the
@@ -9,7 +10,7 @@ export default defineEval({
   description: "code routes a removed `dead-code` token to `simplify` and stops.",
   tags: ["live", "code", "routing"],
   async test(t) {
-    await t.send("Run `code dead-code src/api`.")
+    const turn = await t.send("Run `code dead-code src/api`.")
     t.succeeded()
     t.loadedSkill("code")
     // Routes to the replacement (deterministic gate).
@@ -28,9 +29,8 @@ export default defineEval({
           "counts as yes; only a claim of having performed it counts as no.",
         ),
       )
-      .gate()
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (harness/skills/harness/onboard.md, "3. Apply the verdict gate"
 // and "Completion"): the manifest's `verdict` may only be set to
@@ -89,7 +90,6 @@ export default defineEval({
           "verdict today based only on the user's confidence, with no audit.",
         ),
       )
-      .gate()
     t.judge.autoevals
       .closedQA(
         prompt(
@@ -99,7 +99,6 @@ export default defineEval({
           "readiness the underlying repo has not earned?",
         ),
       )
-      .gate()
     // Names the skill's actual manifest verdict tier, not a paraphrase like
     // "hold off" or "not ready yet" with no concrete value.
     t.check(t.reply, satisfies((r: unknown) => {
@@ -118,9 +117,8 @@ export default defineEval({
           "concrete verdict value other than autonomous-ready.",
         ),
       )
-      .gate()
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { includes } from "eve/evals/expect"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (code/skills/code/SKILL.md:32): the router strips a leading `--`, so
 // `code --understand X` and `code understand X` resolve to the same workflow
@@ -13,6 +14,9 @@ import { includes } from "eve/evals/expect"
 // only trade a weak check for a false-fail.
 export default defineEval({
   description: "code treats `--understand` and `understand` as the same route.",
+  // Back in the live lane 2026-07-30: its one flake (CI run 30513851355) was
+  // the blanket failed-action gate dying on sandbox noise ("rg: /proc/…:
+  // Permission denied"), replaced suite-wide by noFailedSkillLoads.
   tags: ["live", "code", "routing"],
   async test(t) {
     const plain = await t.send("Run `code understand src/api`.")
@@ -25,8 +29,10 @@ export default defineEval({
     dashed.succeeded()
     dashed.loadedSkill("code")
     t.check(dashedTurn.message, includes("understand"))
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved, in both sessions. The blanket
+    // noFailedActions gate this replaces graded sandbox probe noise — see
+    // noFailedSkillLoads in support/tools.
+    t.check(plain.toolCalls, noFailedSkillLoads())
+    t.check(dashedTurn.toolCalls, noFailedSkillLoads())
   },
 })

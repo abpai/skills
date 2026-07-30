@@ -3,6 +3,7 @@ import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
 import { noFailedCalls } from "../support/tools"
 import { fixtureFile, verifyPruning } from "../support/outcome"
+import { noFailedSkillLoads } from "../support/tools"
 
 // The discriminating outcome eval. Its sibling
 // (code-simplify-preserves-behavior) proved the machinery but measured the base
@@ -171,6 +172,6 @@ export default defineEval({
         `the redundant tests are gone (still present: ${result.noiseKept.join(", ") || "none"})`,
       ),
     )
-    t.noFailedActions()
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

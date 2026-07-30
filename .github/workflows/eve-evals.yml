@@ -69,15 +69,20 @@ jobs:
       - name: Smoke eval (mock model, no secrets)
         run: bun run eval:smoke
 
-  # Live behavioral evals against a real model. OPT-IN ONLY — these cost real
-  # tokens, so they never run just because a PR was opened. Two ways to ask:
+  # Live behavioral evals against a real model. OPT-IN and SINGLE-SHOT — these
+  # cost real tokens (~1M input tokens per full suite), so every full run is an
+  # explicit act. Two ways to ask:
   #
   #   1. Actions -> "Eve skill evals" -> Run workflow. Pick the branch, the
   #      provider, and optionally a subset of eval ids. Or from a terminal:
   #        gh workflow run eve-evals.yml --ref <branch> \
   #          -f provider=anthropic -f filter=contracts/harness-d7-safety-cap
-  #   2. Add the `run-evals` label to a same-repo PR. Useful once a stack has
-  #      been squashed into a single PR and is ready for a real check.
+  #      Filtered dispatches are the iteration loop: re-prove only the evals in
+  #      question, and run the full suite once at the end.
+  #   2. Add the `run-evals` label to a same-repo PR. Exactly the moment of
+  #      labeling triggers ONE full run — later pushes do not re-run the suite
+  #      (that silently re-proved 28 evals per push when 1-3 were in question).
+  #      To re-prove after a push: remove and re-add the label, or dispatch.
   #
   # `harness-smoke` still runs on every PR: it is free, needs no secrets, and
   # catches harness rot. Only this job spends money.
@@ -89,24 +94,25 @@ jobs:
   # `pull_request_target` + contributor checkout (a "pwn request").
   live-evals:
     needs: harness-smoke
-    # Guard details: the Dependabot test is on the PR AUTHOR, not github.actor —
-    # on a `labeled` event the actor is the human who added the label, so an
-    # actor test would let a maintainer's label run a Dependabot dependency bump
-    # with live keys in env. And the `labeled` arm requires the run-evals label
-    # to be the one just added: the job condition sees ALL current labels, so
-    # without it every later label on an already-labeled PR would start another
-    # paid run.
     if: >
       github.event_name == 'workflow_dispatch' ||
       (
         github.event_name == 'pull_request' &&
+        github.event.action == 'labeled' &&
+        github.event.label.name == 'run-evals' &&
         github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.pull_request.user.login != 'dependabot[bot]' &&
-        contains(github.event.pull_request.labels.*.name, 'run-evals') &&
-        (github.event.action != 'labeled' || github.event.label.name == 'run-evals')
+        github.event.pull_request.user.login != 'dependabot[bot]'
       )
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Two overlapping live suites on one PR must not both run — a re-label
+    # supersedes the in-flight run. Scoped to THIS JOB, not the workflow: a
+    # workflow-level group would let any unrelated label (or push) spawn a
+    # smoke-only run in the same group and cancel the paid suite mid-flight.
+    # Dispatch runs get a unique group via run_id and never cancel each other.
+    concurrency:
+      group: eve-live-${{ github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: true
     defaults:
       run:
         working-directory: evals/eve
@@ -138,6 +144,11 @@ jobs:
           # Defaults to openai for the label path, which has no inputs.
           EVE_EVAL_PROVIDER: ${{ inputs.provider || 'openai' }}
           EVAL_FILTER: ${{ inputs.filter }}
+          # Judge assertions are soft yes/no closedQA verdicts recorded as
+          # evidence — a mini-tier judge is enough. The subject model is
+          # unaffected. Judges are also the only calls a frontier default
+          # would double-bill per assertion (criteria + full reply each time).
+          EVE_JUDGE_MODEL: gpt-5.4-mini
         # Reaching this job means someone asked for it, so a missing key is a
         # misconfigured secret, never an expected condition. This used to exit 0
         # with a notice, which painted the lane green while running nothing — the

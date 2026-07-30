@@ -65,6 +65,33 @@ its own is still there for inspecting the materialized tree.
 `ablate` is the exception: it prepares a *deliberately mutated* tree, so it
 calls the `eve` binary directly rather than going through these scripts.
 
+### Quarantined evals
+
+Evals tagged `quarantine` instead of `live` are out of the CI lane because a
+single-sample gate fails on run-to-run model variance, not on skill
+regressions — each carries a `QUARANTINED` comment naming the flaky gate and
+the observed CI runs. They still typecheck, still discover, and the ablation
+manifest still runs the ones it lists as detectors (ablate addresses evals by
+id, not by tag).
+
+```bash
+bun run eval --tag quarantine                   # the whole quarantine set
+bun run eval contracts/distill-default-format   # or one eval by id
+```
+
+The way back to `live` is making the gate robust, not deleting it: vote across
+repeated runs the way `ablate --runs 3` already does (one run is not a
+verdict), or replace a phrasing regex with a content match. Do not retag on a
+lucky green run.
+
+Judge (`t.judge.autoevals.closedQA`) assertions are **soft** across the suite
+— eve's default severity, deliberately not overridden with `.gate()`. Three
+different evals flipped a single-sample judge verdict across four CI runs on
+2026-07-30 with skill text unchanged; at that rate, nine judge-gated live
+evals make a red lane the expected outcome of every run. The judge still runs
+and its score lands in the run artifacts as evidence. Judges gate again once
+they vote across repeated runs.
+
 ### Choosing the model
 
 The provider follows whichever key is present: `OPENAI_API_KEY` selects
@@ -100,7 +127,32 @@ gh workflow run eve-evals.yml --ref <branch> -f filter=contracts/harness-d7-safe
 ```
 
 Or add the **`run-evals`** label to a same-repo PR. That suits a stack squashed
-into one PR and ready for a real check.
+into one PR and ready for a real check. The label is **single-shot**: exactly
+the labeling moment triggers one full run, and later pushes run only
+`harness-smoke`. To re-prove after a push, remove and re-add the label, or
+dispatch.
+
+### Cost profile
+
+A full 28-eval suite run costs about 1M input tokens and 20k output tokens.
+OpenAI's automatic prefix caching already absorbs most of it — measured on CI
+run 30515178311: **88% of input tokens were cache reads**, and every session's
+first request hit the shared system-prompt + tool-defs + skills-list prefix
+(the prefix is byte-stable: `prepare-skills` copies from a hardcoded ordered
+map and eve's skills section contains no timestamps or per-run ids). So the
+spend levers, in order:
+
+1. **Run count.** Filtered dispatches while iterating; one full labeled run at
+   the end. This is why the label is single-shot.
+2. **The judge model.** `EVE_JUDGE_MODEL=gpt-5.4-mini` in CI — judge verdicts
+   are soft yes/no evidence and do not need the frontier subject model.
+3. Keep same-eval repeats back-to-back when vote-across-runs lands: votes 2-3
+   re-send an identical prefix and first message, so they are near-total cache
+   hits if they run consecutively.
+
+Anthropic runs are the exception on caching: `@ai-sdk/anthropic` needs explicit
+`cache_control` breakpoints that eve does not set, so `eval:live:claude` gets
+no cache discount today — one more reason those stay deliberate one-offs.
 
 Fork and Dependabot PRs can never reach the live job: GitHub withholds secrets
 from them, the label path requires a same-repo head, and the workflow uses
@@ -203,9 +255,10 @@ fixtures/<name>/hidden.test.js  # mounted read-only only after the reply exists
   discover, and the mock smoke eval boots the server and passes.
 - **Proven (live, `OPENAI_API_KEY`):** the original contract evals
   (`code/argument-form-equivalence`, `code/removed-command-migration`,
-  `safety/codex-session-injection`, `contracts/hexagon-not-applicable`) are
-  live-green under `gpt-5.6-luna`. The routing matrix + negatives extend that
-  gate; `bun run eval:live` is the whole-lane acceptance check.
+  `safety/codex-session-injection`) are live-green under `gpt-5.6-luna`. The
+  routing matrix + negatives extend that gate; `bun run eval:live` is the
+  whole-lane acceptance check. Marginal single-sample gates sit outside the
+  lane under the `quarantine` tag — see "Quarantined evals" above.
 
 Eve is public preview — the version is pinned in `package.json` and the
 lockfile; bump it deliberately. The verifier's Node image is pinned by digest

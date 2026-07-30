@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { notLoadedSkill } from "../support/loaded"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Positive: stress-test a plan before building (grill-me via engineering).
 // No t.succeeded(): grill-me's contract is to ask design questions, which parks
@@ -18,8 +19,8 @@ export default defineEval({
     t.loadedSkill("engineering")
     t.check(turn.toolCalls, notLoadedSkill("harness"))
     t.check(turn.toolCalls, notLoadedSkill("code"))
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

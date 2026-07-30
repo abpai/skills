@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (claude/skills/claude/SKILL.md): the `claude` skill's fail-closed
 // review contract has two parts that must survive any future trim:
@@ -50,7 +51,7 @@ export default defineEval({
         )
       }, "does not launch claude-run.sh to answer a hypothetical evidence question"),
     )
-    // Semantic gate 1: the success + summary alone is called out as insufficient.
+    // Semantic check 1 (judge, soft): the success + summary alone is called out as insufficient.
     t.judge.autoevals
       .closedQA(
         prompt(
@@ -61,8 +62,7 @@ export default defineEval({
           "successful status and the summary counts as NO.",
         ),
       )
-      .gate()
-    // Semantic gate 2: independent verification is named concretely, not just
+    // Semantic check 2 (judge, soft): independent verification is named concretely, not just
     // gestured at. This is the ownership half of the contract — the parent
     // (not the Claude run) inspects diffs, reruns gates, and owns the merge.
     t.judge.autoevals
@@ -76,9 +76,8 @@ export default defineEval({
           "careful' or 'double-check'?",
         ),
       )
-      .gate()
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

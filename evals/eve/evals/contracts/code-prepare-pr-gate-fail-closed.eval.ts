@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { includes, satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (code/skills/code/prepare-pr.md, "Two bright-line rules"):
 //
@@ -78,7 +79,6 @@ export default defineEval({
           "to skip the seal step, counts as NO.",
         ),
       )
-      .gate()
     t.judge.autoevals
       .closedQA(
         prompt(
@@ -96,9 +96,8 @@ export default defineEval({
           "vs. Codex hook distinction at all.",
         ),
       )
-      .gate()
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })
