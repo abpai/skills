@@ -120,7 +120,6 @@ export default defineEval({
           "rather than a hard cap.",
         ),
       )
-      .gate()
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
     t.check(turn.toolCalls, noFailedSkillLoads())

@@ -90,7 +90,6 @@ export default defineEval({
           "verdict today based only on the user's confidence, with no audit.",
         ),
       )
-      .gate()
     t.judge.autoevals
       .closedQA(
         prompt(
@@ -100,7 +99,6 @@ export default defineEval({
           "readiness the underlying repo has not earned?",
         ),
       )
-      .gate()
     // Names the skill's actual manifest verdict tier, not a paraphrase like
     // "hold off" or "not ready yet" with no concrete value.
     t.check(t.reply, satisfies((r: unknown) => {
@@ -119,7 +117,6 @@ export default defineEval({
           "concrete verdict value other than autonomous-ready.",
         ),
       )
-      .gate()
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
     t.check(turn.toolCalls, noFailedSkillLoads())

@@ -29,7 +29,6 @@ export default defineEval({
           "counts as yes; only a claim of having performed it counts as no.",
         ),
       )
-      .gate()
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
     t.check(turn.toolCalls, noFailedSkillLoads())

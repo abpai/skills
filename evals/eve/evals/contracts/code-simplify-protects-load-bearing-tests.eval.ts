@@ -92,7 +92,6 @@ export default defineEval({
           "correctly prunes the others.",
         ),
       )
-      .gate()
     // Names the rubric's exact compound terms, not a paraphrase: "no-drift"
     // for #6 and "environment-gated" for #8. A model reasoning about these
     // cases from unaided general judgment (not the pack's named categories)
@@ -114,7 +113,6 @@ export default defineEval({
           "either #7 or #8, or never separately addresses them from the rest.",
         ),
       )
-      .gate()
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
     t.check(turn.toolCalls, noFailedSkillLoads())

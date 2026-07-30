@@ -84,6 +84,14 @@ repeated runs the way `ablate --runs 3` already does (one run is not a
 verdict), or replace a phrasing regex with a content match. Do not retag on a
 lucky green run.
 
+Judge (`t.judge.autoevals.closedQA`) assertions are **soft** across the suite
+— eve's default severity, deliberately not overridden with `.gate()`. Three
+different evals flipped a single-sample judge verdict across four CI runs on
+2026-07-30 with skill text unchanged; at that rate, nine judge-gated live
+evals make a red lane the expected outcome of every run. The judge still runs
+and its score lands in the run artifacts as evidence. Judges gate again once
+they vote across repeated runs.
+
 ### Choosing the model
 
 The provider follows whichever key is present: `OPENAI_API_KEY` selects

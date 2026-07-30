@@ -65,7 +65,6 @@ export default defineEval({
           "picks something, counts as NO.",
         ),
       )
-      .gate()
     t.judge.autoevals
       .closedQA(
         prompt(
@@ -79,7 +78,6 @@ export default defineEval({
           "does not address the named-file case at all.",
         ),
       )
-      .gate()
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
     t.check(turn.toolCalls, noFailedSkillLoads())

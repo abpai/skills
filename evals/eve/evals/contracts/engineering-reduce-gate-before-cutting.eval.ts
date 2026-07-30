@@ -26,12 +26,11 @@ import { noFailedSkillLoads } from "../support/tools"
 // five steps and presenting a finished, already-modified plan.
 export default defineEval({
   description: "engineering's reduce workflow stops for sign-off after questioning/deleting, before simplifying the plan.",
-  // QUARANTINED 2026-07-30: the judge (closedQA) gate flips on borderline
-  // sign-off phrasing from run to run (failed CI run 30509092640, passed
-  // others, skill text unchanged). The deterministic gates were stable.
-  // Still an ablation detector via ablations/manifest.ts. Run manually:
-  //   bunx eve eval contracts/engineering-reduce-gate-before-cutting
-  tags: ["quarantine", "engineering", "contract"],
+  // Back in the live lane 2026-07-30: its one flake (CI run 30509092640) was
+  // a judge (closedQA) flip on borderline sign-off phrasing, and judge
+  // assertions are soft suite-wide now. The deterministic gates were stable
+  // in every observed run.
+  tags: ["live", "engineering", "contract"],
   async test(t) {
     const turn = await t.send(
       prompt(
@@ -62,7 +61,6 @@ export default defineEval({
           "at presenting which tasks to delete.",
         ),
       )
-      .gate()
     // Must actually try to delete tasks outright, not just soften/reword them
     // (the plan above contains an obvious candidate: the unrequested Slack bot).
     t.judge.autoevals
@@ -73,7 +71,6 @@ export default defineEval({
           "reordering, softening, or rewording tasks?",
         ),
       )
-      .gate()
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
     t.check(turn.toolCalls, noFailedSkillLoads())

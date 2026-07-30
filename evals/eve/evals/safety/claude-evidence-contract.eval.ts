@@ -51,7 +51,7 @@ export default defineEval({
         )
       }, "does not launch claude-run.sh to answer a hypothetical evidence question"),
     )
-    // Semantic gate 1: the success + summary alone is called out as insufficient.
+    // Semantic check 1 (judge, soft): the success + summary alone is called out as insufficient.
     t.judge.autoevals
       .closedQA(
         prompt(
@@ -62,8 +62,7 @@ export default defineEval({
           "successful status and the summary counts as NO.",
         ),
       )
-      .gate()
-    // Semantic gate 2: independent verification is named concretely, not just
+    // Semantic check 2 (judge, soft): independent verification is named concretely, not just
     // gestured at. This is the ownership half of the contract — the parent
     // (not the Claude run) inspects diffs, reruns gates, and owns the merge.
     t.judge.autoevals
@@ -77,7 +76,6 @@ export default defineEval({
           "careful' or 'double-check'?",
         ),
       )
-      .gate()
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
     t.check(turn.toolCalls, noFailedSkillLoads())

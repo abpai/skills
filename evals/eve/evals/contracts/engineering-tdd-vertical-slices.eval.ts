@@ -48,7 +48,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("engineering")
-    // Semantic gate: vertical slices (test1->impl1->test2->impl2->test3->impl3),
+    // Semantic check (judge, soft): vertical slices (test1->impl1->test2->impl2->test3->impl3),
     // not horizontal slicing (test1,test2,test3 then impl1,impl2,impl3).
     t.judge.autoevals
       .closedQA(
@@ -61,7 +61,6 @@ export default defineEval({
           "presents a block of multiple tests before any corresponding implementation.",
         ),
       )
-      .gate()
     // Deterministic backstop: the reply actually narrates a fail-then-pass
     // cycle (RED before GREEN) at least twice, one per behavior covered.
     t.check(

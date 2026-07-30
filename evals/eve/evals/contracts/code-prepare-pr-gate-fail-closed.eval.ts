@@ -79,7 +79,6 @@ export default defineEval({
           "to skip the seal step, counts as NO.",
         ),
       )
-      .gate()
     t.judge.autoevals
       .closedQA(
         prompt(
@@ -97,7 +96,6 @@ export default defineEval({
           "vs. Codex hook distinction at all.",
         ),
       )
-      .gate()
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
     t.check(turn.toolCalls, noFailedSkillLoads())
