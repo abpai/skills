@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (engineering/skills/engineering/reduce.md): reduce's five steps
 // "Run the steps strictly in order... Never optimize, accelerate, or
@@ -73,8 +74,8 @@ export default defineEval({
         ),
       )
       .gate()
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

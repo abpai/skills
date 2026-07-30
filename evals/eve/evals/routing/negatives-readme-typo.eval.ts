@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { notLoadedSkill } from "../support/loaded"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Negative control: light copyedit is explicitly out of scope for improve-prompt
 // and is not a human-writer deslop request.
@@ -15,8 +16,8 @@ export default defineEval({
     t.succeeded()
     t.check(turn.toolCalls, notLoadedSkill("improve-prompt"))
     t.check(turn.toolCalls, notLoadedSkill("human-writer"))
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

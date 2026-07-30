@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { notLoadedSkill } from "../support/loaded"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Positive: make AI-sounding prose sound human. Not improve-prompt (prompt crafting).
 export default defineEval({
@@ -15,8 +16,8 @@ export default defineEval({
     )
     t.loadedSkill("human-writer")
     t.check(turn.toolCalls, notLoadedSkill("improve-prompt"))
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

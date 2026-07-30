@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (claude/skills/claude/SKILL.md:111-115): a repo-grounded review
 // with verified evidence needs `--evidence-class repo-grounded-review`
@@ -53,8 +54,8 @@ export default defineEval({
         })
       }, "no tool call actually launches claude-run.sh or the Claude CLI"),
     )
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

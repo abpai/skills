@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (harness/skills/harness/doctor.md, "Scanner unavailable"): "When
 // the `harness-doctor` CLI cannot run, do not substitute a hand-rolled
@@ -23,13 +24,11 @@ import { prompt } from "../support/text"
 export default defineEval({
   description:
     "harness doctor's scanner-unavailable rule survives: D5/D6 stay unreviewed and the score stays provisional when the harness-doctor CLI cannot run, even if the user offers to describe the docs structure by hand.",
-  // QUARANTINED 2026-07-30: noFailedActions flakes when the subject probes for
-  // files the sandbox does not have (failed CI run 30513482849 on a read of
-  // /workspace/AGENTS.md) — the gate grades exploration, not the
-  // scanner-unavailable contract, which held in every observed failure. Still
-  // an ablation detector via ablations/manifest.ts. Run manually:
-  //   bunx eve eval contracts/harness-scanner-unavailable-mechanical-first
-  tags: ["quarantine", "harness", "contract"],
+  // Back in the live lane 2026-07-30: its one flake (CI run 30513482849) was
+  // the blanket failed-action gate firing on a probe of a file the sandbox
+  // does not have (/workspace/AGENTS.md), replaced suite-wide by
+  // noFailedSkillLoads. The scanner-unavailable contract held in that run.
+  tags: ["live", "harness", "contract"],
   async test(t) {
     const turn = await t.send(
       prompt(
@@ -105,8 +104,8 @@ export default defineEval({
         ),
       )
       .gate()
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

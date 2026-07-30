@@ -3,6 +3,7 @@ import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
 import { noFailedCalls } from "../support/tools"
 import { fixtureInput, verifyCandidate, type Fixture } from "../support/outcome"
+import { noFailedSkillLoads } from "../support/tools"
 
 // The first OUTCOME eval in this lane. Every other eval here grades what the
 // model SAID about a skill; this one grades what the skill PRODUCED.
@@ -137,6 +138,6 @@ export default defineEval({
         return lines.after <= lines.before * (1 - MIN_REDUCTION)
       }, `code is at least ${Math.round(MIN_REDUCTION * 100)}% shorter (${result.lines.before} -> ${result.lines.after} significant lines)`),
     )
-    t.noFailedActions()
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

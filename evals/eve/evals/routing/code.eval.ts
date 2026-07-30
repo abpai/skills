@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { notLoadedSkill } from "../support/loaded"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Positive: natural intent for the code umbrella (understand workflow). Sibling
 // umbrellas must not load. Intentionally no t.succeeded(): with an empty
@@ -19,8 +20,8 @@ export default defineEval({
     t.loadedSkill("code")
     t.check(turn.toolCalls, notLoadedSkill("engineering"))
     t.check(turn.toolCalls, notLoadedSkill("harness"))
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

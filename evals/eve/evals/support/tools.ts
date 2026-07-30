@@ -87,6 +87,28 @@ export function noFailedCalls() {
 }
 
 /**
+ * Every `load_skill` call resolved.
+ *
+ * This is the narrow replacement for blanket `t.noFailedActions()`, which
+ * graded the sandbox instead of the skill: subjects probe (glob a path named
+ * in the prompt, read a file that may not exist) and the sandbox itself
+ * throws IO errors — CI runs 30513851355 (`rg: /proc/…: Permission denied`)
+ * and 30514088913 (`rg: /mnt/data: No such file or directory`) each failed a
+ * different eval on such noise. A failed probe is normal agent behavior. A
+ * failed `load_skill` is the one failure the gate existed to catch: the
+ * subject asked for a skill and did not get it, so every downstream gate is
+ * grading an unskilled turn (three evals silently tolerated exactly that
+ * before the blanket gate landed).
+ */
+export function noFailedSkillLoads() {
+  return satisfies((value: unknown) => {
+    const calls = asCalls(value)
+    if (calls === null) return false
+    return !calls.some((c) => c.name === "load_skill" && c.status === "failed")
+  }, "every load_skill call resolved")
+}
+
+/**
  * No `bash` call exited non-zero.
  *
  * Distinct from `noFailedCalls`: a shell command that exits 1 is a *completed*

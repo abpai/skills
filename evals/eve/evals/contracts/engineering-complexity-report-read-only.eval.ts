@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (engineering/skills/engineering/complexity-report.md:8-9, "Create
 // an evidence-ranked report... Default to read-only: do not modify source
@@ -70,8 +71,8 @@ export default defineEval({
         return /perf-\d+/i.test(r)
       }, "reply includes a stable finding id like perf-001"),
     )
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

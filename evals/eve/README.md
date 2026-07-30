@@ -221,11 +221,11 @@ fixtures/<name>/hidden.test.js  # mounted read-only only after the reply exists
   coverage controls and outcome verifier isolation test pass, all evals
   discover, and the mock smoke eval boots the server and passes.
 - **Proven (live, `OPENAI_API_KEY`):** the original contract evals
-  (`code/removed-command-migration`, `safety/codex-session-injection`) are
-  live-green under `gpt-5.6-luna`. The routing matrix + negatives extend that
-  gate; `bun run eval:live` is the whole-lane acceptance check. Marginal
-  single-sample gates sit outside the lane under the `quarantine` tag — see
-  "Quarantined evals" above.
+  (`code/argument-form-equivalence`, `code/removed-command-migration`,
+  `safety/codex-session-injection`) are live-green under `gpt-5.6-luna`. The
+  routing matrix + negatives extend that gate; `bun run eval:live` is the
+  whole-lane acceptance check. Marginal single-sample gates sit outside the
+  lane under the `quarantine` tag — see "Quarantined evals" above.
 
 Eve is public preview — the version is pinned in `package.json` and the
 lockfile; bump it deliberately. The verifier's Node image is pinned by digest

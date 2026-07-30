@@ -2,6 +2,7 @@ import { defineEval } from "eve/evals"
 import { includes } from "eve/evals/expect"
 import { prompt } from "../support/text"
 import { noFailedCalls, noWrites } from "../support/tools"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (code/skills/code/simplify.md, "Scope contract"):
 //
@@ -79,8 +80,8 @@ export default defineEval({
         ),
       )
       .gate()
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

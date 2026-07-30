@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (distill/skills/distill/SKILL.md:107-108): Conceptual Map is "the
 // default; use it for any input unless a format below is requested or its
@@ -24,7 +25,7 @@ export default defineEval({
   //   bunx eve eval contracts/distill-default-format
   tags: ["quarantine", "distill", "contract"],
   async test(t) {
-    await t.send(
+    const turn = await t.send(
       prompt(
         "Distill this codebase for me in one pass, no back-and-forth needed: it's a",
         "small job-queue library with three pieces — a Producer that enqueues jobs,",
@@ -66,8 +67,8 @@ export default defineEval({
         )
       }, "does not ask the user which output format to use"),
     )
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

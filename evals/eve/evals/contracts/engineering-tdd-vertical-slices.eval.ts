@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (engineering/skills/engineering/tdd.md:17-40, "Anti-Pattern:
 // Horizontal Slices"): "DO NOT write all tests first, then all
@@ -72,8 +73,8 @@ export default defineEval({
         return redCount >= 2 && greenCount >= 2
       }, "reply narrates at least two RED/GREEN cycles (one per behavior, not one bulk pass)"),
     )
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })

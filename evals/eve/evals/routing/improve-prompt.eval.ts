@@ -1,6 +1,7 @@
 import { defineEval } from "eve/evals"
 import { notLoadedSkill } from "../support/loaded"
 import { prompt } from "../support/text"
+import { noFailedSkillLoads } from "../support/tools"
 
 // Positive: sharpen a vague ask into a reusable prompt template.
 export default defineEval({
@@ -15,8 +16,8 @@ export default defineEval({
     )
     t.loadedSkill("improve-prompt")
     t.check(turn.toolCalls, notLoadedSkill("human-writer"))
-    // Every tool call resolved. Three evals silently tolerated failed
-    // load_skill calls before this gate existed.
-    t.noFailedActions()
+    // Every load_skill call resolved. The blanket noFailedActions gate this
+    // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
+    t.check(turn.toolCalls, noFailedSkillLoads())
   },
 })
