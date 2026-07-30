@@ -35,12 +35,6 @@ on:
 permissions:
   contents: read
 
-# Two quick pushes must not pay for two overlapping suites. Scope: cancel only
-# superseded PR runs; dispatch and main-push runs are deliberate and keep going.
-concurrency:
-  group: eve-evals-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   # Always runs, no secrets: proves the harness boots and grades a turn under
   # the deterministic mock model, and that the live eval files typecheck and
@@ -111,6 +105,14 @@ jobs:
       )
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    # Two overlapping live suites on one PR must not both run — a re-label
+    # supersedes the in-flight run. Scoped to THIS JOB, not the workflow: a
+    # workflow-level group would let any unrelated label (or push) spawn a
+    # smoke-only run in the same group and cancel the paid suite mid-flight.
+    # Dispatch runs get a unique group via run_id and never cancel each other.
+    concurrency:
+      group: eve-live-${{ github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: true
     defaults:
       run:
         working-directory: evals/eve
