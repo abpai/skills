@@ -8,6 +8,10 @@ name: Eve skill evals
 
 on:
   pull_request:
+    # `labeled` is not in the default set, and the live-evals job keys on the
+    # `run-evals` label — without it, labeling a PR does nothing until the next
+    # push. Measured on PR #125: the label alone never started a run.
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - "**/skills/**/SKILL.md"
       - "evals/eve/**"
@@ -78,19 +82,28 @@ jobs:
   # `harness-smoke` still runs on every PR: it is free, needs no secrets, and
   # catches harness rot. Only this job spends money.
   #
-  # Fork and Dependabot PRs can never reach this job — GitHub withholds secrets
-  # from them, the label path requires a same-repo head, and the workflow uses
-  # `pull_request`, never `pull_request_target` + contributor checkout (a "pwn
-  # request").
+  # Fork and Dependabot PRs can never reach this job — forks fail the same-repo
+  # head check, Dependabot PRs fail the author check (author, not actor: a
+  # maintainer labeling a Dependabot PR must not run its bumped dependencies
+  # with live keys), and the workflow uses `pull_request`, never
+  # `pull_request_target` + contributor checkout (a "pwn request").
   live-evals:
     needs: harness-smoke
+    # Guard details: the Dependabot test is on the PR AUTHOR, not github.actor —
+    # on a `labeled` event the actor is the human who added the label, so an
+    # actor test would let a maintainer's label run a Dependabot dependency bump
+    # with live keys in env. And the `labeled` arm requires the run-evals label
+    # to be the one just added: the job condition sees ALL current labels, so
+    # without it every later label on an already-labeled PR would start another
+    # paid run.
     if: >
       github.event_name == 'workflow_dispatch' ||
       (
         github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.full_name == github.repository &&
-        github.actor != 'dependabot[bot]' &&
-        contains(github.event.pull_request.labels.*.name, 'run-evals')
+        github.event.pull_request.user.login != 'dependabot[bot]' &&
+        contains(github.event.pull_request.labels.*.name, 'run-evals') &&
+        (github.event.action != 'labeled' || github.event.label.name == 'run-evals')
       )
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -108,6 +121,12 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Materialize skills from canonical sources
         run: bun run prepare-skills
+      # The outcome verifier runs docker with `--pull never` for hermeticity,
+      # so the pinned image must be present before any eval needs it. Without
+      # this step every outcome eval fails its verifier gate with
+      # "No such image" — measured on the 2026-07-30 dispatch run.
+      - name: Pull the outcome verifier image
+        run: bun run outcome:pull
       - name: Run live behavioral evals
         env:
           # Subject model per provider (agent/agent.ts); the judge shares the
