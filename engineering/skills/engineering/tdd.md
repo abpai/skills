@@ -6,38 +6,17 @@ Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/engi
 
 ## Philosophy
 
-**Core principle**: Tests should verify behavior through public interfaces, not implementation details. Code can change entirely; tests shouldn't.
+**Core principle**: Tests verify behavior through public interfaces, not implementation details. Code can change entirely; tests shouldn't.
 
-**Good tests** are integration-style: they exercise real code paths through public APIs. They describe _what_ the system does, not _how_ it does it. A good test reads like a specification - "user can checkout with valid cart" tells you exactly what capability exists. These tests survive refactors because they don't care about internal structure.
-
-**Bad tests** are coupled to implementation. They mock internal collaborators, test private methods, or verify through external means (like querying a database directly instead of using the interface). The warning sign: your test breaks when you refactor, but behavior hasn't changed. If you rename an internal function and tests fail, those tests were testing implementation, not behavior.
+Good tests are integration-style, reading like a spec ("user can checkout with valid cart"), and survive refactors. Bad tests mock internal collaborators, test private methods, or verify through external means (e.g. querying a database directly instead of the interface) — the warning sign is a test that breaks on refactor with no behavior change.
 
 See [tests](references/tdd-tests.md) for examples and [mocking](references/tdd-mocking.md) for mocking guidelines.
 
 ## Anti-Pattern: Horizontal Slices
 
-**DO NOT write all tests first, then all implementation.** This is "horizontal slicing" - treating RED as "write all tests" and GREEN as "write all code."
+**Do not write all tests first, then all implementation** ("horizontal slicing" — treating RED as "write all tests" and GREEN as "write all code"). It produces tests for _imagined_ behavior, not _actual_ behavior: insensitive to real regressions, and committed to test structure before the implementation is understood.
 
-This produces **crap tests**:
-
-- Tests written in bulk test _imagined_ behavior, not _actual_ behavior
-- You end up testing the _shape_ of things (data structures, function signatures) rather than user-facing behavior
-- Tests become insensitive to real changes - they pass when behavior breaks, fail when behavior is fine
-- You outrun your headlights, committing to test structure before understanding the implementation
-
-**Correct approach**: Vertical slices via tracer bullets. One test → one implementation → repeat. Each test responds to what you learned from the previous cycle. Because you just wrote the code, you know exactly what behavior matters and how to verify it.
-
-```
-WRONG (horizontal):
-  RED:   test1, test2, test3, test4, test5
-  GREEN: impl1, impl2, impl3, impl4, impl5
-
-RIGHT (vertical):
-  RED→GREEN: test1→impl1
-  RED→GREEN: test2→impl2
-  RED→GREEN: test3→impl3
-  ...
-```
+**Correct**: vertical slices. One test, then its implementation, then repeat — never all tests batched before any implementation. Each test responds to what the previous cycle taught you.
 
 ## Workflow
 
@@ -54,38 +33,26 @@ Before writing any code:
 - [ ] List the behaviors to test (not implementation steps)
 - [ ] Get user approval on the plan
 
-Ask: "What should the public interface look like? Which behaviors are most important to test?"
+**You can't test everything.** Confirm with the user which behaviors matter most; focus on critical paths and complex logic, not every edge case.
 
-**You can't test everything.** Confirm with the user exactly which behaviors matter most. Focus testing effort on critical paths and complex logic, not every possible edge case.
+### 2. Vertical slice loop
 
-### 2. Tracer Bullet
-
-Write ONE test that confirms ONE thing about the system:
+For each behavior, in order:
 
 ```
-RED:   Write test for first behavior → test fails
-GREEN: Write minimal code to pass → test passes
-```
-
-This is your tracer bullet - proves the path works end-to-end.
-
-### 3. Incremental Loop
-
-For each remaining behavior:
-
-```
-RED:   Write next test → fails
+RED:   Write one test for one behavior → fails
 GREEN: Minimal code to pass → passes
 ```
 
-Rules:
+The first cycle is a tracer bullet — it proves the path works end-to-end.
+Rules for every cycle:
 
 - One test at a time
-- Only enough code to pass current test
+- Only enough code to pass the current test
 - Don't anticipate future tests
 - Keep tests focused on observable behavior
 
-### 4. Refactor
+### 3. Refactor
 
 After all tests pass, look for [refactor candidates](references/tdd-refactoring.md):
 

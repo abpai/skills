@@ -13,11 +13,32 @@
  *                omitted. The eval measures the base model, not the skill, so
  *                it can say nothing about this text. Not a cut candidate —
  *                write a discriminating eval first.
+ *   FLAKY      — with `--runs N`, the same ablated build both killed and
+ *                survived. Neither label is a verdict; raise N or treat the
+ *                entry as unmeasured.
+ *   ERROR      — the run produced no judgement: an eval errored, or the guarded
+ *                evals were not green BEFORE the cut. Infrastructure noise, not
+ *                evidence. Fix and re-run.
+ *
+ * Every entry establishes a green baseline on the unmutated pack first. An eval
+ * that is already red — a drifted contract, a flaky judge — would otherwise
+ * report KILLED for every ablation aimed at it, crediting the cut text with a
+ * failure it had nothing to do with.
+ *
+ * READ THIS BEFORE TRUSTING A SINGLE SWEEP. Live grading is non-deterministic,
+ * and not marginally so: two consecutive identical sweeps on 2026-07-27
+ * disagreed on 5 of 12 entries. One run is close to a coin flip for roughly half
+ * the manifest. Use `--runs 3` (or more) before acting on any result, and treat
+ * FLAKY as "no signal yet" rather than a weak KILLED.
+ *
+ * Ablation is also not the last word on a trim. The stronger check is to re-run
+ * the guarding evals AFTER the edit and see them pass — that tests the text you
+ * actually shipped, not a synthetic deletion of it.
  *
  * Always restore baseline in `finally` so a crashed run never leaves
  * `agent/skills/` mutated.
  *
- * Usage: `bun run ablate [<id>…]` (requires OPENAI_API_KEY for live grades).
+ * Usage: `bun run ablate [--runs N] [<id>…]` (needs a model key for live grades).
  */
 import { spawnSync } from "node:child_process"
 import { dirname, resolve } from "node:path"
@@ -48,7 +69,7 @@ type EvalRunSummary = {
   results: EvalVerdict[]
 }
 
-type Classification = "SURVIVED" | "KILLED" | "UNGUARDED" | "ERROR"
+type Classification = "SURVIVED" | "KILLED" | "UNGUARDED" | "FLAKY" | "ERROR"
 
 type Row = {
   id: string
@@ -146,7 +167,16 @@ function extractJsonObject(stdout: string): unknown {
   )
 }
 
-/** Run named evals via `eve eval <id…> --json`; return parsed summary. */
+/**
+ * Run named evals via `eve eval <id…> --json`; return parsed summary.
+ *
+ * Invokes the `eve` binary directly, never `bun run eval`. The package
+ * scripts re-run prepare-skills first so a hand-run eval can't grade a stale
+ * copy of a skill — but here the tree has been deliberately mutated by the
+ * caller (a heading cut, or a whole skill omitted), and re-preparing would
+ * restore it and silently grade the unmutated pack. Every entry would come
+ * back SURVIVED.
+ */
 function runEvals(ids: readonly string[]): EvalRunSummary {
   const r = run(["bunx", "eve", "eval", ...ids, "--json"])
   const summary = extractJsonObject(r.stdout) as EvalRunSummary
@@ -156,12 +186,41 @@ function runEvals(ids: readonly string[]): EvalRunSummary {
   return summary
 }
 
-function classify(summary: EvalRunSummary): "SURVIVED" | "KILLED" {
-  const anyFail = summary.results.some(
-    (e) => e.verdict === "failed" || e.verdict === "errored",
-  )
-  if (anyFail || summary.failed > 0 || (summary.errored ?? 0) > 0) return "KILLED"
+/**
+ * An eval that ERRORED is not evidence of anything.
+ *
+ * This used to fold `errored` into KILLED alongside `failed`, on the reasoning
+ * that both are "not passing." They are not the same claim. KILLED means the
+ * model read the mutated skill and behaved differently — the directive is
+ * load-bearing. ERRORED means the eval never produced a judgement: a container
+ * that would not start, a provider timeout, a fixture that failed to seed.
+ *
+ * Conflating them biases in the worst direction. Broken infrastructure reads as
+ * proof that the cut text matters, so the directive gets kept and nobody looks
+ * again. Report it as ERROR and let the run be re-driven.
+ */
+function classify(summary: EvalRunSummary): "SURVIVED" | "KILLED" | "ERROR" {
+  if (summary.results.some((e) => e.verdict === "errored") || (summary.errored ?? 0) > 0) {
+    return "ERROR"
+  }
+  if (summary.results.some((e) => e.verdict === "failed") || summary.failed > 0) return "KILLED"
   return "SURVIVED"
+}
+
+/**
+ * Guarded evals must be green BEFORE the cut, in this same run.
+ *
+ * Without this, an eval that is red for an unrelated reason — a flaky judge, a
+ * contract that drifted, a model change — reports KILLED for every ablation
+ * pointed at it. The cut text gets credit for a failure it had nothing to do
+ * with, and the louder the suite's background failure rate, the more
+ * "load-bearing" everything looks.
+ */
+function baselineIsGreen(ids: readonly string[]): { green: boolean; detail: string } {
+  prepare([])
+  const summary = runEvals(ids)
+  const verdict = classify(summary)
+  return { green: verdict === "SURVIVED", detail: formatEvalLine(summary) }
 }
 
 /**
@@ -196,9 +255,22 @@ function formatEvalLine(summary: EvalRunSummary): string {
   return summary.results.map((e) => `${e.id}:${e.verdict}`).join(", ")
 }
 
-function runEntry(entry: Ablation): Row {
+function runEntry(entry: Ablation, runs: number): Row {
   if (entry.retirement && entry.retirement.length > 0 && !entry.span) {
     console.log(`\n══ omit ${entry.skillId}  (${entry.id}) ══`)
+    // Same baseline rule as the ablate path: a retirement eval that is already
+    // red with the skill PRESENT cannot testify about removing it.
+    console.log(`   baseline: ${entry.retirement.join(", ")} with ${entry.skillId} present…`)
+    const baseline = baselineIsGreen(entry.retirement)
+    if (!baseline.green) {
+      return {
+        id: entry.id,
+        mode: "omit",
+        classification: "ERROR",
+        detail: `baseline not green with the skill present — ${baseline.detail}`,
+        hypothesis: entry.hypothesis,
+      }
+    }
     prepare(["--omit", entry.skillId])
     const summary = runEvals(entry.retirement)
     const classification = classify(summary)
@@ -216,15 +288,61 @@ function runEntry(entry: Ablation): Row {
       throw new Error(`${entry.id}: line-span ablations are not implemented`)
     }
     console.log(
-      `\n══ ablate ${entry.id}  (${entry.span.file ?? "SKILL.md"} ## ${entry.span.heading}) ══`,
+      `\n══ ablate ${entry.id}  (${entry.span.file ?? "SKILL.md"} ## ${entry.span.heading})` +
+        `${runs > 1 ? `  ×${runs}` : ""} ══`,
     )
+    // Establish the green baseline first, so a KILLED below can only mean the
+    // cut changed something.
+    console.log(`   baseline: ${entry.guardedBy.join(", ")} on the unmutated pack…`)
+    const baseline = baselineIsGreen(entry.guardedBy)
+    if (!baseline.green) {
+      return {
+        id: entry.id,
+        mode: "ablate",
+        classification: "ERROR",
+        detail: `baseline not green before the cut — ${baseline.detail}`,
+        hypothesis: entry.hypothesis,
+      }
+    }
+
     prepare(["--ablate", entry.id])
-    const summary = runEvals(entry.guardedBy)
-    let classification: Classification = classify(summary)
-    let detail = formatEvalLine(summary)
+
+    // Repeat the same ablated build. Live grading is non-deterministic, and the
+    // scale of that is not a footnote: two consecutive identical sweeps on
+    // 2026-07-27 disagreed on 5 of 12 entries. A single run is a coin flip for
+    // roughly half the manifest, so a lone KILLED or SURVIVED is not a verdict.
+    const votes: ("SURVIVED" | "KILLED" | "ERROR")[] = []
+    let lastSummary: EvalRunSummary | undefined
+    for (let i = 0; i < runs; i++) {
+      lastSummary = runEvals(entry.guardedBy)
+      votes.push(classify(lastSummary))
+      if (runs > 1) console.log(`   run ${i + 1}/${runs}: ${votes[i]}`)
+    }
+
+    const errored = votes.filter((v) => v === "ERROR").length
+    if (errored > 0) {
+      return {
+        id: entry.id,
+        mode: "ablate",
+        classification: "ERROR",
+        detail: `${errored}/${runs} run(s) errored — no verdict`,
+        hypothesis: entry.hypothesis,
+      }
+    }
+
+    const killed = votes.filter((v) => v === "KILLED").length
+    const survived = votes.filter((v) => v === "SURVIVED").length
+    let classification: Classification =
+      killed > 0 && survived > 0 ? "FLAKY" : killed > 0 ? "KILLED" : "SURVIVED"
+    let detail =
+      runs > 1
+        ? `KILLED ${killed}/${runs}, SURVIVED ${survived}/${runs}`
+        : formatEvalLine(lastSummary!)
 
     // A SURVIVED is only meaningful if the eval could ever have failed for
     // want of this skill. Prove that before reporting it as a cut candidate.
+    // FLAKY needs no control: it already killed at least once, so the eval
+    // demonstrably reacts to the skill.
     if (classification === "SURVIVED") {
       console.log(`   control: re-running ${entry.guardedBy.join(", ")} with ${entry.skillId} omitted…`)
       if (controlPassesWithoutSkill(entry.guardedBy, entry.skillId)) {
@@ -277,7 +395,23 @@ function main(): void {
   // Optional id filter: `bun run ablate <id> [<id>...]`. A full sweep is one
   // live model session per guarded eval, so re-running a single entry after
   // editing its eval should not cost the whole manifest.
-  const only = process.argv.slice(2).filter((a) => !a.startsWith("-"))
+  const argv = process.argv.slice(2)
+
+  // `--runs N` repeats each ablated build N times and reports the vote split.
+  // Default 1 keeps a sweep cheap; raise it before acting on any single result.
+  let runs = 1
+  const runsFlag = argv.findIndex((a) => a === "--runs")
+  if (runsFlag >= 0) {
+    const raw = argv[runsFlag + 1]
+    runs = Number(raw)
+    if (!Number.isInteger(runs) || runs < 1) {
+      console.error(`ablate: --runs expects a positive integer, got "${raw}"`)
+      process.exit(2)
+    }
+    argv.splice(runsFlag, 2)
+  }
+
+  const only = argv.filter((a) => !a.startsWith("-"))
   const unknown = only.filter((id) => !ABLATIONS.some((a) => a.id === id))
   if (unknown.length > 0) {
     console.error(
@@ -292,7 +426,7 @@ function main(): void {
   try {
     for (const entry of selected) {
       try {
-        rows.push(runEntry(entry))
+        rows.push(runEntry(entry, runs))
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         console.error(`ablate: entry ${entry.id} errored: ${message}`)

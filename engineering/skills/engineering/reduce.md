@@ -9,14 +9,10 @@ is to optimize a thing that should not exist."
 
 ## Input
 
-Accept any of:
-
-- a **goal** ("ship X") — draft a first-pass task list yourself before optimizing it,
-- an **existing plan** already in the conversation, or
-- a **path to a plan/spec file** — read it.
-
-Normalize the input into a numbered task list and echo it back so we agree on the
-starting point before touching it.
+Accept a **goal** ("ship X" — draft a first-pass task list yourself before
+optimizing it), an **existing plan** already in the conversation, or a **path
+to a plan/spec file** (read it). Normalize the input into a numbered task list
+and echo it back so we agree on the starting point before touching it.
 
 ## Two-provider debate
 
@@ -47,18 +43,17 @@ single-provider pass, and continue.
 
 ## The five steps, in order
 
-Run the steps strictly in order — the order is the point. Never optimize,
-accelerate, or automate a task you have not first tried to delete.
+Run the steps strictly in order — never optimize, accelerate, or automate a
+task you have not first tried to delete.
 
 ### Step 1 — Question the requirements ⟨GATE · debate⟩
 
 For each requirement behind the plan:
 
-- **Make it less dumb.** Every requirement is dumb to some degree, no matter how
-  smart the person who set it. Start here, or you get a perfect answer to the
-  wrong question.
-- **Attribute it to a named person, not a department.** A requirement no one will
-  put their name to is a requirement to cut.
+- **Make it less dumb** — question it regardless of who set it, or you get a
+  perfect answer to the wrong question.
+- **Attribute it to a named person, not a department.** One no one will put
+  their name to is a requirement to cut.
 - Ask what actually breaks if it disappears, and what it is really for.
 
 Debate it with the partner, then present the questioned requirements with your
@@ -67,13 +62,10 @@ my sign-off before continuing.**
 
 ### Step 2 — Delete the task ⟨GATE · debate⟩
 
-For every task, part, or process step that survived Step 1, try to **delete it
-entirely** — not soften it, delete it.
-
-- If you are not later forced to add back **at least 10%** of what you deleted,
-  you did not delete enough — go back and cut more.
-- Leaving too much in is the common failure: people feel they have succeeded if
-  nothing was added back, when really they were just over-conservative.
+For every task, part, or process step that survived Step 1, **delete it
+entirely** — not soften it, delete it. If you are not later forced to add back
+**at least 10%** of what you deleted, you did not delete enough — go back and
+cut more.
 
 Debate it with the partner — deletion is where the two providers most often
 disagree, so make the partner argue for cutting more *and* for what must stay.
@@ -83,22 +75,20 @@ add back, as a list. **Stop and get my sign-off before continuing.**
 ### Step 3 — Simplify / optimize ⟨auto⟩
 
 Only on the tasks that survived deletion, simplify and optimize. Apply the
-changes and note each one — no gate. Deletion in Step 2 already guarded against
-the cardinal mistake of optimizing something that should not exist.
+changes and note each one — no gate.
 
 ### Step 4 — Accelerate ⟨auto⟩
 
-Speed up each surviving, simplified task. Anything can be done faster than you
-think — but only now that it has earned its place.
+Speed up each surviving, simplified task — only now that it has earned its
+place.
 
 ### Step 5 — Automate ⟨auto⟩
 
 Last, automate the surviving steps. Never automate before deleting and
 simplifying, or you automate waste.
 
-Run one partner pass over the Step 3–5 output to catch simplifications,
-accelerations, or automations either provider missed, then fold its accepted
-points in.
+Run one partner pass over the Step 3–5 output to catch anything either
+provider missed, then fold its accepted points in.
 
 ## Final review ⟨GATE⟩
 

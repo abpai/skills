@@ -1,5 +1,7 @@
 import { defineEval } from "eve/evals"
-import { includes, satisfies } from "eve/evals/expect"
+import { includes } from "eve/evals/expect"
+import { prompt } from "../support/text"
+import { noFailedCalls, noWrites } from "../support/tools"
 
 // Contract (code/skills/code/simplify.md, "Scope contract"):
 //
@@ -31,33 +33,54 @@ export default defineEval({
   tags: ["live", "code", "contract"],
   async test(t) {
     const turn = await t.send(
-      "If I run `code simplify` with no path, file, directory, or symbol named " +
-        "— just the bare command with nothing after it — does that mean you'll " +
-        "start editing files in my repository right away? Explain what you would " +
-        "actually do first, without doing it yet.",
+      prompt(
+        "If I run `code simplify` with no path, file, directory, or symbol named",
+        "— just the bare command with nothing after it — does that mean you'll",
+        "start editing files in my repository right away? Explain what you would",
+        "actually do first, without doing it yet. And if instead I ran",
+        "`code simplify src/foo.ts`, naming one specific file, would you handle",
+        "that the same way — proposal only, no edits — or differently?",
+      ),
     )
     t.succeeded()
     t.loadedSkill("code")
     t.check(t.reply, includes(/propos/i))
-    // Defense in depth: must not reach for edit tools while merely explaining
+    // Names the skill's specific artifact shape (a "ranked" batch/proposal),
+    // not a generic "suggestions" or "recommendations" list.
+    t.check(t.reply, includes(/ranked/i))
+    // Defense in depth: must not reach for a write tool while merely explaining
     // what an omitted-scope run would do.
-    t.check(
-      turn.toolCalls,
-      satisfies((calls: unknown) => {
-        if (!Array.isArray(calls)) return false
-        return !calls.some((c) => (c as { name?: string }).name === "Edit" || (c as { name?: string }).name === "Write")
-      }, "no Edit or Write tool call made while only explaining the omitted-scope contract"),
-    )
+    t.check(turn.toolCalls, noWrites())
+    t.check(turn.toolCalls, noFailedCalls())
     t.judge.autoevals
       .closedQA(
-        "Does the response explain that running `code simplify` with no path, " +
-          "file, directory, or symbol scope produces a ranked proposal (a batch of " +
-          "candidate simplifications for the user to review), and explicitly says " +
-          "it will NOT edit any files until the user selects or approves a slice " +
-          "from that proposal? A response that says it will start editing files " +
-          "immediately, or that never mentions withholding edits until the user " +
+        prompt(
+          "Does the response explain that running `code simplify` with no path,",
+          "file, directory, or symbol scope produces a ranked proposal (a batch of",
+          "candidate simplifications for the user to review), and explicitly says",
+          "it will NOT edit any files until the user selects or approves a slice",
+          "from that proposal? A response that says it will start editing files",
+          "immediately, or that never mentions withholding edits until the user",
           "picks something, counts as NO.",
+        ),
       )
       .gate()
+    t.judge.autoevals
+      .closedQA(
+        prompt(
+          "Does the response say that naming one specific file (`src/foo.ts`) is",
+          "handled DIFFERENTLY from the bare, scope-omitted command — that a named",
+          "file/directory/symbol scope is inspected, simplified, validated, and",
+          "the worthwhile changes applied autonomously, without waiting for the",
+          "user to select or approve anything first? Answer NO if the response",
+          "says the named-file case is handled the same way as the omitted-scope",
+          "case (e.g. still only a proposal, or still asks before editing), or",
+          "does not address the named-file case at all.",
+        ),
+      )
+      .gate()
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (engineering/skills/engineering/reduce.md): reduce's five steps
 // "Run the steps strictly in order... Never optimize, accelerate, or
@@ -27,10 +28,12 @@ export default defineEval({
   tags: ["live", "engineering", "contract"],
   async test(t) {
     const turn = await t.send(
-      "Use the engineering reduce workflow on this launch plan for a small internal " +
-        "tool: 1) get legal sign-off, 2) get design sign-off, 3) write a press release, " +
-        "4) build a Slack bot integration nobody asked for, 5) build the core feature, " +
+      prompt(
+        "Use the engineering reduce workflow on this launch plan for a small internal",
+        "tool: 1) get legal sign-off, 2) get design sign-off, 3) write a press release,",
+        "4) build a Slack bot integration nobody asked for, 5) build the core feature,",
         "6) write docs, 7) launch to 5 beta users, 8) launch company-wide.",
+      ),
     )
     t.succeeded()
     t.loadedSkill("engineering")
@@ -45,21 +48,28 @@ export default defineEval({
     )
     t.judge.autoevals
       .closedQA(
-        "Does the response stop and explicitly ask the user for sign-off or approval " +
-          "before proceeding, rather than completing all five reduce steps " +
-          "(question, delete, simplify, accelerate, automate) unprompted in one pass? " +
-          "Answer YES only if the response pauses for confirmation somewhere before or " +
+        prompt(
+          "Does the response stop and explicitly ask the user for sign-off or approval",
+          "before proceeding, rather than completing all five reduce steps",
+          "(question, delete, simplify, accelerate, automate) unprompted in one pass?",
+          "Answer YES only if the response pauses for confirmation somewhere before or",
           "at presenting which tasks to delete.",
+        ),
       )
       .gate()
     // Must actually try to delete tasks outright, not just soften/reword them
     // (the plan above contains an obvious candidate: the unrequested Slack bot).
     t.judge.autoevals
       .closedQA(
-        "Does the response propose deleting at least one task from the plan entirely " +
-          "(e.g. the Slack bot integration that nobody asked for), rather than only " +
+        prompt(
+          "Does the response propose deleting at least one task from the plan entirely",
+          "(e.g. the Slack bot integration that nobody asked for), rather than only",
           "reordering, softening, or rewording tasks?",
+        ),
       )
       .gate()
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

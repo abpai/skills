@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { satisfies } from "eve/evals/expect"
+import { prompt } from "../support/text"
 
 // Contract (engineering/skills/engineering/complexity-report.md:8-9, "Create
 // an evidence-ranked report... Default to read-only: do not modify source
@@ -25,10 +26,12 @@ export default defineEval({
   tags: ["live", "engineering", "contract"],
   async test(t) {
     const turn = await t.send(
-      "Run the engineering complexity-report workflow on this: our `getUserFeed(userId)` " +
-        "function loads all 50,000 posts in the table into memory, then filters in " +
-        "JavaScript for the ~20 posts belonging to that user, on every request to a page " +
+      prompt(
+        "Run the engineering complexity-report workflow on this: our `getUserFeed(userId)`",
+        "function loads all 50,000 posts in the table into memory, then filters in",
+        "JavaScript for the ~20 posts belonging to that user, on every request to a page",
         "that gets called on every app load. Give me the evidence-ranked findings.",
+      ),
     )
     t.succeeded()
     t.loadedSkill("engineering")
@@ -67,5 +70,8 @@ export default defineEval({
         return /perf-\d+/i.test(r)
       }, "reply includes a stable finding id like perf-001"),
     )
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

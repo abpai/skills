@@ -10,7 +10,7 @@ It **complements, never replaces** the existing checks:
 | Lane | Tests | Where |
 | --- | --- | --- |
 | `scripts/validate-skills.sh` | structure, packaging, versions, wrapper parity | always, blocking |
-| **this lane** | portable *behavioral contracts* under a real model | non-blocking |
+| **this lane** | portable *behavioral contracts* under a real model | opt-in, non-blocking |
 | Claude/Codex dogfood | host-specific behavior (`disable-model-invocation`, `$ARGUMENTS`, slash/`$` menus, tool/permission semantics) | manual |
 
 Eve runs skills inside **Eve's** agent harness, not Claude Code or Codex, so it
@@ -50,7 +50,6 @@ evals that load it.
 
 ```bash
 bun install
-bun run prepare-skills          # generate agent/skills/ from canonical repo sources
 bun run typecheck               # eval files vs real Eve types
 bun run list                    # discover evals
 bun run eval:smoke              # boot proof under mockModel — no API key needed
@@ -58,16 +57,149 @@ set -a; . ./.env.local; set +a  # loads OPENAI_API_KEY (gitignored)
 bun run eval:live               # live behavioral evals against gpt-5.6-luna
 ```
 
+Every `eval*` script re-runs `prepare-skills` first (~50ms), so an eval always
+grades the skill sources as they are on disk right now. Edit a `SKILL.md` and
+re-run — there is no stale-copy step to remember. `bun run prepare-skills` on
+its own is still there for inspecting the materialized tree.
+
+`ablate` is the exception: it prepares a *deliberately mutated* tree, so it
+calls the `eve` binary directly rather than going through these scripts.
+
+### Choosing the model
+
+The provider follows whichever key is present: `OPENAI_API_KEY` selects
+`gpt-5.6-luna`, `ANTHROPIC_API_KEY` selects `claude-sonnet-5`, and no key at all
+selects the deterministic `mockModel`. Set `EVE_EVAL_PROVIDER=openai|anthropic`
+to pick when both keys are present, and `EVE_EVAL_MODEL` to override the model
+id for the selected provider.
+
+Claude is the more expensive subject model, so it is built for **deliberate
+one-off verification runs**, not for every PR:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+bun run eval:live:claude                      # whole live suite on claude-sonnet-5
+bun run eval:live:claude contracts/harness-d7-safety-cap   # or one contract
+EVE_EVAL_MODEL=claude-opus-5 bun run eval:live:claude      # a different Claude
+```
+
+Reach for a Claude run when a contract's wording changes, before trusting a
+trim, or when a result looks model-specific.
+
+## CI: opt-in only
+
+`harness-smoke` runs on every PR. It needs no secrets, spends nothing, and
+catches harness rot. The live lane costs real tokens, so it **never** runs just
+because a PR was opened. Ask for it one of two ways:
+
+```bash
+# Manual, any branch, any provider, optionally a subset
+gh workflow run eve-evals.yml --ref <branch>
+gh workflow run eve-evals.yml --ref <branch> -f provider=anthropic
+gh workflow run eve-evals.yml --ref <branch> -f filter=contracts/harness-d7-safety-cap
+```
+
+Or add the **`run-evals`** label to a same-repo PR. That suits a stack squashed
+into one PR and ready for a real check.
+
+Fork and Dependabot PRs can never reach the live job: GitHub withholds secrets
+from them, the label path requires a same-repo head, and the workflow uses
+`pull_request`, never `pull_request_target` with a contributor checkout.
+
+A missing key fails the run rather than skipping it. That distinction is not
+theoretical — `OPENAI_API_KEY` was absent for this repo's first 22 stacked PRs,
+and every one of them reported a *passing* `live-evals` check having run nothing.
+A filtered run skips the coverage assertion, since running a subset is the point.
+
+A misconfiguration throws rather than falling back — `EVE_EVAL_PROVIDER` naming
+a provider whose key is missing, or an unrecognized provider name. Downgrading
+silently to the mock would let a whole live suite "pass" against a stub.
+
+**Why both providers matter.** Every plugin here ships to two products, so the
+contracts have two real targets. `gpt-5.6-luna` is a Codex model, so the
+existing lane already covers the Codex side directly — it is not a stand-in.
+What it cannot cover is Claude, which is the other half of the audience and the
+one the `disable-model-invocation` / `user-invocable` frontmatter is written
+for. Running the same contracts on both is the point.
+
+The Anthropic path is wired but has not yet been run — it needs a key.
+
 `bun run eval:smoke` boots a local Eve dev server (Docker sandbox) and grades a
 turn with no token spend — the always-on check that catches harness rot.
 `live` evals need a real model to route and load skills; without a key they are
 skipped, not failed. Subject model is `gpt-5.6-luna` via the direct OpenAI
 provider (`OPENAI_API_KEY`).
 
+### When every eval suddenly times out
+
+Eve accumulates per-run workflow state under `.eve/.workflow-data` and never
+prunes it. It grows without bound: on 2026-07-28 it reached 568 MB across 89,718
+files, and at that size every eval — including prose evals that normally finish
+in seconds — timed out past 280s. Eve warns about it first, in a line that is
+easy to read as noise:
+
+```
+[eve:dev] N active local Workflow run(s) reference development generations that
+no longer exist ... remove ".eve/.workflow-data" to discard
+```
+
+Both `.eve/.workflow-data` and `.eve/evals/` are untracked caches. Delete them
+when runs get slow; the next run rebuilds what it needs.
+
+## Outcome evals
+
+Most evals here grade prose: the model is asked what a skill would do, and the
+answer is checked for the right vocabulary and the right decision. That catches
+a trim which breaks a contract's wording. It cannot catch a skill whose advice
+is simply wrong, because nothing the skill produces is ever run.
+
+Outcome evals (`evals/outcomes/`, tagged `outcome`) close that gap for skills
+whose output is a checkable artifact. The model receives a fixture in the
+prompt, returns real work, and that work is executed against a suite it never
+saw.
+
+**Model output never executes on the host.** The obvious design seeds the
+fixture into the subject's `/workspace` with a `hidden/` directory beside it,
+but the subject has `bash`, `glob`, and `read_file` there. Eve also gives the
+eval driver no handle to that sandbox. The verifier instead starts a second
+container after the reply exists. It uses a pinned Node image, no network, a
+read-only bind mount and root filesystem, no Linux capabilities, a non-root
+user, and CPU, memory, process, output, and time limits. The container receives
+no host secrets.
+
+The hidden suite is absent from the prompt and subject sandbox. It is mounted
+read-only only after generation. Candidate code can still inspect files inside
+its verifier container at runtime, so this is an outcome check for normal model
+behavior, not a security boundary against an artifact designed to cheat.
+
+A fixture is only worth having if a careless answer fails it. `normalize-config`
+carries three planted subtleties — a falsy-but-valid `0`, an early return that
+looks redundant, and two branches differing by one operator — and the hidden
+suite targets exactly those. Validate any new fixture on four candidates before
+trusting it:
+
+| candidate | hidden tests | lines | expected |
+|---|---|---|---|
+| the unchanged input | pass | 37 → 37 | **fail** the reduction gate |
+| the careless rewrite | fail | 37 → 2 | **fail** the behavior gate |
+| a correct simplification | pass | 37 → 12 | **pass** |
+| a reply with no code block | — | — | **fail** extraction |
+
+Gate on both halves. Green tests alone reward returning the input unchanged; a
+line-count drop alone rewards deleting the hard parts.
+
+Fixture layout:
+
+```
+fixtures/<name>/input.js        # sent to the model verbatim, inside the prompt
+fixtures/<name>/hidden.test.js  # mounted read-only only after the reply exists
+```
+
 ## What is proven
 
 - **Proven (always-on / secretless):** `prepare-skills` normalizes the real
-  SKILL.md bodies, the eval files typecheck against Eve `0.26.0`, all evals
+  SKILL.md bodies, the eval files typecheck against Eve `0.26.0`, the live
+  coverage controls and outcome verifier isolation test pass, all evals
   discover, and the mock smoke eval boots the server and passes.
 - **Proven (live, `OPENAI_API_KEY`):** the original contract evals
   (`code/argument-form-equivalence`, `code/removed-command-migration`,
@@ -76,7 +208,10 @@ provider (`OPENAI_API_KEY`).
   gate; `bun run eval:live` is the whole-lane acceptance check.
 
 Eve is public preview — the version is pinned in `package.json` and the
-lockfile; bump it deliberately.
+lockfile; bump it deliberately. The verifier's Node image is pinned by digest
+in `evals/support/outcome.ts`; update it deliberately and rerun
+`bun run outcome:pull`, then `bun run test:outcome-isolation`. Verifier runs use
+`--pull never`, so image setup is separate from candidate execution.
 
 ## Ablation
 
@@ -91,12 +226,37 @@ restores the baseline `agent/skills/` in `finally`.
 | **KILLED** | an eval failed | the text is load-bearing and now regression-guarded |
 | **SURVIVED** | every eval passed, *and* the evals need the skill to pass | genuine cut candidate |
 | **UNGUARDED** | every eval passed, but they also pass with the skill omitted | the eval measures the base model — write a discriminating eval before touching the text |
+| **FLAKY** | with `--runs N`, the same build both killed and survived | no signal yet; raise `N` or treat the entry as unmeasured |
 
 ```bash
 set -a; . ./.env.local; set +a
-bun run ablate                       # whole manifest
-bun run ablate code-simplify-scope-contract   # one entry
+bun run ablate                                 # whole manifest, 1 run each
+bun run ablate --runs 3                        # vote across 3 runs — do this
+bun run ablate --runs 3 code-simplify-scope-contract   # one entry
 ```
+
+### One run is not a verdict
+
+Live grading is non-deterministic, and not marginally so. Two consecutive
+identical sweeps on 2026-07-27 disagreed on **5 of 12 entries** — a coin flip
+for roughly half the manifest. A concrete example at `--runs 3`:
+
+```
+engineering-tdd-anti-horizontal-slices
+   run 1/3: KILLED
+   run 2/3: SURVIVED
+   run 3/3: KILLED
+   → FLAKY (KILLED 2/3, SURVIVED 1/3)
+```
+
+So `--runs 3` or higher before acting on anything, and read FLAKY as "not yet
+measured" rather than a weak KILLED.
+
+**Ablation is also not the last word on a trim.** The stronger check is to make
+the edit and re-run the guarding evals: that tests the text you actually
+shipped, rather than a synthetic deletion of it. Every pack trimmed in this
+repo was validated that way, which is why the flakiness above did not lead
+anything astray.
 
 **Why UNGUARDED exists.** A passing eval does not prove the skill caused the
 behavior. On 2026-07-27 `contracts/code-simplify-proposal-no-edits` scored 4/5

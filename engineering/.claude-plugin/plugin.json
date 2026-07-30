@@ -1,6 +1,6 @@
 {
   "name": "engineering",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Engineering-practice workflows for TDD, architecture, domain vocabulary, read-only complexity reports, design stress tests, and plan simplification.",
   "author": {
     "name": "Andy Pai"

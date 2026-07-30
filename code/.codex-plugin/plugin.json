@@ -1,6 +1,6 @@
 {
   "name": "code",
-  "version": "3.1.5",
+  "version": "3.1.6",
   "description": "Four focused code workflows under /code: effort-scaled prepare-pr through push, behavior-preserving simplify with test-suite pruning, cold-start handoff, and understand with HTML plus a runnable real-code snippet.",
   "author": {
     "name": "Andy Pai"

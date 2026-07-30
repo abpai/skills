@@ -25,5 +25,8 @@ export default defineEval({
     dashed.succeeded()
     dashed.loadedSkill("code")
     t.check(dashedTurn.message, includes("understand"))
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

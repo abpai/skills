@@ -25,41 +25,19 @@ harden terminology, create a ubiquitous language, or mentions "domain model" or
 
 ## Output Format
 
-Write a `DEFINED_TERMS.md` file with this structure:
+Write `DEFINED_TERMS.md` with:
 
-```md
-# Defined Terms
+- One or more **term tables** (`Term | Definition | Aliases to avoid`).
+  Group into multiple tables with their own heading when natural clusters
+  emerge (subdomain, lifecycle, actor) — one table is fine for a single
+  cohesive domain; don't force groupings.
+- A **Relationships** list — bold term names, cardinality expressed where obvious.
+- An **Example dialogue** — 3-5 exchanges between a dev and a domain expert
+  that clarifies boundaries between related concepts by using terms precisely.
+- A **Flagged ambiguities** section calling out conflicting usage with a clear
+  recommendation.
 
-## Order lifecycle
-
-| Term        | Definition                                              | Aliases to avoid      |
-| ----------- | ------------------------------------------------------- | --------------------- |
-| **Order**   | A customer's request to purchase one or more items      | Purchase, transaction |
-| **Invoice** | A request for payment sent to a customer after delivery | Bill, payment request |
-
-## People
-
-| Term         | Definition                                  | Aliases to avoid       |
-| ------------ | ------------------------------------------- | ---------------------- |
-| **Customer** | A person or organization that places orders | Client, buyer, account |
-| **User**     | An authentication identity in the system    | Login, account         |
-
-## Relationships
-
-- An **Invoice** belongs to exactly one **Customer**
-- An **Order** produces one or more **Invoices**
-
-## Example dialogue
-
-> **Dev:** "When a **Customer** places an **Order**, do we create the **Invoice** immediately?"
-> **Domain expert:** "No — an **Invoice** is only generated once a **Fulfillment** is confirmed. A single **Order** can produce multiple **Invoices** if items ship in separate **Shipments**."
-> **Dev:** "So if a **Shipment** is cancelled before dispatch, no **Invoice** exists for it?"
-> **Domain expert:** "Exactly. The **Invoice** lifecycle is tied to the **Fulfillment**, not the **Order**."
-
-## Flagged ambiguities
-
-- "account" was used to mean both **Customer** and **User** — these are distinct concepts: a **Customer** places orders, while a **User** is an authentication identity that may or may not represent a **Customer**.
-```
+See [a full worked example](references/defined-terms-example.md).
 
 ## Rules
 
@@ -67,24 +45,7 @@ Write a `DEFINED_TERMS.md` file with this structure:
 - **Flag conflicts explicitly.** If a term is used ambiguously in the conversation, call it out in the "Flagged ambiguities" section with a clear recommendation.
 - **Only include terms relevant for domain experts.** Skip the names of modules or classes unless they have meaning in the domain language.
 - **Keep definitions tight.** One sentence max. Define what it IS, not what it does.
-- **Show relationships.** Use bold term names and express cardinality where obvious.
 - **Only include domain terms.** Skip generic programming concepts (array, function, endpoint) unless they have domain-specific meaning.
-- **Group terms into multiple tables** when natural clusters emerge (e.g. by subdomain, lifecycle, or actor). Each group gets its own heading and table. If all terms belong to a single cohesive domain, one table is fine — don't force groupings.
-- **Write an example dialogue.** A short conversation (3-5 exchanges) between a dev and a domain expert that demonstrates how the terms interact naturally. The dialogue should clarify boundaries between related concepts and show terms being used precisely.
-
-<example>
-
-## Example dialogue
-
-> **Dev:** "How do I test the **sync service** without Docker?"
-
-> **Domain expert:** "Provide the **filesystem layer** instead of the **Docker layer**. It implements the same **Sandbox service** interface but uses a local directory as the **sandbox**."
-
-> **Dev:** "So **sync-in** still creates a **bundle** and unpacks it?"
-
-> **Domain expert:** "Exactly. The **sync service** doesn't know which layer it's talking to. It calls `exec` and `copyIn` — the **filesystem layer** just runs those as local shell commands."
-
-</example>
 
 ## Re-running
 

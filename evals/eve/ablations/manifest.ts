@@ -77,9 +77,12 @@ export const ABLATIONS: readonly Ablation[] = [
     id: "code-simplify-review-passes",
     skillId: "code",
     span: { file: "simplify.md", heading: "Review passes" },
-    guardedBy: ["contracts/code-simplify-protects-load-bearing-tests"],
+    guardedBy: [
+      "contracts/code-simplify-protects-load-bearing-tests",
+      "outcomes/code-simplify-preserves-behavior",
+    ],
     hypothesis:
-      "Expected KILLED: pass #7 Test signal is the only place naming the protected test categories. Coarse span — heading granularity cuts all seven passes together, so a KILLED here confirms the section is load-bearing without isolating pass #7.",
+      "Expected KILLED: pass #7 Test signal is the only place naming the protected test categories. Coarse span — heading granularity cuts all seven passes together, so a KILLED here confirms the section is load-bearing without isolating pass #7. The outcome eval is the stronger half of this pair: the contract eval can only show the model stopped reciting the rubric, while the outcome eval shows whether code it actually simplified still behaves correctly.",
   },
   {
     id: "engineering-tdd-anti-horizontal-slices",

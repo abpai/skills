@@ -4,7 +4,7 @@ disable-model-invocation: true
 description: "Route engineering-practice workflows through one scoped /engineering command. Use grill-me to stress-test a plan, tdd for behavior-first red/green/refactor, zoom-out for orientation, improve-architecture for deeper modules, defined-terms for DDD glossaries, complexity-report for read-only complexity findings, and reduce for plan simplification."
 argument-hint: "[subcommand] [args] - e.g. tdd add retries, complexity-report src/, reduce ship onboarding"
 metadata:
-  version: "2.0.2"
+  version: "2.0.3"
 ---
 
 # Engineering Workflow Pack
@@ -34,12 +34,12 @@ replacement ran.
 
 ## Routing
 
-- Use `grill-me.md` for grill-me, plan grilling, or design stress-testing.
-- Use `tdd.md` for TDD, test-first work, or red-green-refactor loops.
-- Use `zoom-out.md` when the user wants to zoom out, map an unfamiliar code area, or go up a layer of abstraction.
-- Use `improve-architecture.md` for architecture improvement, deep modules, locality, leverage, testability, or AI-navigability.
-- Use `defined-terms.md` for extracting a DDD-style ubiquitous-language glossary from the conversation into `DEFINED_TERMS.md`, flagging ambiguities and synonyms.
-- Use `complexity-report.md` for read-only complexity and performance reports, evidence-ranked findings, stable finding IDs, proof obligations, and next-turn implementation guidance.
-- Use `reduce.md` to optimize a plan, goal, or plan file with a gated five-step first-principles sequence.
+- `grill-me.md` — stress-test a plan or design.
+- `tdd.md` — behavior-first, red/green/refactor work.
+- `zoom-out.md` — orient in an unfamiliar code area.
+- `improve-architecture.md` — deepen shallow modules.
+- `defined-terms.md` — build a DDD glossary from the conversation.
+- `complexity-report.md` — read-only complexity/performance report.
+- `reduce.md` — gated five-step plan simplification.
 
 When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.

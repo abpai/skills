@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { notLoadedSkill } from "../support/loaded"
+import { prompt } from "../support/text"
 
 // Positive: compress a system to essential primitives (distill), not a line-by-line tour.
 export default defineEval({
@@ -7,10 +8,15 @@ export default defineEval({
   tags: ["live", "routing", "distill"],
   async test(t) {
     const turn = await t.send(
-      "Compress our payment-orchestration service down to the essential primitives " +
+      prompt(
+        "Compress our payment-orchestration service down to the essential primitives",
         "I need to hold in my head — not a file-by-file walkthrough.",
+      ),
     )
     t.loadedSkill("distill")
     t.check(turn.toolCalls, notLoadedSkill("lateral-thinking"))
+    // Every tool call resolved. Three evals silently tolerated failed
+    // load_skill calls before this gate existed.
+    t.noFailedActions()
   },
 })

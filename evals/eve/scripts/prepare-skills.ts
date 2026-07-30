@@ -174,8 +174,20 @@ function materialize(): void {
     throw new Error(`prepare-skills: --omit "${omitId}" is not in the SKILLS map`)
   }
 
+  // Stage into a scratch directory, then sync only what actually differs.
+  //
+  // This used to rm -rf the destination and copy everything back. Every eval
+  // script now runs prepare-skills first, and Eve's dev server watches
+  // `agent/skills/` — so an unconditional rewrite announced 41 changed files on
+  // every run and triggered a full "rebuilding authored artifacts" pass, even
+  // when nothing had changed. With a long-lived dev server that rebuild lands
+  // underneath an in-flight turn.
+  //
+  // Byte-comparing before writing makes a no-op prepare genuinely silent.
   const dest = join(eveRoot, "agent", "skills")
-  if (existsSync(dest)) rmSync(dest, { recursive: true, force: true })
+  const staging = join(eveRoot, "agent", ".skills-staging")
+  if (existsSync(staging)) rmSync(staging, { recursive: true, force: true })
+  mkdirSync(staging, { recursive: true })
   mkdirSync(dest, { recursive: true })
 
   let count = 0
@@ -194,7 +206,7 @@ function materialize(): void {
     const description = extractDescription(canonical)
     if (!description) throw new Error(`prepare-skills: empty description for ${id}`)
 
-    const skillDest = join(dest, id)
+    const skillDest = join(staging, id)
     mkdirSync(skillDest, { recursive: true })
     for (const entry of readdirSync(src, { withFileTypes: true })) {
       if (entry.name === "SKILL.md") continue
@@ -267,8 +279,73 @@ function materialize(): void {
     }
   }
 
+  const changed = syncTree(staging, dest)
+  rmSync(staging, { recursive: true, force: true })
+
   const mode = ablateId ? ` (ablate ${ablateId})` : omitId ? ` (omit ${omitId})` : ""
-  console.log(`prepare-skills: ${count} skill package(s) into agent/skills/${mode}`)
+  const delta = changed === 0 ? "unchanged" : `${changed} file(s) updated`
+  console.log(`prepare-skills: ${count} skill package(s) into agent/skills/${mode} — ${delta}`)
+}
+
+/** Relative paths of every file under a directory. */
+function walk(root: string, prefix = ""): string[] {
+  const out: string[] = []
+  for (const entry of readdirSync(join(root, prefix), { withFileTypes: true })) {
+    const rel = prefix === "" ? entry.name : join(prefix, entry.name)
+    if (entry.isDirectory()) out.push(...walk(root, rel))
+    else out.push(rel)
+  }
+  return out
+}
+
+/**
+ * Make `dest` match `src`, touching only what differs.
+ *
+ * Returns the number of files written or removed, so a no-op prepare can say so
+ * and a real change is still visible in the log.
+ */
+function syncTree(src: string, dest: string): number {
+  const wanted = new Set(walk(src))
+  const present = existsSync(dest) ? walk(dest) : []
+  let changed = 0
+
+  for (const rel of present) {
+    if (wanted.has(rel)) continue
+    rmSync(join(dest, rel), { force: true })
+    changed++
+  }
+
+  for (const rel of wanted) {
+    const from = join(src, rel)
+    const to = join(dest, rel)
+    const next = readFileSync(from)
+    if (existsSync(to) && readFileSync(to).equals(next)) continue
+    mkdirSync(dirname(to), { recursive: true })
+    writeFileSync(to, next)
+    changed++
+  }
+
+  // Removing files leaves their directories behind. That matters most for
+  // `--omit`: without this the omitted skill's directory survives as an empty
+  // husk, so the skill is not actually absent and every retirement ablation
+  // measures the wrong thing.
+  changed += pruneEmptyDirs(dest)
+  return changed
+}
+
+/** Remove directories left empty, depth-first. Returns how many went. */
+function pruneEmptyDirs(root: string): number {
+  let removed = 0
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const child = join(root, entry.name)
+    removed += pruneEmptyDirs(child)
+    if (readdirSync(child).length === 0) {
+      rmSync(child, { recursive: true, force: true })
+      removed++
+    }
+  }
+  return removed
 }
 
 if (import.meta.main) {
