@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.3.3] - 2026-07-27
+
+### Trim SKILL.md, move htm escaping/entity guidance to a reference
+
+- Moved the escaped-backtick and HTML-entity guidance into
+  `references/htm-authoring.md`, loaded from the workflow step that writes the
+  `<script type="module">` block, instead of living inline in every load.
+- Condensed Tech Stack (base.html already shows the stack), Principles (trimmed
+  from 7 bullets to the 3 load-bearing ones, including the innerHTML
+  guardrail), and the closing Before Delivering checklist (softened
+  restatements of the Gist/jargon/density rules into one pointer, kept the
+  three checks that add new information).
+- Removed the standalone Output section and its trailing summary line; both
+  restated the Workflow step 7 and done-criteria text.
+- SKILL.md: 155 -> 102 lines.
+
 ## [1.3.1] - 2026-07-13
 
 ### Render symbols instead of HTML entity spellings
