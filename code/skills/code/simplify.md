@@ -60,9 +60,9 @@ only when that evidence is genuinely ambiguous.
    low-signal or truncated scan is evidence to narrow or stop scanning, not a
    reason to inspect every lead.
 
-   The scanner accepts either a file or directory. Use repeatable
-   `--exclude-glob` flags to keep tests, fixtures, generated examples, or other
-   known-noise files out of a bounded directory scan.
+   The scanner accepts a file or directory; use repeatable `--exclude-glob`
+   flags to keep tests, fixtures, generated examples, or other known-noise
+   files out of a bounded directory scan.
 
    Read `references/clean-code-typescript-taxonomy.md` only when scanner leads or
    the target language make those principles relevant.
