@@ -112,6 +112,12 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Materialize skills from canonical sources
         run: bun run prepare-skills
+      # The outcome verifier runs docker with `--pull never` for hermeticity,
+      # so the pinned image must be present before any eval needs it. Without
+      # this step every outcome eval fails its verifier gate with
+      # "No such image" — measured on the 2026-07-30 dispatch run.
+      - name: Pull the outcome verifier image
+        run: bun run outcome:pull
       - name: Run live behavioral evals
         env:
           # Subject model per provider (agent/agent.ts); the judge shares the
