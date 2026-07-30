@@ -10,10 +10,9 @@ Use this workflow when the user wants to onboard a repo into an autonomous
 runner, emit an `autonomous-ready` manifest, or check what a repo still needs
 before it can be driven unattended.
 
-The manifest schema and its field provenance are defined in `./INTERFACES.md`
-in installed skills. In the source checkout, the same contract is mirrored at
-`../../INTERFACES.md`. This module emits that contract; the consumer that reads
-it is built on the factory side — do not assume a reader exists yet.
+The manifest schema and its field provenance are defined in `./INTERFACES.md`.
+This module emits that contract; the consumer that reads it is built on the
+factory side — do not assume a reader exists yet.
 
 ## Process
 

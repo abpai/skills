@@ -13,7 +13,7 @@ Everything else should be enforcement (tests, lints, CI gates, validation script
 
 ## Use when
 
-Use this workflow when the user asks to prepare a repo for agent-driven execution, slim `AGENTS.md`, create or restructure repo docs, define what a good SPEC.md looks like for the project, convert prose guidance into enforcement, improve agent navigation, build domain maps, or prepare a repo for Harness Doctor scanning.
+Use this workflow to prepare a repo for agent-driven execution, slim `AGENTS.md`, create or restructure repo docs, define what a good SPEC.md looks like, convert prose guidance into enforcement, improve agent navigation, build domain maps, or prepare a repo for Harness Doctor scanning.
 
 Do not use this workflow for per-task intake (interviewing a human to produce a SPEC.md happens outside the repo, in the intake workflow), eval registries, long-lived execution plans, committed agent scratchpads, or vendor-doc mirrors.
 
@@ -137,7 +137,7 @@ Give every durable guidance item an explicit verdict with a reason and a destina
 
 A Move destination may be a planned core file from the Target structure (created in later steps). A Move targeting an earned surface that does not yet exist is itself demonstrated-need evidence — record it in the verdict's reason; if it is a single observation, the item stays in PR/issue context instead.
 
-**Stale vs. reformat triage (pre-existing content).** When an item is malformed against the current shape — a todo spec missing required sections, a doc in a retired layout — decide *why* before assigning a verdict. If its substance is obsolete (it references a shipped or abandoned milestone, a deleted code path, a dead branch), it is **Delete**, not a reformat: do not spend effort restructuring content that should not exist. If the substance is still live but only the shape is wrong, it is **Reformat** — a Keep whose destination is the same surface in the current structure, preserving the substance and fixing only the form. A malformed-but-relevant file is not automatically a reshape task; confirm the content still describes reality first, because a tidy reformat of a stale spec just launders obsolete guidance into a trusted-looking surface.
+**Stale vs. reformat triage (pre-existing content).** When an item is malformed against the current shape — a todo spec missing required sections, a doc in a retired layout — decide *why* before assigning a verdict: obsolete substance (a shipped/abandoned milestone, a deleted code path, a dead branch) is **Delete**, not a reformat — don't restructure content that should not exist. Substance still live but shape wrong is **Reformat**, a Keep whose destination is the same surface in the current structure. Confirm the content still describes reality first; a tidy reformat of a stale spec just launders obsolete guidance into a trusted-looking surface.
 
 Record verdicts as a table (`item | verdict | reason | destination`) with concrete file paths. Vague areas ("docs", "auth code") are banned when a concrete path exists.
 
@@ -151,67 +151,7 @@ If the target surface does not exist (no test runner, no lint config, no CI), do
 
 ### 4. Author `docs/SPEC_CONTRACT.md`
 
-This file defines what a good SPEC.md looks like for this repo, so per-task intake (which happens outside the repo) produces specs the repo can verify. It has two parts: a generic quality bar and a project-specific proof menu **derived from the validation surfaces inventoried in step 1** — never freeform.
-
-```md
-# Spec contract
-
-Specs executed against this repo must meet this bar. A spec that promises a
-proof not listed in the proof menu is invalid — extend the menu (and the
-validation surface behind it) first.
-
-## Quality bar
-
-A spec is ready when it:
-
-- Is self-contained: an agent with no prior context can execute it.
-- Names a goal as a user-visible outcome, not an implementation.
-- Lists acceptance criteria that each map to a proof in the menu below.
-- Names the files/interfaces it expects to touch, when known.
-- States what is out of scope.
-- States risk and taste constraints the agent must not trade away.
-- Ends with an end-to-end verification step drawn from the proof menu.
-
-## Proof menu
-
-Each command belongs to a lane: the **fast lane** (deterministic, runs in
-seconds) is the inner loop an agent runs after every edit; the **full lane**
-(slow unit, integration, e2e, browser) is the gate for done. Done = the full
-lane green; a green fast lane never certifies done. The **Sufficiency** column
-marks whether a passing run is sufficient evidence (`auto`) or the change still
-needs human sign-off (`human-gate`) — a false green on a `human-gate` row would
-merge broken work, the failure that is worse than a false red.
-
-Keep the table in the machine-readable proof-row shape (`./INTERFACES.md` in
-installed skills, mirrored at `../../INTERFACES.md` in the source checkout) so
-tooling can parse it: fixed columns in the order below, the **Lane** cell holding
-only `fast` or `full`, and the **Validation command** cell holding only
-backtick-wrapped command IDs from the repo's signals menu — put a proof artifact
-like a screenshot diff in the **Proof artifact** column, never as prose in the
-command cell. For package scripts, use the script ID (`test`, `ui:build`) rather
-than the shell invocation (`bun test`, `pnpm run ui:build`) so Harness Doctor can
-resolve the row deterministically.
-
-| Change type | Lane | Validation command | Proof artifact | Sufficiency |
-| --- | --- | --- | --- | --- |
-| <area> logic | full | `<script-or-target-id>` | passing run output | auto |
-| <area> UI | full | `<script-or-target-id>` | screenshot pair | human-gate |
-| API surface | full | `<contract-script-id>` | passing run + response trace | auto |
-| Cross-cutting | full | `<full-check-script-id>` | CI-green equivalent locally | auto |
-
-## Escalation boundaries
-
-Agents stop and surface instead of guessing when:
-
-- An acceptance criterion cannot be proven with the menu above.
-- The change requires an irreversible action (deploy, migration apply, data deletion).
-- The spec's scope and the code's reality conflict.
-
-Prefer reversibility by construction — idempotent migrations, flag-gated rollout,
-transactional changes — so the agent can proceed and roll back cleanly; escalate
-only the irreducibly irreversible. A documented rollback path is the fallback,
-not the first choice.
-```
+This file defines what a good SPEC.md looks like for this repo, so per-task intake (which happens outside the repo) produces specs the repo can verify. It has two parts: a generic quality bar and a project-specific proof menu **derived from the validation surfaces inventoried in step 1** — never freeform. Use `./templates/SPEC_CONTRACT.md` as the starting shape: quality bar, the proof menu in the machine-readable proof-row shape (`./INTERFACES.md`, fixed columns, `Lane` ∈ fast/full, command IDs as backtick spans, artifacts never inlined in the command cell), and escalation boundaries that prefer reversibility by construction over documentation-only rollback.
 
 Fill the proof menu with the repo's real commands. Every row must reference a command that exists and runs. Keep the menu compact — roughly ten rows, grouping related areas rather than enumerating every package. If the repo has no validation surfaces at all, do not invent commands: write the quality bar, mark the proof menu `provisional — validation not ready` with the gaps listed, and surface the infrastructure decision to the user; the operating model's runnable-validation-path rule is the target state this gap report works toward. Monorepos keep a single root `SPEC_CONTRACT.md`; the change-type column carries the package/workspace dimension (e.g. `<pkg> logic | pnpm --filter <pkg> test | …`). Route to this file from `AGENTS.md`.
 
@@ -225,36 +165,7 @@ Fill the proof menu with the repo's real commands. Every row must reference a co
 
 Keep it tiny: point outward, never teach the whole repo. Budgets (enforced by the `harness-doctor` scanner, which owns the numbers): the root entry point stays under 150 non-blank lines, and the combined size of all `AGENTS.md` files stays under 32 KiB or Codex silently drops the rest.
 
-```md
-# Agent guide
-
-Code, tests, and runtime behavior are the source of truth. Docs route you to the right code and validation path.
-
-## Operating model
-
-- Specs come from intake against `docs/SPEC_CONTRACT.md`; you own implementation through end-to-end proof.
-- Identify the validation command before editing. Escalate per the spec contract; otherwise execute end-to-end.
-
-## Where to look
-
-- Spec contract: `docs/SPEC_CONTRACT.md`
-- Index: `docs/INDEX.md` · Architecture: `docs/ARCHITECTURE.md`
-- Commands: `docs/engineering/commands.md` · Validation: `docs/engineering/testing.md`
-
-## Rules
-
-- If a rule can be tested, linted, or scripted, enforce it there — do not add it here.
-- Do not duplicate product truth in docs.
-- If you struggle to find the right code, say so in your handoff (that is a harness gap).
-
-## Done means
-
-- The full validation lane passed (not just the fast lane), or the failure is explained.
-- End-to-end proof produced per the spec.
-- Durable knowledge landed on the smallest relevant surface; deferred work in `docs/todos` only if real and actionable.
-```
-
-Adapt sections to the repo (add earned-surface links only when those surfaces exist). Make `CLAUDE.md` a shim whose content is the single import line `@AGENTS.md` (Claude Code's import syntax — a prose "see AGENTS.md" does not reliably load the file). Claude Code reads only `CLAUDE.md`, other agents read `AGENTS.md`; the shim keeps one source of truth.
+Use `./templates/AGENTS.md` as the starting shape: operating model, where-to-look routes, the "enforce it, don't add prose" rule, and a done-means section binding to the full lane. Adapt sections to the repo (add earned-surface links only when those surfaces exist). Make `CLAUDE.md` a shim whose content is the single import line `@AGENTS.md` (Claude Code's import syntax — a prose "see AGENTS.md" does not reliably load the file). Claude Code reads only `CLAUDE.md`, other agents read `AGENTS.md`; the shim keeps one source of truth.
 
 If `docs/BEHAVIOR_INVENTORY.md` or `docs/BEHAVIOR_LEDGER.md` exists, add a tiny
 route to the router, not a long explanation:
@@ -287,7 +198,7 @@ A nested `AGENTS.md` (nearest-file precedence) is the standard vehicle for subtr
 - **Rules** — the subtree has materially different commands, invariants, validation, or ownership. Justification test: would putting this rule at root bloat the universal map or mislead agents working elsewhere? If yes, nest it; if no, move the detail to a narrower doc or delete it.
 - **Grounding** — the subtree implements a coherent feature or subsystem whose intent or topology is not readable from the code (gated/AB-tested features, cross-layer data flow, a user-visible surface). Shape: what this implements → why it exists → what it looks like → data model → key files (file → role), every line passing the grounding gate. Create it when the feature ships — waiting for two misroutes here just taxes every future agent.
 
-A nested file names the local boundary, points to local docs/tests, never restates generic repo rules, gets a sibling `CLAUDE.md` shim (`@AGENTS.md`) exactly like the root, and counts against the combined byte budget. A grounding file may exceed the root router's length; the binding limits are the gates and the byte chain, not symmetry with root. Note: tool compliance with nested files is uneven (documented Copilot bugs), so keep root routes to critical subtree rules.
+A nested file names the local boundary, points to local docs/tests, never restates generic repo rules, gets a sibling `CLAUDE.md` shim (`@AGENTS.md`) like the root, and counts against the combined byte budget — the binding limits are the gates and byte chain, not symmetry with root. Tool compliance with nested files is uneven (documented Copilot bugs), so keep root routes to critical subtree rules.
 
 ### 7. Create `docs/INDEX.md`
 
