@@ -7,7 +7,12 @@ import { prompt } from "../support/text"
 // apply — it must SAY SO instead of guessing or fabricating a report.
 export default defineEval({
   description: "hexagon-audit declines cleanly when packages/ + adapters/ are absent.",
-  tags: ["live", "hexagon-audit", "contract"],
+  // QUARANTINED 2026-07-30: the non-applicability gate is a phrasing regex,
+  // and the model periodically declines in words the regex does not cover
+  // (failed CI run 30513482849 with the skill text unchanged). Still an
+  // ablation detector via ablations/manifest.ts, which runs it by id. Run
+  // manually: bunx eve eval contracts/hexagon-not-applicable
+  tags: ["quarantine", "hexagon-audit", "contract"],
   async test(t) {
     await t.send(
       prompt(

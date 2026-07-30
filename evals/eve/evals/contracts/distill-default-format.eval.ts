@@ -16,7 +16,13 @@ import { prompt } from "../support/text"
 // produces the Conceptual Map template directly, not a clarifying question.
 export default defineEval({
   description: "distill defaults to the Conceptual Map format for a codebase input.",
-  tags: ["live", "distill", "contract"],
+  // QUARANTINED 2026-07-30: the template-headings gate fails on run-to-run
+  // model variance even after the discard-heading match was relaxed to
+  // content (failed both CI runs on 2026-07-30 while passing locally). Not
+  // back in the live lane until the gate votes across repeated runs — see
+  // "Quarantined evals" in the README. Run manually:
+  //   bunx eve eval contracts/distill-default-format
+  tags: ["quarantine", "distill", "contract"],
   async test(t) {
     await t.send(
       prompt(

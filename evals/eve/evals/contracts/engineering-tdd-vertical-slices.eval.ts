@@ -25,7 +25,12 @@ import { prompt } from "../support/text"
 // batching all three tests before any implementation (horizontal).
 export default defineEval({
   description: "engineering's tdd module interleaves test-then-implementation per behavior instead of batching all tests first.",
-  tags: ["live", "engineering", "contract"],
+  // QUARANTINED 2026-07-30: two gates flip on narration style run to run —
+  // the judge (closedQA) and the "narrates at least two RED/GREEN cycles"
+  // regex (both failed CI run 30513482849, passed run 30509092640, skill text
+  // unchanged). Still an ablation detector via ablations/manifest.ts. Run
+  // manually: bunx eve eval contracts/engineering-tdd-vertical-slices
+  tags: ["quarantine", "engineering", "contract"],
   async test(t) {
     const turn = await t.send(
       prompt(

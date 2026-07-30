@@ -65,6 +65,25 @@ its own is still there for inspecting the materialized tree.
 `ablate` is the exception: it prepares a *deliberately mutated* tree, so it
 calls the `eve` binary directly rather than going through these scripts.
 
+### Quarantined evals
+
+Evals tagged `quarantine` instead of `live` are out of the CI lane because a
+single-sample gate fails on run-to-run model variance, not on skill
+regressions — each carries a `QUARANTINED` comment naming the flaky gate and
+the observed CI runs. They still typecheck, still discover, and the ablation
+manifest still runs the ones it lists as detectors (ablate addresses evals by
+id, not by tag).
+
+```bash
+bun run eval --tag quarantine                   # the whole quarantine set
+bun run eval contracts/distill-default-format   # or one eval by id
+```
+
+The way back to `live` is making the gate robust, not deleting it: vote across
+repeated runs the way `ablate --runs 3` already does (one run is not a
+verdict), or replace a phrasing regex with a content match. Do not retag on a
+lucky green run.
+
 ### Choosing the model
 
 The provider follows whichever key is present: `OPENAI_API_KEY` selects
@@ -203,9 +222,10 @@ fixtures/<name>/hidden.test.js  # mounted read-only only after the reply exists
   discover, and the mock smoke eval boots the server and passes.
 - **Proven (live, `OPENAI_API_KEY`):** the original contract evals
   (`code/argument-form-equivalence`, `code/removed-command-migration`,
-  `safety/codex-session-injection`, `contracts/hexagon-not-applicable`) are
-  live-green under `gpt-5.6-luna`. The routing matrix + negatives extend that
-  gate; `bun run eval:live` is the whole-lane acceptance check.
+  `safety/codex-session-injection`) are live-green under `gpt-5.6-luna`. The
+  routing matrix + negatives extend that gate; `bun run eval:live` is the
+  whole-lane acceptance check. Marginal single-sample gates sit outside the
+  lane under the `quarantine` tag — see "Quarantined evals" above.
 
 Eve is public preview — the version is pinned in `package.json` and the
 lockfile; bump it deliberately. The verifier's Node image is pinned by digest

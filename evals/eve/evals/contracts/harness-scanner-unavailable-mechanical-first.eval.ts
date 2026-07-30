@@ -23,7 +23,13 @@ import { prompt } from "../support/text"
 export default defineEval({
   description:
     "harness doctor's scanner-unavailable rule survives: D5/D6 stay unreviewed and the score stays provisional when the harness-doctor CLI cannot run, even if the user offers to describe the docs structure by hand.",
-  tags: ["live", "harness", "contract"],
+  // QUARANTINED 2026-07-30: noFailedActions flakes when the subject probes for
+  // files the sandbox does not have (failed CI run 30513482849 on a read of
+  // /workspace/AGENTS.md) — the gate grades exploration, not the
+  // scanner-unavailable contract, which held in every observed failure. Still
+  // an ablation detector via ablations/manifest.ts. Run manually:
+  //   bunx eve eval contracts/harness-scanner-unavailable-mechanical-first
+  tags: ["quarantine", "harness", "contract"],
   async test(t) {
     const turn = await t.send(
       prompt(

@@ -25,7 +25,12 @@ import { prompt } from "../support/text"
 // five steps and presenting a finished, already-modified plan.
 export default defineEval({
   description: "engineering's reduce workflow stops for sign-off after questioning/deleting, before simplifying the plan.",
-  tags: ["live", "engineering", "contract"],
+  // QUARANTINED 2026-07-30: the judge (closedQA) gate flips on borderline
+  // sign-off phrasing from run to run (failed CI run 30509092640, passed
+  // others, skill text unchanged). The deterministic gates were stable.
+  // Still an ablation detector via ablations/manifest.ts. Run manually:
+  //   bunx eve eval contracts/engineering-reduce-gate-before-cutting
+  tags: ["quarantine", "engineering", "contract"],
   async test(t) {
     const turn = await t.send(
       prompt(
