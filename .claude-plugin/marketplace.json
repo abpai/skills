@@ -114,13 +114,6 @@
       "keywords": ["prose", "editing", "deslop", "humanize"]
     },
     {
-      "name": "explain-concisely",
-      "description": "Make explanations and instructions concise, action-first, and easy to scan without losing necessary nuance.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "explain-concisely" },
-      "category": "writing",
-      "keywords": ["concise", "explanation", "action-first", "plain-language", "adhd"]
-    },
-    {
       "name": "improve-prompt",
       "description": "Improve vague or underspecified prompts into sharp, reusable prompts for planning, coding, review, decision, and handoff work.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "improve-prompt" },
