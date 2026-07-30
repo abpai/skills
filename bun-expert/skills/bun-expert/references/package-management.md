@@ -23,6 +23,10 @@ bun pm migrate
 Use `bun pm migrate` when bringing an npm, Yarn, or pnpm project over to Bun's
 lockfile.
 
+`bun install` streams tarballs to disk by default, which lowers memory usage on
+large installs. If you need to debug an install regression, temporarily disable
+streaming with `BUN_FEATURE_FLAG_DISABLE_STREAMING_INSTALL=1`.
+
 ---
 
 ## Lockfiles

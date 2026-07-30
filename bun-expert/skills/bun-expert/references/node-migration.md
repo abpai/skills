@@ -77,6 +77,10 @@ Use this while migrating scripts/packages that still assume a Node runtime.
 - run: bun run build
 ```
 
+Migration is complete when the lockfile is updated, the chosen Bun commands run
+locally, CI executes the same commands, and any retained Node fallback is named
+with its reason.
+
 ---
 
 ## API Mapping Patterns
@@ -85,11 +89,11 @@ Use these as migration defaults:
 
 | Existing Node stack | Bun-first option |
 |---|---|
-| Jest/Vitest | `bun test` |
+| Jest/Vitest | `bun test` (rewrite `jest.fn()`/`jest.mock()` call sites to `mock()`/`mock.module()`; `jest.config.js` and transform setup have no equivalent) |
 | esbuild/webpack scripts | `bun build` |
 | dotenv bootstrap | Bun automatic `.env` loading |
 | child_process shell snippets | `Bun.$` |
-| Custom HTTP framework for simple APIs | `Bun.serve()` |
+| Custom HTTP framework for simple APIs | `Bun.serve()` (Express, Fastify, and Hono run on Bun via its Node compatibility layer; port to `Bun.serve()` only for the performance or the built-in WebSocket and routing support) |
 | Sharp-style image transforms | `Bun.Image` |
 | Puppeteer/Playwright for simple page automation | `Bun.WebView` if experimental status is acceptable |
 | Markdown parsing/rendering | `Bun.markdown.*` |
@@ -116,13 +120,9 @@ If your Node app used `dotenv`, remove duplicate loading to avoid confusion.
 
 ## Common Pitfalls
 
-1. Assuming feature parity without running tests.
-2. Migrating runtime and package manager in one large step without checkpoints.
-3. Keeping old Jest/Vitest-specific assumptions in test scripts.
-4. Forgetting to pin/verify Bun version in CI during rollout.
-5. Treating experimental APIs (`Bun.WebView`, HTTP/3, HTTP/2/3 fetch paths) as
+1. Treating experimental APIs (`Bun.WebView`, HTTP/3, HTTP/2/3 fetch paths) as
    production defaults without validating current release status.
-6. Passing untrusted path strings directly into `new Bun.Image()`.
+2. Passing untrusted path strings directly into `new Bun.Image()`.
 
 ## Modern Bun Checks Before Adding Dependencies
 
