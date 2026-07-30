@@ -8,6 +8,10 @@ name: Eve skill evals
 
 on:
   pull_request:
+    # `labeled` is not in the default set, and the live-evals job keys on the
+    # `run-evals` label — without it, labeling a PR does nothing until the next
+    # push. Measured on PR #125: the label alone never started a run.
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - "**/skills/**/SKILL.md"
       - "evals/eve/**"
