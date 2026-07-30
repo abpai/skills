@@ -109,8 +109,11 @@ exceptions, but document the reason.
 
 ## Skill quality bar
 
-- Put concrete trigger language in frontmatter `description`. It should answer
-  "use this when..." without requiring the body to be read first.
+- Write frontmatter `description` as the blurb a human reads in the `/` and `$`
+  menus. Every entrypoint here sets `disable-model-invocation: true`, so the
+  description never triggers the model and never enters context. Say what the
+  skill does and when to reach for it; trigger keywords and synonym lists are
+  dead weight.
 - Give every routed workflow an `argument-hint` and keep argument parsing local
   to the route that uses it.
 - State completion criteria for non-trivial phases. A step is done when a module
