@@ -12,13 +12,7 @@ Do not use this for defining a new autonomous goal from scratch; clarify the goa
 
 ## Core Rule
 
-The next session should not need archaeology. Frontload the facts, file refs, current state, decisions, constraints, and exact verification commands that let a new agent continue immediately.
-
-The handoff must work without hidden transcript access. If a runtime has prior-session tools, mention them only as optional fallback; never rely on them as the primary context.
-
-## Success Criteria
-
-A good handoff lets a new agent start without asking what repo, branch, files, current state, next action, or verification command to use. If any of those are not known, mark the field `UNKNOWN` rather than guessing.
+The next session should not need archaeology. Frontload the facts, file refs, current state, decisions, constraints, and exact verification commands that let a new agent continue immediately — without asking what repo, branch, files, current state, next action, or verification command to use, and without hidden transcript access. If a runtime has prior-session tools, mention them only as optional fallback, never as the primary context. Mark any unknown field `UNKNOWN` rather than guessing.
 
 ## Process
 
