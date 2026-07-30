@@ -30,27 +30,27 @@ safety or correctness obligation.
 ## Two bright-line rules (read before any phase)
 
 **BRIGHT LINE 1 — Gate before push.** Effort-selected and risk-required quality
-gates, source-grounded QA, and any required independent review run and the branch is **sealed** _before_ `git push`,
-`gh pr create`, or `gh pr edit --body`. Push/PR-create is the terminal,
-gated-on-green action — never an early "share it then polish" step. Pushing first
-turns every finding into a post-hoc follow-up commit a reviewer already saw. An
-always-on plugin hook (`gate-before-push.sh`) enforces this while prepare-pr is
-**armed**: it blocks push/PR-create/PR-body-edit unless a fresh seal sentinel
-exists for the current branch. **This enforcing hook exists only under Claude
-Code** — Codex has no hook system, so there the arm/seal/disarm steps still run
-but nothing auto-blocks the push. Under Codex, gate-before-push is a discipline
-you self-enforce, with `--seal`'s refuse-on-red (Phase 5) as the deterministic
+gates, source-grounded QA, and any required independent review run and the
+branch is **sealed** _before_ `git push`, `gh pr create`, or `gh pr edit
+--body`. Push/PR-create is the terminal, gated-on-green action, never an
+early "share it then polish" step. An always-on plugin hook
+(`gate-before-push.sh`) enforces this while prepare-pr is **armed**: it blocks
+push/PR-create/PR-body-edit unless a fresh seal sentinel exists for the
+current branch. **This enforcing hook exists only under Claude Code** — Codex
+has no hook system, so there the arm/seal/disarm steps still run but nothing
+auto-blocks the push. Under Codex, gate-before-push is a discipline you
+self-enforce, with `--seal`'s refuse-on-red (Phase 5) as the deterministic
 green check before you push.
 
 **BRIGHT LINE 2 — Source-grounded verification.** Write the expected behavior
-into the verification log _before_ each action, grounded in source, docs, route,
-command, or contract. A pass written after the fact is a probe, not proof.
-"Working tree clean" does **not** mean "nothing to finish" — PR scope is
+into the verification log _before_ each action, grounded in source, docs,
+route, command, or contract — a pass written after the fact is a probe, not
+proof. "Working tree clean" does **not** mean "nothing to finish": PR scope is
 `<base>...HEAD` unioned with uncommitted + staged + untracked. A green suite
-whose fixtures encode the code's own assumption proves nothing: at a parse/trust
-boundary, confirm fixtures match a sanitized real sample, not an invented shape;
-for any value crossing a boundary (HTTP header, env var, API field, cache key),
-find the consumer and confirm it accepts that shape.
+whose fixtures encode the code's own assumption proves nothing — at a
+parse/trust boundary, confirm fixtures match a sanitized real sample, not an
+invented shape; for any value crossing a boundary (HTTP header, env var, API
+field, cache key), find the consumer and confirm it accepts that shape.
 
 **Ambition check.** Do not force every gate on every diff. Trivial docs-only or
 metadata-only changes skip inapplicable gates with a one-line rationale. You may
@@ -58,14 +58,14 @@ override a script recommendation with a concrete reason or add a gate the
 changed surface demands. Record the selected effort and any risk-driven
 escalation above it.
 
-**Autonomous finish contract.** `prepare-pr` is allowed and expected to stage
-the intended scope, create coherent commits, push the branch, and create or
-update the PR without stopping for routine approval. Ask the user only when the
-commit scope is ambiguous, includes unrelated/user-owned work, contains
-secret-looking or generated files that cannot be safely excluded, requires a
-destructive operation, or changes public/production state outside git. The
-default terminal state is a remote branch ready for human review, not a local
-plan waiting for permission.
+**Autonomous finish contract.** `prepare-pr` stages the intended scope, creates
+coherent commits, pushes the branch, and creates or updates the PR without
+stopping for routine approval. Ask the user only when the commit scope is
+ambiguous, includes unrelated/user-owned work, contains secret-looking or
+generated files that cannot be safely excluded, requires a destructive
+operation, or changes public/production state outside git. The default
+terminal state is a remote branch ready for human review, not a local plan
+waiting for permission.
 
 `.workflow/` is throwaway, per-repo, gitignored. The scope file and seal sentinel
 live there and never travel into a commit.
@@ -73,7 +73,9 @@ live there and never travel into a commit.
 ## Phase 1 — Scope & Arm
 
 Run the slim deterministic preflight (writes `changed-files.txt`, prints one
-stdout summary):
+stdout summary). Resolve the finish-lane script path — try in order and use
+whichever exists — and remember it; Phase 5 reuses the same path for
+`--seal`/`--disarm`:
 
 ```bash
 # inside the skills checkout itself
@@ -84,12 +86,10 @@ bun .agents/skills/code/scripts/finish-lane.ts --fix --arm
 bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --fix --arm
 ```
 
-Pick the path that exists — `${CLAUDE_PLUGIN_ROOT}` is set only under the Claude
-Code plugin runtime, so under Codex or a bare checkout use one of the first two.
-Remember which path resolved; Phase 5 reuses it for `--seal`/`--disarm`. Pass `--base <ref>` when the auto-detected base is
-wrong (PR onto a non-default branch). The script scopes to the union of
-`<base>...HEAD` + uncommitted + staged + untracked and auto-detects `<base>`, so
-a committed-but-unpushed branch with a clean working tree has real work to do —
+Pass `--base <ref>` when the auto-detected base is wrong (PR onto a
+non-default branch). The script scopes to the union of `<base>...HEAD` +
+uncommitted + staged + untracked and auto-detects `<base>`, so a
+committed-but-unpushed branch with a clean working tree has real work to do —
 never skip on "clean." Do not hand-roll this from a `git diff <base>...HEAD`
 loop; the script owns base detection, scope union, mechanical scans, and the
 suggested-lens list.
@@ -100,18 +100,15 @@ the `changed-files.txt` path, fix-command and validation/test results
 status/severity/actionable-source summary, and a flat suggested-lens list. Read
 it as the shared state for the rest of the workflow.
 
-**Arm the gate.** The `--arm` flag writes the arm marker
-`${CLAUDE_PLUGIN_DATA}/prepare-pr/armed/<repo-id>.armed` (the script computes
-`<repo-id>` exactly as the hook does, so do not hand-build the path). The
-always-on hook now blocks push/PR-create/PR-body-edit for this repo until the
-branch is sealed (Phase 5); it is disarmed only in Phase 5 after a successful
-push. The look-for `ARMED <path>` line in the summary confirms it. **If you
-abandon the lane after arming** (user cancels, task changes), run `--disarm`
-before stopping — the marker is per-repo and persistent, so a stale arm keeps
-blocking pushes in future sessions until something disarms it. (Under Codex
-or a bare checkout there is no `CLAUDE_PLUGIN_DATA` and no enforcing hook, so
-`--arm` is a no-op and the gate stays inert — expected. Seal still works as your
-green check; you self-enforce gate-before-push there.)
+**Arm the gate.** `--arm` marks this repo so the always-on hook blocks
+push/PR-create/PR-body-edit until the branch is sealed (Phase 5); the
+`ARMED <path>` line in the summary confirms it. **If you abandon the lane
+after arming** (user cancels, task changes), run `--disarm` before stopping —
+the marker is persistent, so a stale arm keeps blocking pushes in future
+sessions until something disarms it. Under Codex or a bare checkout there is
+no enforcing hook, so `--arm` is a no-op and the gate stays inert — expected;
+seal is still your green check there. Marker paths and freshness mechanics:
+`./references/finish-lane-lifecycle.md`.
 
 **Enumerate untracked files.** Flag anything large, data-shaped, or
 secret-looking (dumps, exports, `.env`, tokens) as commit-excluded by default.
@@ -125,14 +122,15 @@ gate the defaults missed. For each selected gate, load **only** that
 front), run its quick pass, escalate to the deep pass only when diff risk
 justifies it, and record evidence or a skip rationale in context.
 
-- At `low`, load only lenses required by concrete risk. A focused diff review is
-  still mandatory.
-- At `medium`, run the quick pass for applicable suggested lenses; use a deep
-  pass only when the quick evidence escalates.
-- At `high`, load `simplify.md` and explicitly invoke **scoped execution** over
-  the changed-file set from `<base>...HEAD` plus uncommitted scope (not the
-  repository-root proposal mode), applying worthwhile behavior-preserving fixes
-  before QA. Run deep passes for every applicable lens whose stop rules allow it.
+- At `low`, load only lenses required by concrete risk; a focused diff review
+  is still mandatory.
+- At `medium`, run the quick pass for applicable suggested lenses; escalate to
+  a deep pass only when the quick evidence justifies it.
+- At `high`, load `simplify.md` and invoke **scoped execution** over the
+  changed-file set from `<base>...HEAD` plus uncommitted scope (not the
+  repository-root proposal mode), applying worthwhile behavior-preserving
+  fixes before QA; run deep passes for every applicable lens whose stop rules
+  allow it.
 
 **New-surface check.** If the diff adds a surface the project did not have before
 — first web UI, public CLI, API route, database migration, auth/billing
@@ -146,21 +144,21 @@ implementations, and boundary type assertions. When one is present, load
 `review-patterns/semantic-shortcuts.md` and run it.
 
 The finish lane scans added lines for these shapes and reports
-`semantic-shortcut hits: N`, suggesting the lens when `N > 0`. A hit is a lead,
-not a verdict. **Zero hits is weak evidence**, not a clean bill: the scan is tuned
-to under-trigger on the lens's false positives, so your own read of the diff
-overrides it in both directions. A contract divergence the lens surfaces is an
-unresolved correctness finding — do not seal until it is fixed, explicitly
-accepted for this PR, or removed from it.
+`semantic-shortcut hits: N`, suggesting the lens when `N > 0` — a hit is a
+lead, not a verdict, and **zero hits is weak evidence**, not a clean bill: the
+scan is tuned to under-trigger on the lens's false positives, so your own read
+of the diff overrides it in both directions. A contract divergence the lens
+surfaces is an unresolved correctness finding — do not seal until it is fixed,
+explicitly accepted for this PR, or removed from it.
 
 ## Phase 3 — Source-grounded QA & verification
 
-Write named tests grounded in source/docs/route/contract **before** acting.
-Record the expected behavior before each action, then mark it `passed`, `failed`,
-or `untested`. For each check name: surface (UI route / CLI command / API
-endpoint / worker path / migration / docs), inputs (URL, command, fixture,
-token, payload, browser state), expected result (exact output, status, header,
-persisted state, absence of regression), tooling, and evidence.
+Before each action, write a named check grounded in source/docs/route/contract,
+then mark it `passed`, `failed`, or `untested`. For each check: surface (UI
+route / CLI command / API endpoint / worker path / migration / docs), inputs
+(URL, command, fixture, token, payload, browser state), expected result (exact
+output, status, header, persisted state, absence of regression), tooling, and
+evidence.
 
 Prefer real user-path testing for UI. Browser JS, direct DB writes, request
 mocking, or forced client state are useful diagnostics but are lower-level probes
@@ -185,10 +183,9 @@ without the authority required for that action.
 ## Phase 4 — Independent review & PR text
 
 At `medium` and `high`, for correctness-sensitive or behavior-affecting diffs,
-run an **independent**
-review of the current diff — a reviewer with no memory of why you wrote the code,
-because self-review reliably misses regressions your own fix just introduced. Use
-the path that fits the harness:
+run an **independent** review of the current diff — a reviewer with no memory
+of why you wrote the code, because self-review reliably misses regressions
+your own fix just introduced. Use the path that fits the harness:
 
 The review must cover the **full PR scope** (`<base>...HEAD` plus uncommitted) —
 by Phase 4 the work is often already committed on a clean tree, so a review of
@@ -238,42 +235,18 @@ resolve that explicitly (move, ignore, or ask) before sealing; do not push a PR
 whose local scope cannot be represented by the committed branch.
 
 **Seal** only after gates + QA + independent review pass and after all intended
-commits have been created (reuse the finish-lane.ts path that resolved in
-Phase 1 — `${CLAUDE_PLUGIN_ROOT}/...` under the Claude plugin, or
-`.agents/skills/...` under Codex / project-local skills):
+commits have been created, using the finish-lane script path that resolved in
+Phase 1, with `--seal` in place of `--fix --arm`. `--seal` **refuses to write
+the sentinel (exit 2) if any discovered validation command is failing**, so
+the mechanical gate can never be sealed red — fix the failure and re-seal.
+(No validation command discovered is not a failure; for a docs-only diff your
+skip rationale is the gate.) `--seal` does **not** disarm. Sentinel path and
+freshness rules: `./references/finish-lane-lifecycle.md`.
 
-```bash
-# Claude Code plugin runtime:
-bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --seal
-# Codex / project-local skills:
-bun .agents/skills/code/scripts/finish-lane.ts --seal
-# inside the skills checkout itself:
-bun code/skills/code/scripts/finish-lane.ts --seal
-```
-
-This writes the per-branch sentinel
-`.workflow/finish-lane/seal/<branch-slug>.sealed` stamped with the current HEAD
-sha + scope hash + timestamp. Under Claude Code the hook treats it as fresh only
-if HEAD and the scope hash still match — any new commit, staged change, unstaged
-edit, or new untracked file invalidates the seal and re-blocks push; under Codex
-the sentinel is your own freshness check, since no hook consumes it. `--seal` **refuses to
-write the sentinel (exit 2) if any discovered validation command is failing**, so
-the mechanical gate can never be sealed red — fix the failure and re-seal. (No
-validation command discovered is not a failure; for a docs-only diff your skip
-rationale is the gate.) `--seal` does **not** disarm.
-
-Push / open or update the PR once the seal is fresh. Then **disarm immediately**
-so the gate goes inert again (same finish-lane.ts path as above; under Codex this
-is a harmless no-op — there was no armed hook to clear):
-
-```bash
-# Claude Code plugin runtime:
-bun "${CLAUDE_PLUGIN_ROOT}/skills/code/scripts/finish-lane.ts" --disarm
-# Codex / project-local skills:
-bun .agents/skills/code/scripts/finish-lane.ts --disarm
-# inside the skills checkout itself:
-bun code/skills/code/scripts/finish-lane.ts --disarm
-```
+Push / open or update the PR once the seal is fresh. Then **disarm
+immediately** so the gate goes inert again — same path, `--disarm` in place of
+`--seal`; under Codex this is a harmless no-op, since there was no armed hook
+to clear.
 
 If any commit or file change happens after sealing, the seal is stale — re-seal
 before push. If push or PR editing fails after a successful seal, report the

@@ -20,11 +20,11 @@ metadata:
 
 # Code Workflow Pack
 
-This umbrella skill is the pack's explicit, human-invoked entry point: the single `/code` command in the `/` menu. It sets `disable-model-invocation: true` (`policy.allow_implicit_invocation: false` for Codex), so it runs only on human invocation. Each workflow also ships as its own `code/skills/<name>/SKILL.md` with `user-invocable: false` and `metadata.internal: true`, keeping per-command duplicates out of the `/` menu and out of flat-list installers like Codex's `npx skills`. Reach every workflow through this umbrella: the subcommand router below maps `/code <name>` to its module, each living beside this `SKILL.md` as a flat support file.
+This umbrella skill is the pack's explicit, human-invoked entry point: the single `/code` command in the `/` menu. It sets `disable-model-invocation: true` (`policy.allow_implicit_invocation: false` for Codex), so it runs only on human invocation. Each workflow also ships as its own `code/skills/<name>/SKILL.md` with `user-invocable: false` and `metadata.internal: true`, keeping per-command duplicates out of the `/` menu and out of flat-list installers like Codex's `npx skills`. Reach every workflow through this umbrella: the subcommand router below maps `/code <name>` to its module, each a flat support file beside this `SKILL.md`.
 
 ## Subcommand invocation
 
-Invoke a workflow by passing its name as the first argument to this umbrella — this is the access path on every surface: the Claude `/` menu shows only `/code` (the per-command wrappers are hidden), and Codex has no `:` namespace. Both forms are equivalent and supported:
+Pass a workflow's name as the first argument — the access path on every surface, since the Claude `/` menu shows only `/code` (per-command wrappers are hidden) and Codex has no `:` namespace. Both forms are equivalent:
 
 - `code <subcommand> <args>` — e.g. `code understand src/api`
 - `code --<subcommand> <args>` — e.g. `code --understand src/api`
@@ -51,10 +51,10 @@ so the user can accept the new contract explicitly.
 
 ## Routing
 
-- Use `prepare-pr.md` for PR readiness through push. It accepts `--effort low|medium|high` (default `low`) to scale review depth while preserving risk-required gates. Natural-language requests to review and commit route to `prepare-pr --effort low`; this pack no longer has a local-only commit workflow.
-- Use `simplify.md` for behavior-preserving simplification, including pruning low-value tests while protecting load-bearing guards. A named path, symbol, file, or subsystem is edited and validated autonomously. Omitted scope or repository-root scope produces a ranked whole-repository proposal without edits.
+- Use `prepare-pr.md` for PR readiness through push, effort-scaled via `--effort low|medium|high` (default `low`) — see its effort contract. Natural-language "review and commit" requests route here too; the pack has no local-only commit workflow.
+- Use `simplify.md` for behavior-preserving simplification and low-value test pruning — see its scope contract for when it edits autonomously versus returns a proposal.
 - Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
-- Use `understand.md` for tracing a specific code path into `.understand/<topic>/index.html` plus a runnable `how_<topic>_works.<ext>` that imports and executes real code. It may leave clearly tagged temporary exports in place so the snippet remains runnable.
-- Use `handoff.md` for creating a focused continuation prompt that lets a new coding session resume with live repo state, file refs, decisions, next steps, and verification.
+- Use `understand.md` to trace a code path into `.understand/<topic>/` — an HTML map plus a runnable snippet backed by real code.
+- Use `handoff.md` to create a continuation prompt so a fresh session can resume with live repo state, file refs, decisions, next steps, and verification.
 
 When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.
