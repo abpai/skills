@@ -1,0 +1,98 @@
+name: Eve skill evals
+
+# Non-blocking behavioral-contract lane. This runs REAL model sessions against
+# packaged SKILL.md dirs via Eve, so it complements — never replaces — the
+# structural validate-skills.sh gate and the manual Claude/Codex dogfood.
+# It is intentionally NOT a required check: Eve is public preview (pinned in
+# evals/eve/package.json) and live evals need a model key.
+
+on:
+  pull_request:
+    paths:
+      - "**/skills/**/SKILL.md"
+      - "evals/eve/**"
+      - ".github/workflows/eve-evals.yml"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Always runs, no secrets: proves the harness boots and grades a turn under
+  # the deterministic mock model, and that the live eval files typecheck and
+  # discover. This is the gate that catches harness rot on every PR.
+  harness-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: evals/eve
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      # Eve's CLI requires Node.js >=24; setup-bun leaves the runner on Node 22.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install (frozen)
+        run: bun install --frozen-lockfile
+      - name: Materialize skills from canonical sources
+        run: bun run prepare-skills
+      - name: Typecheck eval files against Eve types
+        run: bun run typecheck
+      - name: Discover evals
+        run: bun run list
+      - name: Smoke eval (mock model, no secrets)
+        run: bun run eval:smoke
+
+  # Live behavioral evals against a real model. Secrets are withheld from fork
+  # and Dependabot PRs by GitHub; skip cleanly there rather than failing, and
+  # never use pull_request_target + contributor checkout (a "pwn request").
+  live-evals:
+    needs: harness-smoke
+    if: >
+      github.event_name != 'pull_request' ||
+      (
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.actor != 'dependabot[bot]'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: evals/eve
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      # Eve's CLI requires Node.js >=24; setup-bun leaves the runner on Node 22.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Install (frozen)
+        run: bun install --frozen-lockfile
+      - name: Materialize skills from canonical sources
+        run: bun run prepare-skills
+      - name: Run live behavioral evals
+        env:
+          # Subject model is `openai/gpt-5.6-luna` via the direct OpenAI provider
+          # (agent/agent.ts); the judge shares this key. A raw OpenAI `sk-` key
+          # reaches gpt-5.6-luna directly — the Vercel gateway is not involved.
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        # No key configured => no live model => skip without failing the lane.
+        run: |
+          if [ -z "${OPENAI_API_KEY}" ]; then
+            echo "::notice::OPENAI_API_KEY not set — skipping live evals (non-blocking lane)."
+            exit 0
+          fi
+          bun run eval:live --junit .eve/junit.xml
+      - name: Upload eval evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eve-eval-results
+          path: |
+            evals/eve/.eve/evals/
+            evals/eve/.eve/junit.xml
+          if-no-files-found: ignore

@@ -126,6 +126,8 @@ SHELL_HELPERS=()
 while IFS= read -r f; do
   SHELL_HELPERS+=("$f")
 done < <(find . -path ./.git -prune -o \
+           -path '*/node_modules/*' -prune -o \
+           -path './evals/eve/*' -prune -o \
            -path '*/__pycache__/*' -prune -o \
            -path './.ruff_cache/*' -prune -o \
            -path './.understand/*' -prune -o \
@@ -155,6 +157,8 @@ PY_HELPERS=()
 while IFS= read -r f; do
   PY_HELPERS+=("$f")
 done < <(find . -path ./.git -prune -o \
+           -path '*/node_modules/*' -prune -o \
+           -path './evals/eve/*' -prune -o \
            -path '*/__pycache__/*' -prune -o \
            -path './.ruff_cache/*' -prune -o \
            -path './.understand/*' -prune -o \
@@ -177,10 +181,16 @@ fi
 
 # Other TypeScript helpers: `bun build --target=bun` to a temp outfile. Skips
 # finish-lane.ts (built above) and *.test.ts files (exercised via `bun test`).
+# Also skips evals/eve/: a self-contained Eve sub-project (marketplace-internal
+# eval infra, NOT a published plugin) with external npm deps this gate never
+# installs — its own harness-smoke CI job typechecks it against the real Eve
+# types, which is strictly stronger than a bun build here.
 TS_HELPERS=()
 while IFS= read -r f; do
   TS_HELPERS+=("$f")
 done < <(find . -path ./.git -prune -o \
+           -path '*/node_modules/*' -prune -o \
+           -path './evals/eve/*' -prune -o \
            -path '*/__pycache__/*' -prune -o \
            -path './.ruff_cache/*' -prune -o \
            -path './.understand/*' -prune -o \
@@ -237,6 +247,8 @@ MIRRORED_IFACES=()
 while IFS= read -r f; do
   MIRRORED_IFACES+=("$f")
 done < <(find . -path ./.git -prune -o \
+           -path '*/node_modules/*' -prune -o \
+           -path './evals/eve/*' -prune -o \
            -path '*/__pycache__/*' -prune -o \
            -path '*/skills/*/INTERFACES.md' -type f -print | sort)
 for skill_iface in "${MIRRORED_IFACES[@]}"; do
