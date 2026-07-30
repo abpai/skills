@@ -20,3 +20,4 @@ __pycache__
 # Eve eval harness: generated skill packages and run artifacts (source is canonical repo SKILL.md)
 evals/eve/agent/skills/
 evals/eve/.eve/
+/research/
