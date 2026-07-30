@@ -35,9 +35,17 @@ export default defineEval({
           /##\s*Primitives/i.test(r) &&
           /##\s*Relationships/i.test(r) &&
           /##\s*Reconstruction/i.test(r) &&
-          /##\s*What Was Discarded/i.test(r)
+          // The discard section's heading drifts across model revisions
+          // ("What Was Discarded", "What is essential vs. accidental") while
+          // the section itself — accidental complexity called out with reasons
+          // — stays. Three verbatim headings already pin the template; lock
+          // the fourth by content, not exact words. Measured 2026-07-30:
+          // gpt-5.6-luna paraphrased the heading 4/4 runs with the section
+          // fully present, so the verbatim match graded phrasing, not the
+          // skill.
+          /##[^\n]*(discard|essential vs\.?\s*accidental|accidental complexity)/i.test(r)
         )
-      }, "reply contains the Conceptual Map template headings (Primitives, Relationships, Reconstruction, What Was Discarded)"),
+      }, "reply contains the Conceptual Map template headings (Primitives, Relationships, Reconstruction, and a discarded/accidental-complexity section)"),
     )
     // ...rather than asking the user which format to use.
     t.check(
