@@ -40,8 +40,14 @@ if ! "${SKILLS_CMD[@]}" --version >/dev/null 2>&1; then
   exit 0
 fi
 
+# Skip git-ignored paths: the Eve eval lane materializes generated copies of
+# skills under evals/eve/agent/skills/, which are not repo skills and do not
+# parse as such. Only what ships is validated here.
 SKILL_FILES=()
 while IFS= read -r skill_file; do
+  if git check-ignore -q "$skill_file" 2>/dev/null; then
+    continue
+  fi
   SKILL_FILES+=("$skill_file")
 done < <(find . -name SKILL.md -type f -not -path './.git/*' | sort)
 
