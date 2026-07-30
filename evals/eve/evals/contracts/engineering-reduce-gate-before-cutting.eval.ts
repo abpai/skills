@@ -26,11 +26,15 @@ import { noFailedSkillLoads } from "../support/tools"
 // five steps and presenting a finished, already-modified plan.
 export default defineEval({
   description: "engineering's reduce workflow stops for sign-off after questioning/deleting, before simplifying the plan.",
-  // Back in the live lane 2026-07-30: its one flake (CI run 30509092640) was
-  // a judge (closedQA) flip on borderline sign-off phrasing, and judge
-  // assertions are soft suite-wide now. The deterministic gates were stable
-  // in every observed run.
-  tags: ["live", "engineering", "contract"],
+  // QUARANTINED 2026-07-30: the core gates flip on run-to-run variance. Run
+  // 30515018704 parked waiting for the user's sign-off — arguably the
+  // contract WORKING — and t.succeeded() graded the parking a failure while
+  // the step-5 regex fired on a mere mention of the step it forbids running.
+  // Run 30509092640 flipped the judge instead. Needs a parked-tolerant
+  // success gate plus a ran-vs-mentioned distinction before it can gate CI.
+  // Still an ablation detector via ablations/manifest.ts. Run manually:
+  //   bunx eve eval contracts/engineering-reduce-gate-before-cutting
+  tags: ["quarantine", "engineering", "contract"],
   async test(t) {
     const turn = await t.send(
       prompt(
