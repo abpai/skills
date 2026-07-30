@@ -127,7 +127,32 @@ gh workflow run eve-evals.yml --ref <branch> -f filter=contracts/harness-d7-safe
 ```
 
 Or add the **`run-evals`** label to a same-repo PR. That suits a stack squashed
-into one PR and ready for a real check.
+into one PR and ready for a real check. The label is **single-shot**: exactly
+the labeling moment triggers one full run, and later pushes run only
+`harness-smoke`. To re-prove after a push, remove and re-add the label, or
+dispatch.
+
+### Cost profile
+
+A full 28-eval suite run costs about 1M input tokens and 20k output tokens.
+OpenAI's automatic prefix caching already absorbs most of it — measured on CI
+run 30515178311: **88% of input tokens were cache reads**, and every session's
+first request hit the shared system-prompt + tool-defs + skills-list prefix
+(the prefix is byte-stable: `prepare-skills` copies from a hardcoded ordered
+map and eve's skills section contains no timestamps or per-run ids). So the
+spend levers, in order:
+
+1. **Run count.** Filtered dispatches while iterating; one full labeled run at
+   the end. This is why the label is single-shot.
+2. **The judge model.** `EVE_JUDGE_MODEL=gpt-5.4-mini` in CI — judge verdicts
+   are soft yes/no evidence and do not need the frontier subject model.
+3. Keep same-eval repeats back-to-back when vote-across-runs lands: votes 2-3
+   re-send an identical prefix and first message, so they are near-total cache
+   hits if they run consecutively.
+
+Anthropic runs are the exception on caching: `@ai-sdk/anthropic` needs explicit
+`cache_control` breakpoints that eve does not set, so `eval:live:claude` gets
+no cache discount today — one more reason those stay deliberate one-offs.
 
 Fork and Dependabot PRs can never reach the live job: GitHub withholds secrets
 from them, the label path requires a same-repo head, and the workflow uses
