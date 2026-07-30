@@ -2,16 +2,13 @@
 name: lateral-thinking
 disable-model-invocation: true
 description: >
-  Generate non-obvious hypotheses by decomposing a problem to its mechanism and
-  raiding distant fields for transferable patterns. Use when the user asks what
-  we are missing, wants to go deeper, needs cross-domain ideas, is stuck in a
-  local optimum, has repeated obvious fixes that fail, or wants mechanism-level
-  brainstorming beyond standard advice. Use distill first when the system itself
-  is still unclear.
+  Generate non-obvious hypotheses by decomposing a problem to its mechanism
+  and raiding distant fields for transferable patterns, beyond standard
+  advice. Use distill first when the system itself is still unclear.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.3"
+  version: "1.1.4"
   upstream_skill: "https://github.com/ogiberstein/lateral-thinking-skill"
 ---
 
