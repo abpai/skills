@@ -2,18 +2,25 @@
 
 > You can outsource thinking, but not your understanding.
 
-Trace one real code path and produce both a spatial map and an executable path.
-The deliverables live together:
+Trace one real code path and produce an executable path, with an optional
+spatial map. The deliverables live together:
 
 ```text
 .understand/<topic>/
-├── index.html
+├── index.html                    (only with --map)
 └── how_<topic>_works.<ext>
 ```
 
-The HTML makes the flow visible. The snippet imports and calls the actual
-implementation in a flat top-to-bottom sequence so the user can run it, change
-the input, and step through it.
+The snippet imports and calls the actual implementation in a flat
+top-to-bottom sequence so the user can run it, change the input, and step
+through it. The HTML, when requested, makes the flow visible.
+
+## Modes
+
+Default mode writes only the runnable snippet. Pass `--map` (or an explicit
+"with the HTML map" / "also show me the map" request) to additionally write
+the HTML map. Everything else — path resolution, side-effect preview, and the
+snippet contract itself — is unchanged between modes.
 
 ## Resolve the path
 
@@ -71,6 +78,8 @@ services behind silent mocks; mark the blocked line and the required setup.
 
 ## HTML map
 
+Applies only with `--map`; skip this section entirely in default mode.
+
 Write `.understand/<topic>/index.html` as a self-contained HTML/CSS artifact
 with small JavaScript only when it improves navigation. Include:
 
@@ -87,8 +96,10 @@ HTML in a browser when practical and verify that it renders.
 
 ## Completion
 
-Done means both artifacts exist, the snippet uses real code, source pointers are
-verified, temporary exports are enumerated and left usable, external side
-effects were disclosed before execution, and the snippet either ran successfully
-or records an exact blocker. Reply with the two artifact paths, run command,
-validation result, temporary exports, and any consequential I/O not executed.
+Done means every artifact selected by the mode exists (the snippet alone, in
+default mode; both, with `--map`), the snippet uses real code, source pointers
+are verified, temporary exports are enumerated and left usable, external side
+effects were disclosed before execution, and the snippet either ran
+successfully or records an exact blocker. Reply with the artifact path(s), run
+command, validation result, temporary exports, and any consequential I/O not
+executed.
