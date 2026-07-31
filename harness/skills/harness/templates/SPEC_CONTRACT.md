@@ -21,7 +21,8 @@ A spec is ready when it:
 Each command belongs to a lane: the **fast lane** (deterministic, runs in
 seconds) is the inner loop an agent runs after every edit; the **full lane**
 (slow unit, integration, e2e, browser) is the gate for done. Done = the full
-lane green; a green fast lane never certifies done. The **Sufficiency** column
+lane green; a green fast lane never certifies done. State where the full lane
+authoritatively runs: locally, or in CI on the pushed commit. The **Sufficiency** column
 marks whether a passing run is sufficient evidence (`auto`) or the change still
 needs human sign-off (`human-gate`) — a false green on a `human-gate` row would
 merge broken work, the failure that is worse than a false red.
@@ -40,7 +41,7 @@ resolve the row deterministically.
 | <area> logic | full | `<script-or-target-id>` | passing run output | auto |
 | <area> UI | full | `<script-or-target-id>` | screenshot pair | human-gate |
 | API surface | full | `<contract-script-id>` | passing run + response trace | auto |
-| Cross-cutting | full | `<full-check-script-id>` | CI-green equivalent locally | auto |
+| Cross-cutting | full | `<full-check-script-id>` | passing full-lane run | auto |
 
 ## Escalation boundaries
 
