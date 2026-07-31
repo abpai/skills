@@ -1,7 +1,7 @@
 ---
 name: code
 disable-model-invocation: true
-description: "Route coding workflows through one scoped /code command. Use prepare-pr for effort-scaled PR readiness through push, simplify for behavior-preserving cleanup and high-signal test pruning of a target or a ranked whole-repo proposal, handoff for continuation prompts, and understand for an HTML code map plus a runnable real-code snippet."
+description: "Route coding workflows through one scoped /code command. Use prepare-pr for effort-scaled PR readiness through push, simplify for behavior-preserving cleanup and high-signal test pruning of a target or a ranked whole-repo proposal, handoff for continuation prompts, and understand for a runnable real-code snippet, with an HTML code map on request."
 argument-hint: "[subcommand] [args] - e.g. prepare-pr --effort low, simplify src/api, understand login flow, handoff"
 # allowed-tools belongs on the umbrella because hidden wrappers never become the
 # active skill; git push and PR writes are still sealed by hooks/gate-before-push.sh.
@@ -15,7 +15,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "3.2.0"
+  version: "4.0.0"
 ---
 
 # Code Workflow Pack
@@ -54,7 +54,7 @@ so the user can accept the new contract explicitly.
 - Use `prepare-pr.md` for PR readiness through push, effort-scaled via `--effort low|medium|high` (default `low`) — see its effort contract. Natural-language "review and commit" requests route here too; the pack has no local-only commit workflow.
 - Use `simplify.md` for behavior-preserving simplification and low-value test pruning — see its scope contract for when it edits autonomously versus returns a proposal.
 - Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
-- Use `understand.md` to trace a code path into `.understand/<topic>/` — an HTML map plus a runnable snippet backed by real code; pass `--snippet` for the runnable snippet alone, with no HTML map.
+- Use `understand.md` to trace a code path into `.understand/<topic>/` — a runnable snippet backed by real code by default; pass `--map` to also write the HTML map.
 - Use `handoff.md` to create a continuation prompt so a fresh session can resume with live repo state, file refs, decisions, next steps, and verification.
 
 When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.

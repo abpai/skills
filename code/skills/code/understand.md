@@ -2,26 +2,25 @@
 
 > You can outsource thinking, but not your understanding.
 
-Trace one real code path and produce a spatial map, an executable path, or
-both. The deliverables live together:
+Trace one real code path and produce an executable path, with an optional
+spatial map. The deliverables live together:
 
 ```text
 .understand/<topic>/
-├── index.html                    (skipped in --snippet mode)
+├── index.html                    (only with --map)
 └── how_<topic>_works.<ext>
 ```
 
-The HTML makes the flow visible. The snippet imports and calls the actual
-implementation in a flat top-to-bottom sequence so the user can run it, change
-the input, and step through it.
+The snippet imports and calls the actual implementation in a flat
+top-to-bottom sequence so the user can run it, change the input, and step
+through it. The HTML, when requested, makes the flow visible.
 
 ## Modes
 
-Default mode writes both artifacts. Pass `--snippet` (or an explicit "snippet
-only" / "no HTML" request) to skip the HTML map entirely and write only
-`.understand/<topic>/how_<topic>_works.<ext>`. Everything else — path
-resolution, side-effect preview, and the snippet contract itself — is
-unchanged between modes.
+Default mode writes only the runnable snippet. Pass `--map` (or an explicit
+"with the HTML map" / "also show me the map" request) to additionally write
+the HTML map. Everything else — path resolution, side-effect preview, and the
+snippet contract itself — is unchanged between modes.
 
 ## Resolve the path
 
@@ -79,7 +78,7 @@ services behind silent mocks; mark the blocked line and the required setup.
 
 ## HTML map
 
-Skip this section entirely in `--snippet` mode.
+Applies only with `--map`; skip this section entirely in default mode.
 
 Write `.understand/<topic>/index.html` as a self-contained HTML/CSS artifact
 with small JavaScript only when it improves navigation. Include:
@@ -97,10 +96,10 @@ HTML in a browser when practical and verify that it renders.
 
 ## Completion
 
-Done means every artifact selected by the mode exists (both, in default mode;
-the snippet alone, in `--snippet` mode), the snippet uses real code, source
-pointers are verified, temporary exports are enumerated and left usable,
-external side effects were disclosed before execution, and the snippet either
-ran successfully or records an exact blocker. Reply with the artifact path(s),
-run command, validation result, temporary exports, and any consequential I/O
-not executed.
+Done means every artifact selected by the mode exists (the snippet alone, in
+default mode; both, with `--map`), the snippet uses real code, source pointers
+are verified, temporary exports are enumerated and left usable, external side
+effects were disclosed before execution, and the snippet either ran
+successfully or records an exact blocker. Reply with the artifact path(s), run
+command, validation result, temporary exports, and any consequential I/O not
+executed.
