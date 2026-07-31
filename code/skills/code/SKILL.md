@@ -15,7 +15,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "3.1.6"
+  version: "3.2.0"
 ---
 
 # Code Workflow Pack
@@ -54,7 +54,7 @@ so the user can accept the new contract explicitly.
 - Use `prepare-pr.md` for PR readiness through push, effort-scaled via `--effort low|medium|high` (default `low`) — see its effort contract. Natural-language "review and commit" requests route here too; the pack has no local-only commit workflow.
 - Use `simplify.md` for behavior-preserving simplification and low-value test pruning — see its scope contract for when it edits autonomously versus returns a proposal.
 - Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
-- Use `understand.md` to trace a code path into `.understand/<topic>/` — an HTML map plus a runnable snippet backed by real code.
+- Use `understand.md` to trace a code path into `.understand/<topic>/` — an HTML map plus a runnable snippet backed by real code; pass `--snippet` for the runnable snippet alone, with no HTML map.
 - Use `handoff.md` to create a continuation prompt so a fresh session can resume with live repo state, file refs, decisions, next steps, and verification.
 
 When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.
