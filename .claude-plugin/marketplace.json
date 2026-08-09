@@ -80,10 +80,10 @@
     },
     {
       "name": "code",
-      "description": "Four focused workflows under /code: effort-scaled prepare-pr through push, behavior-preserving simplify with test-suite pruning, cold-start handoff, and understand for a runnable real-code snippet with an optional HTML map.",
+      "description": "Five focused workflows under /code: PR readiness through push, behavior-preserving simplification, cold-start handoff, runnable code-path understanding, and multi-language or React execution-path diff explanations with a guarded GitHub PR template.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "code" },
       "category": "code-quality",
-      "keywords": ["code", "prepare-pr", "effort", "review", "commit", "push", "qa", "simplify", "refactor", "dead-code", "test-deslop", "testing", "pruning", "understand", "snippet", "html", "handoff", "continuation"]
+      "keywords": ["code", "prepare-pr", "effort", "review", "commit", "push", "qa", "simplify", "refactor", "dead-code", "test-deslop", "testing", "pruning", "understand", "snippet", "html", "explain-diff", "call-stack", "execution-path", "calldiff", "tree-sitter", "react", "tsx", "jsx", "python", "bun", "github", "pull-request", "handoff", "continuation"]
     },
     {
       "name": "harness",
