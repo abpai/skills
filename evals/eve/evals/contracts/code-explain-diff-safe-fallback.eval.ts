@@ -83,17 +83,18 @@ export default defineEval({
       }, "reply traces each new call path in execution order"),
     )
 
-    // Historical evidence is part of the behavior contract. Current-tree line
-    // numbers or bare filenames cannot prove either side of these comparisons.
+    // Historical evidence is part of the behavior contract. The skill permits
+    // either a historical line or a verified symbol pointer; bare filenames
+    // cannot prove either side of these comparisons.
     t.check(
       t.reply,
       satisfies((reply: unknown) => {
         if (typeof reply !== "string") return false
         return (
-          /checkout\.ts@1111111:[1-4]/.test(reply) &&
-          /checkout\.ts@2222222:[1-7]/.test(reply) &&
-          /sync_user\.py@3333333:[1-3]/.test(reply) &&
-          /sync_user\.py@4444444:[1-7]/.test(reply)
+          /checkout\.ts@1111111(?::[1-4]|#checkout)/.test(reply) &&
+          /checkout\.ts@2222222(?::[1-7]|#checkout)/.test(reply) &&
+          /sync_user\.py@3333333(?::[1-3]|#sync_user)/.test(reply) &&
+          /sync_user\.py@4444444(?::[1-7]|#sync_user)/.test(reply)
         )
       }, "reply cites both historical objects for both comparisons"),
     )
