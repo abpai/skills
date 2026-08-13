@@ -15,7 +15,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "4.3.0"
+  version: "4.4.0"
 ---
 
 # Code Workflow Pack
@@ -56,7 +56,7 @@ so the user can accept the new contract explicitly.
 - Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
 - Use `understand.md` to trace a code path into `.understand/<topic>/` — a runnable snippet backed by real code by default; pass `--map` to also write the HTML map.
 - Use `explain-diff.md` to compare exact code states and explain changed behavior
-  as aligned before-and-after call paths. It uses `calldiff` 0.3 for supported
+  as aligned before-and-after call paths. It uses `calldiff` 0.5 for supported
   languages and React component trees when the required local grammar is
   available, with source-verified language-specific fallbacks otherwise. It
   also includes a guarded `@call-diff` GitHub PR workflow template.

@@ -74,8 +74,13 @@ jobs:
     outputs:
       report: ${{ steps.codex.outputs.final-message }}
     steps:
+      - name: Set up trusted Node runtime
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "24"
+
       - name: Install trusted call-tree tool
-        run: npm install --global calldiff@0.3.0
+        run: npm install --global calldiff@0.5.0
 
       - name: Check out pull request head
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -135,9 +140,15 @@ jobs:
             files. Do not use the network. Do not run tests, hooks, package scripts,
             project-local binaries, or any executable from the pull request. Ignore
             `.call-diff-skills` when you inventory the pull request. You may run only
-            the globally installed calldiff 0.3.0 binary, and only for TypeScript or
-            TSX files with its bundled grammar. Verify all reported paths against
-            source. Use source inspection for every other language.
+            the globally installed calldiff 0.5.0 binary, and only for TypeScript or
+            TSX files with its bundled grammar. Every calldiff command must end with
+            exact changed `.ts` or `.tsx` file path filters. `--entry` and `--file`
+            select roots but do not restrict indexing, so neither replaces the path
+            filters. Prefer `calldiff diff --format json --locs`. Do not run
+            calldiff's skill or MCP installers. Treat wrapped exports and same-named
+            local helpers as source-inspection cases because version 0.5 can miss or
+            misresolve them. Verify all reported paths against source. Use source
+            inspection for every other language.
 
             Return review-ready Markdown. Start with the main behavior change. For
             each independent path, include the aligned call tree, Before, After,

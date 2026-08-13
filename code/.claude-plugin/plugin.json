@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "4.3.0",
-  "description": "Five focused workflows under /code: PR readiness through push, behavior-preserving simplification, cold-start handoff, runnable code-path understanding, and multi-language or React execution-path diff explanations with a guarded GitHub PR template.",
+  "version": "4.4.0",
+  "description": "Five focused workflows under /code: PR readiness, simplification, handoff, runnable code-path understanding, and calldiff 0.5 execution-path analysis with tree, reach, structured locations, verified fallbacks, and a guarded GitHub PR template.",
   "author": {
     "name": "Andy Pai"
   },

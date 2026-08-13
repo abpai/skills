@@ -42,11 +42,17 @@ dependency pull requests.
 
 ## calldiff setup
 
-The workflow installs `calldiff@0.3.0` as a trusted global tool before it checks
-out PR content. It uses calldiff only for TypeScript and TSX, whose grammar is
-bundled. It does not run a parser or grammar supplied by the PR. Python, Bun
-JavaScript, and all other languages use the skill's source-inspection fallback
-in this untrusted CI context.
+The workflow installs Node 24 and `calldiff@0.5.0` as trusted tools before it
+checks out PR content. It uses calldiff only for TypeScript and TSX, whose
+grammar is bundled. It does not run a parser or grammar supplied by the PR.
+Python, Bun JavaScript, and all other languages use the skill's
+source-inspection fallback in this untrusted CI context. The analysis requests
+structured JSON with call-site locations when calldiff is useful, but it
+verifies every reported path against source. Wrapped exports and same-named
+local helpers stay in the source-inspection lane because calldiff 0.5 can miss
+or misresolve them. Every calldiff command ends with exact changed `.ts` or
+`.tsx` path filters. `--entry` and `--file` select roots but do not restrict
+indexing, so they cannot replace those filters.
 
 Keep the on-demand trigger for cost control. Add automatic `pull_request`
 triggers only after the repository has measured run time, API cost, and comment

@@ -37,40 +37,77 @@ starts with the behavior-change sentence required by [Report](#report).
 
 Choose per changed path. Mixed-language changes can use more than one lane.
 
-### calldiff 0.3 and supported languages
+### calldiff 0.5 and supported languages
 
-Prefer an existing local `calldiff` version 0.3.0 or newer when its required
+Prefer an existing local `calldiff` version 0.5.0 or newer when its required
 Tree-sitter grammar is already available. Run it directly:
 
 ```bash
-calldiff [from] [to] [--entry symbol] [--max-depth n] [-- path ...]
+calldiff diff [from] [to] [--entry symbol | --file path] [--locs] [paths...]
 ```
 
 Check the project-local binary before a global command. Do not download or
-install `calldiff` during the skill. Version 0.3 can install missing grammars
+install `calldiff` during the skill. Calldiff can install missing grammars
 into `~/.cache/calldiff/grammars` on first use. Do not trigger that install.
 Run the command only when the grammar is bundled with the local package,
 resolves from the local dependency tree, or is already present in the grammar
 cache. If availability is uncertain, use the language-specific source fallback
 and state that the optional call-graph lead was unavailable.
 
-Confirm version 0.3 or newer from the installed package metadata. Before a
-non-TypeScript run, read the installed language extractor's `grammarPackage`
-value and confirm that package resolves locally or exists under
+Confirm version 0.5 or newer and Node 22 or newer from installed metadata.
+Before a non-TypeScript run, read the installed language extractor's
+`grammarPackage` value and confirm that package resolves locally or exists under
 `${CALLDIFF_GRAMMAR_CACHE:-$HOME/.cache/calldiff/grammars}/node_modules`.
-Do not run `calldiff` as the availability check. Version 0.3 bundles the
+Do not run `calldiff` as the availability check. Version 0.5 bundles the
 TypeScript and TSX grammar; JSX still needs the JavaScript grammar.
 
-Match its git-shaped forms to the resolved comparison:
+Use `calldiff diff` with the resolved comparison:
 
 - no refs: `HEAD` against the working tree;
 - one ref: that ref against the working tree;
 - two refs: the first ref against the second ref.
 
-Use repeated `--entry` options for known `functionName` or `ClassName.method`
-symbols. Use path arguments to exclude unrelated source.
+Start without `--entry` when changed exported functions are good candidate
+roots; version 0.5 can infer several changed entrypoints. Use repeated
+`--entry` options for known `functionName` or `ClassName.method` symbols. Use
+repeated `--file` / `-F` options to expand every export in a changed routing or
+bootstrap file. File matching accepts an exact path or unique suffix and fails
+on ambiguity. `--entry` and `--file` select roots; they do not limit which
+source files calldiff indexes. Use trailing path arguments to limit indexing
+scope. Apply exact path filters in untrusted CI, and early in monorepos or
+repositories that track vendor directories; single-snapshot `tree` and `reach`
+otherwise index every supported source file.
+Entry symbols must be independently indexed definitions. Nested callbacks and
+component-local helpers usually are not valid roots in version 0.5; trace them
+from the exported component or containing function and verify them in source.
 
-Version 0.3 supports TypeScript, TSX, JavaScript, JSX, Python, Go, Rust, Java,
+Prefer `--format json --locs` for agent analysis. Structured output preserves
+nested nodes, diff sides, and source locations. With `--locs`, a root points to
+its definition and a child points to its call site in the parent. Treat those
+locations as leads and verify them in the correct snapshot. Use ASCII only
+when it is easier to inspect. Bound large results with path filters and
+`--max-depth` first; use incur's `--token-count`, `--token-limit`, and
+`--token-offset` only for measurement or paging because slicing can hide a
+material branch.
+
+Use the other modes when the diff alone cannot answer the question:
+
+```bash
+calldiff tree [ref] --entry symbol --locs [paths...]
+calldiff tree [ref] --file path --locs [paths...]
+calldiff reach [ref] --entry symbol --to target --locs [paths...]
+```
+
+- `tree` inspects one snapshot without diff markers.
+- `reach` returns every static path from an entrypoint to a target, including
+  alternate conditional arms and same-named entry definitions in version 0.5.
+- The `reach --to` target must also be an indexed definition. Hook-selected
+  actions, dependency-injected callbacks, computed members, and other dynamic
+  bindings can return `Target not found`; trace those boundaries in source.
+- Compare separate `tree` or `reach` results at the resolved from and to refs;
+  do not substitute them for source verification.
+
+Version 0.5 supports TypeScript, TSX, JavaScript, JSX, Python, Go, Rust, Java,
 Ruby, C, C++, C#, PHP, Kotlin, Swift, Scala, Lua, Elixir, Bash, Haskell, Zig,
 Solidity, and OCaml. Treat TSX and JSX component tags as calls: include added,
 removed, moved, or re-parented React components, with children nested under
@@ -80,13 +117,28 @@ in source because the component tree is syntactic.
 Bun is a runtime, not a source language. Use the matching TypeScript,
 JavaScript, TSX, or JSX lane, then inspect Bun entry points such as package
 scripts, `bunfig.toml`, server handlers, tests, and workers. When `calldiff` is
-already a Bun project dependency, a project-local Bun script or binary is an
-equivalent command path.
+already a Bun project dependency, its package-root API can be imported from a
+Bun script. The published CLI declares Node 22 or newer; invoke its binary with
+Node unless the repository already proves a Bun CLI wrapper works.
 
-`calldiff` 0.3 uses Tree-sitter and is syntactic, not a typechecker. Treat its
+`calldiff` 0.5 uses Tree-sitter and is syntactic, not a typechecker. Treat its
 output as a lead. It does not prove dynamic dispatch, runtime values, framework
 wiring, or side effects. If it fails, is unavailable, or omits a relevant path,
 continue with the fallback lane and state the reason in one line.
+
+Version 0.5 can misresolve same-named local helpers and can miss functions
+hidden inside wrapper calls such as `memo(...)`, `defineEventHandler(...)`, or
+`Effect.gen(...)`. Inspect these patterns directly and do not report their
+expanded path as verified from calldiff alone. Version 0.6 and newer adds
+caller-file/local-helper resolution and wrapped-function extraction; confirm
+the installed version before relying on those improvements, then still verify
+the result against source.
+
+The package root exports `runDiff`, `runTree`, and `runReach` for structured
+Node or Bun integration. Use that API only when the repository already depends
+on calldiff and a script materially improves the analysis. Do not add a
+dependency for this workflow. Do not run `calldiff skills add`, `calldiff mcp
+add`, `calldiff --update`, or any other installer command during analysis.
 
 ### Python
 
