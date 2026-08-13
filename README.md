@@ -97,7 +97,7 @@ secure-dependencies` (or `harness compliant` for end-to-end remediation);
 |--------|-------------|
 | **claude** | Run Claude headlessly with deterministic auth and transfer gating, scoped repository reviews, durable artifacts, and exact continuation. |
 | **claude-session** | Inspect local Claude Code transcripts by UUID without invoking Claude or contacting Anthropic. |
-| **visualize** | Generate self-contained HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
+| **visualize** | Generate single-file HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
 
 ### Languages & Platforms
 

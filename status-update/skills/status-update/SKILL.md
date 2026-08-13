@@ -6,7 +6,7 @@ argument-hint: "[detailed] [scope to report on]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.4"
+  version: "1.1.0"
   tags: "status progress long-running agents blockers handoff operations"
 ---
 
@@ -43,7 +43,11 @@ Use these rules before writing:
   attempted command, worker claim, or open PR is not automatically done.
 - **Active** means an operation is executing or a worker is presently pursuing
   it. Name the exact step and the latest meaningful liveness evidence. A plan
-  item marked in progress is not enough by itself.
+  item marked in progress is not enough by itself. If liveness is stale or
+  unavailable, classify the work as **Unverified**, not Active.
+- **Unverified** means a claim may be true but current primary evidence is
+  unavailable, stale, or contradictory. Name the last known evidence and its
+  age when that matters.
 - **Left** means required acceptance work remains. Order it by dependency and
   decision value, not by file or chronology.
 - **Friction** is a recoverable problem, repeated rework, slow gate, ambiguity,
@@ -68,7 +72,7 @@ Open with one of these verdicts and one plain-language sentence:
 - `At risk` — work is advancing, but a known issue threatens scope, quality, or
   timing.
 - `Blocked` — no meaningful progress can continue without an external change
-  that only someone other than the user can make.
+  that neither the agent nor the user can currently make.
 - `Waiting on you` — the next required action or decision belongs to the user.
 - `Idle` — nothing is executing even though autonomous work remains.
 - `Complete` — the requested outcome and required proof are finished.
@@ -99,7 +103,7 @@ labels that the user can select for follow-up. Omit empty optional sections
 except `Surprises`, which should say `None that changed the plan` when the user
 explicitly asked about surprises.
 
-Use this shape:
+Use this shape as a menu, omitting sections that add no decision value:
 
 ```markdown
 **Status — <signal>:** <one-sentence verdict and most important implication>

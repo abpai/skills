@@ -8,16 +8,13 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.4"
+  version: "1.2.0"
   upstream_skill: "https://github.com/ogiberstein/lateral-thinking-skill"
 ---
 
 # Lateral Thinking
 
 Generate novel, testable ideas by finding mechanisms that transfer across fields.
-
-Adapted from [ogiberstein/lateral-thinking-skill](https://github.com/ogiberstein/lateral-thinking-skill),
-with a repo-native rewrite for portability and clearer boundaries with nearby skills.
 
 Use this skill when ordinary analysis is already exhausted and the user needs a
 good second or third lens, not a recap of the obvious first one. `distill`
@@ -72,24 +69,13 @@ feedback loops, and a likely regulator or missing variable.
 
 ### 3. Generate Ring 2 discoveries
 
-Produce 3-5 non-obvious observations about the parts themselves. These should
-already feel sharper than a normal domain-only answer.
+Produce only the non-obvious observations that change the diagnosis or available
+actions. Do not fill a quota.
 
 ### 4. Run a cross-domain raid
 
-Search for the same mechanism in distant fields. Good source domains include,
-among others:
-
-- biology and ecology
-- control systems and physics
-- economics and game theory
-- information theory
-- military strategy
-- network science
-- psychology and behavioral science
-- urban planning
-- medicine and pharmacology
-- mathematics
+Search for the same mechanism in genuinely distant fields. Choose source fields
+because the mechanism transfers, not because they appear in a standard list.
 
 For each candidate analogy, name the mechanism that transfers. Avoid surface-level
 metaphors.
@@ -108,7 +94,7 @@ For each promising mechanism transfer, write:
 - what concrete test would falsify or validate it
 - the likely impact if true
 
-Aim for 3-7 hypotheses.
+Keep only hypotheses distinct enough to test separately.
 
 ### 6. Check intersections
 
@@ -140,7 +126,7 @@ downranked, or killed), and the survivors are ranked.
 
 ### 8. Recommend actions
 
-Turn the top-ranked survivors into two to four concrete next steps. Each step
+Turn the top-ranked survivors into a small set of concrete next steps. Each step
 names what to do and which hypothesis it tests.
 
 ## Output Format

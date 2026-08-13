@@ -122,7 +122,7 @@
     },
     {
       "name": "visualize",
-      "description": "Generate a self-contained HTML visualization in an ivory/clay editorial gallery style for systems, plans, code flows, and concepts.",
+      "description": "Generate a single-file HTML visualization in an ivory/clay editorial gallery style for systems, plans, code flows, and concepts.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "visualize" },
       "category": "tools",
       "keywords": ["visualization", "html", "diagrams", "explanation"]

@@ -16,18 +16,13 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2.4"
+  version: "1.3.0"
 ---
 
 # Distill
 
-A skill for iteratively compressing complex systems down to their essential primitives —
-the minimal set of abstractions that captures the full behavioral essence while
-discarding accidental complexity.
-
-Think of it like Andrej Karpathy reducing an automated research system to three files
-(`train.py`, `prepare.py`, `program.md`). The goal is not summarization — it's
-**re-expression in minimal form**.
+Compress a complex system into the smallest useful set of abstractions that
+still reconstructs its behavior.
 
 Read `references/input-strategies.md` when starting on a codebase, research paper,
 transcript, or article — it has input-type-specific starting heuristics.
@@ -41,7 +36,8 @@ without losing essential behavior. A good primitive set is:
 - **Minimal** — removing any one primitive loses something essential
 - Sized independently — don't force primitives to the same level of abstraction when
   one is genuinely bigger than the others
-- Usually 3-5 primitives. More than 7 means the decomposition isn't compressed enough.
+- Use as many primitives as reconstruction requires; treat a large set as a
+  signal to try another compression pass, not an automatic failure.
 
 **Distillation vs. summarization**: summarization preserves information at lower
 fidelity. Distillation re-expresses the essence in a new, cleaner form, which is
@@ -60,13 +56,9 @@ decomposition.
 
 ### Phase 1: Orient
 
-Before proposing any decomposition, understand what the user cares about — it
-determines what counts as "essential." Ask 2-4 lightweight questions:
-- What are you trying to *do* with this understanding? (Build on top of it?
-  Rewrite it? Teach it? Make decisions about it?)
-- What layer are you most interested in? (Business logic? Data flow? API surface?
-  Conceptual model?)
-- Is there a part you already understand well vs. a part that's opaque?
+Before proposing a decomposition, identify what the user needs to do with it and
+which layer matters. Ask one question at a time only when the answer changes the
+primitive set.
 
 Skip straight to Phase 2 when the user's intent is already obvious from context or
 for one-shot asks. Ask again only if the intended layer or use of the distillation
@@ -105,27 +97,8 @@ You're done when:
 Choose based on what the user needs; ask when in doubt.
 
 - **Conceptual Map** (the default; use it for any input unless a format below is
-  requested or its trigger fires) — a structured document listing
-  the primitives, their relationships, and how they compose to produce the full
-  system's behavior. Template:
-
-  ```markdown
-  # [System Name] — Distilled
-
-  ## Primitives
-  1. **Name** — description
-  2. **Name** — description
-
-  ## Relationships
-  - Primitive A feeds into Primitive B via [mechanism]
-  - Primitives C and D are independent but both required for [outcome]
-
-  ## Reconstruction
-  Given these primitives, here's how the full system works: [narrative]
-
-  ## What Was Discarded
-  - [thing] — accidental complexity because [reason]
-  ```
+  requested or its trigger fires) — primitives, relationships, reconstruction,
+  discarded accidental complexity, and confidence flags.
 
 - **Minimal Implementation** (only when requested or explicitly useful) — a set of
   files (like Karpathy's 3 files) that capture the essential behavior: actually
@@ -141,9 +114,3 @@ Choose based on what the user needs; ask when in doubt.
   confidence flags, and a discarded-as-accidental section. Good fit for codebase
   maps, architecture primitives, research-paper concept graphs, and multi-document
   synthesis. Keep names and reconstruction concise enough to read in one pass.
-
-## Session Management
-
-Distillation often spans multiple turns. If the session gets long, offer to write
-the current primitive set, open questions, and discarded items to a file so the
-user can resume later or hand it to another agent session.
