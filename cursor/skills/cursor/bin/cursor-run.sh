@@ -24,8 +24,8 @@ Usage: cursor-run.sh run|review|resume [options] [-- extra-agent-args...]
   --auth MODE            auto, login, or api-key (default: auto).
   --env-file PATH        Explicit dotenv file containing CURSOR_API_KEY.
   --read-only            Use Cursor ask mode and disable workspace progress.
-  --no-force             Do not pass --force for write-capable runs.
-  --no-approve-mcps      Do not pass --approve-mcps for write-capable runs.
+  --force                Pre-approve file writes for this bounded task.
+  --approve-mcps         Pre-approve MCP access for this bounded task.
   --heartbeat SECONDS    Progress cadence (default: 15).
   --stall-timeout SECS   Stop after no meaningful activity (default: 300).
   --timeout SECONDS      Overall process deadline (default: 2700).
@@ -55,8 +55,8 @@ MODEL_EVENT_EMITTED="false"
 AUTH_MODE="auto"
 ENV_FILE="${CURSOR_ENV_FILE:-}"
 READ_ONLY="false"
-FORCE_RUN="true"
-APPROVE_MCPS="true"
+FORCE_RUN="false"
+APPROVE_MCPS="false"
 HEARTBEAT_SECONDS="${CURSOR_HEARTBEAT_SECONDS:-15}"
 STALL_TIMEOUT_SECONDS="${CURSOR_STALL_TIMEOUT_SECONDS:-300}"
 TIMEOUT_SECONDS="${CURSOR_TIMEOUT_SECONDS:-2700}"
@@ -95,8 +95,8 @@ while [[ $# -gt 0 ]]; do
     --auth) AUTH_MODE="${2:-}"; require_value "$1" "$AUTH_MODE"; AUTH_SET="true"; shift 2 ;;
     --env-file) ENV_FILE="${2:-}"; require_value "$1" "$ENV_FILE"; ENV_FILE_SET="true"; shift 2 ;;
     --read-only) READ_ONLY="true"; READ_ONLY_SET="true"; shift ;;
-    --no-force) FORCE_RUN="false"; FORCE_SET="true"; shift ;;
-    --no-approve-mcps) APPROVE_MCPS="false"; APPROVE_SET="true"; shift ;;
+    --force) FORCE_RUN="true"; FORCE_SET="true"; shift ;;
+    --approve-mcps) APPROVE_MCPS="true"; APPROVE_SET="true"; shift ;;
     --heartbeat) HEARTBEAT_SECONDS="${2:-}"; require_value "$1" "$HEARTBEAT_SECONDS"; HEARTBEAT_SET="true"; shift 2 ;;
     --stall-timeout) STALL_TIMEOUT_SECONDS="${2:-}"; require_value "$1" "$STALL_TIMEOUT_SECONDS"; STALL_TIMEOUT_SET="true"; shift 2 ;;
     --timeout) TIMEOUT_SECONDS="${2:-}"; require_value "$1" "$TIMEOUT_SECONDS"; TIMEOUT_SET="true"; shift 2 ;;

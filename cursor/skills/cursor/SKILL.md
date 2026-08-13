@@ -7,7 +7,7 @@ description: >
   durable headless artifacts and exact chat continuation.
 license: MIT
 metadata:
-  version: "2.2.3"
+  version: "3.0.0"
 ---
 
 # Cursor
@@ -35,9 +35,11 @@ with `cursor-agent models` before passing it — Cursor accepts only ids from th
 list and rejects everything else, so a plausible-looking alias like `grok` or
 `sonnet` fails the run rather than resolving to the family you meant.
 
-Write-capable runs use Cursor headless `--force --trust --approve-mcps`; use
-`--read-only`, `review`, `--no-force`, or `--no-approve-mcps` to narrow that
-authority.
+Write-capable runs use workspace trust but do not pre-approve file writes or MCP
+tools by default. Pass `--force` only when the user authorized autonomous edits
+for this bounded task. Pass `--approve-mcps` only when the user authorized the
+named MCP access and its data scope. Use `--read-only` or `review` when edits are
+not required.
 
 For findings-first review:
 

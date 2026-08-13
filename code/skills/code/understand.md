@@ -67,10 +67,13 @@ It must:
 7. Add a fidelity assertion against the real entry point when it can be called
    without distorting the example.
 
-When a required function is module-private, add the smallest possible export to
-its source and tag it `// TEMP-EXPORT (understand)`. Change nothing else in that
-file. List every temporary export in the snippet header and leave it in place so
-the snippet remains runnable for experimentation.
+When a required function is module-private, prefer a public caller, adapter, or
+test seam that exercises it. Do not edit production source only to make the
+artifact runnable. If no faithful path exists, explain the limitation and ask
+before adding a temporary export. An approved export must be the smallest
+possible change, tagged `// TEMP-EXPORT (understand)`, enumerated in the snippet
+header, and removed before completion unless the user explicitly asks to keep
+it.
 
 Run the snippet with the repository's actual runtime. Fix trace, import, type,
 or runtime errors caused by the artifact and rerun. Do not hide unavailable
@@ -98,7 +101,9 @@ HTML in a browser when practical and verify that it renders.
 
 Done means every artifact selected by the mode exists (the snippet alone, in
 default mode; both, with `--map`), the snippet uses real code, source pointers
-are verified, temporary exports are enumerated and left usable, external side
+are verified, production source is unchanged unless the user approved a
+temporary export, approved temporary exports are enumerated and cleaned up,
+external side
 effects were disclosed before execution, and the snippet either ran
 successfully or records an exact blocker. Reply with the artifact path(s), run
 command, validation result, temporary exports, and any consequential I/O not
