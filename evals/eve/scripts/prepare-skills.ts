@@ -18,36 +18,26 @@
 //   --omit <skillId>       materialize everything except that skill
 // Both hard-error on a silent no-op (missing file, missing heading, or
 // byte-identical output).
-import { cpSync, mkdirSync, rmSync, existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs"
+import {
+  cpSync,
+  mkdirSync,
+  rmSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+} from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { ABLATIONS } from "../ablations/manifest"
+import { EVE_SKILLS } from "../skill-catalog"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const eveRoot = resolve(here, "..")
 const repoRoot = resolve(eveRoot, "..", "..")
 
 // skill id (Eve's `agent/skills/<id>/`) -> canonical repo package dir
-export const SKILLS: Record<string, string> = {
-  code: "code/skills/code",
-  engineering: "engineering/skills/engineering",
-  harness: "harness/skills/harness",
-  "hexagon-audit": "hexagon-audit/skills/hexagon-audit",
-  "codex-session": "codex-session/skills/codex-session",
-  "claude-session": "claude-session/skills/claude-session",
-  claude: "claude/skills/claude",
-  distill: "distill/skills/distill",
-  "lateral-thinking": "lateral-thinking/skills/lateral-thinking",
-  "human-writer": "human-writer/skills/human-writer",
-  "improve-prompt": "improve-prompt/skills/improve-prompt",
-  tutorial: "tutorial/skills/tutorial",
-  // Routing distractor + add-a-skill README seed; no dedicated eval yet.
-  "status-update": "status-update/skills/status-update",
-}
-
-// Out of scope for this lane (comment for authors): output-quality / host-specific
-// skills — visualize, impeccable, frontend-design, dataviz, artifact-* — Eve can't
-// grade visual output and their contracts aren't portable; manual dogfood owns them.
+export const SKILLS = EVE_SKILLS
 
 function parseArgs(argv: string[]): { ablateId?: string; omitId?: string } {
   let ablateId: string | undefined
@@ -167,7 +157,9 @@ function materialize(): void {
       )
     }
     if (!(ablation.skillId in SKILLS)) {
-      throw new Error(`prepare-skills: ablation "${ablateId}" skillId "${ablation.skillId}" not in SKILLS map`)
+      throw new Error(
+        `prepare-skills: ablation "${ablateId}" skillId "${ablation.skillId}" not in SKILLS map`,
+      )
     }
   }
   if (omitId && !(omitId in SKILLS)) {
@@ -210,7 +202,9 @@ function materialize(): void {
     mkdirSync(skillDest, { recursive: true })
     for (const entry of readdirSync(src, { withFileTypes: true })) {
       if (entry.name === "SKILL.md") continue
-      cpSync(join(src, entry.name), join(skillDest, entry.name), { recursive: true })
+      cpSync(join(src, entry.name), join(skillDest, entry.name), {
+        recursive: true,
+      })
     }
 
     const baselineBody = stripFrontmatter(canonical)
@@ -275,7 +269,9 @@ function materialize(): void {
     // Ensure the target skill was actually in the map and processed.
     const targetRel = SKILLS[ablation.skillId]
     if (!targetRel) {
-      throw new Error(`prepare-skills: ablation target skill "${ablation.skillId}" missing from SKILLS`)
+      throw new Error(
+        `prepare-skills: ablation target skill "${ablation.skillId}" missing from SKILLS`,
+      )
     }
   }
 
@@ -290,7 +286,9 @@ function materialize(): void {
 /** Relative paths of every file under a directory. */
 function walk(root: string, prefix = ""): string[] {
   const out: string[] = []
-  for (const entry of readdirSync(join(root, prefix), { withFileTypes: true })) {
+  for (const entry of readdirSync(join(root, prefix), {
+    withFileTypes: true,
+  })) {
     const rel = prefix === "" ? entry.name : join(prefix, entry.name)
     if (entry.isDirectory()) out.push(...walk(root, rel))
     else out.push(rel)

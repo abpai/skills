@@ -17,8 +17,9 @@ Eve runs skills inside **Eve's** agent harness, not Claude Code or Codex, so it
 cannot exercise host-specific frontmatter or tools. `prepare-skills` normalizes
 each `SKILL.md` to Eve's frontmatter shape (keeps `description`, drops the host
 keys) and copies the **body verbatim**, so the behavioral contracts are tested
-exactly. In Eve, skills auto-load by description — so this lane is also the one
-place the "description as trigger" principle is genuinely exercised.
+exactly. In Eve, skills auto-load by description. Those cases measure portable
+description selection under Eve, not the explicit invocation behavior shipped
+by Claude Code or Codex.
 
 ## Layout
 
@@ -43,14 +44,16 @@ evals/eve/
     └── ablate.ts           # mutation-testing loop over the manifest
 ```
 
-Add a skill to the `SKILLS` map in `scripts/prepare-skills.ts` before writing
-evals that load it.
+Classify every public skill in `skill-catalog.ts`. Eve-portable entries are
+materialized automatically; deterministic, host-only, and browser skills name
+their separate proof owner there.
 
 ## Run
 
 ```bash
 bun install
 bun run typecheck               # eval files vs real Eve types
+bun run test:catalog            # every public skill has a proof owner
 bun run list                    # discover evals
 bun run eval:smoke              # boot proof under mockModel — no API key needed
 set -a; . ./.env.local; set +a  # loads OPENAI_API_KEY (gitignored)
@@ -134,7 +137,9 @@ dispatch.
 
 ### Cost profile
 
-A full 28-eval suite run costs about 1M input tokens and 20k output tokens.
+A full live-suite run has historically cost about 1M input tokens and 20k
+output tokens. Use `bun run list` for the current count; it changes as cases
+move between `live`, `quarantine`, and control tags.
 OpenAI's automatic prefix caching already absorbs most of it — measured on CI
 run 30515178311: **88% of input tokens were cache reads**, and every session's
 first request hit the shared system-prompt + tool-defs + skills-list prefix
@@ -178,9 +183,10 @@ The Anthropic path is wired but has not yet been run — it needs a key.
 
 `bun run eval:smoke` boots a local Eve dev server (Docker sandbox) and grades a
 turn with no token spend — the always-on check that catches harness rot.
-`live` evals need a real model to route and load skills; without a key they are
-skipped, not failed. Subject model is `gpt-5.6-luna` via the direct OpenAI
-provider (`OPENAI_API_KEY`).
+`live` evals need a real model to route and load skills. The CI live job fails
+when its selected provider key is missing; the secretless `eval:smoke` command
+uses the deterministic mock model instead. Subject model is `gpt-5.6-luna` via
+the direct OpenAI provider (`OPENAI_API_KEY`).
 
 ### When every eval suddenly times out
 
@@ -283,8 +289,8 @@ restores the baseline `agent/skills/` in `finally`.
 
 ```bash
 set -a; . ./.env.local; set +a
-bun run ablate                                 # whole manifest, 1 run each
-bun run ablate --runs 3                        # vote across 3 runs — do this
+bun run ablate                                 # whole manifest, 3 runs each
+bun run ablate --runs 5                        # raise the vote count when needed
 bun run ablate --runs 3 code-simplify-scope-contract   # one entry
 ```
 

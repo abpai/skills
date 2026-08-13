@@ -60,7 +60,10 @@ export const ABLATIONS: readonly Ablation[] = [
   {
     id: "code-prepare-pr-bright-lines",
     skillId: "code",
-    span: { file: "prepare-pr.md", heading: "Two bright-line rules (read before any phase)" },
+    span: {
+      file: "prepare-pr.md",
+      heading: "Two bright-line rules (read before any phase)",
+    },
     guardedBy: ["contracts/code-prepare-pr-gate-fail-closed"],
     hypothesis:
       "Expected KILLED: this heading owns BRIGHT LINE 1 (gate before push). Under Codex there is no enforcing hook, so the model's own refusal to push unsealed is the only guard.",
@@ -103,7 +106,10 @@ export const ABLATIONS: readonly Ablation[] = [
   {
     id: "engineering-reduce-step2-delete-gate",
     skillId: "engineering",
-    span: { file: "reduce.md", heading: "Step 2 — Delete the task ⟨GATE · debate⟩" },
+    span: {
+      file: "reduce.md",
+      heading: "Step 2 — Delete the task ⟨GATE · debate⟩",
+    },
     guardedBy: ["contracts/engineering-reduce-gate-before-cutting"],
     hypothesis:
       "Expected KILLED: the only section instructing outright deletion and a stop for sign-off before continuing. Ablating it should soften deletions to rewordings, or run straight through Steps 3-5.",
@@ -131,14 +137,6 @@ export const ABLATIONS: readonly Ablation[] = [
     guardedBy: ["contracts/harness-onboard-verdict-gate"],
     hypothesis:
       "Expected KILLED: removes the 'only when earned' rule for autonomous-ready, so the model is likelier to hand-write a readiness manifest under time pressure with no audit behind it.",
-  },
-  {
-    id: "hexagon-layout-notes",
-    skillId: "hexagon-audit",
-    span: { heading: "Layout Notes" },
-    guardedBy: ["contracts/hexagon-not-applicable"],
-    hypothesis:
-      "Candidate SURVIVED / no-op: Layout Notes is advisory monorepo lore; the not-applicable contract lives in Process. If this survives, cut or demote the section.",
   },
   {
     id: "omit-codex-session",

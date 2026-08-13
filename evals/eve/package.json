@@ -14,6 +14,7 @@
     "ablate": "EVE_DEV=${EVE_DEV:-0} bun scripts/ablate.ts",
     "outcome:pull": "bun scripts/pull-outcome-image.ts",
     "test:coverage": "bun scripts/assert-live-coverage.test.ts",
+    "test:catalog": "bun scripts/skill-catalog.test.ts",
     "test:outcome-isolation": "bun scripts/outcome-isolation.test.ts",
     "tools:audit": "bun scripts/audit-tools.ts"
   },

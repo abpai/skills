@@ -73,7 +73,7 @@ const MIN_REDUCTION = 0.15
 export default defineEval({
   description:
     "code simplify returns code that is genuinely simpler AND still passes a hidden behavior suite it never saw.",
-  tags: ["live", "code", "outcome"],
+  tags: ["control", "code", "outcome", "unguarded"],
   async test(t) {
     const turn = await t.send(
       prompt(
@@ -132,11 +132,14 @@ export default defineEval({
     // The simplification half. Without this, returning the input verbatim wins.
     t.check(
       result,
-      satisfies((r: unknown) => {
-        const { lines } = r as typeof result
-        if (lines.before === 0) return false
-        return lines.after <= lines.before * (1 - MIN_REDUCTION)
-      }, `code is at least ${Math.round(MIN_REDUCTION * 100)}% shorter (${result.lines.before} -> ${result.lines.after} significant lines)`),
+      satisfies(
+        (r: unknown) => {
+          const { lines } = r as typeof result
+          if (lines.before === 0) return false
+          return lines.after <= lines.before * (1 - MIN_REDUCTION)
+        },
+        `code is at least ${Math.round(MIN_REDUCTION * 100)}% shorter (${result.lines.before} -> ${result.lines.after} significant lines)`,
+      ),
     )
     t.check(turn.toolCalls, noFailedSkillLoads())
   },
