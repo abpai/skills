@@ -23,7 +23,7 @@ The repo serves a pipeline where humans specify intent, acceptance criteria, ris
 
 - Specs arrive from outside; `docs/SPEC_CONTRACT.md` defines what they must contain so this repo can verify them.
 - Every change type has a runnable validation path. Without a pass/fail check, the human becomes the verification loop.
-- Full-lane certification names one authoritative surface. When CI runs a superset of the local full lane, CI on the pushed commit is the default certifier and a local full run is optional pre-flight.
+- Each proof claim names the validation that certifies it and binds the result to the exact candidate under review. Deployment proof also names the target environment and execution identity; one environment never certifies another.
 - One command brings the repo from a fresh checkout (or worktree) to seeded, testable state, and a health smoke command proves readiness before work starts. An environment that boots empty cannot be driven end-to-end.
 - Escalation boundaries are explicit: agents stop and surface (rather than guess) on irreversible actions, scope changes, and decisions the spec reserves for humans. Everything else they execute end-to-end.
 - Repeated agent failures are harness gaps. Repair the harness, do not append warnings.
@@ -37,7 +37,7 @@ When a rule must hold, put it on the highest surface that fits:
 1. **Failing test** — the rule is checked on every validation run.
 2. **Lint rule** — the rule is checked on every commit/CI run.
 3. **CI gate** — the rule blocks merge.
-4. **Validation script / clearer runtime error** — the rule fails loudly at the moment it is broken. A rule *you* author carries its own agent-legible failure message — what broke, where, which rule, and the fix — scoped to custom-authored enforcement (not compiler or library errors, which are already legible) and earned by recurrence: beautify the message on a rule that has actually burned a loop, never prophylactically on every assertion. A composite gate prints each lane's duration and a final plain-text verdict line in its own output; child-process escape codes must not swallow either.
+4. **Validation script / clearer runtime error** — the rule fails loudly at the moment it is broken. A rule *you* author carries its own agent-legible failure message — what broke, where, which rule, and the fix — scoped to custom-authored enforcement (not compiler or library errors, which are already legible) and earned by recurrence: beautify the message on a rule that has actually burned a loop, never prophylactically on every assertion.
 5. **Docs routing** — a code map or invariant line that sends the agent to the right place.
 6. **Prose rule** — last resort, kept lean.
 
@@ -55,12 +55,12 @@ When the same failure recurs, repair the smallest durable surface by walking the
 - A test fails intermittently, so agents cannot tell a real bug from noise → quarantine the flake, add a determinism guard (seed, fake clock, bounded retry), then a test that pins it.
 - Agents keep hitting an illegible failure on a rule you wrote → rewrite that rule's message to name what broke, where, and the fix.
 - Agents keep deferring the same work → write one `docs/todos` spec.
-- A gate fails on checkout circumstance (untracked scratch files, stale ignored build artifacts) rather than repo content → gitignore the scratch convention, assert on tracked state only, or ship a named cleanup command.
+- Validation changes because of undeclared local state → make the input explicit or isolate it; the same tracked source and declared inputs must produce the same verdict.
 - Only if nothing mechanical fits → one prose line, placed by the line gate.
 
-## Rules, grounding, and judgment rubrics
+## Rules versus grounding
 
-Durable prose splits into three kinds, judged by different gates:
+Durable prose splits into two kinds, judged by different gates:
 
 - **Rules** change what the agent should do. They climb the enforcement hierarchy first; the survivors pass the AGENTS line gate.
 - **Grounding** tells the agent what a part of the repo is and how to read it: what a subtree implements, why it exists (the feature flag, AB test, or product intent behind it), what it looks like to the user, the data-model topology, and a key-files table (file → role). Grounding cannot become a test or lint — its value is orientation — so it is judged by the grounding gate instead. Every grounding line must pass all three tests:
@@ -68,8 +68,6 @@ Durable prose splits into three kinds, judged by different gates:
 1. **Current-state-true** — describes the code as it is now and stays true after this PR.
 2. **Not derivable in minutes** — an agent reading the obvious files would not quickly reconstruct it: off-repo context (flags, AB tests, product intent), cross-layer data flow, what the result looks like on screen.
 3. **Anchored** — names concrete files, types, or identifiers, so staleness is detectable and the prose doubles as a route map.
-
-- **Judgment rubrics** rank severity or break design ties against product intent tests cannot see: a severity scale keyed to the loop in Operating model (top severity — a loop step is broken or its output cannot be trusted; next — a step has friction), and tiebreakers for when two designs both pass. Not enforceable and not anchorable, so a rubric is judged by the rubric gate instead: every line changes a real triage or design call, is one plain declarative sentence, and lives inline in `AGENTS.md` beside the loop it ranks — never in a standalone vision or strategy file.
 
 Topology an agent cannot reconstruct in minutes — a data-model or service map — may be drawn rather than written, but a diagram is grounding like any other line: format is the repo's choice (ASCII diagrams over Mermaid, since ASCII diffs and reviews cleanly), and it passes the same gate — anchored, current-state-true, updated in the same PR. A stale diagram is a misleading route with worse staleness economics than prose, so reach for one only when the topology genuinely needs it.
 
@@ -135,7 +133,7 @@ The validation-surface inventory (scripts, CI jobs, lint configs, test layout, e
 
 Give every durable guidance item an explicit verdict with a reason and a destination:
 
-- **Keep** — answers one of the six questions (rules by the line gate, grounding by the grounding gate, rubrics by the rubric gate) or defines a genuinely useful term, already sits on the smallest correct surface, and is reachable from the router chain (`AGENTS.md` → `docs/INDEX.md` → the file, or a nested `AGENTS.md`'s chain). Zero inbound routes means the guidance is inert: route it, merge it into a routed file, or delete it.
+- **Keep** — answers one of the six questions (rules by the line gate, grounding by the grounding gate) or defines a genuinely useful term, already sits on the smallest correct surface, and is reachable from an agent entry point. Guidance with no inbound route is inert: route it, merge it into a routed file, or delete it.
 - **Move** — belongs on a better surface. Preference order: test/lint/CI/script (enforcement beats prose — these moves are executed in step 3), then engineering docs, design docs, domain docs, glossary, `docs/todos`, code, tests, issue/PR context.
 - **Delete** — stale, duplicative, completed-task residue, or a vendor mirror without freshness policy.
 
@@ -169,9 +167,9 @@ Fill the proof menu with the repo's real commands. Every row must reference a co
 
 Keep it tiny: point outward, never teach the whole repo. Budgets (enforced by the `harness-doctor` scanner, which owns the numbers): the root entry point stays under 150 non-blank lines, and the combined size of all `AGENTS.md` files stays under 32 KiB or Codex silently drops the rest.
 
-Use `./templates/AGENTS.md` as the starting shape: operating model, where-to-look routes, the "enforce it, don't add prose" rule, and a done-means section binding to the full lane. Adapt sections to the repo (add earned-surface links only when those surfaces exist). Add a judgment-rubric section (rubric gate above) only after agents have mis-ranked severity or chosen the wrong design because product intent is not visible in code. Make `CLAUDE.md` a shim whose content is the single import line `@AGENTS.md` (Claude Code's import syntax — a prose "see AGENTS.md" does not reliably load the file). Claude Code reads only `CLAUDE.md`, other agents read `AGENTS.md`; the shim keeps one source of truth.
+Use `./templates/AGENTS.md` as the starting shape: operating model, where-to-look routes, the "enforce it, don't add prose" rule, and a done-means section binding to the full lane. Adapt sections to the repo (add earned-surface links only when those surfaces exist). Make `CLAUDE.md` a shim whose content is the single import line `@AGENTS.md` (Claude Code's import syntax — a prose "see AGENTS.md" does not reliably load the file). Claude Code reads only `CLAUDE.md`, other agents read `AGENTS.md`; the shim keeps one source of truth.
 
-Write router prose as commands: name a validation path by its literal command in backticks, never a nickname or metaphor (`bun run check`, not "the full gate"). Give an order-of-magnitude cost only for a command slow enough to change when an agent runs it (`~5 minutes`). One instruction per sentence, imperative, active.
+Name validation paths by their literal commands in backticks, never nicknames or metaphors (`bun run check`, not "the full gate"). Give an order-of-magnitude runtime only when it changes which command an agent should run (`~5 minutes`).
 
 If `docs/BEHAVIOR_INVENTORY.md` or `docs/BEHAVIOR_LEDGER.md` exists, add a tiny
 route to the router, not a long explanation:
@@ -188,7 +186,7 @@ and ledger creation. `docs.md` only routes to them when they exist.
 
 #### AGENTS line gate
 
-Every durable **rule** line must pass all six tests; otherwise move or delete it per step 2. Grounding lines are judged by the grounding gate (Rules, grounding, and judgment rubrics, above) instead — do not delete grounding for failing the Operational test. Judgment-rubric lines are judged by the rubric gate instead — do not delete a rubric line for failing the Enforceable test.
+Every durable **rule** line must pass all six tests; otherwise move or delete it per step 2. Grounding lines are judged by the grounding gate (Rules versus grounding, above) instead — do not delete grounding for failing the Operational test.
 
 1. **Universal** — applies to all agents entering the repo or subtree.
 2. **Operational** — changes what the agent should do.
@@ -206,9 +204,9 @@ A nested `AGENTS.md` (nearest-file precedence) is the standard vehicle for subtr
 
 A nested file names the local boundary, points to local docs/tests, never restates generic repo rules, gets a sibling `CLAUDE.md` shim (`@AGENTS.md`) like the root, and counts against the combined byte budget — the binding limits are the gates and byte chain, not symmetry with root. Tool compliance with nested files is uneven (documented Copilot bugs), so keep root routes to critical subtree rules.
 
-### 7. Create `docs/INDEX.md`
+### 7. Create or refresh the docs index
 
-A short table of contents listing only files that exist: spec contract, architecture, engineering docs, and any earned surfaces. Link existing conventions (ADRs, an existing glossary) instead of duplicating them.
+Use `docs/INDEX.md` unless the repo already has a canonical equivalent. Preserve an existing index path and casing when tooling or runtime routes depend on it; do not add a duplicate or force a case-only rename. If the scanner rejects that equivalent, report a compatibility gap. Keep the index to a short table of contents listing only files that exist: spec contract, architecture, engineering docs, and any earned surfaces. Link existing conventions (ADRs, an existing glossary) instead of duplicating them.
 
 ### 8. Build earned surfaces only as needed
 
@@ -235,7 +233,7 @@ With no pinned binary, confirm with the user first, then run `npx @andypai/harne
 
 If the scanner is unavailable, say so in the report and recommend pinning `@andypai/harness-doctor` as a devDependency — do not hand-run structure checks.
 
-Then run every command you documented or created — `docs/engineering/commands.md`, the spec-contract proof menu, new tests/lints/scripts. A documented command you did not run is marked unverified in your report.
+Then run every safe, applicable command you created or changed. Apply `doctor.md`'s execution policy to other documented commands and proof-menu rows; mark anything not run as unverified with the reason.
 
 ## Output shape
 
