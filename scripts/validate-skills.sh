@@ -66,6 +66,19 @@ if [[ -f "$claude_runner_test" ]]; then
   fi
 fi
 
+antigravity_runner_test="scripts/test-antigravity-runner.sh"
+if [[ -f "$antigravity_runner_test" ]]; then
+  if bash "$antigravity_runner_test" >/tmp/skills-validate-antigravity-runner-test.log 2>&1; then
+    echo "  [OK] $antigravity_runner_test (fake Antigravity regression)"
+    rm -f /tmp/skills-validate-antigravity-runner-test.log
+  else
+    echo "[FAIL] $antigravity_runner_test: regression test failed"
+    cat /tmp/skills-validate-antigravity-runner-test.log
+    rm -f /tmp/skills-validate-antigravity-runner-test.log
+    failed=1
+  fi
+fi
+
 # ── Validate shared metadata tooling ──
 
 metadata_test="scripts/skill-metadata.test.ts"

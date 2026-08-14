@@ -65,6 +65,13 @@
       "keywords": ["claude", "cli", "headless", "delegation", "subagents", "liveness", "resume", "automation", "approval", "auth", "preflight", "transfer", "scoped-review"]
     },
     {
+      "name": "antigravity",
+      "description": "Run Google Antigravity CLI headlessly with Gemini routing, durable artifacts, isolated review, and exact continuation.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "antigravity" },
+      "category": "tools",
+      "keywords": ["antigravity", "google", "gemini", "cli", "headless", "implementation", "review", "liveness", "resume"]
+    },
+    {
       "name": "claude-session",
       "description": "Inspect local Claude Code transcripts by session UUID without invoking Claude or contacting Anthropic.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "claude-session" },

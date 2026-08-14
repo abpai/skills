@@ -29,6 +29,7 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install codex-exec@abpai-skills
 /plugin install codex-session@abpai-skills
 /plugin install cursor@abpai-skills
+/plugin install antigravity@abpai-skills
 /plugin install status-update@abpai-skills
 ```
 
@@ -96,6 +97,7 @@ to `code understand`; `secure-dependencies` moves to `harness adopt`;
 |--------|-------------|
 | **claude** | Run Claude headlessly with deterministic auth and transfer gating, scoped repository reviews, durable artifacts, and exact continuation. |
 | **claude-session** | Inspect local Claude Code transcripts by UUID without invoking Claude or contacting Anthropic. |
+| **antigravity** | Run Google Antigravity CLI headlessly with Gemini routing, durable artifacts, isolated review, and exact continuation. |
 | **visualize** | Generate single-file HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
 
 ### Languages & Platforms

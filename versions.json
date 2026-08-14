@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
   "skills": {
+    "antigravity": "1.0.0",
     "bun-expert": "1.4.6",
     "claude": "2.2.3",
     "claude-session": "1.1.3",
