@@ -115,28 +115,39 @@ export const ABLATIONS: readonly Ablation[] = [
       "Expected KILLED: the only section instructing outright deletion and a stop for sign-off before continuing. Ablating it should soften deletions to rewordings, or run straight through Steps 3-5.",
   },
   {
-    id: "harness-doctor-loop-readiness-verdict",
+    id: "harness-adopt-workflow",
     skillId: "harness",
-    span: { file: "doctor.md", heading: "Loop-readiness verdict" },
-    guardedBy: ["contracts/harness-d7-safety-cap"],
+    span: { file: "adopt.md", heading: "Workflow" },
+    guardedBy: [
+      "contracts/harness-adopt-lifecycle",
+      "contracts/harness-adopt-assess-readonly",
+    ],
     hypothesis:
-      "Expected KILLED: owns the D7 safety cap and the verdict-tier derivation. Ablating it removes the only rule stopping a high D1-D6 average from rounding up to autonomous-ready over a real secrets/blast-radius gap.",
+      "Expected KILLED: removes the ordered adoption lifecycle, including the human baseline gate and final Doctor handoff.",
+  },
+  {
+    id: "harness-doctor-safety-blockers",
+    skillId: "harness",
+    span: { file: "doctor.md", heading: "Safety blockers" },
+    guardedBy: ["contracts/harness-safety-blocker"],
+    hypothesis:
+      "Expected KILLED: removes the rule that exposed secrets and ambient production-write credentials remain blockers even when validation passes.",
   },
   {
     id: "harness-doctor-scanner-unavailable",
     skillId: "harness",
     span: { file: "doctor.md", heading: "Scanner unavailable" },
-    guardedBy: ["contracts/harness-scanner-unavailable-mechanical-first"],
+    guardedBy: ["contracts/harness-scanner-unavailable"],
     hypothesis:
-      "Expected KILLED: the only rule against hand-deriving D5/D6 when the CLI cannot run. Without it the model likely scores those dimensions from the user's own description instead of marking them unreviewed and the score provisional.",
+      "Expected KILLED: removes the rule against replacing unavailable deterministic scanner coverage with manual confidence.",
   },
   {
-    id: "harness-onboard-verdict-gate",
+    id: "harness-readiness-evidence",
     skillId: "harness",
-    span: { file: "onboard.md", heading: "3. Apply the verdict gate" },
-    guardedBy: ["contracts/harness-onboard-verdict-gate"],
+    span: { file: "INTERFACES.md", heading: "Readiness result" },
+    guardedBy: ["contracts/harness-readiness-evidence"],
     hypothesis:
-      "Expected KILLED: removes the 'only when earned' rule for autonomous-ready, so the model is likelier to hand-write a readiness manifest under time pressure with no audit behind it.",
+      "Expected KILLED: removes the facts/unknowns/blockers boundary and its prohibition on invented scores or autonomous-ready assertions.",
   },
   {
     id: "omit-codex-session",

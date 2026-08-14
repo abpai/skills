@@ -1,53 +1,32 @@
-# Harness artifact schemas
+# Harness interfaces
 
-This file defines the structured Markdown artifacts that Harness workflows
-produce and read inside a repository. It is an instruction-level schema catalog,
-not a TypeScript API: the interfaces below document extracted shapes, and the
-Markdown tables remain the source of truth.
+Harness has three repo-owned artifacts and one ephemeral readiness result.
+Markdown remains the source of truth for repository artifacts; do not create
+parallel JSON copies that can drift.
 
-Cross-system proposals for a software-factory consumer live in
-`./FACTORY_HANDOFFS.md`. Do not treat those proposals as implemented contracts.
+## Artifact ownership
 
-## Status catalog
+| Artifact | Owner | Purpose |
+| --- | --- | --- |
+| `docs/BEHAVIOR_INVENTORY.md` | Human, drafted by Harness | Ratified map of important current behavior |
+| `docs/BEHAVIOR_LEDGER.md` | Harness | Evidence joined to ratified behavior IDs |
+| `docs/SPEC_CONTRACT.md` proof menu | Repository | Validation available for each change type |
+| `HarnessReadinessResult` | Doctor, ephemeral | Exact-candidate facts, unknowns, blockers, and proof runs |
 
-| Artifact | Producer | Reader | Persistence | Enforcement |
-| --- | --- | --- | --- | --- |
-| `ProofRow` | `docs.md` | `doctor.md`, `evals.md`, `onboard.md` | `docs/SPEC_CONTRACT.md` | Harness workflow inspection; released scanner support is planned |
-| `BehaviorRow` | `baseline.md` | `capture.md`, `doctor.md` | `docs/BEHAVIOR_INVENTORY.md` | Harness workflow inspection; released scanner support is planned |
-| `LedgerRow` | `capture.md` | `baseline.md`, `doctor.md`, `onboard.md` | `docs/BEHAVIOR_LEDGER.md` | Harness workflow inspection; released scanner support is planned |
-| `BaselineReport` | `baseline status` | human/operator | ephemeral output | Derived by the Harness workflow |
+The Markdown tables below are constrained so Doctor can inspect them and
+future tooling can parse them. They are not cross-system TypeScript APIs.
 
-The schemas make agent output deterministic and reviewable today. They become
-runtime contracts only when a concrete parser and consumer enforce them.
+## Proof row
 
-## Proof menu row
-
-The proof menu in `docs/SPEC_CONTRACT.md` maps each change type to the evidence
-required to accept it. Keep one human- and machine-readable Markdown table; do
-not add parallel JSON that can drift.
-
-Required columns, in this order:
+The proof menu maps a change type to repository-owned validation and the
+evidence required to accept it.
 
 ```md
 | Change type | Lane | Validation command | Proof artifact | Sufficiency |
 | --- | --- | --- | --- | --- |
-| API surface | full | `test:contract` | passing run + response trace | auto |
-| Dashboard UI | full | `test:e2e` | screenshot pair | human-gate |
-| Any change | fast | `lint` `typecheck` | passing run output | auto |
+| API surface | full | `test:contract` | passing run and response trace | auto |
+| Dashboard UI | full | `test:e2e` | screenshot comparison | human-gate |
 ```
-
-Rules:
-
-- `Validation command` contains only command identifiers wrapped in backticks.
-  Put evidence descriptions in `Proof artifact`.
-- Use package-script IDs such as `test`, `lint`, or `ui:build`, not shell
-  invocations. Use target or recipe IDs for Make and just. Use the exact signal
-  name reported by the scanner for CI-only commands.
-- `Lane` is `fast` or `full`. Completion binds to the full lane.
-- `Sufficiency` is `auto` or `human-gate`. Never infer a missing value.
-- `Change type` and `Proof artifact` are free human text.
-
-Extracted shape:
 
 ```ts
 interface ProofRow {
@@ -59,38 +38,28 @@ interface ProofRow {
 }
 ```
 
-Workflow checks:
+Rules:
 
-- Reject missing or reordered required columns, prose in the command cell, and
-  invalid lane or sufficiency values as unverifiable.
-- Resolve every command ID through the discovered signals menu. A missing ID is
-  a stale-proof-menu finding. Resolution proves existence, not successful
-  execution.
-- Report major change types in the signals menu that have no proof row.
+- Columns use the fixed order above.
+- `Lane` is `fast` or `full`; full is the completion gate.
+- `Validation command` contains only backtick-wrapped command IDs. Use package
+  script, Make target, just recipe, or CI job IDs rather than explanatory prose.
+- `Proof artifact` describes retained evidence, not merely the command output.
+- `Sufficiency` is `auto` or `human-gate`.
+- Every command resolves to a real repository-owned surface.
+- Broader lane policy and live/human execution details belong in the
+  repository's command documentation.
 
 ## Behavior inventory row
 
-`harness baseline` writes the human-ratified behavior map to
-`docs/BEHAVIOR_INVENTORY.md`.
-
-Required columns, in this order:
+The inventory records observable behavior and the human's decision about what
+must be protected.
 
 ```md
 | ID | Area | Behavior | Entry points | Existing proof | Missing proof | Confidence | Risk | Status | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| B-001 | Auth | Google login | `src/auth/google.ts:42` | none | no e2e proof | high | high | confirmed | P0 |  |
+| B-001 | Auth | Google login creates a session | `src/auth/google.ts:42` | none | login contract | high | high | confirmed | P0 |  |
 ```
-
-Rules:
-
-- `ID` matches `B-\d{3,}`, is unique, and stays stable across refreshes.
-- `Entry points` contains concrete repo paths, preferably `file:line`.
-- `Confidence` and `Risk` are `high`, `medium`, or `low`.
-- `Status` is `proposed`, `confirmed`, `corrected`, `skip`, `deferred`, or
-  `stale`.
-- `Priority` is `P0`, `P1`, or `P2`.
-
-Extracted shape:
 
 ```ts
 interface BehaviorRow {
@@ -108,32 +77,19 @@ interface BehaviorRow {
 }
 ```
 
+IDs match `B-\d{3,}`, remain stable across refreshes, and are unique. Entry
+points name concrete paths. Agents draft `proposed`; humans own confirmation,
+correction, skip, and deferral.
+
 ## Behavior ledger row
 
-`harness capture` writes proof outcomes to `docs/BEHAVIOR_LEDGER.md`. Stable IDs
-join ledger rows to the inventory. A missing ledger row means capture is pending;
-do not create a `pending` ledger status.
-
-Required columns, in this order:
+The ledger records how a ratified behavior is protected.
 
 ```md
 | ID | Status | Capture type | Test paths | Run command | Run evidence | Confidence | Remaining gap |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | B-001 | captured | integration | `tests/auth/google.test.ts` | `pnpm test tests/auth/google.test.ts` | 3/3 green at abc123 | high |  |
 ```
-
-Rules:
-
-- `ID` references an inventory row.
-- `Status` is `captured`, `bug-pinned`, `gap`, `failed`, or `stale`.
-- `Capture type` is `unit`, `integration`, `golden`, `snapshot`, `screenshot`,
-  `contract`, or `none`.
-- `Test paths` for `captured` and `bug-pinned` rows name files that exist.
-- `Run command` names the command that produced proof.
-- `Run evidence` records the result and repository snapshot.
-- `Confidence` is `high`, `medium`, or `low`.
-
-Extracted shape:
 
 ```ts
 interface LedgerRow {
@@ -148,51 +104,60 @@ interface LedgerRow {
 }
 ```
 
-Inventory and ledger checks:
+Every ledger ID references an inventory ID. Proof-backed rows name existing
+files and candidate-bound run evidence. A missing row means capture is pending;
+there is no `pending` ledger status.
 
-- Require the exact headers above.
-- Require valid, unique inventory IDs and valid enum values.
-- Require every ledger ID to reference an inventory ID.
-- Require terminal ledger outcomes for confirmed or corrected P0/P1 rows.
-- Require existing test files for captured and bug-pinned rows.
+## Readiness result
 
-Harness owns the semantic judgment: whether a row describes observable behavior,
-whether the proof exercises that behavior, and whether remaining gaps block the
-target readiness tier.
-
-## Baseline status report
-
-`harness baseline status` derives this ephemeral report from the two tables and
-the current repository snapshot:
+Doctor emits, but does not commit by default, a result shaped around the same
+boundary Garage Band uses for repository readiness: observed facts, unknowns,
+blockers, inspected revision, and inspected paths. This is an instruction-level
+producer contract; a factory adapter remains responsible for validating and
+mapping it into its versioned API schema.
 
 ```ts
-interface BaselineReport {
-  gate0:
-    | "toolchain-ready-green"
-    | "tests-runnable-red"
-    | "no-test-harness"
-    | "toolchain-broken"
-    | "env-blocked"
-    | "unknown";
-  inventory: {
-    path: "docs/BEHAVIOR_INVENTORY.md";
-    totalRows: number;
-    confirmedRows: number;
-    correctedRows: number;
-    pendingRows: number;
-    deferredRows: number;
-    highRiskRows: number;
-  };
-  ledger: {
-    path: "docs/BEHAVIOR_LEDGER.md";
-    capturedRows: number;
-    bugPinnedRows: number;
-    gapRows: number;
-    failedRows: number;
-    staleRows: number;
-    highRiskGapRows: number;
-    lastVerifiedSha: string | null;
-  };
+interface ReadinessItem {
+  code: string;
+  message: string;
   nextAction: string;
 }
+
+interface ProofRun {
+  command: string;
+  status: "passed" | "failed" | "unverified" | "stale";
+  runtimeMs: number | null;
+  artifact: string | null;
+}
+
+interface HarnessReadinessResult {
+  schemaVersion: 1;
+  repository: string;
+  inspectedRevision: string | null;
+  workingTree: {
+    dirty: boolean;
+    diffSha256: string | null;
+  };
+  observedFacts: string[];
+  unknowns: ReadinessItem[];
+  blockers: ReadinessItem[];
+  inspectedPaths: {
+    path: string;
+    sha256: string;
+  }[];
+  proofRuns: ProofRun[];
+}
 ```
+
+Semantics:
+
+- `observedFacts` contains only file- or command-backed statements.
+- `unknowns` names evidence Doctor could not obtain and how to obtain it.
+- `blockers` names conditions that make the requested work unsafe or
+  unprovable and how to resolve them.
+- `null` means not established. Empty arrays mean the audit established that
+  no entries exist.
+- A dirty tree requires a diff hash. Proof from an earlier candidate is
+  `stale`, not current.
+- Do not add a numeric readiness score or an `autonomous-ready` assertion. The
+  consumer decides what its requested operation requires from these facts.

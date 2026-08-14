@@ -239,8 +239,8 @@ fi
 #
 # Some plugins ship support docs at the plugin root for source-checkout readers
 # and mirror them into skills/<name>/ so installed skills can use sibling paths.
-# The plugin root is not copied into the runtime skill cache. Enforce parity for
-# every mirrored Harness schema/handoff doc so loose files cannot silently drift.
+# The plugin root is not copied into the runtime skill cache. Enforce parity so
+# loose files cannot silently drift.
 MIRRORED_SUPPORT_DOCS=()
 while IFS= read -r f; do
   MIRRORED_SUPPORT_DOCS+=("$f")
@@ -248,8 +248,7 @@ done < <(find . -path ./.git -prune -o \
            -path '*/node_modules/*' -prune -o \
            -path './evals/eve/*' -prune -o \
            -path '*/__pycache__/*' -prune -o \
-           \( -path '*/skills/*/INTERFACES.md' -o \
-              -path '*/skills/*/FACTORY_HANDOFFS.md' \) -type f -print | sort)
+           -path '*/skills/*/INTERFACES.md' -type f -print | sort)
 for skill_doc in "${MIRRORED_SUPPORT_DOCS[@]}"; do
   plugin_root="${skill_doc%/skills/*}"
   filename="${skill_doc##*/}"
