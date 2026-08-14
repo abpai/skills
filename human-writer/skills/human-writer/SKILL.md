@@ -6,7 +6,7 @@ description: >-
   feels generic, over-polished, promotional, repetitive, or too tidy.
 metadata:
   author: Andy Pai
-  version: "1.4.3"
+  version: "1.4.4"
   upstream_skill: "https://github.com/blader/humanizer"
   tags: "writing editing humanize voice anti-slop GEO"
 ---
@@ -43,7 +43,8 @@ inflated, vague, or synthetic.
 - Swap abstractions for specifics when the source material supports it.
 - Keep useful repetition; avoid synonym cycling just to sound varied.
 - Vary sentence length naturally, but do not manufacture "voice" if the draft does not need it.
-- Add one honest opinion or aside when the context calls for it. Small amounts of personality go further than elaborate rhetorical tricks.
+- Preserve opinions and asides already supported by the draft or context. Do not
+  invent a viewpoint merely to make the prose feel human.
 
 ## Output
 

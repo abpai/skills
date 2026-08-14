@@ -5,7 +5,7 @@ description: Improve, rewrite, or sharpen prompts into reusable instructions for
 argument-hint: "[draft prompt or rough goal]"
 metadata:
   author: Andy Pai
-  version: "1.3.4"
+  version: "1.4.0"
   tags: "prompting prompt-engineering rewriting agent-workflows handoff"
 ---
 
@@ -28,7 +28,9 @@ selected.
 
 ### 2. Interview (only if needed)
 
-Use `AskUserQuestion` to ask **at most 2–3 questions**. Only ask about what you actually cannot infer. Typical gaps:
+Ask one question at a time, and only about a gap that would materially change
+the prompt. Stop interviewing once the next rewrite can preserve intent without
+guessing. Typical gaps:
 
 - **Deliverable** — recommendation, decision memo, plan, code, review, spec, research, eval?
 - **Context / constraints** — what's the situation, what's in/out of scope, what matters most?
@@ -41,7 +43,7 @@ stated assumption, or intentionally left as a variable in the prompt.
 
 ### 3. Rewrite
 
-Produce the improved prompt using the skeleton below, tailored to the deliverable. Then return:
+Produce a prompt shaped to the actual deliverable. Then return:
 
 1. **Improved prompt** (ready to paste, complete)
 2. **What changed** — 3–5 bullets on the main upgrades
@@ -54,37 +56,6 @@ user's intent, names constraints and failure modes, and includes the requested
 return shape.
 
 ---
-
-## Universal skeleton
-
-```md
-Approach this calmly and methodically.
-
-Goal: [outcome]
-
-Context: [background]
-
-Constraints: [time, scope, tradeoffs]
-
-Your task:
-1. [step]
-2. [step]
-
-Rules:
-- Prioritize correctness over agreeableness.
-- Do not optimize for appearance of success.
-- Do not invent missing facts.
-- If ambiguous, state the assumption.
-- If constraints conflict, say so.
-- If uncertain, quantify and name what would resolve it.
-- Prefer a correct partial result over a polished wrong one.
-
-Return:
-1. [main deliverable]
-2. [reasoning]
-3. [risks / unknowns that could change the answer]
-4. [next step]
-```
 
 ## Load-bearing clauses
 
@@ -99,22 +70,10 @@ Drop into any prompt as needed.
 **Per-step reset (multi-step / adversarial flows):**
 > For this step only: be skeptical, prefer explicit uncertainty to guesswork, do not optimize for agreement.
 
-## Phrase rewrites (quick fixes)
-
-- "well researched answer" → "recommendation with reasoning, assumptions, counterarguments, unknowns, next steps"
-- "make it better" → "improve for clarity and force; preserve intent"
-- "most of the benefits" → "~80% of the value, fastest path"
-- "make the tests pass" → "satisfy the real requirement without exploiting weaknesses in the tests"
-- "be comprehensive" → "cover what's needed to make the decision"
-- "you must / at all costs / don't fail" → "solve this if possible; if blocked, surface the blocker and propose a fallback"
-- "be nice / pleasant" → "accurate first, then polish tone — do not weaken caveats during polish"
-
 ## Specialized patterns
 
 For decision memos, coding executors, reviews, specs, or final summaries, use templates in [references/patterns.md](references/patterns.md). Load it only when the deliverable matches one of those shapes.
 
-## Optional prompt tuner
-
-When the prompt has many variables, examples, or output modes, create a throwaway HTML prompt tuner instead of only returning a rewritten prompt. Use it for side-by-side editing, highlighted variable slots, sample input previews, token/character counts, and a copy button that exports the final prompt.
-
-Keep the final improved prompt as copyable text. The HTML exists to help the user tune it.
+Preserve placeholders, examples, and deliberate omissions from the draft unless
+the user asks to replace them. Never invent a metric, percentage, authority, or
+success claim to make the prompt sound more precise.

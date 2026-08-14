@@ -2,19 +2,21 @@
 name: visualize
 disable-model-invocation: true
 description: >-
-  Generate self-contained HTML visualizations that teach systems, plans, code
+  Generate single-file HTML visualizations that teach systems, plans, code
   flows, architectures, comparisons, timelines, and concepts — for when the
   visual artifact itself is the deliverable.
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.3.5"
+  version: "1.4.0"
   upstream_skill: https://github.com/nicobailon/visual-explainer
 ---
 
 # Visualize
 
-Generate a single, self-contained HTML file that visually explains a system, plan, code flow, or concept. The output opens in the browser — never fall back to ASCII art when this skill is loaded.
+Generate a single HTML file that visually explains a system, plan, code flow,
+or concept. The output opens in the browser — never fall back to ASCII art when
+this skill is loaded.
 
 Default aesthetic: the "HTML effectiveness" editorial gallery style. Use an ivory page, serif display headings, clay accents, quiet card grids, simple SVG illustrations, and generous whitespace. The page should feel like something the user wants to read, not a dashboard skin.
 
@@ -58,7 +60,8 @@ When the artifact's job is to **explain or teach** — a system, plan, proposal,
 4. **Pick the format** from the Format Guide and record the choice before writing.
 5. For Mermaid diagrams with 10+ nodes, read `./references/mermaid-tips.md`, include Mermaid.js, and keep the graph definition in a plain constant — but first ask whether a 10+ node diagram belongs in the Walkthrough at all (usually it belongs in Depth, or split across steps).
 6. Before writing the `<script type="module">` block, read `./references/htm-authoring.md` for htm escaping and entity-safety rules.
-7. **Write** to `~/.agent/diagrams/<descriptive-name>.html` and open in the browser.
+7. **Write** to a user-provided location, or a writable task-local artifact
+   directory when none is given, and open it in the browser.
 
 The workflow is complete when the file exists, the first screen passes the success test above, browser console is clean, and the final response names the file path, the audience, and the visuals included.
 
@@ -78,7 +81,11 @@ A dense two-column comparison as the opening visual is the classic expert's-view
 
 ## Tech Stack
 
-Every generated file uses Preact + htm via ESM CDN imports, no build step — see `./templates/base.html`. Add Mermaid.js only when the selected format requires a large graph. Never use `innerHTML` with user-provided content (XSS prevention).
+The default template uses Preact + htm via ESM CDN imports, so it requires
+network access when opened. If the user needs an offline or truly self-contained
+artifact, use inline vanilla HTML/CSS/JavaScript instead. Add Mermaid.js only
+when the selected format requires a large graph and network loading is allowed.
+Never use `innerHTML` with user-provided content.
 
 For the full HTML-effectiveness design tokens (colors, typography, layout, motion), see `./references/design-system.md`.
 
