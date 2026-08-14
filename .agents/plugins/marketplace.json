@@ -101,6 +101,18 @@
       "category": "Tools"
     },
     {
+      "name": "antigravity",
+      "source": {
+        "source": "local",
+        "path": "./antigravity"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools"
+    },
+    {
       "name": "claude-session",
       "source": {
         "source": "local",

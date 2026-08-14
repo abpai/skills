@@ -1,0 +1,6 @@
+interface:
+  display_name: "Antigravity"
+  short_description: "Run Antigravity agents with durable artifacts"
+  default_prompt: "Use $antigravity to run a bounded Gemini task with durable artifacts."
+policy:
+  allow_implicit_invocation: false
