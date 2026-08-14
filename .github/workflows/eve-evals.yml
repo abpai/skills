@@ -58,6 +58,8 @@ jobs:
         run: bun run prepare-skills
       - name: Typecheck eval files against Eve types
         run: bun run typecheck
+      - name: Prove public skill catalog coverage
+        run: bun run test:catalog
       - name: Prove live coverage controls
         run: bun run test:coverage
       - name: Pull pinned outcome verifier image
@@ -81,7 +83,7 @@ jobs:
   #      question, and run the full suite once at the end.
   #   2. Add the `run-evals` label to a same-repo PR. Exactly the moment of
   #      labeling triggers ONE full run — later pushes do not re-run the suite
-  #      (that silently re-proved 28 evals per push when 1-3 were in question).
+  #      (that silently re-proved the full suite per push when 1-3 were in question).
   #      To re-prove after a push: remove and re-add the label, or dispatch.
   #
   # `harness-smoke` still runs on every PR: it is free, needs no secrets, and

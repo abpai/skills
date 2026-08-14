@@ -79,7 +79,10 @@ type Row = {
   hypothesis: string
 }
 
-function run(cmd: string[], opts: { env?: NodeJS.ProcessEnv } = {}): {
+function run(
+  cmd: string[],
+  opts: { env?: NodeJS.ProcessEnv } = {},
+): {
   status: number | null
   stdout: string
   stderr: string
@@ -155,7 +158,11 @@ function extractJsonObject(stdout: string): unknown {
     if (!slice) continue
     try {
       const parsed = JSON.parse(slice)
-      if (parsed && typeof parsed === "object" && Array.isArray((parsed as EvalRunSummary).results)) {
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        Array.isArray((parsed as EvalRunSummary).results)
+      ) {
         return parsed
       }
     } catch {
@@ -216,7 +223,10 @@ function classify(summary: EvalRunSummary): "SURVIVED" | "KILLED" | "ERROR" {
  * with, and the louder the suite's background failure rate, the more
  * "load-bearing" everything looks.
  */
-function baselineIsGreen(ids: readonly string[]): { green: boolean; detail: string } {
+function baselineIsGreen(ids: readonly string[]): {
+  green: boolean
+  detail: string
+} {
   prepare([])
   const summary = runEvals(ids)
   const verdict = classify(summary)
@@ -344,7 +354,9 @@ function runEntry(entry: Ablation, runs: number): Row {
     // FLAKY needs no control: it already killed at least once, so the eval
     // demonstrably reacts to the skill.
     if (classification === "SURVIVED") {
-      console.log(`   control: re-running ${entry.guardedBy.join(", ")} with ${entry.skillId} omitted…`)
+      console.log(
+        `   control: re-running ${entry.guardedBy.join(", ")} with ${entry.skillId} omitted…`,
+      )
       if (controlPassesWithoutSkill(entry.guardedBy, entry.skillId)) {
         classification = "UNGUARDED"
         detail = `${detail} (passes without ${entry.skillId})`
@@ -399,7 +411,7 @@ function main(): void {
 
   // `--runs N` repeats each ablated build N times and reports the vote split.
   // Default 1 keeps a sweep cheap; raise it before acting on any single result.
-  let runs = 1
+  let runs = 3
   const runsFlag = argv.findIndex((a) => a === "--runs")
   if (runsFlag >= 0) {
     const raw = argv[runsFlag + 1]

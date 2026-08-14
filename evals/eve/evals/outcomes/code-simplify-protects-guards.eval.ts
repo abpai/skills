@@ -85,7 +85,7 @@ const NOISE_NAMES = [
 export default defineEval({
   description:
     "code simplify prunes redundant tests while every planted fault stays caught — the protected guards survive.",
-  tags: ["live", "code", "outcome"],
+  tags: ["pending-live-proof", "code", "outcome"],
   async test(t) {
     const turn = await t.send(
       prompt(
