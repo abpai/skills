@@ -18,33 +18,23 @@ A spec is ready when it:
 
 ## Proof menu
 
-Each command belongs to a lane: the **fast lane** (deterministic, runs in
-seconds) is the inner loop an agent runs after every edit; the **full lane**
-(slow unit, integration, e2e, browser) is the gate for done. Done = the full
-lane green; a green fast lane never certifies done. Each proof row names the
-validation that certifies its claim, and its evidence must bind to the exact
-candidate. Deployment proof also names the target environment and execution
-identity; one environment never certifies another. The **Sufficiency** column
-marks whether a passing run is sufficient evidence (`auto`) or the change still
-needs human sign-off (`human-gate`) — a false green on a `human-gate` row would
-merge broken work, the failure that is
-worse than a false red.
+Document the broader fast, full, and live/human policy in the repository's
+command guide. Each proof row still declares whether its command is fast
+feedback or a full completion gate. Evidence binds to the exact candidate;
+deployment proof also names the environment and execution identity.
 
 Keep the table in the machine-readable proof-row shape (`./INTERFACES.md`) so
-tooling can parse it: fixed columns in the order below, the **Lane** cell holding
-only `fast` or `full`, and the **Validation command** cell holding only
-backtick-wrapped command IDs from the repo's signals menu — put a proof artifact
-like a screenshot diff in the **Proof artifact** column, never as prose in the
-command cell. For package scripts, use the script ID (`test`, `ui:build`) rather
-than the shell invocation (`bun test`, `pnpm run ui:build`) so Harness Doctor can
-resolve the row deterministically.
+tooling can parse it: fixed columns in the order below, `Lane` containing only
+`fast` or `full`, and **Validation command** containing only backtick-wrapped
+command IDs. Put screenshots, traces, and other evidence in **Proof artifact**.
+Use package script IDs rather than shell invocations so Doctor can resolve them.
 
 | Change type | Lane | Validation command | Proof artifact | Sufficiency |
 | --- | --- | --- | --- | --- |
 | <area> logic | full | `<script-or-target-id>` | passing run output | auto |
 | <area> UI | full | `<script-or-target-id>` | screenshot pair | human-gate |
-| API surface | full | `<contract-script-id>` | passing run + response trace | auto |
-| Cross-cutting | full | `<full-check-script-id>` | passing full-lane run | auto |
+| API surface | full | `<contract-script-id>` | passing run and response trace | auto |
+| Cross-cutting | full | `<full-check-script-id>` | passing full validation | auto |
 
 ## Escalation boundaries
 

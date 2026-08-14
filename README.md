@@ -81,14 +81,13 @@ marketplace flow above.
 | Plugin | What it does |
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
-| **harness** | Groups agent-harness workflows behind one scoped `/harness` umbrella command; use `/harness guide` to pick the right workflow for your situation, `/harness baseline` to inventory production behavior, `/harness doctor` for readiness or diff self-review, `/harness secure-dependencies` for supply-chain policy, and `/harness compliant` for end-to-end remediation |
+| **harness** | Prepare a repository for agent-driven development with `/harness adopt`, audit readiness or a change with `/harness doctor`, and protect uncertain behavior with `/harness capture` |
 | **status-update** | Turn long-running agent work into a concise, evidence-backed snapshot of what is done, active, left, slowing progress, or newly surprising |
 
 Migration aliases are documented rather than silently executed: `review-and-commit`
 moves to `code prepare-pr --effort low` and now pushes; `dead-code`,
 `thermo-nuclear`, and `test-deslop` move to `code simplify`; `walkthrough` moves
-to `code understand`; `secure-dependencies` moves to `harness
-secure-dependencies` (or `harness compliant` for end-to-end remediation);
+to `code understand`; `secure-dependencies` moves to `harness adopt`;
 `engineering clean-code` moves to `code simplify`.
 
 ### Tools
