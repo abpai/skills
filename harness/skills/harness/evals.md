@@ -9,10 +9,10 @@ Use this workflow when the user wants to seed eval cases from the spec contract,
 bootstrap an eval suite for a repo being onboarded, or turn the proof menu into
 gradeable agent tests.
 
-This module produces **seed specs** in the shape the factory's eval system
-consumes; it does not run or grade evals — the runner and graders live on the
-factory side. The proof-row format and the eval-seed field mapping are defined
-in `./INTERFACES.md`.
+This module produces provisional **seed specs**; it does not run or grade evals,
+and no supported factory consumer contract exists yet. The proof-row format is
+defined in `./INTERFACES.md`; the proposed cross-system field mapping lives in
+`./FACTORY_HANDOFFS.md`.
 
 ## Process
 
@@ -43,14 +43,14 @@ to `auto` (defaulting a human-gate row to auto would let a false green merge).
 
 ### 3. Emit the seed specs
 
-Emit the eval seeds as data for the factory to compile into its own eval cases.
-Group related change types rather than emitting a seed per micro-variation; keep
-the set small and high-signal, mirroring the compact proof menu.
+Emit the eval seeds as provisional data for a factory to compile into its own
+eval cases. State that the consumer mapping needs verification. Group related
+change types rather than emitting a seed per micro-variation; keep the set small
+and high-signal, mirroring the compact proof menu.
 
 ## Completion
 
 Seeding is done when: the proof menu was read in machine-readable form (or its
-shape was fixed first); each seedable row produced one eval seed carrying all
-five fields; human-gate rows are seeded as human-gated (never silently auto);
-and rows that could not be seeded (missing command, missing sufficiency) are
-listed with the reason rather than papered over.
+shape was fixed first); each seedable row produced one provisional seed carrying
+all five fields; human-gate rows are seeded as human-gated; the absent supported
+consumer is stated; and unseedable rows are listed with the reason.

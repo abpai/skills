@@ -1,18 +1,18 @@
 # Harness Onboard
 
-Turn an audited repo into a machine-readable **`autonomous-ready` manifest** that
-a downstream software factory can consume to decide whether it may point an
-unsupervised loop at the repo. This is the handoff step after the repo has been
+Turn an audited repo into a provisional **`autonomous-ready` manifest** for a
+downstream software factory. This is the handoff step after the repo has been
 made ergonomic (`docs`) and audited (`doctor`): it projects the audit's prose
-verdict into the data contract another system reads.
+verdict into structured data another system could read.
 
 Use this workflow when the user wants to onboard a repo into an autonomous
 runner, emit an `autonomous-ready` manifest, or check what a repo still needs
 before it can be driven unattended.
 
-The manifest schema and its field provenance are defined in `./INTERFACES.md`.
-This module emits that contract; the consumer that reads it is built on the
-factory side — do not assume a reader exists yet.
+The proposed manifest shape and field provenance are defined in
+`./FACTORY_HANDOFFS.md`. No supported reader or compatibility policy exists.
+Emit the proposal only as a provisional handoff and re-verify it with the
+intended consumer before either side implements the contract.
 
 ## Process
 
@@ -25,8 +25,8 @@ audit, it does not replace it.
 
 ### 2. Derive the manifest fields
 
-Populate the `AutonomousReadyManifest` from real repo evidence (never invent a
-field to look ready):
+Populate the proposed `AutonomousReadyManifest` from real repo evidence (never
+invent a field to look ready):
 
 - **Identity** — provider/owner/name, default and allowed refs (from the repo).
 - **Verdict + score + dimensions + gaps** — straight from the `doctor.md` audit.
@@ -51,6 +51,11 @@ field to look ready):
 - **parallelSafety / reversibility** — from the `doctor.md` semantic gates.
 
 Any field you cannot fill from evidence is a gap entry, not a fabricated value.
+Where the proposal permits it, emit `null` or `unknown`; use an empty array only
+when the audit established that the set is empty. Never turn missing evidence
+into `false`, `none`, an empty string, an empty array, or another concrete
+assertion. Mark incomplete scoring as provisional and record its reviewed
+weight.
 
 ### 3. Apply the verdict gate
 
@@ -66,16 +71,15 @@ The manifest's `verdict` governs how a runner may use the repo:
 
 ### 4. Emit the manifest and an onboarding checklist
 
-Emit the manifest as data (prefer stdout/ephemeral file — the harness re-derives
-it, so it never goes stale; do not commit it as durable repo state). Alongside
-it, produce a short **onboarding checklist**: the ordered gaps that would promote
+Emit the provisional manifest as data. Prefer stdout or an ephemeral file; do
+not commit a draft cross-system contract as durable repo state. Alongside it,
+produce a short **onboarding checklist**: the ordered gaps that would promote
 the repo to `autonomous-ready`, each pointing at the surface that fixes it
 (usually a `docs`/enforcement change or a missing bootstrap/proof).
 
 ## Completion
 
-Onboard is done when: a `doctor.md` audit ran; a manifest is emitted with every
-required field populated from evidence or explicitly listed as a gap; the verdict
-gate is applied honestly (no unearned `autonomous-ready`); and the onboarding
-checklist names the promotion path. Emitting a manifest that claims readiness the
-audit did not support is the failure this step exists to prevent.
+Onboard is done when: a `doctor.md` audit ran; a provisional manifest is emitted
+with every required field populated from evidence or explicitly listed as a
+gap; its proposed status and absent consumer are stated; the verdict gate is
+applied honestly; and the onboarding checklist names the promotion path.

@@ -4,7 +4,7 @@ disable-model-invocation: true
 user-invocable: false
 metadata:
   internal: true
-description: "Route autonomous-ready onboarding-manifest emission to the onboard module."
+description: "Route provisional autonomous-ready factory handoffs to the onboard module."
 argument-hint: "[repo to onboard]"
 ---
 

@@ -1,38 +1,32 @@
-# Harness interface contracts
+# Harness artifact schemas
 
-Design-only (roadmap Phase 0 deliverable — no runtime consumer yet). Two
-machine-readable contracts that later phases depend on, fixed early so all three
-sides build to the same shape:
+This file defines the structured Markdown artifacts that Harness workflows
+produce and read inside a repository. It is an instruction-level schema catalog,
+not a TypeScript API: the interfaces below document extracted shapes, and the
+Markdown tables remain the source of truth.
 
-- **Proof-row format** — a constrained shape for `docs/SPEC_CONTRACT.md` proof-menu
-  rows so **harness-doctor** (Phase 4) can statically verify them and downstream
-  software factories (Phase 5) can seed eval cases from them.
-- **Behavior inventory and ledger rows** — the durable artifacts emitted by
-  `harness baseline`: a human-ratified inventory and a machine-maintained proof
-  ledger keyed by stable behavior IDs.
-- **`autonomous-ready` onboard manifest** — what the **harness** emits (Phase 5)
-  and a downstream software factory consumes to accept a repo for unattended work.
+Cross-system proposals for a software-factory consumer live in
+`./FACTORY_HANDOFFS.md`. Do not treat those proposals as implemented contracts.
 
-This routes work; it does not gate it. The manifest schema was informed by an
-internal software-factory pilot, but the contract below is intentionally generic:
-re-verify against any concrete consumer before implementing a reader.
+## Status catalog
 
-## 1. Machine-readable proof-row format
+| Artifact | Producer | Reader | Persistence | Enforcement |
+| --- | --- | --- | --- | --- |
+| `ProofRow` | `docs.md` | `doctor.md`, `evals.md`, `onboard.md` | `docs/SPEC_CONTRACT.md` | Harness workflow inspection; released scanner support is planned |
+| `BehaviorRow` | `baseline.md` | `capture.md`, `doctor.md` | `docs/BEHAVIOR_INVENTORY.md` | Harness workflow inspection; released scanner support is planned |
+| `LedgerRow` | `capture.md` | `baseline.md`, `doctor.md`, `onboard.md` | `docs/BEHAVIOR_LEDGER.md` | Harness workflow inspection; released scanner support is planned |
+| `BaselineReport` | `baseline status` | human/operator | ephemeral output | Derived by the Harness workflow |
 
-### Problem
+The schemas make agent output deterministic and reviewable today. They become
+runtime contracts only when a concrete parser and consumer enforce them.
 
-Today the proof menu (the harness `docs.md` module, `docs/SPEC_CONTRACT.md`) is
-a free-form Markdown table with compound cells like `` `<command>` + screenshot
-diff ``. A scanner cannot reliably extract "the command this row asserts," so
-Phase 4's "statically verify every proof-menu row references a command that
-exists" is impossible without a parseable shape first. Downstream eval seeders
-hit the same wall: they need change-type, command, artifact, sufficiency, and
-expected evidence as data, not prose.
+## Proof menu row
 
-### The constrained table (single source, human- and machine-readable)
+The proof menu in `docs/SPEC_CONTRACT.md` maps each change type to the evidence
+required to accept it. Keep one human- and machine-readable Markdown table; do
+not add parallel JSON that can drift.
 
-Keep one Markdown table — no parallel JSON to drift — but constrain it so the
-columns parse deterministically. Required columns, fixed order:
+Required columns, in this order:
 
 ```md
 | Change type | Lane | Validation command | Proof artifact | Sufficiency |
@@ -42,85 +36,44 @@ columns parse deterministically. Required columns, fixed order:
 | Any change | fast | `lint` `typecheck` | passing run output | auto |
 ```
 
-Rules that make it parseable:
+Rules:
 
-- **`Validation command`** holds one or more command identifiers, **each wrapped
-  in backticks**, and nothing else. Non-command prose ("+ screenshot diff") is
-  banned from this cell — it belongs in `Proof artifact`. A row's command IDs
-  are exactly the backtick spans in this cell.
-- For package-manager scripts, use the script ID from `package.json`
-  (`test`, `lint`, `ui:build`), not the shell invocation (`bun test`,
-  `pnpm test`, `npm run test`). Harness Doctor resolves these IDs through the
-  discovered signals menu before the workflow executes them. Make targets and
-  just recipes use their target/recipe ID; CI-only commands use the exact signal
-  emitted by the scanner.
-- **`Lane`** ∈ `fast | full`. "Done" binds to full-lane green (never fast-lane).
-- **`Sufficiency`** ∈ `auto | human-gate`. A missing marker is a false-green risk.
-- **`Change type`** and **`Proof artifact`** are free human text.
+- `Validation command` contains only command identifiers wrapped in backticks.
+  Put evidence descriptions in `Proof artifact`.
+- Use package-script IDs such as `test`, `lint`, or `ui:build`, not shell
+  invocations. Use target or recipe IDs for Make and just. Use the exact signal
+  name reported by the scanner for CI-only commands.
+- `Lane` is `fast` or `full`. Completion binds to the full lane.
+- `Sufficiency` is `auto` or `human-gate`. Never infer a missing value.
+- `Change type` and `Proof artifact` are free human text.
 
-### Extracted shape
+Extracted shape:
 
 ```ts
 interface ProofRow {
-  changeType: string;                 // human label
+  changeType: string;
   lane: "fast" | "full";
-  commands: string[];                 // command IDs from the command cell
-  proofArtifact: string;              // human description of the artifact
+  commands: string[];
+  proofArtifact: string;
   sufficiency: "auto" | "human-gate";
 }
 ```
 
-### Verification rules (harness-doctor, Phase 4)
+Workflow checks:
 
-- Parse the proof-menu table into `ProofRow[]`. A malformed table (missing a
-  required column, a command cell with un-backticked prose, an out-of-enum Lane
-  or Sufficiency) is itself a finding — the row is unverifiable.
-- For each `command`, resolve it against the discovered **signals menu** (package
-  script IDs, CI jobs, Make/just targets). A command that resolves to nothing is
-  a stale-proof-menu finding (Critical — it silently breaks the intake→execution
-  pipeline). **Existence only; execution stays in the skill workflow.**
-- Every major change type in the signals menu with no matching row is a
-  coverage gap (intake will produce specs this repo cannot verify).
+- Reject missing or reordered required columns, prose in the command cell, and
+  invalid lane or sufficiency values as unverifiable.
+- Resolve every command ID through the discovered signals menu. A missing ID is
+  a stale-proof-menu finding. Resolution proves existence, not successful
+  execution.
+- Report major change types in the signals menu that have no proof row.
 
-### Alignment with factory eval seeding
+## Behavior inventory row
 
-These five fields are the minimum an eval case needs to be seeded from a proof
-row: `changeType` → case purpose/target, `commands` → the validation the runner
-executes and records, `proofArtifact` → expected evidence/artifacts,
-`sufficiency` → whether a passing grader is enough or a human gate is required,
-`lane` → deterministic-vs-live grading tier.
+`harness baseline` writes the human-ratified behavior map to
+`docs/BEHAVIOR_INVENTORY.md`.
 
-An eval seed is exactly those five fields carried over from the proof row:
-
-```ts
-interface EvalSeed {
-  changeType: string;                 // ProofRow.changeType — capability the eval exercises
-  commands: string[];                 // ProofRow.commands — command IDs the runner resolves and records
-  proofArtifact: string;              // ProofRow.proofArtifact — expected evidence the grader checks
-  sufficiency: "auto" | "human-gate"; // grader gate: auto passes on grader success; human-gate needs sign-off
-  lane: "fast" | "full";              // grading tier
-}
-```
-
-`AutonomousReadyManifest.evalSeeds` (§2) is `EvalSeed[]`, derived one-to-one from
-`proofMenu` rows.
-
-## 2. Behavior baseline artifacts
-
-`harness baseline` creates two durable repo files:
-
-- `docs/BEHAVIOR_INVENTORY.md` — human-ratified behavior map.
-- `docs/BEHAVIOR_LEDGER.md` — machine-maintained proof ledger.
-
-Both are human-readable Markdown, but their tables are constrained so
-`harness-doctor` and downstream tooling can parse them. Stable IDs join the two
-files and must not be renumbered casually. Absence of a ledger row for an
-inventory ID means the behavior is pending capture; do not add a `pending`
-ledger status.
-
-### Inventory table
-
-Required columns, fixed order:
+Required columns, in this order:
 
 ```md
 | ID | Area | Behavior | Entry points | Existing proof | Missing proof | Confidence | Risk | Status | Priority | Notes |
@@ -130,23 +83,22 @@ Required columns, fixed order:
 
 Rules:
 
-- `ID` matches `B-\d{3,}` and is unique.
-- `Entry points` contains one or more concrete repo paths, preferably
-  `file:line`.
-- `Confidence` is `high | medium | low`.
-- `Risk` is `high | medium | low`.
-- `Status` is `proposed | confirmed | corrected | skip | deferred | stale`.
-- `Priority` is `P0 | P1 | P2`.
+- `ID` matches `B-\d{3,}`, is unique, and stays stable across refreshes.
+- `Entry points` contains concrete repo paths, preferably `file:line`.
+- `Confidence` and `Risk` are `high`, `medium`, or `low`.
+- `Status` is `proposed`, `confirmed`, `corrected`, `skip`, `deferred`, or
+  `stale`.
+- `Priority` is `P0`, `P1`, or `P2`.
 
 Extracted shape:
 
 ```ts
 interface BehaviorRow {
-  id: string;                         // stable B-001 style ID
+  id: string;
   area: string;
-  behavior: string;                   // observable behavior, user-facing when possible
-  entryPoints: string[];              // file or file:line references
-  existingProof: string[];            // test files/cases/commands, empty when none found
+  behavior: string;
+  entryPoints: string[];
+  existingProof: string[];
   missingProof: string;
   confidence: "high" | "medium" | "low";
   risk: "high" | "medium" | "low";
@@ -156,9 +108,13 @@ interface BehaviorRow {
 }
 ```
 
-### Ledger table
+## Behavior ledger row
 
-Required columns, fixed order:
+`harness capture` writes proof outcomes to `docs/BEHAVIOR_LEDGER.md`. Stable IDs
+join ledger rows to the inventory. A missing ledger row means capture is pending;
+do not create a `pending` ledger status.
+
+Required columns, in this order:
 
 ```md
 | ID | Status | Capture type | Test paths | Run command | Run evidence | Confidence | Remaining gap |
@@ -169,21 +125,19 @@ Required columns, fixed order:
 Rules:
 
 - `ID` references an inventory row.
-- `Status` is `captured | bug-pinned | gap | failed | stale`.
-- `Capture type` is `unit | integration | golden | snapshot | screenshot |
-  contract | none`.
-- `Test paths` for `captured` and `bug-pinned` rows names one or more files
-  that exist.
-- `Run command` for proof-backed rows names the command that was run.
-- `Run evidence` records the result and repo snapshot, such as
-  `3/3 green at <sha>`.
-- `Confidence` is `high | medium | low`.
+- `Status` is `captured`, `bug-pinned`, `gap`, `failed`, or `stale`.
+- `Capture type` is `unit`, `integration`, `golden`, `snapshot`, `screenshot`,
+  `contract`, or `none`.
+- `Test paths` for `captured` and `bug-pinned` rows name files that exist.
+- `Run command` names the command that produced proof.
+- `Run evidence` records the result and repository snapshot.
+- `Confidence` is `high`, `medium`, or `low`.
 
 Extracted shape:
 
 ```ts
 interface LedgerRow {
-  id: string;                         // references BehaviorRow.id
+  id: string;
   status: "captured" | "bug-pinned" | "gap" | "failed" | "stale";
   captureType: "unit" | "integration" | "golden" | "snapshot" | "screenshot" | "contract" | "none";
   testPaths: string[];
@@ -194,10 +148,22 @@ interface LedgerRow {
 }
 ```
 
-### Baseline report
+Inventory and ledger checks:
 
-`harness baseline status` should be derivable from the two tables plus the
-current repo snapshot:
+- Require the exact headers above.
+- Require valid, unique inventory IDs and valid enum values.
+- Require every ledger ID to reference an inventory ID.
+- Require terminal ledger outcomes for confirmed or corrected P0/P1 rows.
+- Require existing test files for captured and bug-pinned rows.
+
+Harness owns the semantic judgment: whether a row describes observable behavior,
+whether the proof exercises that behavior, and whether remaining gaps block the
+target readiness tier.
+
+## Baseline status report
+
+`harness baseline status` derives this ephemeral report from the two tables and
+the current repository snapshot:
 
 ```ts
 interface BaselineReport {
@@ -230,132 +196,3 @@ interface BaselineReport {
   nextAction: string;
 }
 ```
-
-### Scanner verification rules
-
-`harness-doctor` owns deterministic checks:
-
-- Required headers are present.
-- IDs are unique and valid.
-- enum cells use the values above.
-- ledger rows reference inventory IDs.
-- confirmed/corrected P0/P1 inventory rows have terminal ledger rows.
-- captured/bug-pinned ledger rows reference existing test files.
-
-The skill owns semantic judgment: whether rows describe meaningful observable
-behavior, whether existing proof really exercises the entry point, and whether
-remaining gaps block the target readiness tier.
-
-## 3. `autonomous-ready` onboard manifest
-
-### Why it is needed
-
-The internal pilot has **no** autonomous-ready manifest today. Repo onboarding is
-identity + permission gating plus team routing. Whether a repo is *safe and ready
-to run an agent unattended* — bootstrap, lanes, proof menu, sufficiency,
-escalation, secret posture, parallel-safety — exists only as docs/policy, never
-as machine-readable target-repo data. The manifest is that missing bridge: the
-machine-readable projection of what the harness already authors in `docs.md` and
-audits in `doctor.md`.
-
-### Schema (v0 draft)
-
-```ts
-interface AutonomousReadyManifest {
-  schemaVersion: string;                 // e.g. "0.1"
-  kind: "autonomous-ready";
-  generatedBy: { tool: "harness"; skillVersion: string; at: string };
-
-  repo: {                                // identity — common factory catalog inputs
-    provider: string;
-    owner: string;
-    name: string;
-    defaultBaseRef: string;
-    allowedRefs: string[];
-  };
-
-  verdict: "autonomous-ready" | "supervised-only"
-         | "supervised-only (by-design)" | "not-yet";   // doctor.md loop-readiness
-  readinessScore: number;                                // weighted D1-D7
-  dimensions: { D1: number|null; D2: number|null; D3: number|null;
-                D4: number|null; D5: number|null; D6: number|null; D7: number|null };
-
-  bootstrap: { commands: string[]; healthSmoke: string };   // one-command bring-up + smoke
-  validation: { fastLane: string[]; fullLane: string[]; liveLane: string[] };
-  proofMenu: ProofRow[];                                     // §1
-  behaviorLedger?: {
-    path: string;
-    coverage: {
-      inventoryRows: number;
-      capturedRows: number;
-      bugPinnedRows: number;
-      gapRows: number;
-      highRiskGapRows: number;
-    };
-    lastVerifiedSha: string | null;
-  };
-
-  humanGates: string[];                  // change types that are human-gate-by-design
-  escalation: string[];                  // irreversible / scope-conflict / reserved-for-human
-  mergePolicy: "human-review-default" | "auto-merge-eligible";
-
-  safety: {                              // D7 blast-radius posture
-    secretsExposedToAgent: boolean;      // false means refs-only or equivalent
-    writeScopeBounded: boolean;
-    sandboxed: boolean;
-    productionDataReach: "none" | "read" | "write";
-  };
-  parallelSafety: {
-    freshWorktreeSafe: boolean;
-    sharedPortCollisions: boolean;
-    sharedDbCollisions: boolean;
-  };
-  reversibility: "by-construction" | "documented" | "none";
-
-  evalSeeds?: EvalSeed[];                // derived from proofMenu (§1 alignment)
-  gaps: { dimension: string; severity: "critical"|"high"|"medium"; promotionPath: string }[];
-}
-```
-
-### Field provenance
-
-| Field group | Harness surface that emits it | Downstream consumer status |
-| --- | --- | --- |
-| `repo.*` identity | `AGENTS.md` / git remote | already-consumed (catalog) |
-| `verdict`, `readinessScore`, `dimensions` | `doctor.md` audit | new |
-| `bootstrap`, `validation` lanes | `docs/engineering/commands.md` + signals menu | new (docs today) |
-| `proofMenu` | `docs/SPEC_CONTRACT.md` (§1 shape) | new |
-| `behaviorLedger` | `docs/BEHAVIOR_LEDGER.md` + `doctor.md` audit | new |
-| `humanGates`, `escalation`, `mergePolicy` | spec-contract escalation + doctor verdict | new (policy today) |
-| `safety` (D7) | `doctor.md` D7 | new |
-| `parallelSafety`, `reversibility` | `doctor.md` semantic gates | new |
-| `evalSeeds` | derived from `proofMenu` | new |
-| `gaps` | `doctor.md` findings promotion path | new |
-
-Everything under "new" exists as prose/policy in the harness or pilot factory
-docs today; the manifest's job is to promote it to machine-readable data both
-sides agree on. The identity block is the only part the pilot already ingests.
-
-### What a factory must build to consume it
-
-- A manifest reader alongside the `GitHubRepository` catalog that gates
-  autonomous dispatch on `verdict === "autonomous-ready"` (and honors
-  `supervised-only (by-design)` as "dispatch allowed, merge stays human").
-- A path from `proofMenu` → `evalSeeds` → `defineEvalCase`
-  or the factory's equivalent eval-case registration API.
-- Enforcement that `safety.secretsExposedToAgent === false` before unattended
-  runs.
-
-## Open questions
-
-- **Where does the manifest live?** Options: emitted to stdout by
-  `harness onboard` (ephemeral, re-derived each run) vs. committed as
-  `harness.config.ts`-adjacent data (durable, can drift). Leaning ephemeral —
-  the harness re-derives it, so it can never be stale, matching the
-  "scanner output stays temporary" rule.
-- **Manifest vs. harness.config.ts.** `harness.config.ts` configures the scanner;
-  the manifest describes readiness. Keep them separate — one is input to the
-  audit, the other is its output.
-- **Timestamp/versioning.** `generatedBy.at` and `schemaVersion` need a real
-  clock and a deprecation policy when fields change (the same public-contract
-  concern as retiring harness-doctor's penalty `score`).

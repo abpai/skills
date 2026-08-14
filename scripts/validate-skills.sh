@@ -235,31 +235,30 @@ if [[ ${#CODEX_SCHEMAS[@]} -gt 0 ]]; then
   fi
 fi
 
-# ── Mirrored interface contracts: plugin-root ↔ installed-skill copy ──
+# ── Mirrored skill support docs: plugin-root ↔ installed-skill copy ──
 #
-# Some plugins ship an INTERFACES.md at the plugin root (for source-checkout
-# readers) AND mirror it into skills/<name>/ so installed skills can read it via
-# a sibling `./INTERFACES.md` path (the plugin root is not copied into the
-# runtime skill cache). The two copies MUST stay byte-identical, but the
-# SKILL.md-only validators above never discover a loose support file, so a
-# future edit to one copy would silently drift. Enforce parity here.
-MIRRORED_IFACES=()
+# Some plugins ship support docs at the plugin root for source-checkout readers
+# and mirror them into skills/<name>/ so installed skills can use sibling paths.
+# The plugin root is not copied into the runtime skill cache. Enforce parity for
+# every mirrored Harness schema/handoff doc so loose files cannot silently drift.
+MIRRORED_SUPPORT_DOCS=()
 while IFS= read -r f; do
-  MIRRORED_IFACES+=("$f")
+  MIRRORED_SUPPORT_DOCS+=("$f")
 done < <(find . -path ./.git -prune -o \
            -path '*/node_modules/*' -prune -o \
            -path './evals/eve/*' -prune -o \
            -path '*/__pycache__/*' -prune -o \
-           -path '*/skills/*/INTERFACES.md' -type f -print | sort)
-for skill_iface in "${MIRRORED_IFACES[@]}"; do
-  # ./<plugin>/skills/<name>/INTERFACES.md → ./<plugin>/INTERFACES.md
-  plugin_root="${skill_iface%/skills/*}"
-  root_iface="$plugin_root/INTERFACES.md"
-  [[ -f "$root_iface" ]] || continue
-  if cmp -s "$root_iface" "$skill_iface"; then
-    echo "  [OK] mirrored interface contract in sync ($skill_iface == $root_iface)"
+           \( -path '*/skills/*/INTERFACES.md' -o \
+              -path '*/skills/*/FACTORY_HANDOFFS.md' \) -type f -print | sort)
+for skill_doc in "${MIRRORED_SUPPORT_DOCS[@]}"; do
+  plugin_root="${skill_doc%/skills/*}"
+  filename="${skill_doc##*/}"
+  root_doc="$plugin_root/$filename"
+  [[ -f "$root_doc" ]] || continue
+  if cmp -s "$root_doc" "$skill_doc"; then
+    echo "  [OK] mirrored support doc in sync ($skill_doc == $root_doc)"
   else
-    echo "[FAIL] $skill_iface drifted from its plugin-root mirror $root_iface (must be byte-identical)"
+    echo "[FAIL] $skill_doc drifted from its plugin-root mirror $root_doc (must be byte-identical)"
     failed=1
   fi
 done
