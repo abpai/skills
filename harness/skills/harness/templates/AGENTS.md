@@ -21,6 +21,6 @@ Code, tests, and runtime behavior are the source of truth. Docs route you to the
 
 ## Done means
 
-- The full validation lane passed (not just the fast lane), or the failure is explained.
+- The full validation lane passed — `<full-lane command>`, not the fast lane — or the failure is explained.
 - End-to-end proof produced per the spec.
 - Durable knowledge landed on the smallest relevant surface; deferred work in `docs/todos` only if real and actionable.

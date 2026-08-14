@@ -21,10 +21,14 @@ A spec is ready when it:
 Each command belongs to a lane: the **fast lane** (deterministic, runs in
 seconds) is the inner loop an agent runs after every edit; the **full lane**
 (slow unit, integration, e2e, browser) is the gate for done. Done = the full
-lane green; a green fast lane never certifies done. The **Sufficiency** column
+lane green; a green fast lane never certifies done. Each proof row names the
+validation that certifies its claim, and its evidence must bind to the exact
+candidate. Deployment proof also names the target environment and execution
+identity; one environment never certifies another. The **Sufficiency** column
 marks whether a passing run is sufficient evidence (`auto`) or the change still
 needs human sign-off (`human-gate`) — a false green on a `human-gate` row would
-merge broken work, the failure that is worse than a false red.
+merge broken work, the failure that is
+worse than a false red.
 
 Keep the table in the machine-readable proof-row shape (`./INTERFACES.md`) so
 tooling can parse it: fixed columns in the order below, the **Lane** cell holding
@@ -40,7 +44,7 @@ resolve the row deterministically.
 | <area> logic | full | `<script-or-target-id>` | passing run output | auto |
 | <area> UI | full | `<script-or-target-id>` | screenshot pair | human-gate |
 | API surface | full | `<contract-script-id>` | passing run + response trace | auto |
-| Cross-cutting | full | `<full-check-script-id>` | CI-green equivalent locally | auto |
+| Cross-cutting | full | `<full-check-script-id>` | passing full-lane run | auto |
 
 ## Escalation boundaries
 

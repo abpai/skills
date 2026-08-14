@@ -14,7 +14,7 @@ Readiness scoring of this kind is experimental — explanations matter more than
 
 - `harness:docs` (`docs.md`) is the canonical source for the shared concepts: enforcement hierarchy, spec contract shape, AGENTS line gate, grounding gate, nested AGENTS decision test, Keep/Move/Delete verdicts, demonstrated-need evidence, budgets. This module applies them as audit dimensions — when judging, follow the `docs.md` definitions; deterministic symptom lists are kept local here for executability.
 - The external `harness-doctor` CLI is the ONLY implementation of deterministic checks: the `docs-structure/*` rule family plus Knip-backed dead-code discovery (see `./references/scanner-setup.md` for version gating), and behavior inventory/ledger parseability and ID integrity once the pinned version ships the baseline rules (see **Fast path**) — until then that surface falls back to `baseline.md`'s artifact parse, which is not this module hand-deriving. This module never reimplements shipped rules or invokes Knip separately — one implementation prevents drift. When the scanner did not run, those facts are missing, not hand-derived.
-- Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract, whether a nested grounding file still matches the code it describes (per the `docs.md` grounding gate).
+- Semantic judgment stays here: duplicated guidance, rule altitude, glossary usefulness, invariant quality, whether a todo is worth keeping, whether a subtree needs its own contract, whether a nested grounding file still matches the code it describes (per the `docs.md` grounding gate), or whether validation depends on undeclared local state.
 
 Do not copy Harness Doctor's implementation scripts into product repos — pin
 the package, keep stable docs and `harness.config.*`, and add a package-script
@@ -121,15 +121,15 @@ Overall score: `round(100 × Σ(weightᵢ × dimᵢ/4) / Σ weightᵢ)`, summing
 
 Alongside the score, emit one coarse triage label — the answer to "can an agent run unattended in this repo yet?" — so a fleet migration can sort many repos at a glance:
 
-- **autonomous-ready** — an agent can be pointed here unsupervised: a one-command bootstrap plus health smoke exists, the full validation lane is green-able locally, every major change type has a machine-gradeable proof with declared sufficiency, recovery is reversible by construction, parallel runs are hazard-free (fresh-worktree safe, no shared-port or shared-DB collisions), and the agent's blast radius is bounded (D7 — secrets not exposed to the agent, write scope sandboxed, no ambient production credentials).
+- **autonomous-ready** — an agent can be pointed here unsupervised: a one-command bootstrap plus health smoke exists, every required proof is green on its declared surface for the audited candidate, every major change type has a machine-gradeable proof with declared sufficiency, recovery is reversible by construction, parallel runs are hazard-free (fresh-worktree safe, no shared-port or shared-DB collisions), and the agent's blast radius is bounded (D7 — secrets not exposed to the agent, write scope sandboxed, no ambient production credentials).
 - **supervised-only** — proofs exist but at least one major change type is `human-gate` (a passing grader is not sufficient evidence for done), or recovery is documentation-only, or parallel-safety is unproven. An agent can do the work, but a human must clear the merge.
 - **supervised-only (by-design)** — a repo that meets every other autonomous-ready precursor but keeps a human merge gate as a deliberate, permanent product decision (the review gate *is* the product), not a missing precursor. Mark it explicitly and name which change types are human-gate-by-design, so a fleet migration reads it as a settled choice rather than an unfixed gap; do not keep recommending the same "promotion" that will never be taken.
-- **not-yet** — a load-bearing precursor is missing: no bootstrap, the full lane cannot go green locally, or invariants live only in prose. Fix these before pointing an autonomous loop here.
+- **not-yet** — a load-bearing precursor is missing: no bootstrap, a required proof cannot go green on its declared surface, or invariants live only in prose. Fix these before pointing an autonomous loop here.
 
 Derive it honestly, separating the two input classes and naming any gate left unreviewed:
 
 - **Deterministic precursors (scanner-owned):** entry point present, spec contract and its required sections present, AGENTS byte budget met, no banned paths. Missing any one caps the verdict at `not-yet`.
-- **Semantic gates (this module):** full lane green-able, proofs machine-gradeable with sufficiency declared, recovery reversible, parallel-safe, bootstrap+smoke real, blast radius bounded (D7). These separate `autonomous-ready` from `supervised-only`.
+- **Semantic gates (this module):** required proofs green on their declared surfaces for the audited candidate, proofs machine-gradeable with sufficiency declared, recovery reversible, parallel-safe, bootstrap+smoke real, blast radius bounded (D7). These separate `autonomous-ready` from `supervised-only`.
 
 **Safety cap:** a material D7 gap — exposed secrets the agent can read, or unbounded ambient access to mutate production or shared data — caps the verdict at `supervised-only` regardless of the numeric score. D7 is scored (it moves the number), but you cannot run unattended *through* a blast-radius hole; you can only supervise around it. Name the specific safety gap in the promotion path.
 
@@ -148,7 +148,8 @@ The spec contract is the demand side; the repo's validation surfaces are the sup
 
 - Every proof-menu row references a command ID that resolves against the discovered signals menu (package script IDs, Make/just targets, CI jobs) — resolve the ID to its shell invocation, then run that resolved command (per the execution policy). A bare row ID such as `lint` is not a shell command; running it verbatim is a false failure.
 - Every proof-menu row declares grader sufficiency (`auto` vs `human-gate`). A row with no sufficiency marker is a false-green risk: intake cannot tell when a passing grader is enough to merge versus when a human must sign off.
-- Commands separate a fast lane (deterministic, seconds) from a full lane (the gate for done). "Done" must bind to full-lane green, never fast-lane green.
+- Treat each proof-menu row's resolved command IDs as its required certification path. Evidence must match the audited candidate; do not substitute an approximate local equivalent. Deployment proof also names the target environment and execution identity; one environment never certifies another.
+- Commands separate a fast lane (deterministic, seconds) from a full lane (the gate for done). "Done" binds to every required full-lane row, never fast-lane green.
 - Every major change type evident in the repo (from CI jobs, test layout, package scripts) has a proof-menu row. Missing rows mean intake will produce specs this repo cannot verify.
 - Escalation boundaries are stated, and prefer reversibility by construction over a documentation-only rollback.
 
@@ -199,7 +200,7 @@ Every finding gets an ID (`HD-1`, `HD-2`, … in report order, or the scanner ru
 Severity describes impact:
 
 - **Critical**: missing entry point, stale spec-contract proof menu, validation commands that fail or do not exist, stale local links, stale grounding (a nested `AGENTS.md` whose data model or key-files table no longer matches the code), misleading routes that send agents to the wrong code, or a D7 blast-radius failure (plaintext secrets an unattended agent can read, or ambient credentials letting it mutate production/shared data unchecked).
-- **High**: no e2e proof path for a major change type, high-risk confirmed baseline behavior without proof, invariants carried only as prose, an enforced test with no determinism guard (a flake an agent cannot distinguish from a real failure), giant or over-budget root `AGENTS.md` (length alone does not flag a nested grounding file — its limits are the grounding gate and the byte chain), missing `docs/INDEX.md` or `SPEC_CONTRACT.md` routing, banned long-lived paths, incomplete earned surfaces.
+- **High**: no e2e proof path for a major change type, high-risk confirmed baseline behavior without proof, invariants carried only as prose, an enforced test with no determinism guard (a flake an agent cannot distinguish from a real failure), validation whose result depends on undeclared local state, giant or over-budget root `AGENTS.md` (length alone does not flag a nested grounding file — its limits are the grounding gate and the byte chain), a missing or unrouted docs index or `SPEC_CONTRACT.md`, banned long-lived paths, incomplete earned surfaces.
 - **Medium**: oversized docs, todo specs missing sections, duplicate vocabulary files, a proof-menu row that does not declare grader sufficiency (`auto`/`human-gate`), default scaffolding without demonstrated need, follow-up semantic review items.
 
 Anything below Medium is omitted, not reported — do not inflate trivia to Medium.

@@ -23,6 +23,7 @@ The repo serves a pipeline where humans specify intent, acceptance criteria, ris
 
 - Specs arrive from outside; `docs/SPEC_CONTRACT.md` defines what they must contain so this repo can verify them.
 - Every change type has a runnable validation path. Without a pass/fail check, the human becomes the verification loop.
+- Each proof claim names the validation that certifies it and binds the result to the exact candidate under review. Deployment proof also names the target environment and execution identity; one environment never certifies another.
 - One command brings the repo from a fresh checkout (or worktree) to seeded, testable state, and a health smoke command proves readiness before work starts. An environment that boots empty cannot be driven end-to-end.
 - Escalation boundaries are explicit: agents stop and surface (rather than guess) on irreversible actions, scope changes, and decisions the spec reserves for humans. Everything else they execute end-to-end.
 - Repeated agent failures are harness gaps. Repair the harness, do not append warnings.
@@ -54,6 +55,7 @@ When the same failure recurs, repair the smallest durable surface by walking the
 - A test fails intermittently, so agents cannot tell a real bug from noise → quarantine the flake, add a determinism guard (seed, fake clock, bounded retry), then a test that pins it.
 - Agents keep hitting an illegible failure on a rule you wrote → rewrite that rule's message to name what broke, where, and the fix.
 - Agents keep deferring the same work → write one `docs/todos` spec.
+- Validation changes because of undeclared local state → make the input explicit or isolate it; the same tracked source and declared inputs must produce the same verdict.
 - Only if nothing mechanical fits → one prose line, placed by the line gate.
 
 ## Rules versus grounding
@@ -131,7 +133,7 @@ The validation-surface inventory (scripts, CI jobs, lint configs, test layout, e
 
 Give every durable guidance item an explicit verdict with a reason and a destination:
 
-- **Keep** — answers one of the six questions (rules judged by the line gate, grounding by the grounding gate) or defines a genuinely useful term, and already sits on the smallest correct surface.
+- **Keep** — answers one of the six questions (rules by the line gate, grounding by the grounding gate) or defines a genuinely useful term, already sits on the smallest correct surface, and is reachable from an agent entry point. Guidance with no inbound route is inert: route it, merge it into a routed file, or delete it.
 - **Move** — belongs on a better surface. Preference order: test/lint/CI/script (enforcement beats prose — these moves are executed in step 3), then engineering docs, design docs, domain docs, glossary, `docs/todos`, code, tests, issue/PR context.
 - **Delete** — stale, duplicative, completed-task residue, or a vendor mirror without freshness policy.
 
@@ -158,7 +160,7 @@ Fill the proof menu with the repo's real commands. Every row must reference a co
 ### 5. Author the remaining core docs
 
 - `docs/ARCHITECTURE.md` — the current structure map, compact: packages/services, boundaries, data flow. Current state only; history belongs in an existing maintained ADR convention, linked from `docs/INDEX.md`.
-- `docs/engineering/commands.md` — canonical install/dev/test/lint/build commands. Run each command before documenting it.
+- `docs/engineering/commands.md` — canonical install/dev/test/lint/build commands. Run each command before documenting it. A command with a known false-green blind spot (changed-file selection that misses workspace links is the archetype) names the blind spot and is labeled advisory, never certifying.
 - `docs/engineering/testing.md` — change type → required validation → proof, seeded from the spec-contract proof menu and extended with area-specific detail.
 
 ### 6. Rewrite `AGENTS.md` as a router
@@ -166,6 +168,8 @@ Fill the proof menu with the repo's real commands. Every row must reference a co
 Keep it tiny: point outward, never teach the whole repo. Budgets (enforced by the `harness-doctor` scanner, which owns the numbers): the root entry point stays under 150 non-blank lines, and the combined size of all `AGENTS.md` files stays under 32 KiB or Codex silently drops the rest.
 
 Use `./templates/AGENTS.md` as the starting shape: operating model, where-to-look routes, the "enforce it, don't add prose" rule, and a done-means section binding to the full lane. Adapt sections to the repo (add earned-surface links only when those surfaces exist). Make `CLAUDE.md` a shim whose content is the single import line `@AGENTS.md` (Claude Code's import syntax — a prose "see AGENTS.md" does not reliably load the file). Claude Code reads only `CLAUDE.md`, other agents read `AGENTS.md`; the shim keeps one source of truth.
+
+Name validation paths by their literal commands in backticks, never nicknames or metaphors (`bun run check`, not "the full gate"). Give an order-of-magnitude runtime only when it changes which command an agent should run (`~5 minutes`).
 
 If `docs/BEHAVIOR_INVENTORY.md` or `docs/BEHAVIOR_LEDGER.md` exists, add a tiny
 route to the router, not a long explanation:
@@ -200,9 +204,9 @@ A nested `AGENTS.md` (nearest-file precedence) is the standard vehicle for subtr
 
 A nested file names the local boundary, points to local docs/tests, never restates generic repo rules, gets a sibling `CLAUDE.md` shim (`@AGENTS.md`) like the root, and counts against the combined byte budget — the binding limits are the gates and byte chain, not symmetry with root. Tool compliance with nested files is uneven (documented Copilot bugs), so keep root routes to critical subtree rules.
 
-### 7. Create `docs/INDEX.md`
+### 7. Create or refresh the docs index
 
-A short table of contents listing only files that exist: spec contract, architecture, engineering docs, and any earned surfaces. Link existing conventions (ADRs, an existing glossary) instead of duplicating them.
+Use `docs/INDEX.md` unless the repo already has a canonical equivalent. Preserve an existing index path and casing when tooling or runtime routes depend on it; do not add a duplicate or force a case-only rename. If the scanner rejects that equivalent, report a compatibility gap. Keep the index to a short table of contents listing only files that exist: spec contract, architecture, engineering docs, and any earned surfaces. Link existing conventions (ADRs, an existing glossary) instead of duplicating them.
 
 ### 8. Build earned surfaces only as needed
 
@@ -229,7 +233,7 @@ With no pinned binary, confirm with the user first, then run `npx @andypai/harne
 
 If the scanner is unavailable, say so in the report and recommend pinning `@andypai/harness-doctor` as a devDependency — do not hand-run structure checks.
 
-Then run every command you documented or created — `docs/engineering/commands.md`, the spec-contract proof menu, new tests/lints/scripts. A documented command you did not run is marked unverified in your report.
+Then run every safe, applicable command you created or changed. Apply `doctor.md`'s execution policy to other documented commands and proof-menu rows; mark anything not run as unverified with the reason.
 
 ## Output shape
 
