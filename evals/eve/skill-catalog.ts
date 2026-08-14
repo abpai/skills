@@ -8,6 +8,11 @@ export type SkillCatalogEntry = {
 
 /** Every public marketplace skill must name its proof surface here. */
 export const SKILL_CATALOG = {
+  antigravity: {
+    source: "antigravity/skills/antigravity",
+    mode: "host",
+    owner: "wrapper parity, fake CLI, and live dogfood",
+  },
   "bun-expert": {
     source: "bun-expert/skills/bun-expert",
     mode: "deterministic",
