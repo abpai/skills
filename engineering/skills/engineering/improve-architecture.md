@@ -6,9 +6,11 @@ Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/engi
 
 Surface architectural friction and propose **deepening opportunities** — refactors that turn shallow modules into deep ones. The aim is testability and AI-navigability.
 
-## Glossary
+## Architecture language
 
-Use these terms exactly in every suggestion. Consistent language is the point — don't drift into "component," "service," "API," or "boundary." Full definitions in [language](references/architecture-language.md).
+Load [architecture language](references/architecture-language.md) for analysis.
+Use the repository's real identifiers when referring to code; do not rename a
+project's services, APIs, or components merely to fit this rubric.
 
 - **Module** — anything with an interface and an implementation (function, class, package, slice).
 - **Interface** — everything a caller must know to use the module: types, invariants, error modes, ordering, config. Not just the type signature.
@@ -33,7 +35,9 @@ This skill is _informed_ by the project's domain model. The domain language give
 
 Read the project's domain glossary and any ADRs in the area you're touching first.
 
-Then use the Agent tool with `subagent_type=Explore` to walk the codebase. Don't follow rigid heuristics — explore organically and note where you experience friction:
+Use an exploration subagent when the host provides one; otherwise inspect the
+codebase directly. Don't follow rigid heuristics — explore organically and note
+where you experience friction:
 
 - Where does understanding one concept require bouncing between many small modules?
 - Where are modules **shallow** — interface nearly as complex as the implementation?
@@ -52,7 +56,9 @@ Present a numbered list of deepening opportunities. For each candidate:
 - **Solution** — plain English description of what would change
 - **Benefits** — explained in terms of locality and leverage, and also in how tests would improve
 
-**Use CONTEXT.md vocabulary for the domain, and [language](references/architecture-language.md) vocabulary for the architecture.** If `CONTEXT.md` defines "Order," talk about "the Order intake module" — not "the FooBarHandler," and not "the Order service."
+Use [domain-language discovery](references/domain-language.md) to find the
+canonical domain vocabulary, and [architecture language](references/architecture-language.md)
+for analysis.
 
 **ADR conflicts**: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Mark it clearly (e.g. _"contradicts ADR-0007 — but worth reopening because…"_). Don't list every theoretical refactor an ADR forbids.
 
@@ -64,7 +70,10 @@ Once the user picks a candidate, drop into a grilling conversation. Walk the des
 
 Side effects happen inline as decisions crystallize:
 
-- **Naming a deepened module after a concept not in `CONTEXT.md`?** Add the term to `CONTEXT.md` — same discipline as `/grill-with-docs` (see [context format](references/architecture-context-format.md)). Create the file lazily if it doesn't exist.
-- **Sharpening a fuzzy term during the conversation?** Update `CONTEXT.md` right there.
+- **Naming a deepened module after a new domain concept?** Propose the addition
+  to the canonical vocabulary file; write it only after the user selects the
+  architecture direction.
+- **Sharpening a fuzzy term during the conversation?** Record the proposed
+  definition and evidence; do not silently rewrite human-curated vocabulary.
 - **User rejects the candidate with a load-bearing reason?** Offer an ADR, framed as: _"Want me to record this as an ADR so future architecture reviews don't re-suggest it?"_ Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing — skip ephemeral reasons ("not worth it right now") and self-evident ones. See [ADR format](references/architecture-adr-format.md).
 - **Want to explore alternative interfaces for the deepened module?** See [interface design](references/architecture-interface-design.md).

@@ -10,17 +10,15 @@ harden terminology, create a ubiquitous language, or mentions "domain model" or
 
 ## Process
 
-1. **Scan the conversation** for domain-relevant nouns, verbs, and concepts.
+1. Read [domain-language discovery](references/domain-language.md), then inspect
+   the conversation, canonical repository docs, and public code vocabulary.
 2. **Identify problems**:
    - Same word used for different concepts (ambiguity)
    - Different words used for the same concept (synonyms)
    - Vague or overloaded terms
 3. **Propose a canonical glossary** with opinionated term choices.
-4. **Write to `DEFINED_TERMS.md`** in the working directory using the
-   format below. (If the repo already keeps a domain vocabulary file under
-   another name — e.g. `CONTEXT.md` for the `improve-architecture`
-   workflow — update that instead of creating a parallel one; ask which to use
-   if both could apply.)
+4. Update the one canonical vocabulary file discovered above. Create
+   `DEFINED_TERMS.md` only when the repository has no established equivalent.
 5. **Output a summary** inline in the conversation.
 
 ## Output Format
@@ -32,8 +30,8 @@ Write `DEFINED_TERMS.md` with:
   emerge (subdomain, lifecycle, actor) — one table is fine for a single
   cohesive domain; don't force groupings.
 - A **Relationships** list — bold term names, cardinality expressed where obvious.
-- An **Example dialogue** — 3-5 exchanges between a dev and a domain expert
-  that clarifies boundaries between related concepts by using terms precisely.
+- An **Example dialogue** only when ambiguity between related concepts needs a
+  worked usage example.
 - A **Flagged ambiguities** section calling out conflicting usage with a clear
   recommendation.
 
@@ -44,7 +42,8 @@ See [a full worked example](references/defined-terms-example.md).
 - **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others as aliases to avoid.
 - **Flag conflicts explicitly.** If a term is used ambiguously in the conversation, call it out in the "Flagged ambiguities" section with a clear recommendation.
 - **Only include terms relevant for domain experts.** Skip the names of modules or classes unless they have meaning in the domain language.
-- **Keep definitions tight.** One sentence max. Define what it IS, not what it does.
+- **Keep definitions tight.** Include essential behavior or lifecycle only when
+  it distinguishes the concept.
 - **Only include domain terms.** Skip generic programming concepts (array, function, endpoint) unless they have domain-specific meaning.
 
 ## Re-running

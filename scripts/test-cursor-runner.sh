@@ -149,8 +149,8 @@ test_stream_artifacts_and_resume() {
   assert_contains "$run_dir/preflight.log" 'status_probe=authenticated'
   assert_not_contains "$run_dir/preflight.log" 'private@example.com'
   assert_contains "$run_dir/workspace.diff" "changed by Cursor"
-  assert_contains "$run_dir/command.txt" "--force"
-  assert_contains "$run_dir/command.txt" "--approve-mcps"
+  assert_not_contains "$run_dir/command.txt" "--force"
+  assert_not_contains "$run_dir/command.txt" "--approve-mcps"
   assert_not_contains "$run_dir/command.txt" "--model"
   assert_not_contains "$run_dir/command.txt" "secret prompt content"
   cmp "$prompt" "$prompt_capture" >/dev/null || fail "prompt transport changed content"
@@ -184,6 +184,39 @@ test_stream_artifacts_and_resume() {
   assert_count "$pointer.history" "$retry_dir" 1
 
   pass "Cursor runner omits the model for default runs and exact resumes"
+}
+
+test_explicit_authority_is_preserved() {
+  local workspace="$TMP_DIR/authority-workspace"
+  local output="$TMP_DIR/authority-output.txt"
+  local continue_output="$TMP_DIR/authority-continue-output.txt"
+  setup_workspace "$workspace"
+
+  PATH="$FAKEBIN:$PATH" "$CURSOR_RUN" run \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/authority-runs" \
+    --prompt "authorized bounded edit with MCP access" \
+    --force \
+    --approve-mcps \
+    > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_contains "$run_dir/command.txt" "--force"
+  assert_contains "$run_dir/command.txt" "--approve-mcps"
+  assert_contains "$run_dir/run.env" "FORCE_RUN=true"
+  assert_contains "$run_dir/run.env" "APPROVE_MCPS=true"
+
+  PATH="$FAKEBIN:$PATH" "$run_dir/continue.sh" \
+    --prompt "continue with the same authority" \
+    --dry-run \
+    > "$continue_output" 2>&1
+  local continue_dir
+  continue_dir="$(extract_run_dir "$continue_output")"
+  assert_contains "$continue_dir/command.txt" "--force"
+  assert_contains "$continue_dir/command.txt" "--approve-mcps"
+
+  pass "Cursor runner requires and preserves explicit write and MCP authority"
 }
 
 test_explicit_model_override_continues() {
@@ -412,6 +445,7 @@ test_silent_run_stops_without_replay() {
 }
 
 test_stream_artifacts_and_resume
+test_explicit_authority_is_preserved
 test_explicit_model_override_continues
 test_unknown_model_is_rejected_before_spawn
 test_failed_run_surfaces_stderr_reason

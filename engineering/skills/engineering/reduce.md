@@ -14,63 +14,52 @@ optimizing it), an **existing plan** already in the conversation, or a **path
 to a plan/spec file** (read it). Normalize the input into a numbered task list
 and echo it back so we agree on the starting point before touching it.
 
-## Two-provider debate
+## Optional independent review
 
-Each step is argued between **two providers** — an orchestrator and a debate
-partner — so neither model's blind spots go unchallenged.
+Do not send the plan, code, or repository context to another provider unless the
+user explicitly asks for cross-provider review or approves that transfer after
+you name the provider and the data scope. The workflow is complete with one
+provider.
 
-- **Orchestrator** = whichever provider is running this skill. It drives the five
-  steps, owns the reconciliation, and talks to the user.
-- **Partner** = the *other* provider, reached read-only through its sibling skill:
-  - Claude orchestrating → partner is **Codex**, via the `codex-exec` skill
-    (`codex exec --sandbox read-only`).
-  - Codex orchestrating → partner is **Claude**, via the `claude` skill
-    (the headless `claude-run.sh` wrapper around `claude -p`, no edits).
+When independent review is authorized and available:
 
-Debate protocol for a step:
-
-1. The orchestrator drafts its own position for the step.
-2. It sends the task list plus its draft to the partner and asks for the
-   strongest counter-argument — what the orchestrator over-cut, under-cut, or got
-   wrong. Keep the partner read-only; it argues, it does not edit.
+1. Send the raw task list and goal first so the reviewer is not anchored on the
+   orchestrator's answer.
+2. Ask for the strongest independent case for what to cut and what must stay.
 3. The orchestrator reconciles both positions into one recommendation and records
-   where the two providers disagreed.
+   material disagreement.
 
-Run a full debate on the two gated steps (1 and 2), where the judgment is
-contested. For the auto steps (3–5), a single partner pass over the surviving
-tasks is enough. If the partner provider is unavailable, say so, fall back to a
-single-provider pass, and continue.
+Use review on the two gated steps where judgment is contested. If the requested
+provider or its skill is unavailable, say so and continue with one provider.
 
 ## The five steps, in order
 
 Run the steps strictly in order — never optimize, accelerate, or automate a
 task you have not first tried to delete.
 
-### Step 1 — Question the requirements ⟨GATE · debate⟩
+### Step 1 — Question the requirements ⟨GATE⟩
 
 For each requirement behind the plan:
 
 - **Make it less dumb** — question it regardless of who set it, or you get a
   perfect answer to the wrong question.
-- **Attribute it to a named person, not a department.** One no one will put
-  their name to is a requirement to cut.
+- **Name its authority or source.** Product owners, contracts, regulations,
+  platform constraints, and inherited compatibility can all be legitimate;
+  absence of a named person is not evidence that a requirement is disposable.
 - Ask what actually breaks if it disappears, and what it is really for.
 
-Debate it with the partner, then present the questioned requirements with your
-reconciled sharper version of each and any provider disagreement. **Stop and get
-my sign-off before continuing.**
+Present the questioned requirements with a sharper version of each and any
+review disagreement. **Stop and get my sign-off before continuing.**
 
-### Step 2 — Delete the task ⟨GATE · debate⟩
+### Step 2 — Delete the task ⟨GATE⟩
 
 For every task, part, or process step that survived Step 1, **delete it
-entirely** — not soften it, delete it. If you are not later forced to add back
-**at least 10%** of what you deleted, you did not delete enough — go back and
-cut more.
+entirely** — not soften it, delete it. Do not optimize for an arbitrary deletion
+quota; preserve everything needed for the stated goal, safety, compliance, and
+compatibility.
 
-Debate it with the partner — deletion is where the two providers most often
-disagree, so make the partner argue for cutting more *and* for what must stay.
-Present the reconciled deletions, plus the small set you expect to be forced to
-add back, as a list. **Stop and get my sign-off before continuing.**
+Present the proposed deletions, reasons, and goal-critical items that must stay.
+**Stop and get my sign-off before continuing.**
 
 ### Step 3 — Simplify / optimize ⟨auto⟩
 
@@ -87,21 +76,20 @@ place.
 Last, automate the surviving steps. Never automate before deleting and
 simplifying, or you automate waste.
 
-Run one partner pass over the Step 3–5 output to catch anything either
-provider missed, then fold its accepted points in.
+If independent review was authorized, run one final read-only review over the
+surviving plan and fold accepted points in.
 
 ## Final review ⟨GATE⟩
 
-Produce the reworked plan, then render a single visual artifact via the
-**visualize** skill (`/visualize`) showing, per task: before → after, what was
-deleted, the ~10% added back, the simplify / accelerate / automate annotations,
-and — where the two providers split — the debate outcome. Present it for one
-final review before locking the plan in.
+Produce the reworked plan and present it for one final review. Offer a visual
+artifact only when it would materially clarify the before/after relationship
+and the `visualize` skill is available.
 
 ## Rules
 
 - One gate at a time — wait for my response at each ⟨GATE⟩ before moving on.
-- The partner is always read-only; it argues, it never edits the plan or the repo.
+- Any independent reviewer is read-only; it argues, it never edits the plan or
+  the repo.
 - If a question can be answered by inspecting the codebase, inspect it instead of
   asking me.
 - When in doubt, prefer deleting over keeping, and prefer keeping-and-questioning

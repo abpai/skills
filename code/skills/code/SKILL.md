@@ -15,7 +15,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "4.0.0"
+  version: "4.0.1"
 ---
 
 # Code Workflow Pack
