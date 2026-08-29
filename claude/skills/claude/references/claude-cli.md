@@ -68,14 +68,9 @@ Tool controls:
 - `--tools`: replace the built-in tool set entirely.
 
 The runner rejects semantically empty `--tools` and `--allowed-tools` values.
-Use its explicit `--no-tools` flag only for generic non-repository work. Review
-mode supplies `Read`, `Glob`, `Grep`, and bounded read-only Bash rules while
-denying direct edit tools (`Edit`, `Write`, `NotebookEdit`) and common shell
-mutation paths (redirection, `tee`, mutating commands). Repo-grounded review
-owns its exact plan/tool policy and rejects caller-supplied allowed-tool,
-permission, tool-set, and passthrough-argument overrides.
+Use its explicit `--no-tools` flag when no tools are needed. Review mode runs in
+the requested workspace without a runner-owned tool policy.
 
-Direct-edit denial is not an OS sandbox: a shell command may still mutate files.
 Always inspect the workspace after a review.
 
 ## Model And Effort
@@ -103,43 +98,10 @@ Every run writes:
 - `final.md`, `prompt.txt`, `command.txt`, and `preflight.log`.
 - Normalized `preflight.json` plus requested and resolved routing in
   `status.json` and `run.env`.
-- `sharing-approval.json`, a sanitized `review-workspace/`, and
-  `evidence-access.json` for repo-grounded reviews.
 - `run.env`, `monitor.sh`, and `continue.sh`.
 - `child-reports/` plus parent/child transcript telemetry.
 - Workspace baseline, status, changed-file, and diff artifacts for runs that are
   not marked read-only.
-
-## Repo-Grounded Review
-
-Blocked-transfer example:
-
-```bash
-scripts/claude-run.sh review \
-  --workspace "$PWD" \
-  --prompt-file /absolute/path/to/task.md \
-  --evidence-class repo-grounded-review \
-  --review-scope-file /absolute/path/to/approved-paths.txt \
-  --sharing-approval-file /absolute/path/to/sharing-approval.json \
-  --external-transfer-status blocked
-```
-
-The approval JSON contains only:
-
-```json
-{
-  "destination": "Claude Code/Anthropic",
-  "approved_scope": ["src/component"],
-  "purpose": "Review the candidate change",
-  "exclusions": [".env", "ignored files", "credentials", "unrelated paths"],
-  "current_user_approved": true
-}
-```
-
-The runner builds the review workspace from only matching regular tracked
-files, the scoped candidate diff, a scope manifest, and redacted approval
-metadata. It excludes ignored files, `.env` variants, key/credential files,
-symlinks, known secret patterns, unapproved paths, and other repositories.
 
 ## Native Background Agents
 
@@ -203,22 +165,8 @@ for supervisor defaults:
 - `CLAUDE_MONITOR_TIMEOUT_SECONDS`: monitor-only deadline, default 3600.
 - `CLAUDE_TERM_GRACE_SECONDS`: TERM-to-KILL grace period, default 5.
 
-Repo-grounded runner controls:
-
-- `--evidence-class repo-grounded-review` requires both an approved scope file
-  and structured sharing-approval JSON.
-- `--review-scope-file PATH` builds a tracked-file-only review workspace.
-- `--sharing-approval-file PATH` carries redacted destination, scope, purpose,
-  exclusions, and current-user approval.
-- `--external-transfer-status allowed` is required for a repo-grounded launch;
-  the default `not-checked` state blocks before authentication or launch.
-- `--external-transfer-status blocked` writes terminal blocker
-  `external_transfer_blocked` without probing or launching Claude.
-- `--transfer-attempt` accepts only `1` or `2`; the runner never retries by
-  itself.
-
 The runner requires Bash, Python 3 with PTY support, and standard Unix process tools. Terminal
-`status.json` states are `finished`, `failed`, `blocked`, `stalled`, `timed-out`,
+`status.json` states are `finished`, `failed`, `stalled`, `timed-out`,
 `interrupted`, and `dry-run`. Exit 124 means inactivity or a hard deadline; 127
 means the Claude executable was unavailable. When preflight fails, 69 means the
 credential store was unavailable, 70 means classification was indeterminate,

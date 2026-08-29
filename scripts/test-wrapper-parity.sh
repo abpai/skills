@@ -1078,7 +1078,7 @@ test_claude_background_writer_does_not_hold_wrapper_open() {
   pass "Claude runner closes inherited stream writers after the main process exits"
 }
 
-test_claude_review_denies_direct_edit_tools() {
+test_claude_review_uses_direct_workspace_without_runner_policy() {
   local fakebin="$TMP_DIR/fakebin"
   local workspace="$TMP_DIR/workspace-claude-review"
   local output="$TMP_DIR/claude-review-output.txt"
@@ -1094,10 +1094,11 @@ test_claude_review_denies_direct_edit_tools() {
 
   local run_dir
   run_dir="$(extract_run_dir "$output")"
-  assert_contains "$run_dir/command.txt" "--disallowed-tools Edit\\,Write\\,NotebookEdit"
-  assert_contains "$run_dir/run.env" "READ_ONLY=true"
+  assert_contains "$run_dir/command.txt" "cwd=$workspace"
+  assert_not_contains "$run_dir/command.txt" "--disallowed-tools"
+  assert_contains "$run_dir/run.env" "READ_ONLY=false"
 
-  pass "Claude review mode denies direct editing tools"
+  pass "Claude review uses the requested workspace without runner-owned tool policy"
 }
 
 test_claude_child_transcript_activity_prevents_false_stall() {
@@ -1220,7 +1221,7 @@ main() {
   test_claude_monitor_detects_abandoned_wrapper
   test_claude_reused_run_dir_clears_stale_state
   test_claude_background_writer_does_not_hold_wrapper_open
-  test_claude_review_denies_direct_edit_tools
+  test_claude_review_uses_direct_workspace_without_runner_policy
   test_claude_child_transcript_activity_prevents_false_stall
   test_claude_report_pending_stops_and_salvages_child_answer
   test_claude_run_env_is_not_sourced

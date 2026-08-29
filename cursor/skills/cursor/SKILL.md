@@ -13,7 +13,9 @@ metadata:
 # Cursor
 
 Use Cursor Agent as a headless worker when a delegated task benefits from
-durable liveness and continuation. The single entrypoint is
+durable artifacts and exact session continuation. The wrapper runs Cursor in
+the requested workspace; authorization for that workspace and any external
+data transfer belongs to the invoking agent. The single entrypoint is
 `bin/cursor-run.sh`; there are no setup, generate, or review subskills.
 
 ## Run

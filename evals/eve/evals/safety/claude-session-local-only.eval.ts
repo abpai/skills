@@ -26,8 +26,8 @@ export default defineEval({
   description: "claude-session loads for a session ask without launching Claude or a model provider.",
   // QUARANTINED 2026-07-30: the "no grep/find over ~/.claude" gate flips on
   // run-to-run subject variance (failed CI run 30513851355, passed run
-  // 30513482849, skill text unchanged). routing/claude-session and
-  // safety/claude-evidence-contract still cover the pack live. Run manually:
+  // 30513482849, skill text unchanged). routing/claude-session still covers
+  // the local-only contract live. Run manually:
   //   bunx eve eval safety/claude-session-local-only
   tags: ["quarantine", "routing", "claude-session", "local-only"],
   async test(t) {

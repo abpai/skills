@@ -27,14 +27,6 @@ Usage: claude-run.sh run|review|resume [options] [-- extra-claude-args...]
   --no-tools             Explicitly run with no Claude tools.
   --disallowed-tools RULES
                          Pass Claude denied-tool rules.
-  --evidence-class CLASS generic or repo-grounded-review.
-  --review-scope-file PATH
-                         Approved repo-relative tracked paths, one per line.
-  --sharing-approval-file PATH
-                         Structured redacted sharing approval JSON.
-  --external-transfer-status STATUS
-                         allowed, blocked, or not-checked (default: not-checked).
-  --transfer-attempt N   External-transfer attempt number, 1 or 2.
   --max-budget-usd USD   Set the print-mode budget ceiling.
   --heartbeat SECONDS    Progress report interval (default: 15).
   --preflight-timeout SECS
@@ -46,9 +38,7 @@ Usage: claude-run.sh run|review|resume [options] [-- extra-claude-args...]
                          Do not save a resumable Claude session.
   --dry-run              Write artifacts without launching Claude.
 
-review uses plan permissions, a bounded read/search tool policy, and a sanitized
-workspace for repo-grounded evidence. It denies direct edits and common shell
-mutation paths.
+review runs directly in the requested workspace.
 The wrapper never uses tmux and never automatically replays a Claude prompt.
 EOF
 }
@@ -80,11 +70,6 @@ ALLOWED_TOOLS=""
 TOOLS=""
 NO_TOOLS="false"
 DISALLOWED_TOOLS=""
-EVIDENCE_CLASS="generic"
-REVIEW_SCOPE_FILE=""
-SHARING_APPROVAL_FILE=""
-EXTERNAL_TRANSFER_STATUS="not-checked"
-TRANSFER_ATTEMPT=1
 MAX_BUDGET_USD=""
 HEARTBEAT_SECONDS="${CLAUDE_HEARTBEAT_SECONDS:-15}"
 STALL_TIMEOUT_SECONDS="${CLAUDE_STALL_TIMEOUT_SECONDS:-300}"
@@ -110,9 +95,6 @@ TIMEOUT_SET="false"
 PREFLIGHT_TIMEOUT_SET="false"
 TOOLS_SET="false"
 NO_TOOLS_SET="false"
-EVIDENCE_CLASS_SET="false"
-REVIEW_SCOPE_SET="false"
-SHARING_APPROVAL_SET="false"
 
 require_value() {
   if [[ -z "${2:-}" ]]; then
@@ -141,11 +123,6 @@ while [[ $# -gt 0 ]]; do
     --tools) TOOLS="${2:-}"; require_value "$1" "$TOOLS"; TOOLS_SET="true"; shift 2 ;;
     --no-tools) NO_TOOLS="true"; NO_TOOLS_SET="true"; shift ;;
     --disallowed-tools) DISALLOWED_TOOLS="${2:-}"; require_value "$1" "$DISALLOWED_TOOLS"; shift 2 ;;
-    --evidence-class) EVIDENCE_CLASS="${2:-}"; require_value "$1" "$EVIDENCE_CLASS"; EVIDENCE_CLASS_SET="true"; shift 2 ;;
-    --review-scope-file) REVIEW_SCOPE_FILE="${2:-}"; require_value "$1" "$REVIEW_SCOPE_FILE"; REVIEW_SCOPE_SET="true"; shift 2 ;;
-    --sharing-approval-file) SHARING_APPROVAL_FILE="${2:-}"; require_value "$1" "$SHARING_APPROVAL_FILE"; SHARING_APPROVAL_SET="true"; shift 2 ;;
-    --external-transfer-status) EXTERNAL_TRANSFER_STATUS="${2:-}"; require_value "$1" "$EXTERNAL_TRANSFER_STATUS"; shift 2 ;;
-    --transfer-attempt) TRANSFER_ATTEMPT="${2:-}"; require_value "$1" "$TRANSFER_ATTEMPT"; shift 2 ;;
     --max-budget-usd) MAX_BUDGET_USD="${2:-}"; require_value "$1" "$MAX_BUDGET_USD"; shift 2 ;;
     --heartbeat) HEARTBEAT_SECONDS="${2:-}"; require_value "$1" "$HEARTBEAT_SECONDS"; HEARTBEAT_SET="true"; shift 2 ;;
     --preflight-timeout) PREFLIGHT_TIMEOUT_SECONDS="${2:-}"; require_value "$1" "$PREFLIGHT_TIMEOUT_SECONDS"; PREFLIGHT_TIMEOUT_SET="true"; shift 2 ;;
@@ -168,9 +145,6 @@ if [[ -z "$PROMPT_TEXT" && -z "$PROMPT_FILE" ]]; then
   echo "[FAIL] $MODE mode requires --prompt or --prompt-file" >&2
   exit 2
 fi
-case "$EVIDENCE_CLASS" in generic|repo-grounded-review) ;; *) echo "[FAIL] unsupported --evidence-class: $EVIDENCE_CLASS" >&2; exit 2 ;; esac
-case "$EXTERNAL_TRANSFER_STATUS" in allowed|blocked|not-checked) ;; *) echo "[FAIL] unsupported --external-transfer-status: $EXTERNAL_TRANSFER_STATUS" >&2; exit 2 ;; esac
-case "$TRANSFER_ATTEMPT" in 1|2) ;; *) echo "[FAIL] --transfer-attempt must be 1 or 2" >&2; exit 2 ;; esac
 if [[ "$NO_TOOLS" == "true" && -n "$TOOLS" ]]; then
   echo "[FAIL] use either --tools or --no-tools, not both" >&2
   exit 2
@@ -182,13 +156,6 @@ fi
 if [[ -n "$TOOLS" && "$TOOLS" != *[A-Za-z0-9]* ]]; then
   echo "[FAIL] --tools must name at least one tool; use --no-tools explicitly for none" >&2
   exit 2
-fi
-if [[ "$EVIDENCE_CLASS" == "repo-grounded-review" ]]; then
-  [[ "$MODE" == "review" || "$MODE" == "resume" || -n "$CONTINUE_RUN_DIR" ]] || { echo "[FAIL] repo-grounded-review requires review or continuation mode" >&2; exit 2; }
-  [[ -n "$REVIEW_SCOPE_FILE" && -n "$SHARING_APPROVAL_FILE" ]] || { echo "[FAIL] repo-grounded-review requires --review-scope-file and --sharing-approval-file" >&2; exit 2; }
-  [[ "$NO_TOOLS" == "false" ]] || { echo "[FAIL] repo-grounded-review cannot use --no-tools" >&2; exit 2; }
-  [[ -z "$ALLOWED_TOOLS" ]] || { echo "[FAIL] repo-grounded-review tool allowances are runner-owned" >&2; exit 2; }
-  (( ${#EXTRA_ARGS[@]} == 0 )) || { echo "[FAIL] repo-grounded-review does not accept passthrough Claude arguments" >&2; exit 2; }
 fi
 if ! command -v python3 >/dev/null 2>&1; then
   echo "[FAIL] python3 is required" >&2
@@ -257,9 +224,6 @@ load_continue_defaults() {
       EFFORT) [[ "$EFFORT_SET" == "true" ]] || EFFORT="$value" ;;
       TOOLS) [[ "$TOOLS_SET" == "true" ]] || TOOLS="$value" ;;
       NO_TOOLS) [[ "$NO_TOOLS_SET" == "true" ]] || NO_TOOLS="$value" ;;
-      EVIDENCE_CLASS) [[ "$EVIDENCE_CLASS_SET" == "true" ]] || EVIDENCE_CLASS="$value" ;;
-      REVIEW_SCOPE_FILE) [[ "$REVIEW_SCOPE_SET" == "true" ]] || REVIEW_SCOPE_FILE="$value" ;;
-      SHARING_APPROVAL_FILE) [[ "$SHARING_APPROVAL_SET" == "true" ]] || SHARING_APPROVAL_FILE="$value" ;;
       PREFLIGHT_TIMEOUT_SECONDS) [[ "$PREFLIGHT_TIMEOUT_SET" == "true" ]] || PREFLIGHT_TIMEOUT_SECONDS="$value" ;;
       HEARTBEAT_SECONDS) [[ "$HEARTBEAT_SET" == "true" ]] || HEARTBEAT_SECONDS="$value" ;;
       STALL_TIMEOUT_SECONDS) [[ "$STALL_TIMEOUT_SET" == "true" ]] || STALL_TIMEOUT_SECONDS="$value" ;;
@@ -267,7 +231,7 @@ load_continue_defaults() {
       TIMEOUT_SECONDS) [[ "$TIMEOUT_SET" == "true" ]] || TIMEOUT_SECONDS="$value" ;;
       NO_SESSION_PERSISTENCE) NO_SESSION_PERSISTENCE="$value" ;;
     esac
-  done < <(read_env_values "$prior" WORKSPACE RUN_ROOT SESSION_ID PERMISSION_MODE READ_ONLY MODEL EFFORT TOOLS NO_TOOLS EVIDENCE_CLASS REVIEW_SCOPE_FILE SHARING_APPROVAL_FILE PREFLIGHT_TIMEOUT_SECONDS HEARTBEAT_SECONDS STALL_TIMEOUT_SECONDS REPORT_TIMEOUT_SECONDS TIMEOUT_SECONDS NO_SESSION_PERSISTENCE)
+  done < <(read_env_values "$prior" WORKSPACE RUN_ROOT SESSION_ID PERMISSION_MODE READ_ONLY MODEL EFFORT TOOLS NO_TOOLS PREFLIGHT_TIMEOUT_SECONDS HEARTBEAT_SECONDS STALL_TIMEOUT_SECONDS REPORT_TIMEOUT_SECONDS TIMEOUT_SECONDS NO_SESSION_PERSISTENCE)
   [[ "$NO_SESSION_PERSISTENCE" != "true" ]] || { echo "[FAIL] prior run disabled session persistence" >&2; exit 2; }
   [[ -n "$SESSION_ID" ]] || { echo "[FAIL] prior run has no Claude session id" >&2; exit 2; }
 }
@@ -281,7 +245,6 @@ if (( PREFLIGHT_TIMEOUT_SECONDS < 1 )); then
   echo "[FAIL] --preflight-timeout must be at least 1" >&2
   exit 2
 fi
-case "$EVIDENCE_CLASS" in generic|repo-grounded-review) ;; *) echo "[FAIL] unsupported continued evidence class: $EVIDENCE_CLASS" >&2; exit 2 ;; esac
 if [[ "$NO_TOOLS" != "true" && "$NO_TOOLS" != "false" ]]; then
   echo "[FAIL] continued NO_TOOLS must be true or false" >&2
   exit 2
@@ -290,50 +253,12 @@ if [[ -n "$TOOLS" && "$TOOLS" != *[A-Za-z0-9]* ]]; then
   echo "[FAIL] continued tool set must name at least one tool" >&2
   exit 2
 fi
-if [[ "$EVIDENCE_CLASS" == "repo-grounded-review" ]]; then
-  [[ "$MODE" == "review" || "$MODE" == "resume" || -n "$CONTINUE_RUN_DIR" ]] || { echo "[FAIL] repo-grounded-review requires review or continuation mode" >&2; exit 2; }
-  [[ -n "$REVIEW_SCOPE_FILE" && -n "$SHARING_APPROVAL_FILE" ]] || { echo "[FAIL] repo-grounded-review continuation is missing scope or approval metadata" >&2; exit 2; }
-  [[ "$NO_TOOLS" == "false" ]] || { echo "[FAIL] repo-grounded-review cannot use --no-tools" >&2; exit 2; }
-fi
 
 RESUMING="false"
 if [[ "$MODE" == "resume" || -n "$CONTINUE_RUN_DIR" ]]; then
   RESUMING="true"
 fi
 
-if [[ "$MODE" == "review" || ( "$RESUMING" == "true" && "$READ_ONLY" == "true" ) ]]; then
-  READ_ONLY="true"
-  [[ "$PERMISSION_SET" == "true" ]] || PERMISSION_MODE="plan"
-  REVIEW_TOOLS="Read,Glob,Grep,Bash"
-  REVIEW_ALLOWED_TOOLS="Read,Glob,Grep,Bash(git diff:*),Bash(git status:*),Bash(git show:*),Bash(git log:*),Bash(git ls-files:*),Bash(rg:*),Bash(wc:*),Bash(head:*),Bash(tail:*)"
-  REVIEW_DISALLOWED_TOOLS="Edit,Write,NotebookEdit,Bash(rm:*),Bash(mv:*),Bash(cp:*),Bash(chmod:*),Bash(chown:*),Bash(touch:*),Bash(mkdir:*),Bash(install:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(git checkout:*),Bash(git switch:*),Bash(git reset:*),Bash(git clean:*),Bash(*>*),Bash(*|*tee*)"
-  if [[ "$NO_TOOLS" == "false" && -z "$TOOLS" ]]; then
-    TOOLS="$REVIEW_TOOLS"
-  fi
-  if [[ "$NO_TOOLS" == "false" ]]; then
-    if [[ -n "$ALLOWED_TOOLS" ]]; then
-      ALLOWED_TOOLS="$REVIEW_ALLOWED_TOOLS,$ALLOWED_TOOLS"
-    else
-      ALLOWED_TOOLS="$REVIEW_ALLOWED_TOOLS"
-    fi
-  fi
-  if [[ -n "$DISALLOWED_TOOLS" ]]; then
-    DISALLOWED_TOOLS="$DISALLOWED_TOOLS,$REVIEW_DISALLOWED_TOOLS"
-  else
-    DISALLOWED_TOOLS="$REVIEW_DISALLOWED_TOOLS"
-  fi
-fi
-if [[ "$EVIDENCE_CLASS" == "repo-grounded-review" ]]; then
-  normalized_tools="${TOOLS//[[:space:]]/}"
-  [[ "$normalized_tools" == "Read,Glob,Grep,Bash" ]] || {
-    echo "[FAIL] repo-grounded-review requires the exact runner-owned tool set: Read,Glob,Grep,Bash" >&2
-    exit 2
-  }
-  [[ "$PERMISSION_MODE" == "plan" ]] || {
-    echo "[FAIL] repo-grounded-review requires --permission-mode plan" >&2
-    exit 2
-  }
-fi
 if [[ "$MODE" == "resume" && -z "$SESSION_ID" ]]; then
   echo "[FAIL] resume requires --session or --continue-run" >&2
   exit 2
@@ -376,11 +301,7 @@ COMMAND_FILE="$RUN_DIR/command.txt"
 PREFLIGHT_LOG="$RUN_DIR/preflight.log"
 PREFLIGHT_JSON="$RUN_DIR/preflight.json"
 PREFLIGHT_SCRIPT="$SCRIPT_DIR/claude-preflight.py"
-REVIEW_SCOPE_SCRIPT="$SCRIPT_DIR/prepare-review-scope.py"
 RESOLVED_MODEL_FILE="$RUN_DIR/resolved-model.txt"
-EVIDENCE_ACCESS_FILE="$RUN_DIR/evidence-access.json"
-SHARING_APPROVAL_JSON="$RUN_DIR/sharing-approval.json"
-REVIEW_SCOPE_DIR="$RUN_DIR/review-workspace"
 MONITOR_SCRIPT="$RUN_DIR/monitor.sh"
 CONTINUE_SCRIPT="$RUN_DIR/continue.sh"
 BASELINE_FILE="$RUN_DIR/workspace-baseline.txt"
@@ -397,7 +318,6 @@ mkdir -p "$CHILD_REPORT_DIR"
 : > "$EVENTS_LOG"
 : > "$FINAL_MESSAGE"
 : > "$RESOLVED_MODEL_FILE"
-: > "$EVIDENCE_ACCESS_FILE"
 
 PREFLIGHT_STATUS="pending"
 PREFLIGHT_REASON="not_run"
@@ -411,12 +331,6 @@ REQUESTED_EFFORT="${EFFORT:-configured-default}"
 MODEL_SELECTION="configured-default"
 EFFORT_SELECTION="configured-default"
 RESOLVED_MODEL=""
-EXEC_WORKSPACE="$WORKSPACE"
-SCOPE_PREPARED="false"
-APPROVAL_PRESENT="false"
-WORKSPACE_EVIDENCE_ACCESSED="false"
-OUT_OF_SCOPE_ATTEMPTED="false"
-BLOCKER=""
 [[ -z "$MODEL" ]] || MODEL_SELECTION="explicit"
 [[ -z "$EFFORT" ]] || EFFORT_SELECTION="explicit"
 
@@ -443,7 +357,7 @@ elif [[ -n "$TOOLS" ]]; then
   claude_cmd+=(--tools "$TOOLS")
 fi
 [[ -z "$ALLOWED_TOOLS" ]] || claude_cmd+=(--allowed-tools "$ALLOWED_TOOLS")
-if [[ "$READ_ONLY" == "true" && "$MODE" != "review" ]]; then
+if [[ "$READ_ONLY" == "true" ]]; then
   if [[ -n "$DISALLOWED_TOOLS" ]]; then
     DISALLOWED_TOOLS="$DISALLOWED_TOOLS,Edit,Write,NotebookEdit"
   else
@@ -457,7 +371,7 @@ fi
 
 write_command() {
   {
-    printf 'cwd='; shell_quote "$EXEC_WORKSPACE"; printf '\ncommand='
+    printf 'cwd='; shell_quote "$WORKSPACE"; printf '\ncommand='
     for arg in "${claude_cmd[@]}"; do shell_quote "$arg"; printf ' '; done
     printf '\nstdin='; shell_quote "$PROMPT_RUN_FILE"; printf '\n'
   } > "$COMMAND_FILE"
@@ -584,7 +498,6 @@ write_run_env() {
     printf 'RUN_ROOT=%q\n' "$RUN_ROOT"
     printf 'RUN_DIR=%q\n' "$RUN_DIR"
     printf 'RUN_DIR_FILE=%q\n' "$RUN_DIR_FILE"
-    printf 'EXEC_WORKSPACE=%q\n' "$EXEC_WORKSPACE"
     printf 'SESSION_ID=%q\n' "$SESSION_ID"
     printf 'PERMISSION_MODE=%q\n' "$PERMISSION_MODE"
     printf 'READ_ONLY=%q\n' "$READ_ONLY"
@@ -597,16 +510,6 @@ write_run_env() {
     printf 'RESOLVED_MODEL=%q\n' "$RESOLVED_MODEL"
     printf 'PREFLIGHT_STATUS=%q\n' "$PREFLIGHT_STATUS"
     printf 'PREFLIGHT_TIMEOUT_SECONDS=%q\n' "$PREFLIGHT_TIMEOUT_SECONDS"
-    printf 'EVIDENCE_CLASS=%q\n' "$EVIDENCE_CLASS"
-    printf 'REVIEW_SCOPE_FILE=%q\n' "$REVIEW_SCOPE_FILE"
-    printf 'SHARING_APPROVAL_FILE=%q\n' "$SHARING_APPROVAL_FILE"
-    printf 'EXTERNAL_TRANSFER_STATUS=%q\n' "$EXTERNAL_TRANSFER_STATUS"
-    printf 'TRANSFER_ATTEMPT=%q\n' "$TRANSFER_ATTEMPT"
-    printf 'APPROVAL_PRESENT=%q\n' "$APPROVAL_PRESENT"
-    printf 'SCOPE_PREPARED=%q\n' "$SCOPE_PREPARED"
-    printf 'WORKSPACE_EVIDENCE_ACCESSED=%q\n' "$WORKSPACE_EVIDENCE_ACCESSED"
-    printf 'OUT_OF_SCOPE_ATTEMPTED=%q\n' "$OUT_OF_SCOPE_ATTEMPTED"
-    printf 'BLOCKER=%q\n' "$BLOCKER"
     printf 'TOOLS=%q\n' "$TOOLS"
     printf 'NO_TOOLS=%q\n' "$NO_TOOLS"
     printf 'HEARTBEAT_SECONDS=%q\n' "$HEARTBEAT_SECONDS"
@@ -629,14 +532,14 @@ write_status() {
     printf 'pid=%q\nwrapper_pid=%q\nsession_id=%q\nworkspace=%q\nrun_dir=%q\nrun_dir_file=%q\n' "${CHILD_PID:-}" "$$" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" "$RUN_DIR_FILE"
     printf 'preflight_status=%q\npreflight_reason=%q\npreflight_terminal=%q\npreflight_auth_exit_code=%q\npreflight_duration_ms=%q\npreflight_cli_version=%q\n' "$PREFLIGHT_STATUS" "$PREFLIGHT_REASON" "$PREFLIGHT_TERMINAL" "$PREFLIGHT_AUTH_EXIT" "$PREFLIGHT_DURATION_MS" "$PREFLIGHT_CLI_VERSION"
     printf 'requested_model=%q\nrequested_effort=%q\nmodel_selection=%q\neffort_selection=%q\nresolved_model=%q\n' "$REQUESTED_MODEL" "$REQUESTED_EFFORT" "$MODEL_SELECTION" "$EFFORT_SELECTION" "$RESOLVED_MODEL"
-    printf 'execution_workspace=%q\nevidence_class=%q\nexternal_transfer_status=%q\ntransfer_attempt=%q\napproval_present=%q\nscope_prepared=%q\nworkspace_evidence_accessed=%q\nout_of_scope_attempted=%q\nblocker=%q\ntools=%q\nno_tools=%q\n' "$EXEC_WORKSPACE" "$EVIDENCE_CLASS" "$EXTERNAL_TRANSFER_STATUS" "$TRANSFER_ATTEMPT" "$APPROVAL_PRESENT" "$SCOPE_PREPARED" "$WORKSPACE_EVIDENCE_ACCESSED" "$OUT_OF_SCOPE_ATTEMPTED" "$BLOCKER" "$TOOLS" "$NO_TOOLS"
+    printf 'tools=%q\nno_tools=%q\n' "$TOOLS" "$NO_TOOLS"
     printf 'stdout_lines=%q\nstderr_lines=%q\nevent_lines=%q\n' "$stdout_lines" "$stderr_lines" "$event_lines"
     printf 'transcript_file=%q\ntranscript_lines=%q\ntranscript_bytes=%q\n' "$TRANSCRIPT_FILE" "$TRANSCRIPT_LINES" "$TRANSCRIPT_BYTES"
     printf 'child_count=%q\ncompleted_children=%q\nreport_pending=%q\nchild_report_dir=%q\n' "$CHILD_COUNT" "$COMPLETED_CHILDREN" "$REPORT_PENDING" "$CHILD_REPORT_DIR"
     printf 'stdout_log=%q\nstderr_log=%q\nevents_log=%q\nfinal_message=%q\nmonitor_script=%q\ncontinue_script=%q\n' "$STDOUT_LOG" "$STDERR_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT"
   } > "$status_tmp"
   mv "$status_tmp" "$STATUS_FILE"
-  python3 - "$STATUS_JSON" "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$source" "${CHILD_PID:-}" "$$" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" "$RUN_DIR_FILE" "$stdout_lines" "$stderr_lines" "$event_lines" "$TRANSCRIPT_FILE" "$TRANSCRIPT_LINES" "$TRANSCRIPT_BYTES" "$CHILD_COUNT" "$COMPLETED_CHILDREN" "$REPORT_PENDING" "$CHILD_REPORT_DIR" "$STDOUT_LOG" "$STDERR_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" "$PREFLIGHT_STATUS" "$PREFLIGHT_REASON" "$PREFLIGHT_TERMINAL" "$PREFLIGHT_AUTH_EXIT" "$PREFLIGHT_DURATION_MS" "$PREFLIGHT_CLI_VERSION" "$REQUESTED_MODEL" "$REQUESTED_EFFORT" "$MODEL_SELECTION" "$EFFORT_SELECTION" "$RESOLVED_MODEL" "$EXEC_WORKSPACE" "$EVIDENCE_CLASS" "$EXTERNAL_TRANSFER_STATUS" "$TRANSFER_ATTEMPT" "$APPROVAL_PRESENT" "$SCOPE_PREPARED" "$WORKSPACE_EVIDENCE_ACCESSED" "$OUT_OF_SCOPE_ATTEMPTED" "$BLOCKER" "$TOOLS" "$NO_TOOLS" <<'PY'
+  python3 - "$STATUS_JSON" "$state" "$health" "$exit_code" "$elapsed" "$stalled_for" "$source" "${CHILD_PID:-}" "$$" "$SESSION_ID" "$WORKSPACE" "$RUN_DIR" "$RUN_DIR_FILE" "$stdout_lines" "$stderr_lines" "$event_lines" "$TRANSCRIPT_FILE" "$TRANSCRIPT_LINES" "$TRANSCRIPT_BYTES" "$CHILD_COUNT" "$COMPLETED_CHILDREN" "$REPORT_PENDING" "$CHILD_REPORT_DIR" "$STDOUT_LOG" "$STDERR_LOG" "$EVENTS_LOG" "$FINAL_MESSAGE" "$PREFLIGHT_STATUS" "$PREFLIGHT_REASON" "$PREFLIGHT_TERMINAL" "$PREFLIGHT_AUTH_EXIT" "$PREFLIGHT_DURATION_MS" "$PREFLIGHT_CLI_VERSION" "$REQUESTED_MODEL" "$REQUESTED_EFFORT" "$MODEL_SELECTION" "$EFFORT_SELECTION" "$RESOLVED_MODEL" "$TOOLS" "$NO_TOOLS" <<'PY'
 import json, os, sys
 from pathlib import Path
 
@@ -646,10 +549,7 @@ from pathlib import Path
  events, final, preflight_status, preflight_reason, preflight_terminal,
  preflight_auth_exit, preflight_duration, preflight_version, requested_model,
  requested_effort, model_selection, effort_selection, resolved_model,
- execution_workspace, evidence_class, external_transfer_status, transfer_attempt,
- approval_present, scope_prepared, workspace_evidence_accessed,
- out_of_scope_attempted, blocker, tools,
- no_tools) = sys.argv[1:]
+ tools, no_tools) = sys.argv[1:]
 def number(value): return int(value) if value.isdigit() else None
 data = {
   "state": state, "health": health, "exit_code": number(exit_code),
@@ -674,18 +574,6 @@ data = {
     "requested_model": requested_model, "requested_effort": requested_effort,
     "model_selection": model_selection, "effort_selection": effort_selection,
     "resolved_model": resolved_model,
-  },
-  "external_transfer": {
-    "status": external_transfer_status, "attempt": number(transfer_attempt) or 1,
-    "blocker": blocker,
-  },
-  "evidence": {
-    "class": evidence_class, "source_workspace": workspace,
-    "execution_workspace": execution_workspace,
-    "approval_present": approval_present == "true",
-    "scope_prepared": scope_prepared == "true",
-    "workspace_accessed": workspace_evidence_accessed == "true",
-    "out_of_scope_attempted": out_of_scope_attempted == "true",
   },
   "tools": {"available": tools, "explicitly_none": no_tools == "true"},
 }
@@ -913,36 +801,12 @@ hard_timeout_loop() {
 }
 
 extract_final() {
-  python3 - "$EVENTS_LOG" "$FINAL_MESSAGE" "$RESOLVED_MODEL_FILE" "$EVIDENCE_ACCESS_FILE" "$EXEC_WORKSPACE" <<'PY'
+  python3 - "$EVENTS_LOG" "$FINAL_MESSAGE" "$RESOLVED_MODEL_FILE" <<'PY'
 import json, os, re, sys
 from pathlib import Path
-events, final, resolved_model_file, evidence_file = map(Path, sys.argv[1:5])
-workspace = Path(sys.argv[5]).resolve()
+events, final, resolved_model_file = map(Path, sys.argv[1:])
 result = ""
 resolved_model = ""
-evidence_accessed = False
-out_of_scope_attempted = False
-evidence_tools = []
-
-def inspect_tool_use(part):
-    global evidence_accessed, out_of_scope_attempted
-    if not isinstance(part, dict) or part.get("type") != "tool_use":
-        return
-    name = part.get("name")
-    payload = part.get("input") if isinstance(part.get("input"), dict) else {}
-    if name not in {"Read", "Glob", "Grep"}:
-        return
-    raw_path = payload.get("file_path") or payload.get("path") or ""
-    if not isinstance(raw_path, str):
-        return
-    candidate = (workspace / raw_path).resolve() if raw_path else workspace
-    try:
-        candidate.relative_to(workspace)
-    except ValueError:
-        out_of_scope_attempted = True
-        return
-    evidence_accessed = True
-    evidence_tools.append(name)
 
 for raw in events.read_text(encoding="utf-8", errors="replace").splitlines():
     try: event = json.loads(raw)
@@ -953,11 +817,6 @@ for raw in events.read_text(encoding="utf-8", errors="replace").splitlines():
     message = event.get("message")
     if isinstance(message, dict):
         candidates.append(message.get("model"))
-        content = message.get("content")
-        if isinstance(content, list):
-            for part in content:
-                inspect_tool_use(part)
-    inspect_tool_use(event)
     for candidate in candidates:
         if isinstance(candidate, str) and re.fullmatch(r"[A-Za-z0-9._:/+-]{1,200}", candidate):
             resolved_model = candidate
@@ -969,68 +828,9 @@ if resolved_model:
     tmp = Path(str(resolved_model_file) + f".tmp.{os.getpid()}")
     tmp.write_text(resolved_model + "\n", encoding="utf-8")
     tmp.replace(resolved_model_file)
-evidence_tmp = Path(str(evidence_file) + f".tmp.{os.getpid()}")
-evidence_tmp.write_text(json.dumps({
-    "workspace_accessed": evidence_accessed,
-    "out_of_scope_attempted": out_of_scope_attempted,
-    "tools": sorted(set(evidence_tools)),
-}, indent=2) + "\n", encoding="utf-8")
-evidence_tmp.replace(evidence_file)
 PY
   RESOLVED_MODEL="$(head -n 1 "$RESOLVED_MODEL_FILE" 2>/dev/null || true)"
-  while IFS=$'\t' read -r evidence_key evidence_value; do
-    case "$evidence_key" in
-      workspace_accessed) WORKSPACE_EVIDENCE_ACCESSED="$evidence_value" ;;
-      out_of_scope_attempted) OUT_OF_SCOPE_ATTEMPTED="$evidence_value" ;;
-    esac
-  done < <(python3 - "$EVIDENCE_ACCESS_FILE" <<'PY'
-import json, sys
-try:
-    data = json.load(open(sys.argv[1], encoding="utf-8"))
-except (OSError, json.JSONDecodeError):
-    data = {}
-for key in ("workspace_accessed", "out_of_scope_attempted"):
-    print(f"{key}\t{'true' if data.get(key) else 'false'}")
-PY
-)
 }
-
-if [[ "$EVIDENCE_CLASS" == "repo-grounded-review" ]]; then
-  REVIEW_SCOPE_FILE="$(absolute_path "$REVIEW_SCOPE_FILE")"
-  SHARING_APPROVAL_FILE="$(absolute_path "$SHARING_APPROVAL_FILE")"
-  RAW_PROMPT_FILE="$RUN_DIR/.prompt-input"
-  mv "$PROMPT_RUN_FILE" "$RAW_PROMPT_FILE"
-  set +e
-  python3 "$REVIEW_SCOPE_SCRIPT" \
-    --workspace "$WORKSPACE" \
-    --scope-file "$REVIEW_SCOPE_FILE" \
-    --approval-file "$SHARING_APPROVAL_FILE" \
-    --output-dir "$REVIEW_SCOPE_DIR" \
-    --approval-output "$SHARING_APPROVAL_JSON" \
-    --prompt-input "$RAW_PROMPT_FILE" \
-    --prompt-output "$PROMPT_RUN_FILE"
-  SCOPE_PREPARE_EXIT=$?
-  set -e
-  if [[ "$SCOPE_PREPARE_EXIT" -eq 0 ]]; then
-    rm -f "$RAW_PROMPT_FILE"
-    EXEC_WORKSPACE="$REVIEW_SCOPE_DIR"
-    SCOPE_PREPARED="true"
-    APPROVAL_PRESENT="true"
-  else
-    mv "$RAW_PROMPT_FILE" "$PROMPT_RUN_FILE"
-    BLOCKER="scope_preparation_failed"
-    PREFLIGHT_STATUS="not_run"
-    PREFLIGHT_REASON="$BLOCKER"
-    write_preflight_artifacts
-    write_command
-    write_run_env
-    write_status failed 65 0 scope-preparation-failed 0 review-scope
-    RUN_FINALIZED="true"
-    rm -f "$CONTINUE_SCRIPT"
-    echo "[claude-run] event=finish state=failed exit_code=65 blocker=scope_preparation_failed"
-    exit 65
-  fi
-fi
 
 capture_workspace_baseline
 snapshot_transcripts
@@ -1039,37 +839,10 @@ write_status planned "" 0 planned
 printf '[claude-run] event=start run_id=%s mode=%s session_id=%s workspace=%q model=%q effort=%q\n' "$RUN_ID" "$MODE" "$SESSION_ID" "$WORKSPACE" "$REQUESTED_MODEL" "$REQUESTED_EFFORT"
 printf '[claude-run] event=paths run_dir=%q run_dir_file=%q status=%q status_json=%q monitor=%q continue=%q events=%q final=%q child_reports=%q\n' "$RUN_DIR" "$RUN_DIR_FILE" "$STATUS_FILE" "$STATUS_JSON" "$MONITOR_SCRIPT" "$CONTINUE_SCRIPT" "$EVENTS_LOG" "$FINAL_MESSAGE" "$CHILD_REPORT_DIR"
 
-if [[ "$EXTERNAL_TRANSFER_STATUS" == "blocked" ]]; then
-  BLOCKER="external_transfer_blocked"
-  PREFLIGHT_STATUS="not_run"
-  PREFLIGHT_REASON="$BLOCKER"
-  write_preflight_artifacts
-  write_command
-  write_run_env
-  write_status blocked 77 0 external-transfer-blocked 0 platform-policy
-  RUN_FINALIZED="true"
-  rm -f "$CONTINUE_SCRIPT"
-  echo "[claude-run] event=finish state=blocked exit_code=77 blocker=external_transfer_blocked"
-  exit 77
-fi
-if [[ "$EVIDENCE_CLASS" == "repo-grounded-review" && "$EXTERNAL_TRANSFER_STATUS" != "allowed" ]]; then
-  BLOCKER="external_transfer_not_confirmed"
-  PREFLIGHT_STATUS="not_run"
-  PREFLIGHT_REASON="$BLOCKER"
-  write_preflight_artifacts
-  write_command
-  write_run_env
-  write_status blocked 77 0 external-transfer-not-confirmed 0 platform-policy
-  RUN_FINALIZED="true"
-  rm -f "$CONTINUE_SCRIPT"
-  echo "[claude-run] event=finish state=blocked exit_code=77 blocker=external_transfer_not_confirmed"
-  exit 77
-fi
-
 set +e
 python3 "$PREFLIGHT_SCRIPT" \
   --claude-bin "$CLAUDE_EXECUTABLE" \
-  --workspace "$EXEC_WORKSPACE" \
+  --workspace "$WORKSPACE" \
   --timeout "$PREFLIGHT_TIMEOUT_SECONDS" \
   --output "$PREFLIGHT_JSON"
 PREFLIGHT_EXIT=$?
@@ -1131,7 +904,7 @@ STARTED_AT="$(date +%s)"
 mkfifo "$STDOUT_PIPE" "$STDERR_PIPE"
 tee -a "$STDOUT_LOG" "$EVENTS_LOG" < "$STDOUT_PIPE" >/dev/null & STDOUT_TEE_PID=$!
 tee -a "$STDERR_LOG" < "$STDERR_PIPE" >&2 & STDERR_TEE_PID=$!
-process_group_cmd=(python3 -c 'import os, sys; os.setsid(); os.chdir(sys.argv[1]); os.execvp(sys.argv[2], sys.argv[2:])' "$EXEC_WORKSPACE" "${claude_cmd[@]}")
+process_group_cmd=(python3 -c 'import os, sys; os.setsid(); os.chdir(sys.argv[1]); os.execvp(sys.argv[2], sys.argv[2:])' "$WORKSPACE" "${claude_cmd[@]}")
 "${process_group_cmd[@]}" < "$PROMPT_RUN_FILE" > "$STDOUT_PIPE" 2> "$STDERR_PIPE" &
 CHILD_PID=$!
 write_status running "" 0 active 0 spawn
@@ -1158,19 +931,6 @@ for tee_pid in "$STDOUT_TEE_PID" "$STDERR_TEE_PID"; do
 done
 rm -f "$STDOUT_PIPE" "$STDERR_PIPE"
 extract_final
-if [[ "$EVIDENCE_CLASS" == "repo-grounded-review" && "$EXIT_CODE" -eq 0 ]]; then
-  if [[ "$OUT_OF_SCOPE_ATTEMPTED" == "true" ]]; then
-    BLOCKER="out_of_scope_tool_access"
-    [[ ! -s "$FINAL_MESSAGE" ]] || mv "$FINAL_MESSAGE" "$RUN_DIR/unverified-final.md"
-    printf 'Repository review blocked: Claude attempted to access evidence outside the approved sanitized workspace.\n' > "$FINAL_MESSAGE"
-    EXIT_CODE=65
-  elif [[ "$WORKSPACE_EVIDENCE_ACCESSED" != "true" ]]; then
-    BLOCKER="workspace_evidence_not_accessed"
-    [[ ! -s "$FINAL_MESSAGE" ]] || mv "$FINAL_MESSAGE" "$RUN_DIR/unverified-final.md"
-    printf 'Repository review blocked: no Read, Glob, or Grep event accessed the approved sanitized workspace. No workspace review is claimed.\n' > "$FINAL_MESSAGE"
-    EXIT_CODE=65
-  fi
-fi
 snapshot_transcripts
 capture_workspace_artifacts
 ENDED_AT="$(date +%s)"; ELAPSED=$((ENDED_AT-STARTED_AT))

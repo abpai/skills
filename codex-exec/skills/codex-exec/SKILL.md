@@ -14,8 +14,11 @@ metadata:
 
 # Codex CLI
 
-Use the local `codex` CLI as a non-interactive worker. Let the parent agent own
-scope, validation, integration, and the user-facing verdict.
+Use the local `codex` CLI as a non-interactive worker with durable artifacts and
+exact session continuation. The wrapper runs Codex in the requested workspace;
+authorization for that workspace and any external data transfer belongs to the
+invoking agent. Let the parent agent own scope, validation, integration, and
+the user-facing verdict.
 
 ## Authority Guard
 
