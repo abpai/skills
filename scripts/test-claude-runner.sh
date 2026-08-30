@@ -76,12 +76,6 @@ fi
 printf 'launch\n' >> "${FAKE_CLAUDE_CALLS:?}"
 cat >/dev/null
 printf '{"type":"system","subtype":"init","session_id":"fake-session","model":"%s"}\n' "${FAKE_RESOLVED_MODEL:-claude-resolved-test}"
-case "${FAKE_CLAUDE_ACCESS_MODE:-none}" in
-  inside)
-    printf '{"type":"assistant","message":{"model":"%s","content":[{"type":"tool_use","name":"Read","input":{"file_path":"src/app.py"}}]}}\n' "${FAKE_RESOLVED_MODEL:-claude-resolved-test}" ;;
-  outside)
-    printf '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/tmp/outside.py"}}]}}\n' ;;
-esac
 printf '{"type":"result","subtype":"success","result":"%s","session_id":"fake-session"}\n' "${FAKE_FINAL:-fake final}"
 EOF
 chmod +x "$FAKEBIN/claude"
@@ -246,11 +240,72 @@ test_review_runs_in_requested_workspace() {
       > "$output" 2>&1
 
   assert_contains "$run_dir/status.json" '"state": "finished"'
+  assert_contains "$run_dir/command.txt" '--permission-mode auto'
   assert_not_contains "$run_dir/command.txt" '--disallowed-tools'
+  assert_not_contains "$run_dir/command.txt" '--tools '
+  assert_contains "$run_dir/run.env" 'READ_ONLY=false'
   [[ ! -e "$run_dir/review-workspace" ]] || fail "review created an isolated workspace"
   [[ ! -e "$run_dir/sharing-approval.json" ]] || fail "review created runner-owned approval metadata"
   [[ ! -e "$run_dir/evidence-access.json" ]] || fail "review created access-policing evidence"
   pass "review runs directly in the requested workspace"
+}
+
+test_strict_review_preserves_locked_down_controls() {
+  local run_dir="$TMP_DIR/run-strict-review" output="$TMP_DIR/output-strict-review.log"
+  : > "$CALLS"
+  FAKE_AUTH_MODE=valid FAKE_EXPECT_WORKSPACE="$WORKSPACE" \
+    FAKE_ENVELOPE="same-runner-envelope" FAKE_CLAUDE_CALLS="$CALLS" \
+    PATH="$FAKEBIN:$PATH" bash "$CLAUDE_RUN" review \
+      --workspace "$WORKSPACE" --run-dir "$run_dir" \
+      --permission-mode dontAsk --read-only \
+      --tools Read,Glob,Grep,Bash \
+      --allowed-tools 'Read,Glob,Grep,Bash(git diff:*),Bash(git status:*),Bash(git log:*),Bash(git show:*),Bash(rg:*)' \
+      --prompt "Inspect the requested diff or report blocked." --timeout 5 \
+      -- --restricted --strict-mcp-config --no-chrome \
+      > "$output" 2>&1
+
+  assert_contains "$run_dir/status.json" '"state": "finished"'
+  assert_contains "$run_dir/command.txt" '--permission-mode dontAsk'
+  assert_contains "$run_dir/command.txt" '--tools Read\,Glob\,Grep\,Bash'
+  assert_contains "$run_dir/command.txt" '--allowed-tools Read\,Glob\,Grep\,Bash\(git\ diff:\*\)\,Bash\(git\ status:\*\)\,Bash\(git\ log:\*\)\,Bash\(git\ show:\*\)\,Bash\(rg:\*\)'
+  assert_contains "$run_dir/command.txt" '--disallowed-tools Edit\,Write\,NotebookEdit'
+  assert_contains "$run_dir/command.txt" '--restricted'
+  assert_contains "$run_dir/command.txt" '--strict-mcp-config'
+  assert_contains "$run_dir/command.txt" '--no-chrome'
+  assert_contains "$run_dir/run.env" 'READ_ONLY=true'
+  pass "strict review preserves locked-down direct-workspace controls"
+}
+
+test_continued_strict_review_keeps_its_locked_down_surface() {
+  local run_dir="$TMP_DIR/run-strict-first" output="$TMP_DIR/output-strict-first.log"
+  local continued_dir="$TMP_DIR/run-strict-continued" continued_output="$TMP_DIR/output-strict-continued.log"
+  : > "$CALLS"
+  FAKE_AUTH_MODE=valid FAKE_EXPECT_WORKSPACE="$WORKSPACE" \
+    FAKE_ENVELOPE="same-runner-envelope" FAKE_CLAUDE_CALLS="$CALLS" \
+    PATH="$FAKEBIN:$PATH" bash "$CLAUDE_RUN" review \
+      --workspace "$WORKSPACE" --run-dir "$run_dir" \
+      --permission-mode dontAsk --read-only \
+      --tools Read,Glob,Grep,Bash \
+      --allowed-tools 'Read,Glob,Grep,Bash(git diff:*),Bash(git status:*),Bash(rg:*)' \
+      --prompt "First review turn." --timeout 5 \
+      -- --restricted --strict-mcp-config --no-chrome \
+      > "$output" 2>&1
+
+  FAKE_AUTH_MODE=valid FAKE_EXPECT_WORKSPACE="$WORKSPACE" \
+    FAKE_ENVELOPE="same-runner-envelope" FAKE_CLAUDE_CALLS="$CALLS" \
+    PATH="$FAKEBIN:$PATH" "$run_dir/continue.sh" \
+      --run-dir "$continued_dir" --prompt "Second review turn." --dry-run \
+      > "$continued_output" 2>&1
+
+  assert_contains "$continued_dir/command.txt" '--permission-mode dontAsk'
+  assert_contains "$continued_dir/command.txt" '--tools Read\,Glob\,Grep\,Bash'
+  assert_contains "$continued_dir/command.txt" '--allowed-tools Read\,Glob\,Grep\,Bash\(git\ diff:\*\)\,Bash\(git\ status:\*\)\,Bash\(rg:\*\)'
+  assert_contains "$continued_dir/command.txt" '--disallowed-tools Edit\,Write\,NotebookEdit'
+  assert_contains "$continued_dir/command.txt" '--restricted'
+  assert_contains "$continued_dir/command.txt" '--strict-mcp-config'
+  assert_contains "$continued_dir/command.txt" '--no-chrome'
+  assert_contains "$continued_dir/run.env" 'READ_ONLY=true'
+  pass "continued strict review keeps its locked-down surface"
 }
 
 test_continue_resumes_exact_session_and_defaults() {
@@ -315,5 +370,7 @@ test_credential_store_denial_is_distinct
 test_hanging_auth_is_terminated
 test_missing_and_indeterminate_preflights_fail
 test_review_runs_in_requested_workspace
+test_strict_review_preserves_locked_down_controls
+test_continued_strict_review_keeps_its_locked_down_surface
 test_continue_resumes_exact_session_and_defaults
 test_empty_tool_arguments_are_explicit_or_rejected

@@ -1,6 +1,6 @@
 {
   "name": "codex-exec",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "Run Codex headlessly for implementation, review, monitored work, and exact continuation with durable liveness artifacts.",
   "author": {
     "name": "Andy Pai"

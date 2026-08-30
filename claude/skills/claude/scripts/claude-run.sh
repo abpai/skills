@@ -38,7 +38,8 @@ Usage: claude-run.sh run|review|resume [options] [-- extra-claude-args...]
                          Do not save a resumable Claude session.
   --dry-run              Write artifacts without launching Claude.
 
-review runs directly in the requested workspace.
+review runs directly in the requested workspace and shares run's defaults,
+so it can modify files unless you pass --read-only and explicit tool flags.
 The wrapper never uses tmux and never automatically replays a Claude prompt.
 EOF
 }
@@ -95,6 +96,9 @@ TIMEOUT_SET="false"
 PREFLIGHT_TIMEOUT_SET="false"
 TOOLS_SET="false"
 NO_TOOLS_SET="false"
+ALLOWED_TOOLS_SET="false"
+DISALLOWED_TOOLS_SET="false"
+EXTRA_ARGS_SET="false"
 
 require_value() {
   if [[ -z "${2:-}" ]]; then
@@ -119,10 +123,10 @@ while [[ $# -gt 0 ]]; do
     --effort) EFFORT="${2:-}"; require_value "$1" "$EFFORT"; EFFORT_SET="true"; shift 2 ;;
     --agent) AGENT="${2:-}"; require_value "$1" "$AGENT"; shift 2 ;;
     --name) SESSION_NAME="${2:-}"; require_value "$1" "$SESSION_NAME"; shift 2 ;;
-    --allowed-tools) ALLOWED_TOOLS="${2:-}"; require_value "$1" "$ALLOWED_TOOLS"; shift 2 ;;
+    --allowed-tools) ALLOWED_TOOLS="${2:-}"; require_value "$1" "$ALLOWED_TOOLS"; ALLOWED_TOOLS_SET="true"; shift 2 ;;
     --tools) TOOLS="${2:-}"; require_value "$1" "$TOOLS"; TOOLS_SET="true"; shift 2 ;;
     --no-tools) NO_TOOLS="true"; NO_TOOLS_SET="true"; shift ;;
-    --disallowed-tools) DISALLOWED_TOOLS="${2:-}"; require_value "$1" "$DISALLOWED_TOOLS"; shift 2 ;;
+    --disallowed-tools) DISALLOWED_TOOLS="${2:-}"; require_value "$1" "$DISALLOWED_TOOLS"; DISALLOWED_TOOLS_SET="true"; shift 2 ;;
     --max-budget-usd) MAX_BUDGET_USD="${2:-}"; require_value "$1" "$MAX_BUDGET_USD"; shift 2 ;;
     --heartbeat) HEARTBEAT_SECONDS="${2:-}"; require_value "$1" "$HEARTBEAT_SECONDS"; HEARTBEAT_SET="true"; shift 2 ;;
     --preflight-timeout) PREFLIGHT_TIMEOUT_SECONDS="${2:-}"; require_value "$1" "$PREFLIGHT_TIMEOUT_SECONDS"; PREFLIGHT_TIMEOUT_SET="true"; shift 2 ;;
@@ -132,7 +136,7 @@ while [[ $# -gt 0 ]]; do
     --no-session-persistence) NO_SESSION_PERSISTENCE="true"; shift ;;
     --dry-run) DRY_RUN="true"; shift ;;
     -h|--help) usage; exit 0 ;;
-    --) shift; while [[ $# -gt 0 ]]; do EXTRA_ARGS+=("$1"); shift; done ;;
+    --) shift; EXTRA_ARGS_SET="true"; while [[ $# -gt 0 ]]; do EXTRA_ARGS+=("$1"); shift; done ;;
     *) echo "[FAIL] unknown argument: $1" >&2; usage; exit 2 ;;
   esac
 done
@@ -224,6 +228,8 @@ load_continue_defaults() {
       EFFORT) [[ "$EFFORT_SET" == "true" ]] || EFFORT="$value" ;;
       TOOLS) [[ "$TOOLS_SET" == "true" ]] || TOOLS="$value" ;;
       NO_TOOLS) [[ "$NO_TOOLS_SET" == "true" ]] || NO_TOOLS="$value" ;;
+      ALLOWED_TOOLS) [[ "$ALLOWED_TOOLS_SET" == "true" ]] || ALLOWED_TOOLS="$value" ;;
+      DISALLOWED_TOOLS) [[ "$DISALLOWED_TOOLS_SET" == "true" ]] || DISALLOWED_TOOLS="$value" ;;
       PREFLIGHT_TIMEOUT_SECONDS) [[ "$PREFLIGHT_TIMEOUT_SET" == "true" ]] || PREFLIGHT_TIMEOUT_SECONDS="$value" ;;
       HEARTBEAT_SECONDS) [[ "$HEARTBEAT_SET" == "true" ]] || HEARTBEAT_SECONDS="$value" ;;
       STALL_TIMEOUT_SECONDS) [[ "$STALL_TIMEOUT_SET" == "true" ]] || STALL_TIMEOUT_SECONDS="$value" ;;
@@ -231,7 +237,10 @@ load_continue_defaults() {
       TIMEOUT_SECONDS) [[ "$TIMEOUT_SET" == "true" ]] || TIMEOUT_SECONDS="$value" ;;
       NO_SESSION_PERSISTENCE) NO_SESSION_PERSISTENCE="$value" ;;
     esac
-  done < <(read_env_values "$prior" WORKSPACE RUN_ROOT SESSION_ID PERMISSION_MODE READ_ONLY MODEL EFFORT TOOLS NO_TOOLS PREFLIGHT_TIMEOUT_SECONDS HEARTBEAT_SECONDS STALL_TIMEOUT_SECONDS REPORT_TIMEOUT_SECONDS TIMEOUT_SECONDS NO_SESSION_PERSISTENCE)
+  done < <(read_env_values "$prior" WORKSPACE RUN_ROOT SESSION_ID PERMISSION_MODE READ_ONLY MODEL EFFORT TOOLS NO_TOOLS ALLOWED_TOOLS DISALLOWED_TOOLS PREFLIGHT_TIMEOUT_SECONDS HEARTBEAT_SECONDS STALL_TIMEOUT_SECONDS REPORT_TIMEOUT_SECONDS TIMEOUT_SECONDS NO_SESSION_PERSISTENCE)
+  if [[ "$EXTRA_ARGS_SET" != "true" && -f "$CONTINUE_RUN_DIR/extra-args" ]]; then
+    while IFS= read -r line; do EXTRA_ARGS+=("$line"); done < "$CONTINUE_RUN_DIR/extra-args"
+  fi
   [[ "$NO_SESSION_PERSISTENCE" != "true" ]] || { echo "[FAIL] prior run disabled session persistence" >&2; exit 2; }
   [[ -n "$SESSION_ID" ]] || { echo "[FAIL] prior run has no Claude session id" >&2; exit 2; }
 }
@@ -304,6 +313,7 @@ PREFLIGHT_SCRIPT="$SCRIPT_DIR/claude-preflight.py"
 RESOLVED_MODEL_FILE="$RUN_DIR/resolved-model.txt"
 MONITOR_SCRIPT="$RUN_DIR/monitor.sh"
 CONTINUE_SCRIPT="$RUN_DIR/continue.sh"
+EXTRA_ARGS_FILE="$RUN_DIR/extra-args"
 BASELINE_FILE="$RUN_DIR/workspace-baseline.txt"
 CHILD_REPORT_DIR="$RUN_DIR/child-reports"
 STALL_MARKER="$RUN_DIR/.stalled"
@@ -357,6 +367,7 @@ elif [[ -n "$TOOLS" ]]; then
   claude_cmd+=(--tools "$TOOLS")
 fi
 [[ -z "$ALLOWED_TOOLS" ]] || claude_cmd+=(--allowed-tools "$ALLOWED_TOOLS")
+REQUESTED_DISALLOWED_TOOLS="$DISALLOWED_TOOLS"
 if [[ "$READ_ONLY" == "true" ]]; then
   if [[ -n "$DISALLOWED_TOOLS" ]]; then
     DISALLOWED_TOOLS="$DISALLOWED_TOOLS,Edit,Write,NotebookEdit"
@@ -512,12 +523,16 @@ write_run_env() {
     printf 'PREFLIGHT_TIMEOUT_SECONDS=%q\n' "$PREFLIGHT_TIMEOUT_SECONDS"
     printf 'TOOLS=%q\n' "$TOOLS"
     printf 'NO_TOOLS=%q\n' "$NO_TOOLS"
+    printf 'ALLOWED_TOOLS=%q\n' "$ALLOWED_TOOLS"
+    printf 'DISALLOWED_TOOLS=%q\n' "${REQUESTED_DISALLOWED_TOOLS-$DISALLOWED_TOOLS}"
     printf 'HEARTBEAT_SECONDS=%q\n' "$HEARTBEAT_SECONDS"
     printf 'STALL_TIMEOUT_SECONDS=%q\n' "$STALL_TIMEOUT_SECONDS"
     printf 'REPORT_TIMEOUT_SECONDS=%q\n' "$REPORT_TIMEOUT_SECONDS"
     printf 'TIMEOUT_SECONDS=%q\n' "$TIMEOUT_SECONDS"
     printf 'NO_SESSION_PERSISTENCE=%q\n' "$NO_SESSION_PERSISTENCE"
   } > "$RUN_ENV_FILE"
+  : > "$EXTRA_ARGS_FILE"
+  (( ${#EXTRA_ARGS[@]} == 0 )) || printf '%s\n' "${EXTRA_ARGS[@]}" > "$EXTRA_ARGS_FILE"
 }
 
 write_status() {
@@ -636,7 +651,7 @@ PY
 )"
     IFS=$'\t' read -r state health exit_code elapsed stalled children completed pending final wrapper_pid <<< "$row"
     case "$state" in
-      finished|failed|blocked|stalled|timed-out|interrupted|dry-run)
+      finished|failed|stalled|timed-out|interrupted|dry-run)
         printf '[claude-run] monitor=done state=%s health=%s exit_code=%s elapsed=%ss children=%s completed=%s report_pending=%s final=%q\n' "$state" "$health" "$exit_code" "$elapsed" "$children" "$completed" "$pending" "$final"
         [[ "$exit_code" =~ ^[0-9]+$ ]] && exit "$exit_code"
         exit 1 ;;

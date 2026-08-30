@@ -1,6 +1,6 @@
 {
   "name": "cursor",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Run Cursor Agent headlessly with liveness artifacts, read-only review, and exact session continuation.",
   "author": {
     "name": "Andy Pai"

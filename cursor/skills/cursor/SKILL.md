@@ -7,7 +7,7 @@ description: >
   durable headless artifacts and exact chat continuation.
 license: MIT
 metadata:
-  version: "3.0.0"
+  version: "3.0.1"
 ---
 
 # Cursor

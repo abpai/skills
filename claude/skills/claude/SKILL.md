@@ -77,14 +77,35 @@ For a strict review:
 ```bash
 scripts/claude-run.sh review \
   --workspace "$PWD" \
-  --prompt "Review the current changes. Findings first. Do not edit files."
+  --permission-mode dontAsk \
+  --read-only \
+  --tools Read,Glob,Grep,Bash \
+  --allowed-tools 'Read,Glob,Grep,Bash(git diff:*),Bash(git status:*),Bash(git log:*),Bash(git show:*),Bash(rg:*)' \
+  --prompt "Inspect the requested diff and report findings first. If required evidence is unavailable, report blocked instead of a no-findings verdict." \
+  -- --restricted --strict-mcp-config --no-chrome
 ```
 
-Review mode runs Claude directly in the requested workspace. It does not create
-a filtered copy, restrict readable paths, impose a runner-owned tool policy, or
-inspect tool events as an authority control. The invoking agent supplies the
-approved scope and inspects the workspace after the run. The runner never
-automatically replays a prompt.
+Review mode runs Claude directly in the requested workspace. The runner itself
+creates no filtered copy, restricts no readable path, imposes no tool policy of
+its own, and does not inspect tool events as an authority control; every
+restriction above comes from the Claude flags you pass. Review also shares
+`run`'s defaults, so a bare `review` can modify files: the read-only surface
+comes from those flags, never from the subcommand name. The invoking agent
+supplies the approved scope and inspects the workspace after the run. The
+runner never automatically replays a prompt. For a locked-down repository
+review, use `dontAsk` with explicit `--tools` and `--allowed-tools` as above;
+plan mode can hide Bash and may try to persist a plan, so it is a poor fit when
+Git evidence is required. `--tools` limits built-in tools only. Pass
+`--strict-mcp-config` and `--no-chrome` when configured MCP or Chrome tools are
+outside the approved scope. A plain `-p` run loads the workspace's own
+settings, hooks, and `.mcp.json` with no trust dialog, so `--restricted`
+(Claude Code 2.1.248+) is what stops a reviewed repository from widening its
+own surface through `permissions.allow` rules — in `dontAsk` those rules are
+exactly what grants tools. Restricted mode drops command-running tools unless
+`--tools` names them individually, so keep `Bash` in that list. This
+locked-down recipe is for inspection, not gate execution: refresh the required
+refs and run executable repository gates in the parent process, or deliberately
+extend the allowed commands when the delegated task must own them.
 
 ## Liveness
 
@@ -92,7 +113,9 @@ automatically replays a prompt.
 
 - Claude stream events, including partial messages and hooks.
 - Parent or named-subagent transcript growth.
-- Content changes to Git-visible tracked or untracked workspace files.
+- Content changes to Git-visible tracked or untracked workspace files. A
+  `--read-only` run tracks no workspace progress, so only stream and transcript
+  activity count there.
 
 The default inactivity timeout is five minutes and the overall deadline is 45
 minutes; pass `0` only when another supervisor owns that limit. See
@@ -111,12 +134,21 @@ Every run writes status, event, log, and routing artifacts; the full inventory
 is in `references/claude-cli.md`.
 `status.json` is the source of truth.
 
+A terminal `finished` state proves that the Claude process completed, not that
+the delegated task met its evidence requirements. Read `final.md` and treat a
+missing diff, skipped required gate, unavailable tool, or other stated proof gap
+as an incomplete task even when the process exits zero.
+
 Use `--run-dir-file PATH` when another process launches the runner in the
 background. Wait on the exact generated `monitor.sh`; never rediscover a global
 "latest" directory. The monitor exits if the wrapper disappears without writing
 a terminal status and has its own finite deadline, so attachment cannot wait
 forever on stale artifacts. Raw stream JSON stays in the run artifacts instead
 of flooding the parent console.
+
+If the default artifact root is not writable in the current environment, pass
+`--run-root` or set `CLAUDE_RUNS_DIR` to an approved writable directory. Do not
+escalate merely to preserve the default path.
 
 Before launch, tell the user the delegated objective and either the explicit
 Claude model and effort flags or that both use configured defaults.
@@ -127,8 +159,10 @@ Claude model and effort flags or that both use configured defaults.
 <run-dir>/continue.sh --prompt "Follow up using the same Claude session."
 ```
 
-The helper resumes the exact session and preserves workspace, model, permission,
-effort, and timeout defaults in a fresh run directory. It fails instead of
+The helper resumes the exact session in a fresh run directory and preserves
+workspace, model, permission, effort, and timeout defaults along with the tool
+allowances and passthrough flags, so a continued strict review keeps the surface
+it started with. It fails instead of
 guessing when no session id exists. Runs started with
 `--no-session-persistence` cannot continue.
 
