@@ -59,10 +59,10 @@
     },
     {
       "name": "claude",
-      "description": "Run Claude headlessly with deterministic auth and transfer gating, scoped repository reviews, durable artifacts, and exact continuation.",
+      "description": "Run Claude directly in a requested workspace with durable artifacts and exact session continuation.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "claude" },
       "category": "tools",
-      "keywords": ["claude", "cli", "headless", "delegation", "subagents", "liveness", "resume", "automation", "approval", "auth", "preflight", "transfer", "scoped-review"]
+      "keywords": ["claude", "cli", "headless", "delegation", "subagents", "liveness", "resume", "automation", "auth", "preflight", "workspace"]
     },
     {
       "name": "antigravity",

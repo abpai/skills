@@ -95,7 +95,7 @@ to `code understand`; `secure-dependencies` moves to `harness adopt`;
 
 | Plugin | What it does |
 |--------|-------------|
-| **claude** | Run Claude headlessly with deterministic auth and transfer gating, scoped repository reviews, durable artifacts, and exact continuation. |
+| **claude** | Run Claude directly in a requested workspace with durable artifacts and exact session continuation. |
 | **claude-session** | Inspect local Claude Code transcripts by UUID without invoking Claude or contacting Anthropic. |
 | **antigravity** | Run Google Antigravity CLI headlessly with Gemini routing, durable artifacts, isolated review, and exact continuation. |
 | **visualize** | Generate single-file HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
