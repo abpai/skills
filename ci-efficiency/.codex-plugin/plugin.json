@@ -1,7 +1,7 @@
 {
   "name": "ci-efficiency",
-  "version": "1.0.0",
-  "description": "Audit and improve GitHub Actions speed and cost without weakening merge-gate integrity.",
+  "version": "1.1.0",
+  "description": "Improve CI speed and cost without weakening merge and release confidence.",
   "author": {
     "name": "Andy Pai"
   },

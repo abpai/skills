@@ -108,10 +108,10 @@
     },
     {
       "name": "ci-efficiency",
-      "description": "Audit and improve GitHub Actions speed and cost without weakening merge-gate integrity.",
+      "description": "Improve CI speed and cost without weakening merge and release confidence.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "ci-efficiency" },
       "category": "code-quality",
-      "keywords": ["github-actions", "ci", "cost", "performance", "merge-gate", "workflows"]
+      "keywords": ["ci", "cost", "performance", "pipelines", "merge-gate", "workflows"]
     },
     {
       "name": "human-writer",
