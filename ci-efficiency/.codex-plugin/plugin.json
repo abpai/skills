@@ -1,0 +1,11 @@
+{
+  "name": "ci-efficiency",
+  "version": "1.0.0",
+  "description": "Audit and improve GitHub Actions speed and cost without weakening merge-gate integrity.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}

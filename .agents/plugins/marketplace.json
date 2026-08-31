@@ -173,6 +173,18 @@
       "category": "Code Quality"
     },
     {
+      "name": "ci-efficiency",
+      "source": {
+        "source": "local",
+        "path": "./ci-efficiency"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Code Quality"
+    },
+    {
       "name": "human-writer",
       "source": {
         "source": "local",

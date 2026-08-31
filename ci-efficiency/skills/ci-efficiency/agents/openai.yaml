@@ -1,0 +1,6 @@
+interface:
+  display_name: "CI Efficiency"
+  short_description: "Measure and simplify GitHub Actions CI safely"
+  default_prompt: "Use $ci-efficiency to audit this repository's GitHub Actions cost and latency, preserve its required merge-gate property, and recommend the simplest measured improvements."
+policy:
+  allow_implicit_invocation: false

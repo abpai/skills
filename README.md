@@ -70,6 +70,7 @@ marketplace flow above.
 |--------|-------------|
 | **code** | Four focused workflows under `/code`: `prepare-pr --effort low\|medium\|high` carries changes through risk-scaled review, validation, commit, seal, push, and PR update; `simplify [scope]` applies behavior-preserving improvements—including high-signal test-suite pruning—to a named scope or proposes a ranked whole-repo batch; `understand` writes a runnable real-code snippet and an HTML map on request; `handoff` creates a cold-start continuation prompt. |
 | **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
+| **ci-efficiency** | Measure GitHub Actions cost and latency, simplify draft/ready and main-push routing, and preserve exact-head merge-gate integrity. Standalone — install per project |
 
 ### Engineering Practices
 

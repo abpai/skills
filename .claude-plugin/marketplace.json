@@ -107,6 +107,13 @@
       "keywords": ["hexagonal", "ports-adapters", "architecture", "monorepo", "audit", "dependencies"]
     },
     {
+      "name": "ci-efficiency",
+      "description": "Audit and improve GitHub Actions speed and cost without weakening merge-gate integrity.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "ci-efficiency" },
+      "category": "code-quality",
+      "keywords": ["github-actions", "ci", "cost", "performance", "merge-gate", "workflows"]
+    },
+    {
       "name": "human-writer",
       "description": "Edit prose so it sounds natural, specific, and human-written. Use when a draft feels generic or model-generated.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "human-writer" },
