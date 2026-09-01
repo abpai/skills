@@ -1,6 +1,0 @@
-interface:
-  display_name: "CI Efficiency"
-  short_description: "Make CI faster and cheaper without weakening proof"
-  default_prompt: "Use $ci-efficiency to find the simplest measured improvements to this project's CI while preserving its merge and release confidence."
-policy:
-  allow_implicit_invocation: false

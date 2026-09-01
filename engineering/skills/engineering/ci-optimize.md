@@ -1,13 +1,6 @@
----
-name: ci-efficiency
-disable-model-invocation: true
-description: Improve CI speed and cost without weakening merge and release confidence.
-argument-hint: "[repository or change] [review|plan|implement]"
-metadata:
-  version: "1.1.0"
----
+# CI Optimize
 
-# CI Efficiency
+Workflow module for `/engineering ci-optimize`.
 
 Make CI cheaper and more useful without weakening what it proves. Favor a few
 measurable, maintainable changes over elaborate routing, caching, or proof-reuse

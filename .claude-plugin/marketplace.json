@@ -45,10 +45,10 @@
     },
     {
       "name": "engineering",
-      "description": "Engineering-practice workflows under /engineering:* commands, including TDD, architecture, defined terms, read-only complexity reports, design stress tests, and plan simplification.",
+      "description": "Engineering-practice workflows under /engineering, including TDD, architecture, defined terms, complexity reports, CI optimization, design stress tests, and plan simplification.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "engineering" },
       "category": "productivity",
-      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out", "defined-terms", "complexity", "performance", "reduce"]
+      "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out", "defined-terms", "complexity", "performance", "ci", "pipelines", "reduce"]
     },
     {
       "name": "bun-expert",
@@ -105,13 +105,6 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "hexagon-audit" },
       "category": "code-quality",
       "keywords": ["hexagonal", "ports-adapters", "architecture", "monorepo", "audit", "dependencies"]
-    },
-    {
-      "name": "ci-efficiency",
-      "description": "Improve CI speed and cost without weakening merge and release confidence.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "ci-efficiency" },
-      "category": "code-quality",
-      "keywords": ["ci", "cost", "performance", "pipelines", "merge-gate", "workflows"]
     },
     {
       "name": "human-writer",

@@ -70,13 +70,12 @@ marketplace flow above.
 |--------|-------------|
 | **code** | Four focused workflows under `/code`: `prepare-pr --effort low\|medium\|high` carries changes through risk-scaled review, validation, commit, seal, push, and PR update; `simplify [scope]` applies behavior-preserving improvements—including high-signal test-suite pruning—to a named scope or proposes a ranked whole-repo batch; `understand` writes a runnable real-code snippet and an HTML map on request; `handoff` creates a cold-start continuation prompt. |
 | **hexagon-audit** | Audit Ports & Adapters (Hexagonal Architecture) compliance in a `packages/` + `adapters/` monorepo, with a deterministic scanner for inward-dependency violations, peer-adapter imports, and vendor SDKs leaking into ports. Standalone — install per project |
-| **ci-efficiency** | Improve CI speed and cost while preserving merge and release confidence. Standalone — install per project |
 
 ### Engineering Practices
 
 | Plugin | What it does |
 |--------|-------------|
-| **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, or `/engineering reduce`. Code cleanup now lives under `/code simplify`. |
+| **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, `/engineering ci-optimize`, or `/engineering reduce`. Code cleanup now lives under `/code simplify`. |
 
 ### Developer Productivity
 

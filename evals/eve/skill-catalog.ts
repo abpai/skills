@@ -18,11 +18,6 @@ export const SKILL_CATALOG = {
     mode: "deterministic",
     owner: "fixture command outcomes",
   },
-  "ci-efficiency": {
-    source: "ci-efficiency/skills/ci-efficiency",
-    mode: "host",
-    owner: "live dogfood and repository validation",
-  },
   "claude-session": {
     source: "claude-session/skills/claude-session",
     mode: "eve",
