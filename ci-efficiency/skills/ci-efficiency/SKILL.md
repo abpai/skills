@@ -1,7 +1,7 @@
 ---
 name: ci-efficiency
 disable-model-invocation: true
-description: Improve CI speed and cost while preserving the confidence required to merge and release safely. Use for CI audits, optimization plans, implementations, or reviews of proposed pipeline changes.
+description: Improve CI speed and cost without weakening merge and release confidence.
 argument-hint: "[repository or change] [review|plan|implement]"
 metadata:
   version: "1.1.0"
@@ -13,29 +13,30 @@ Make CI cheaper and more useful without weakening what it proves. Favor a few
 measurable, maintainable changes over elaborate routing, caching, or proof-reuse
 systems.
 
-## Desired outcomes
+## Process
 
-- Fast, relevant feedback during development.
-- Reliable full certification for merge and release candidates.
-- Less repeated work, idle setup, cancellation waste, and billing-rounding
-  overhead.
-- Clear separation between local checks, CI-only proof, infrastructure failures,
-  and unverified assumptions.
-- A pipeline whose complexity is justified by measured savings.
+### 1. Map the delivery contract
 
-## Guidance
+Read current workflows, branch or merge rules, required checks, release rules,
+and representative run history. Historical results establish a baseline; the
+current revision and live rules establish authority.
 
-Understand the repository's actual delivery contract before changing it. Use
-current workflows, branch or merge rules, required checks, and representative
-run history as evidence. Treat historical results as a baseline, not proof of
-the current revision.
+Complete this step when you can name every candidate-producing event, its
+required context, and which proof is local, service-backed, or hosted-only.
 
-Measure the important dimensions separately: feedback latency, runner time,
-billed time, setup overhead, cancelled work, and failure causes. Exclude quota,
-account, or zero-step infrastructure failures when assessing code performance,
-but report them as operational cost or reliability issues.
+### 2. Build the baseline
 
-Look first for simple structural savings, adapting them to the project:
+Measure feedback latency, runner time, billed time, setup overhead, cancelled
+work, and failure causes separately. Remove quota, account, and zero-step
+infrastructure failures from code-performance calculations while retaining them
+as operational cost or reliability evidence.
+
+Complete this step when the sample window, exclusions, dominant costs, current
+critical path, and confidence limits are explicit.
+
+### 3. Choose the smallest structural win
+
+Adapt these candidates to the project:
 
 - cancel superseded work and give drafts or intermediate changes a bounded fast
   feedback path;
@@ -49,35 +50,57 @@ Look first for simple structural savings, adapting them to the project:
 - reuse immutable environments and safely parallelize isolated work when the
   measured payoff exceeds the added ownership.
 
-Optimize the complete candidate, not merely its latest commit. A documentation-
-only follow-up can still belong to a broad unmerged change. Do not reuse earlier
-proof unless its provenance, revision, base, controls, ancestry, and affected
-surface are trustworthy. Prefer rerunning work to introducing a large trust
+Rank opportunities by expected saving, implementation complexity, and integrity
+risk. Complete this step when the chosen change has a measurable prediction, a
+named invariant, and less ownership than the waste it removes.
+
+### 4. Preserve candidate proof
+
+Optimize the complete candidate rather than its latest commit. A documentation-
+only follow-up can still belong to a broad unmerged change. Reuse earlier proof
+only when its provenance, revision, base, controls, ancestry, and affected
+surface are trustworthy. Prefer fresh proof when reuse requires a large trust
 system with an unmeasured hit rate.
 
-Preserve the gate's integrity. Conditional or skipped jobs must not accidentally
-satisfy required checks. Consolidation must not hide missing proof. Local success
-does not establish hosted services, runner images, permissions, containers, or
-event-specific behavior.
+Treat fast feedback as a bounded workload, not a command name. Bound selection,
+widening, and concurrency, then measure a broad representative candidate.
+Conditional jobs, consolidation, and unknown paths must preserve the required
+contexts and fail-safe behavior.
 
-For implementations, add proof proportionate to the risk and validate the
-events whose behavior changed. In particular, observe the first real execution
-of a newly introduced draft, ready, merge, release, or main-branch path. Treat a
-projected saving as projected until post-rollout runs measure it.
+Complete this step when every skipped or reused lane has an authoritative reason
+and a missing premise selects fresh proof or a clear failure.
 
-Before rollout, define the measurement cutoff and a representative acceptance
-cohort for each changed path. Keep three states distinct:
+### 5. Certify changed events
+
+For implementations, observe the first real execution of every changed draft,
+ready, merge, release, or main-branch path. Exercise its fail-safe path when
+applicable. Local success is evidence for local behavior; hosted services,
+runner images, permissions, containers, and event semantics require hosted
+evidence.
+
+Complete this step when each changed event has a live result on the intended
+revision and unresolved failures are classified at their owning boundary.
+
+### 6. Measure the rollout
+
+Before rollout, define the cutoff and representative acceptance cohort for each
+changed path. Keep three states distinct:
 
 - **implemented:** the intended routing or workload change exists;
 - **event-certified:** every changed event path has run successfully, including
   its fail-safe path when applicable;
-- **measured:** the acceptance cohort confirms the expected latency, runner-time,
-  billed-time, cancellation, and reliability effect.
+- **measured:** the acceptance cohort confirms the expected latency, runner time,
+  billed time, cancellation, and reliability effect.
 
-Do not call the optimization complete while a required state is missing. After
-implementation, recompute the critical path and reconcile the durable proof
-record with the final design, including rejected mechanisms and later follow-up
-repairs. Stale plans are not evidence of current behavior.
+Call the optimization complete only when every required state is satisfied.
+Otherwise report the exact partial state. Recompute the critical path and
+reconcile the durable proof record with the final design, rejected mechanisms,
+and follow-up repairs.
+
+Complete this step when the acceptance cohort is measured and the durable record
+describes current behavior rather than the original plan.
+
+## Authority
 
 Respect the requested mode and authority. Reviews are read-only. Implementations
 may update in-scope CI and supporting tests, but do not merge, alter repository
@@ -87,5 +110,5 @@ protection, or trigger unusual external spend without authorization.
 
 Lead with the decision and largest opportunities. Explain the current cost and
 confidence baseline, the recommended or implemented changes, why they preserve
-the delivery contract, what was deliberately rejected, and which outcomes remain
-unmeasured or require live CI proof.
+the delivery contract, what was deliberately rejected, and whether the result is
+implemented, event-certified, and measured.
