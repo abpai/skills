@@ -65,6 +65,20 @@ events whose behavior changed. In particular, observe the first real execution
 of a newly introduced draft, ready, merge, release, or main-branch path. Treat a
 projected saving as projected until post-rollout runs measure it.
 
+Before rollout, define the measurement cutoff and a representative acceptance
+cohort for each changed path. Keep three states distinct:
+
+- **implemented:** the intended routing or workload change exists;
+- **event-certified:** every changed event path has run successfully, including
+  its fail-safe path when applicable;
+- **measured:** the acceptance cohort confirms the expected latency, runner-time,
+  billed-time, cancellation, and reliability effect.
+
+Do not call the optimization complete while a required state is missing. After
+implementation, recompute the critical path and reconcile the durable proof
+record with the final design, including rejected mechanisms and later follow-up
+repairs. Stale plans are not evidence of current behavior.
+
 Respect the requested mode and authority. Reviews are read-only. Implementations
 may update in-scope CI and supporting tests, but do not merge, alter repository
 protection, or trigger unusual external spend without authorization.
