@@ -9,7 +9,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.4.6"
+  version: "1.4.7"
   upstream_skill: "https://bun.com/docs"
   tags: "bun javascript typescript runtime server bundler test image webview"
 ---
@@ -54,10 +54,6 @@ Reach for these instead of the dependency you'd otherwise install:
 - Still experimental, don't default to these in production: `Bun.WebView`
   (browser automation without Puppeteer/Playwright) and HTTP/3 over QUIC in
   both `Bun.serve({ http3: true })` and `fetch({ protocol: "h3" })`.
-- Bun is being rewritten from Zig to Rust; the first Rust-based release
-  (v1.4.0) is in canary as of mid-2026. Expect the stable version number and
-  some internals to shift — check the blog for current status before citing
-  a specific version as "latest."
 
 ---
 

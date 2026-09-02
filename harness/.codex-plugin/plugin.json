@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "description": "Prepare repositories for reliable agent-driven development with behavior baselines, concise guidance, proof contracts, dependency hygiene, readiness audits, and scoped behavior capture.",
   "author": {
     "name": "Andy Pai"
