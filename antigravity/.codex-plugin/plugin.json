@@ -1,6 +1,6 @@
 {
   "name": "antigravity",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Run Google Antigravity CLI headlessly with Gemini routing, durable artifacts, isolated review, and exact continuation.",
   "author": {
     "name": "Andy Pai"
