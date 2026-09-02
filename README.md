@@ -75,7 +75,7 @@ marketplace flow above.
 
 | Plugin | What it does |
 |--------|-------------|
-| **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, or `/engineering reduce`. Code cleanup now lives under `/code simplify`. |
+| **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, `/engineering ci-optimize`, or `/engineering reduce`. Code cleanup now lives under `/code simplify`. |
 
 ### Developer Productivity
 

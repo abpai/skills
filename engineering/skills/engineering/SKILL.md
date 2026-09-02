@@ -1,10 +1,10 @@
 ---
 name: engineering
 disable-model-invocation: true
-description: "Route engineering-practice workflows through one scoped /engineering command. Use grill-me to stress-test a plan, tdd for behavior-first red/green/refactor, zoom-out for orientation, improve-architecture for deeper modules, defined-terms for DDD glossaries, complexity-report for read-only complexity findings, and reduce for plan simplification."
-argument-hint: "[subcommand] [args] - e.g. tdd add retries, complexity-report src/, reduce ship onboarding"
+description: "Route engineering-practice workflows through one scoped /engineering command. Use grill-me to stress-test a plan, tdd for behavior-first red/green/refactor, zoom-out for orientation, improve-architecture for deeper modules, defined-terms for DDD glossaries, complexity-report for read-only complexity findings, ci-optimize for measured CI improvements, and reduce for plan simplification."
+argument-hint: "[subcommand] [args] - e.g. tdd add retries, ci-optimize . review, reduce ship onboarding"
 metadata:
-  version: "2.1.0"
+  version: "2.2.0"
 ---
 
 # Engineering Workflow Pack
@@ -23,7 +23,7 @@ Invoke a workflow by passing its name as the first argument to this umbrella —
 - `engineering <subcommand> <args>` — e.g. `engineering tdd add retries`
 - `engineering --<subcommand> <args>` — e.g. `engineering --tdd add retries`
 
-Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `grill-me`, `tdd`, `zoom-out`, `improve-architecture`, `defined-terms`, `complexity-report`, `reduce`.
+Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `grill-me`, `tdd`, `zoom-out`, `improve-architecture`, `defined-terms`, `complexity-report`, `ci-optimize`, `reduce`.
 
 Before natural-language fallback, detect the removed exact token `clean-code` and
 return its migration to `code simplify [scope]` (requires the code plugin;
@@ -40,6 +40,7 @@ replacement ran.
 - `improve-architecture.md` — deepen shallow modules.
 - `defined-terms.md` — build a DDD glossary from the conversation.
 - `complexity-report.md` — read-only complexity/performance report.
+- `ci-optimize.md` — measure and improve CI cost and latency without weakening proof.
 - `reduce.md` — gated five-step plan simplification.
 
 When a request names one workflow, load that module and follow it. When the request is ambiguous, pick the nearest module from context or ask one short clarifying question.
