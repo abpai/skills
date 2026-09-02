@@ -1,7 +1,7 @@
 {
   "name": "code",
   "version": "4.1.0",
-  "description": "Five focused workflows under /code: PR readiness, behavior-preserving simplification, repository comment cleanup, runnable code understanding, and cold-start handoff.",
+  "description": "Five focused code workflows under /code: effort-scaled prepare-pr through push, behavior-preserving simplify with test-suite pruning, deslop-comments for rationale-preserving comment cleanup, cold-start handoff, and understand for a runnable real-code snippet with an optional HTML map.",
   "author": {
     "name": "Andy Pai"
   },

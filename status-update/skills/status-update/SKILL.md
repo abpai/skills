@@ -6,7 +6,7 @@ argument-hint: "[detailed] [scope to report on]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.0"
+  version: "1.1.1"
   tags: "status progress long-running agents blockers handoff operations"
 ---
 
@@ -94,7 +94,7 @@ narrow and broad verdicts in one sentence instead of silently choosing one.
 
 ## Write the quick update
 
-Keep the default around 150-250 words even when the underlying task is large.
+Keep the default short enough to scan in one pass even when the underlying task is large.
 Give **Active now** one bullet per genuinely live workstream — never drop a
 live workstream to save a line — and if more than three are running, group the
 smaller ones into one bullet and name the count. Collapse related outcomes

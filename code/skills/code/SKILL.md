@@ -1,7 +1,7 @@
 ---
 name: code
 disable-model-invocation: true
-description: "Route five coding workflows through one scoped /code command: PR readiness, behavior-preserving simplification, repository comment cleanup, runnable code understanding, and cold-start handoff."
+description: "Route coding workflows through one scoped /code command. Use prepare-pr for effort-scaled PR readiness through push, simplify for behavior-preserving cleanup and high-signal test pruning of a target or a ranked whole-repo proposal, deslop-comments for comment cleanup that keeps rationale and directives, handoff for continuation prompts, and understand for a runnable real-code snippet, with an HTML code map on request."
 argument-hint: "[subcommand] [args] - e.g. prepare-pr --effort low, simplify src/api, deslop-comments src/, understand login flow, handoff"
 # allowed-tools belongs on the umbrella because hidden wrappers never become the
 # active skill; git push and PR writes are still sealed by hooks/gate-before-push.sh.

@@ -56,7 +56,7 @@ validation rather than candidate counts alone.
 - Follow repository instructions and preserve unrelated user changes.
 - Do not use broad text matching as authority to delete comments without
   context.
-- Remember that comment-only edits still change bytes. They can affect
+- Comment-only edits still change bytes, so they can affect
   formatting, snapshots, content fingerprints, generated proofs, and
   independent workspaces with separate toolchains.
 - Do not merge, rebase, push, or change pull request state without
