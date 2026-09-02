@@ -109,8 +109,8 @@ a Harness severity override. If JSON reports `dead-code` in `skippedChecks`,
 that coverage is missing even when the process exits `0` — surface
 `skippedCheckReasons` prominently and do not claim a clean scan.
 
-Knip-backed findings use public `knip/<rule>` IDs; the release that introduces
-this engine removes the former `deslop/<rule>` namespace rather than keeping
-compatibility aliases. Before upgrading, rename any `deslop/*` overrides or
-suppressions to their matching `knip/*` IDs. Prefer the `dead-code` tag when
-one setting applies to the whole family.
+Knip-backed findings use public `knip/<rule>` IDs. If a repository's config
+still carries `deslop/<rule>` overrides or suppressions from the earlier
+engine, rename them to the matching `knip/*` IDs; there are no compatibility
+aliases. Prefer the `dead-code` tag when one setting applies to the whole
+family.

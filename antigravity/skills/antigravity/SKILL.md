@@ -8,7 +8,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Antigravity
@@ -43,8 +43,8 @@ scripts/antigravity-run.sh run \
 Omit `--model` and `--effort` to use Antigravity's configured defaults. Pass a
 model only when the user names one for the run. Resolve the exact slug with
 `agy models`; headless mode fails rather than silently falling back on an
-unknown slug. Gemini 3.7 Flash currently exposes separate medium and high
-slugs, so do not guess which effort the user intended.
+unknown slug. Some models expose a separate slug per effort level, so do not
+guess which one the user intended.
 
 Use `--allow-all` only when the user explicitly authorizes every tool call in
 the bounded workspace. It maps to Antigravity's

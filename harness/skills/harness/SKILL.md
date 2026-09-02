@@ -4,7 +4,7 @@ disable-model-invocation: true
 description: "Prepare a repository for reliable agent-driven development. Adopt builds the behavior baseline, agent guidance, proof contract, and enforcement; doctor audits readiness or a diff; capture protects one uncertain behavior before it changes."
 argument-hint: "[adopt [assess]|doctor|capture] [scope]"
 metadata:
-  version: "1.10.0"
+  version: "1.10.1"
 ---
 
 # Harness
