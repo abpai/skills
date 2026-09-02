@@ -1,8 +1,8 @@
 ---
 name: code
 disable-model-invocation: true
-description: "Route coding workflows through one scoped /code command. Use prepare-pr for effort-scaled PR readiness through push, simplify for behavior-preserving cleanup and high-signal test pruning of a target or a ranked whole-repo proposal, handoff for continuation prompts, and understand for a runnable real-code snippet, with an HTML code map on request."
-argument-hint: "[subcommand] [args] - e.g. prepare-pr --effort low, simplify src/api, understand login flow, handoff"
+description: "Route coding workflows through one scoped /code command. Use prepare-pr for effort-scaled PR readiness through push, simplify for behavior-preserving cleanup and high-signal test pruning of a target or a ranked whole-repo proposal, deslop-comments for comment cleanup that keeps rationale and directives, handoff for continuation prompts, and understand for a runnable real-code snippet, with an HTML code map on request."
+argument-hint: "[subcommand] [args] - e.g. prepare-pr --effort low, simplify src/api, deslop-comments src/, understand login flow, handoff"
 # allowed-tools belongs on the umbrella because hidden wrappers never become the
 # active skill; git push and PR writes are still sealed by hooks/gate-before-push.sh.
 allowed-tools: >
@@ -15,7 +15,7 @@ allowed-tools: >
   mcp__chrome-devtools__* mcp__playwright__* mcp__browser__*
   Read Write Edit Grep Glob AskUserQuestion Agent
 metadata:
-  version: "4.0.2"
+  version: "4.1.0"
 ---
 
 # Code Workflow Pack
@@ -29,7 +29,7 @@ Pass a workflow's name as the first argument — the access path on every surfac
 - `code <subcommand> <args>` — e.g. `code understand src/api`
 - `code --<subcommand> <args>` — e.g. `code --understand src/api`
 
-Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `prepare-pr`, `simplify`, `handoff`, `understand`.
+Parse `$ARGUMENTS`: take the first token, strip a leading `--` if present, and match it (case-insensitive) against the workflow names below. On a match, load the sibling module `./<subcommand>.md` and treat the remaining tokens as that workflow's input. Routing is complete when exactly one module is selected, loaded, and handed the remaining args. If the first token is not a known subcommand, treat the whole input as a natural-language request and route by intent. Known subcommands: `prepare-pr`, `simplify`, `deslop-comments`, `handoff`, `understand`.
 
 Before natural-language fallback, detect these removed exact subcommand tokens and
 return the migration guidance instead of silently changing side effects:
@@ -53,6 +53,7 @@ so the user can accept the new contract explicitly.
 
 - Use `prepare-pr.md` for PR readiness through push, effort-scaled via `--effort low|medium|high` (default `low`) — see its effort contract. Natural-language "review and commit" requests route here too; the pack has no local-only commit workflow.
 - Use `simplify.md` for behavior-preserving simplification and low-value test pruning — see its scope contract for when it edits autonomously versus returns a proposal.
+- Use `deslop-comments.md` for comment cleanup across a named scope or the whole repository. Unlike whole-repository `simplify`, a repository-wide comment sweep executes unless the user asks for a report first.
 - Treat `review-patterns/` as the bundled detailed prompt library for `prepare-pr` gates. The `prepare-pr` workflow loads only the lenses it selects from the script's suggested-lens list (progressive disclosure).
 - Use `understand.md` to trace a code path into `.understand/<topic>/` — a runnable snippet backed by real code by default; pass `--map` to also write the HTML map.
 - Use `handoff.md` to create a continuation prompt so a fresh session can resume with live repo state, file refs, decisions, next steps, and verification.
