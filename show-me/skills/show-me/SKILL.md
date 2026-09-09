@@ -6,7 +6,7 @@ argument-hint: "[topic or question]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.1"
+  version: "1.0.2"
   upstream_skill: https://github.com/humanlayer/skills/tree/main/plugins/show-me/skills/show-me
 ---
 
@@ -131,4 +131,4 @@ Bash(open path/to/show-me-{description}.html)
 
 Place each visual next to the short text it supports. Keep only the calls, files, props, states, and boundaries needed to answer the user's current question or the options to resolve the current discussion point.
 
-Use only the views the question needs. Prefer a few focused visuals over one that needs scrolling.
+Use only the views the question needs. Prefer a few focused visuals over one that needs scrolling. For a long workflow, group the overview into a small number of phases and expand only the decision points that matter. Do not lead with a comprehensive top-down diagram and then repeat it in smaller views.
