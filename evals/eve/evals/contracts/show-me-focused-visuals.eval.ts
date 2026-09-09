@@ -15,7 +15,7 @@ export default defineEval({
   async test(t) {
     const turn = await t.send(
       prompt(
-        "Show me how this repository-hardening workflow works:",
+        "Use the show-me skill to explain this repository-hardening workflow:",
         "start with an inspection and initial audit; draft a behavior inventory;",
         "pause for a human to review and ratify scope; capture missing behavior",
         "proof against unchanged code; write concise repository guidance; map",
