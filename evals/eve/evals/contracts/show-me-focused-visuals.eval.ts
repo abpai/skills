@@ -3,7 +3,7 @@ import { satisfies } from "eve/evals/expect"
 import { prompt } from "../support/text"
 import { noFailedSkillLoads } from "../support/tools"
 
-// Contract (show-me/skills/show-me/SKILL.md:132-134): preserve the parts of
+// Contract (show-me/skills/show-me/SKILL.md, "guidance"): preserve the parts of
 // the flow that answer the question, but prefer a few focused visuals over one
 // that needs scrolling. This reproduces the failure that motivated the rule:
 // a mostly linear repository-hardening lifecycle became one tall Mermaid graph
@@ -37,7 +37,10 @@ export default defineEval({
           const lines = body
             .split("\n")
             .filter((line) => line.trim().length > 0)
-          const isTopDownFlow = /^\s*(flowchart|graph)\s+TD\b/im.test(body)
+          const isTopDownFlow =
+            /^[ \t]*(flowchart|graph)(?:[ \t]+(?:TD|TB)\b|[ \t]*$)/im.test(
+              body,
+            )
           return !isTopDownFlow || lines.length <= 14
         })
       }, "no long top-down Mermaid block expands into a scroll-length process diagram"),

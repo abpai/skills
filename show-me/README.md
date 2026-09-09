@@ -10,8 +10,6 @@ Invoke `/show-me` in Claude Code or `$show-me` in Codex with the topic or questi
 
 Adapted from HumanLayer's [show-me skill](https://github.com/humanlayer/skills/tree/main/plugins/show-me/skills/show-me).
 
-The skill instructions are based on Andy Pai's local `show-me` version, with repository-maintained refinements and packaging metadata.
-
 ## License
 
 MIT. See [LICENSE](LICENSE) for this adaptation's license and the preserved HumanLayer copyright notice for derived portions.
