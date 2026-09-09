@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Git hooks export repository-local GIT_* variables. They must not redirect the
+# fixture repositories or the runner subprocesses back to the caller's repo.
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
+
+if [[ "${ANTIGRAVITY_RUNNER_GIT_ENV_PROBE:-}" == "1" ]]; then
+  [[ -z "${GIT_DIR+x}" && -z "${GIT_INDEX_FILE+x}" && -z "${GIT_WORK_TREE+x}" ]]
+  exit
+fi
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 ANTIGRAVITY_RUN="$ROOT_DIR/antigravity/skills/antigravity/scripts/antigravity-run.sh"
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/antigravity-runner.XXXXXX")"
@@ -28,6 +37,23 @@ setup_workspace() {
   printf 'base\n' > "$workspace/tracked.txt"
   git -C "$workspace" add tracked.txt
   git -C "$workspace" commit -qm fixture
+}
+
+test_entrypoint_ignores_inherited_git_context() {
+  local parent="$TMP_DIR/inherited-git-parent"
+  mkdir -p "$parent"
+  git -C "$parent" init -q
+  git -C "$parent" config core.bare false
+
+  GIT_DIR="$parent/.git" \
+    GIT_INDEX_FILE="$parent/.git/index" \
+    GIT_WORK_TREE="$parent" \
+    ANTIGRAVITY_RUNNER_GIT_ENV_PROBE=1 \
+    "$0"
+
+  [[ "$(git -C "$parent" config --bool core.bare)" == "false" ]] ||
+    fail "runner test entrypoint changed the inherited repository's core.bare setting"
+  pass "Runner test entrypoint clears inherited Git context"
 }
 
 FAKEBIN="$TMP_DIR/fakebin"
@@ -402,6 +428,7 @@ test_signal_preserves_conversation_for_continue() {
   pass "Signals preserve emitted conversation IDs for exact continuation"
 }
 
+test_entrypoint_ignores_inherited_git_context
 test_success_artifacts_and_resume
 test_review_isolation
 test_permission_denial_fails_closed
