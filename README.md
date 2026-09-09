@@ -99,6 +99,7 @@ to `code understand`; `secure-dependencies` moves to `harness adopt`;
 | **claude-session** | Inspect local Claude Code transcripts by UUID without invoking Claude or contacting Anthropic. |
 | **antigravity** | Run Google Antigravity CLI headlessly with Gemini routing, durable artifacts, isolated review, and exact continuation. |
 | **visualize** | Generate single-file HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
+| **show-me** | Explain the current topic with the smallest useful visual: an inline diagram, code-shape sketch, diff, or focused HTML artifact |
 
 ### Languages & Platforms
 

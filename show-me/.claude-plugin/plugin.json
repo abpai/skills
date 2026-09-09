@@ -1,0 +1,9 @@
+{
+  "name": "show-me",
+  "version": "1.0.1",
+  "description": "Explain the current topic with the smallest useful visual: concise diagrams, code-shape sketches, diffs, or focused HTML artifacts.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "license": "MIT"
+}
