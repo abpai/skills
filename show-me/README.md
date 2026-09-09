@@ -14,4 +14,4 @@ The skill instructions are based on Andy Pai's local `show-me` version, with rep
 
 ## License
 
-MIT. See [LICENSE](LICENSE) for HumanLayer's original copyright and license notice.
+MIT. See [LICENSE](LICENSE) for this adaptation's license and the preserved HumanLayer copyright notice for derived portions.
