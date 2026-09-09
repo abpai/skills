@@ -131,4 +131,4 @@ Bash(open path/to/show-me-{description}.html)
 
 Place each visual next to the short text it supports. Keep only the calls, files, props, states, and boundaries needed to answer the user's current question or the options to resolve the current discussion point.
 
-Use only the views the question needs. Prefer a few focused visuals over one that needs scrolling. For a long workflow, group the overview into a small number of phases and expand only the decision points that matter. Do not lead with a comprehensive top-down diagram and then repeat it in smaller views.
+Use only the views the question needs. Prefer a few focused visuals over one that needs scrolling. For a long workflow, group the overview into three to five phases and expand only the decision points that matter. Keep a top-down Mermaid overview to roughly a dozen nonblank lines; split or group anything larger. Do not lead with a comprehensive diagram and then repeat it in smaller views.
