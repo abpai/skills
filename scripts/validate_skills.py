@@ -237,7 +237,13 @@ def validate_skill_md(
     internal = _detect_internal(fm_lines)
     is_umbrella = skill_name == plugin_name
 
-    if not disable_mi:
+    claude_auto_invocable = (
+        plugin_name == "codex-exec"
+        and skill_name == "codex-exec"
+        and not internal
+        and fields.get("disable-model-invocation") == "false"
+    )
+    if not disable_mi and not claude_auto_invocable:
         rep.fail(
             f"{path}: every skill entrypoint must set "
             "'disable-model-invocation: true'; skills are human-invoked only"

@@ -29,7 +29,8 @@ This repo is plugin-oriented:
    plus one per-command skill (`skills/<workflow>/SKILL.md`) with
    `disable-model-invocation: true`. Every entrypoint is explicit-only
    (`disable-model-invocation: true` and, in `agents/openai.yaml`,
-   `policy.allow_implicit_invocation: false`). See the README section "Why every
+   `policy.allow_implicit_invocation: false`), except `codex-exec` in Claude,
+   which Claude may auto-invoke. See the README section "Why every
    namespaced command is a `skills/<name>/SKILL.md`".
 6. Plugin agents may use normal subagent frontmatter, but Claude plugin agents
    must not rely on `hooks`, `mcpServers`, or `permissionMode`. If you need

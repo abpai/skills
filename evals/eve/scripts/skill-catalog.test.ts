@@ -28,10 +28,14 @@ for (const [id, entry] of Object.entries(SKILL_CATALOG)) {
   assert.ok(entry.owner.trim(), `${id} must name its proof owner`);
   const skillPath = join(repoRoot, entry.source, "SKILL.md");
   assert.ok(existsSync(skillPath), `${id} source is missing: ${entry.source}`);
+  // codex-exec is the one skill Claude may auto-invoke; validate_skills.py
+  // enforces the same exception.
   assert.match(
     readFileSync(skillPath, "utf8"),
-    /disable-model-invocation:\s*true/,
-    `${id} must remain explicit-only`,
+    id === "codex-exec"
+      ? /disable-model-invocation:\s*false/
+      : /disable-model-invocation:\s*true/,
+    `${id} has the wrong model-invocation policy`,
   );
   if (entry.mode === "eve") assert.equal(EVE_SKILLS[id], entry.source);
 }

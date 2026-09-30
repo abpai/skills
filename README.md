@@ -185,6 +185,8 @@ Every skill entrypoint in this marketplace is explicit-only: humans invoke it
 with `$skill` in Codex or `/skill` in Claude. `SKILL.md` sets
 `disable-model-invocation: true` for Claude and the skill-local
 `agents/openai.yaml` sets `policy.allow_implicit_invocation: false` for Codex.
+The one exception is `codex-exec` in Claude, which Claude may select on its own
+to delegate within a user-authorized task; it stays explicit-only in Codex.
 
 The pattern for a grouped workflow pack:
 

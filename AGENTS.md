@@ -13,9 +13,9 @@ enforces most of them.
 - Namespaced commands are skill subdirectories
   (`<plugin>/skills/<name>/SKILL.md` → `/<plugin>:<name>`), never plugin-root
   `commands/`.
-- Every skill entrypoint is human-invocable only: `disable-model-invocation:
-  true` in `SKILL.md`, `policy.allow_implicit_invocation: false` in its
-  `agents/openai.yaml`.
+- Except for `codex-exec` in Claude, every skill entrypoint is human-invocable
+  only: `disable-model-invocation: true` in `SKILL.md`. Every Codex entrypoint
+  sets `policy.allow_implicit_invocation: false` in `agents/openai.yaml`.
 - No runtime self-update checks or installer side effects in skill bodies.
 
 ## Process

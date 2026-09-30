@@ -146,6 +146,29 @@ class SkillFrontmatterValidationTest(unittest.TestCase):
                 )
             return reporter.failed, output.getvalue()
 
+    def test_claude_auto_invocation_is_limited_to_public_codex_exec(self) -> None:
+        for plugin, skill, internal, accepted in [
+            ("codex-exec", "codex-exec", False, True),
+            ("other", "other", False, False),
+            ("codex-exec", "other", False, False),
+            ("codex-exec", "codex-exec", True, False),
+        ]:
+            with self.subTest(plugin=plugin, skill=skill, internal=internal):
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "SKILL.md"
+                    path.write_text(
+                        f"---\nname: {skill}\ndescription: Delegate work.\n"
+                        "disable-model-invocation: false\n"
+                        + ("metadata:\n  internal: true\n" if internal else "")
+                        + "---\n", encoding="utf-8",
+                    )
+                    reporter = validate_skills.Reporter()
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        validate_skills.validate_skill_md(
+                            path, skill, plugin, False, reporter
+                        )
+                    self.assertEqual(reporter.failed, not accepted)
+
     def test_requires_internal_marker_on_umbrella_less_phase_commands(self) -> None:
         # pi has no umbrella router, so its phases stay human-invocable — but
         # they must still be hidden from flat-list installers.
