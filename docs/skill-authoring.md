@@ -45,7 +45,9 @@ https://code.claude.com/docs/en/skills#how-a-skill-gets-its-command-name
 
 ## Grouped workflow packs
 
-Every skill entrypoint is explicit-only across both products:
+Skill entrypoints are explicit-only across both products, except `codex-exec`
+in Claude, which sets `disable-model-invocation: false` so Claude can delegate
+within user-authorized tasks. Its Codex policy remains explicit-only:
 
 ```yaml
 # SKILL.md (Claude)
@@ -74,7 +76,8 @@ metadata:
 ```
 
 `scripts/validate-skills.sh` enforces this wrapper shape and the explicit-only
-policy for every entrypoint. It fails when a hidden wrapper omits
+policy for every entrypoint except the public Claude `codex-exec` skill.
+It fails when a hidden wrapper omits
 `metadata.internal: true`, and for packs with an umbrella it also requires
 `user-invocable: false`. Command-only Pi phase skills must also carry
 `metadata.internal: true` — the validator requires it — but they stay
@@ -110,10 +113,11 @@ exceptions, but document the reason.
 ## Skill quality bar
 
 - Write frontmatter `description` as the blurb a human reads in the `/` and `$`
-  menus. Every entrypoint here sets `disable-model-invocation: true`, so the
-  description never triggers the model and never enters context. Say what the
-  skill does and when to reach for it; trigger keywords and synonym lists are
-  dead weight.
+  menus. Explicit-only entrypoints set `disable-model-invocation: true`, so their
+  descriptions never trigger the model or enter context. The Claude `codex-exec`
+  exception uses its description for automatic selection. Say what the
+  skill does and when to reach for it. For explicit-only skills, trigger keywords
+  and synonym lists are dead weight.
 - Give every routed workflow an `argument-hint` and keep argument parsing local
   to the route that uses it.
 - State completion criteria for non-trivial phases. A step is done when a module

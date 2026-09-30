@@ -1,6 +1,6 @@
 ---
 name: codex-exec
-disable-model-invocation: true
+disable-model-invocation: false
 description: >
   Launch or monitor the Codex CLI as a headless worker for delegated
   implementation, review, or a second opinion, and to resume a session with
@@ -9,7 +9,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "2.2.4"
+  version: "2.2.5"
 ---
 
 # Codex CLI
@@ -22,9 +22,10 @@ the user-facing verdict.
 
 ## Authority Guard
 
-Loading this skill, naming Codex or `$codex-exec`, or supplying a session UUID
-does not authorize launching `codex`. Invoke Codex only when the user explicitly
-asks to ask, delegate, run, review, or resume/continue with a new task.
+Claude may select this skill automatically to delegate implementation, review,
+or a second opinion within a user-authorized task. The invoking agent owns
+authorization and must keep the worker within that task’s scope. Loading this
+skill, naming Codex, or supplying a session UUID alone does not authorize work.
 
 Locate, read, parse, summarize, or analyze local transcripts with the
 `codex-session` skill. For bare “resume session X” without new work, render the
