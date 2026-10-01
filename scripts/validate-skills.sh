@@ -57,10 +57,16 @@ fi
 # Run from a git hook, GIT_DIR and friends otherwise point its `git config`
 # writes at the caller's repo, which is how test identities leaked into
 # .git/config.
+# Require a real unset command (not a comment mentioning it) before the first
+# `git init`, since an unset after fixture creation is too late.
 for fixture_test in scripts/test-*.sh; do
-  if grep -qE 'git( -C [^ ]+)? init' "$fixture_test" &&
-    ! grep -qF -- 'git rev-parse --local-env-vars' "$fixture_test"; then
-    echo "[FAIL] $fixture_test: creates git fixtures without 'unset \$(git rev-parse --local-env-vars)'"
+  if ! awk '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*unset \$\(git rev-parse --local-env-vars\)/ { cleared = 1 }
+    /git( -C [^ ]+)? init/ && !cleared { leaked = 1; exit }
+    END { exit leaked }
+  ' "$fixture_test"; then
+    echo "[FAIL] $fixture_test: runs git init before 'unset \$(git rev-parse --local-env-vars)'"
     failed=1
   fi
 done
