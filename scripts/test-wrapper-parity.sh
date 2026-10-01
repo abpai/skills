@@ -139,6 +139,9 @@ if [[ -n "${FAKE_CODEX_SPAWN_ON_TERM_PID_FILE:-}" ]]; then
   trap spawn_on_term TERM
   while :; do sleep 1; done
 fi
+if [[ -n "${FAKE_CODEX_DELAY:-}" ]]; then
+  sleep "$FAKE_CODEX_DELAY"
+fi
 if [[ "${FAKE_CODEX_HANG:-}" == "1" ]]; then
   if [[ "${FAKE_CODEX_IGNORE_TERM:-}" == "1" ]]; then
     trap '' TERM
@@ -235,6 +238,9 @@ elif [[ "${FAKE_CLAUDE_CHILD_MODE:-}" == "pending" ]]; then
   sleep 60
 fi
 
+if [[ -n "${FAKE_CLAUDE_DELAY:-}" ]]; then
+  sleep "$FAKE_CLAUDE_DELAY"
+fi
 if [[ "${FAKE_CLAUDE_HANG:-}" == "1" ]]; then
   sleep 60
 fi
@@ -1196,10 +1202,78 @@ test_claude_run_env_is_not_sourced() {
   pass "Claude headless runner parses continuation metadata without sourcing shell"
 }
 
+# A caller that reads the wrapper's output through a pipe must see EOF when the
+# run ends. Before the fix, the hard-timeout loop's foreground sleep outlived its
+# killed subshell and held the pipe open for the whole --timeout.
+assert_pipe_closes_after_run() {
+  local label="$1" output="$2" limit="$3"
+  shift 3
+  local started ended
+  started="$(date +%s)"
+  if ! timeout "$limit" bash -c '"$@" 2>&1 | cat > "$0"' "$output" "$@"; then
+    fail "$label: output pipe stayed open past ${limit}s after the run ended"
+  fi
+  ended="$(date +%s)"
+  (( ended - started < limit )) || fail "$label: took $((ended - started))s"
+  # A watchdog sleep that outlives the run keeps a caller that waits on the
+  # process group (an agent's background task) blocked for the whole --timeout.
+  sleep 1
+  if pgrep -u "$(id -u)" -f "^sleep $WATCHDOG_TIMEOUT\$" >/dev/null; then
+    fail "$label: a watchdog 'sleep $WATCHDOG_TIMEOUT' outlived the run"
+  fi
+}
+
+# An unusual --timeout makes the leftover watchdog sleep identifiable.
+WATCHDOG_TIMEOUT=287
+
+test_codex_watchdogs_do_not_hold_output_pipe_open() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-pipe"
+  local output="$TMP_DIR/codex-pipe-output.txt"
+
+  setup_workspace "$workspace"
+  assert_pipe_closes_after_run "Codex runner" "$output" 30 \
+    env FAKE_CODEX_DELAY=2 PATH="$fakebin:$PATH" bash "$CODEX_RUN" exec \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-pipe-runs" \
+      --prompt "finish quickly" \
+      --sandbox read-only \
+      --heartbeat 1 \
+      --timeout "$WATCHDOG_TIMEOUT"
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_contains "$run_dir/status.json" '"state": "finished"'
+  pass "Codex runner's watchdog sleeps end with the run, so a piped caller sees EOF"
+}
+
+test_claude_watchdogs_do_not_hold_output_pipe_open() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-claude-pipe"
+  local output="$TMP_DIR/claude-pipe-output.txt"
+
+  setup_workspace "$workspace"
+  assert_pipe_closes_after_run "Claude runner" "$output" 30 \
+    env FAKE_CLAUDE_DELAY=2 CLAUDE_CONFIG_DIR="$TMP_DIR/claude-pipe-home" PATH="$fakebin:$PATH" \
+      bash "$CLAUDE_RUN" run \
+        --workspace "$workspace" \
+        --run-root "$TMP_DIR/claude-pipe-runs" \
+        --prompt "finish quickly" \
+        --heartbeat 1 \
+        --timeout "$WATCHDOG_TIMEOUT"
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_contains "$run_dir/status.json" '"state": "finished"'
+  pass "Claude runner's watchdog sleeps end with the run, so a piped caller sees EOF"
+}
+
 main() {
   local fakebin="$TMP_DIR/fakebin"
   write_fake_tools "$fakebin"
   test_codex_exec_continue_contract
+  test_codex_watchdogs_do_not_hold_output_pipe_open
+  test_claude_watchdogs_do_not_hold_output_pipe_open
   test_codex_run_dir_file_contract
   test_codex_generate_is_an_exact_run_write_alias
   test_codex_continue_env_is_not_sourced

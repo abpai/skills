@@ -1334,6 +1334,19 @@ populate_final_message_fallback() {
   fi
 }
 
+# Sleep in the background and wait on it, so a TERM from the wrapper's cleanup
+# also stops the sleep. A foreground sleep in a killed loop subshell lives on as
+# an orphan that holds the run's stdout/stderr open, and a caller that reads
+# that output then blocks until the sleep ends (up to --timeout).
+interruptible_sleep() {
+  local sleep_pid
+  sleep "$1" &
+  sleep_pid=$!
+  trap 'kill "$sleep_pid" 2>/dev/null; exit 0' TERM
+  wait "$sleep_pid" 2>/dev/null || true
+  trap - TERM
+}
+
 heartbeat_loop() {
   local pid="$1"
   local attempt_started_at="$2"
@@ -1345,7 +1358,7 @@ heartbeat_loop() {
   workspace_hash="$(workspace_progress_fingerprint)"
   local previous_fingerprint="$stdout_lines:$stderr_lines:$event_lines:$workspace_hash"
   while kill -0 "$pid" 2>/dev/null; do
-    sleep "$HEARTBEAT_SECONDS"
+    interruptible_sleep "$HEARTBEAT_SECONDS"
     if ! kill -0 "$pid" 2>/dev/null; then
       break
     fi
@@ -1386,7 +1399,7 @@ hard_timeout_loop() {
   elapsed=$((now - STARTED_AT))
   remaining=$((TIMEOUT_SECONDS - elapsed))
   if (( remaining > 0 )); then
-    sleep "$remaining"
+    interruptible_sleep "$remaining"
   fi
   if ! kill -0 "$pid" 2>/dev/null; then
     return 0
