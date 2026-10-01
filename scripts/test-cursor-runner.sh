@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Git hooks export repository-local GIT_* variables (GIT_DIR, GIT_INDEX_FILE,
+# ...). Clear them so fixture repos and their `git config` writes stay in the
+# fixtures instead of landing in the caller's repository.
+# shellcheck disable=SC2046 # one variable name per word
+unset $(git rev-parse --local-env-vars)
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 CURSOR_RUN="$ROOT_DIR/cursor/skills/cursor/bin/cursor-run.sh"
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/cursor-runner.XXXXXX")"
