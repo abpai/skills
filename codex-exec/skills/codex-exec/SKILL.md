@@ -11,7 +11,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "2.2.7"
+  version: "2.2.8"
 ---
 
 # Codex CLI
