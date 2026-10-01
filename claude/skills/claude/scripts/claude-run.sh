@@ -760,13 +760,27 @@ trap cleanup_on_exit EXIT
 trap 'handle_signal INT 130' INT
 trap 'handle_signal TERM 143' TERM
 
+# Sleep in the background and wait on it, so a TERM from the wrapper's cleanup
+# also stops the sleep. A foreground sleep in a killed loop subshell lives on as
+# an orphan that holds the run's stdout/stderr open, and a caller that reads
+# that output then blocks until the sleep ends (up to --timeout).
+interruptible_sleep() {
+  # Trap before forking and kill by job list rather than $!, so a TERM that lands
+  # between the fork and the wait still reaches the sleep.
+  # shellcheck disable=SC2046 # word-split the PID list on purpose
+  trap 'kill $(jobs -p) 2>/dev/null; exit 0' TERM
+  sleep "$1" &
+  wait $! 2>/dev/null || true
+  trap - TERM
+}
+
 heartbeat_loop() {
   local pid="$1" last_progress="$2" pending_since=0 previous="" now elapsed fingerprint workspace_hash stdout_lines stderr_lines stalled health source
   snapshot_transcripts
   workspace_hash="$(workspace_progress_fingerprint)"
   previous="$(line_count "$STDOUT_LOG"):$(line_count "$STDERR_LOG"):$TRANSCRIPT_FINGERPRINT:$workspace_hash"
   while kill -0 "$pid" 2>/dev/null; do
-    sleep "$HEARTBEAT_SECONDS"
+    interruptible_sleep "$HEARTBEAT_SECONDS"
     kill -0 "$pid" 2>/dev/null || break
     now="$(date +%s)"; elapsed=$((now-STARTED_AT))
     snapshot_transcripts
@@ -807,7 +821,7 @@ heartbeat_loop() {
 
 hard_timeout_loop() {
   local pid="$1" remaining="$TIMEOUT_SECONDS"
-  (( remaining > 0 )) && sleep "$remaining"
+  (( remaining > 0 )) && interruptible_sleep "$remaining"
   kill -0 "$pid" 2>/dev/null || return 0
   : > "$HARD_TIMEOUT_MARKER"
   write_status running "" "$TIMEOUT_SECONDS" hard-timeout-detected 0 deadline

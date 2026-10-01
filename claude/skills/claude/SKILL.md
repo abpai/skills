@@ -9,7 +9,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "3.0.0"
+  version: "3.0.1"
 ---
 
 # Claude Code CLI
