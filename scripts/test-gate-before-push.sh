@@ -11,6 +11,12 @@
 # Portable /bin/sh + jq style, matching the hook and scripts/test-wrapper-parity.sh.
 set -eu
 
+# Git hooks export repository-local GIT_* variables (GIT_DIR, GIT_INDEX_FILE,
+# ...). Clear them so fixture repos and their `git config` writes stay in the
+# fixtures instead of landing in the caller's repository.
+# shellcheck disable=SC2046 # one variable name per word
+unset $(git rev-parse --local-env-vars)
+
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 HOOK="$ROOT_DIR/code/hooks/gate-before-push.sh"
 

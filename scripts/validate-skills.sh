@@ -53,6 +53,24 @@ if [[ -f "$validator_test" ]]; then
   fi
 fi
 
+# A fixture test that creates git repos must clear git's repo-local env first.
+# Run from a git hook, GIT_DIR and friends otherwise point its `git config`
+# writes at the caller's repo, which is how test identities leaked into
+# .git/config.
+# Require a real unset command (not a comment mentioning it) before the first
+# `git init`, since an unset after fixture creation is too late.
+for fixture_test in scripts/test-*.sh; do
+  if ! awk '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*unset \$\(git rev-parse --local-env-vars\)/ { cleared = 1 }
+    /git( -C [^ ]+)? init/ && !cleared { leaked = 1; exit }
+    END { exit leaked }
+  ' "$fixture_test"; then
+    echo "[FAIL] $fixture_test: runs git init before 'unset \$(git rev-parse --local-env-vars)'"
+    failed=1
+  fi
+done
+
 claude_runner_test="scripts/test-claude-runner.sh"
 if [[ -f "$claude_runner_test" ]]; then
   if bash "$claude_runner_test" >/tmp/skills-validate-claude-runner-test.log 2>&1; then

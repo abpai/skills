@@ -3,7 +3,8 @@ set -euo pipefail
 
 # Git hooks export repository-local GIT_* variables. They must not redirect the
 # fixture repositories or the runner subprocesses back to the caller's repo.
-unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
+# shellcheck disable=SC2046 # one variable name per word
+unset $(git rev-parse --local-env-vars)
 
 if [[ "${ANTIGRAVITY_RUNNER_GIT_ENV_PROBE:-}" == "1" ]]; then
   [[ -z "${GIT_DIR+x}" && -z "${GIT_INDEX_FILE+x}" && -z "${GIT_WORK_TREE+x}" ]]
