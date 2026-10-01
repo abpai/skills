@@ -1339,11 +1339,12 @@ populate_final_message_fallback() {
 # an orphan that holds the run's stdout/stderr open, and a caller that reads
 # that output then blocks until the sleep ends (up to --timeout).
 interruptible_sleep() {
-  local sleep_pid
+  # Trap before forking and kill by job list rather than $!, so a TERM that lands
+  # between the fork and the wait still reaches the sleep.
+  # shellcheck disable=SC2046 # word-split the PID list on purpose
+  trap 'kill $(jobs -p) 2>/dev/null; exit 0' TERM
   sleep "$1" &
-  sleep_pid=$!
-  trap 'kill "$sleep_pid" 2>/dev/null; exit 0' TERM
-  wait "$sleep_pid" 2>/dev/null || true
+  wait $! 2>/dev/null || true
   trap - TERM
 }
 

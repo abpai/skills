@@ -1208,9 +1208,14 @@ test_claude_run_env_is_not_sourced() {
 assert_pipe_closes_after_run() {
   local label="$1" output="$2" limit="$3"
   shift 3
-  local started ended
+  local started ended before after pid
+  # Sleeps already running belong to other runs, not this one.
+  before=" $(watchdog_sleep_pids | tr '\n' ' ')"
   started="$(date +%s)"
-  if ! timeout "$limit" bash -c '"$@" 2>&1 | cat > "$0"' "$output" "$@"; then
+  # Python rather than timeout(1), which stock macOS lacks.
+  # shellcheck disable=SC2016 # the inner bash expands "$@" and "$0"
+  if ! python3 -c 'import subprocess, sys; sys.exit(subprocess.run(sys.argv[2:], timeout=float(sys.argv[1])).returncode)' \
+    "$limit" bash -c '"$@" 2>&1 | cat > "$0"' "$output" "$@" 2>/dev/null; then
     fail "$label: output pipe stayed open past ${limit}s after the run ended"
   fi
   ended="$(date +%s)"
@@ -1218,13 +1223,18 @@ assert_pipe_closes_after_run() {
   # A watchdog sleep that outlives the run keeps a caller that waits on the
   # process group (an agent's background task) blocked for the whole --timeout.
   sleep 1
-  if pgrep -u "$(id -u)" -f "^sleep $WATCHDOG_TIMEOUT\$" >/dev/null; then
-    fail "$label: a watchdog 'sleep $WATCHDOG_TIMEOUT' outlived the run"
-  fi
+  after="$(watchdog_sleep_pids)"
+  for pid in $after; do
+    [[ "$before" == *" $pid "* ]] || fail "$label: a watchdog sleep (pid $pid) outlived the run"
+  done
 }
 
-# An unusual --timeout makes the leftover watchdog sleep identifiable.
+# An unusual --timeout makes the leftover watchdog sleep identifiable. The
+# hard-timeout sleep gets the time remaining, so match a few seconds below it.
 WATCHDOG_TIMEOUT=287
+watchdog_sleep_pids() {
+  pgrep -u "$(id -u)" -f '^sleep 2(6[0-9]|7[0-9]|8[0-7])$' || true
+}
 
 test_codex_watchdogs_do_not_hold_output_pipe_open() {
   local fakebin="$TMP_DIR/fakebin"
