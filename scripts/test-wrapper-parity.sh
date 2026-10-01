@@ -106,11 +106,13 @@ if [[ "${1:-}" != "exec" ]]; then
 fi
 
 out_file=""
+json_mode="false"
+session_announced="false"
 previous=""
 for arg in "$@"; do
+  [[ "$arg" == "--json" ]] && json_mode="true"
   if [[ "$previous" == "-o" ]]; then
     out_file="$arg"
-    break
   fi
   previous="$arg"
 done
@@ -120,6 +122,11 @@ if [[ -n "${FAKE_CODEX_STALL_COUNTER:-}" ]]; then
   attempt="$(cat "$FAKE_CODEX_STALL_COUNTER" 2>/dev/null || printf 0)"
   attempt=$((attempt + 1))
   printf '%s' "$attempt" > "$FAKE_CODEX_STALL_COUNTER"
+  # Each attempt opens its own session before it can stall, as the real CLI does.
+  if [[ "$json_mode" == "true" ]]; then
+    printf '{"type":"thread.started","thread_id":"fake-session-attempt-%s"}\n' "$attempt"
+    session_announced="true"
+  fi
   stall_attempts="${FAKE_CODEX_STALL_ATTEMPTS:-1}"
   if (( attempt <= stall_attempts )); then
     if [[ -n "${FAKE_CODEX_MUTATE_FILE:-}" ]]; then
@@ -167,6 +174,11 @@ if [[ -n "${FAKE_CODEX_PROGRESS_FILE:-}" ]]; then
     sleep 1
   done
 fi
+# Like the real CLI: --json reports the session as a thread.started event on
+# stdout and drops the human-readable `session id:` line from stderr.
+if [[ "$json_mode" == "true" && "$session_announced" == "false" && "${FAKE_CODEX_NO_STDOUT:-}" != "1" ]]; then
+  printf '{"type":"thread.started","thread_id":"fake-session-123"}\n'
+fi
 if [[ "${FAKE_CODEX_NO_STDOUT:-}" == "1" ]]; then
   :
 elif [[ "${FAKE_CODEX_JSON_STDOUT:-}" == "1" ]]; then
@@ -181,7 +193,7 @@ elif [[ "${FAKE_CODEX_STDERR_NOISE:-}" == "1" ]]; then
 else
   printf 'fake codex stdout\n'
 fi
-printf 'session id: fake-session-123\n' >&2
+[[ "$json_mode" == "true" ]] || printf 'session id: fake-session-123\n' >&2
 if [[ -n "$out_file" && "${FAKE_CODEX_SKIP_FINAL:-}" != "1" ]]; then
   printf 'fake codex final\n' > "$out_file"
 fi
@@ -327,6 +339,18 @@ test_codex_exec_continue_contract() {
   assert_contains "$continue_dir/command.txt" "resume fake-session-123"
   assert_contains "$continue_dir/command.txt" "--sandbox read-only"
   assert_contains "$continue_dir/status.env" "state=dry-run"
+
+  # Runs from before the --json session fix recorded an empty session id.
+  # Continuation must still recover it from the thread.started event.
+  local legacy_output="$TMP_DIR/codex-continue-legacy.txt" legacy_dir
+  sed -i.bak 's/^SESSION_ID=.*/SESSION_ID=/' "$run_dir/run.env"
+  sed -i.bak "s/^session_id=.*/session_id=''/" "$run_dir/status.env"
+  PATH="$fakebin:$PATH" bash "$run_dir/continue.sh" \
+    --prompt "continue a run that lost its session id" \
+    --dry-run \
+    > "$legacy_output" 2>&1
+  legacy_dir="$(extract_run_dir "$legacy_output")"
+  assert_contains "$legacy_dir/command.txt" "resume fake-session-123"
 
   pass "codex-exec wrapper preserves prompt transport, artifacts, monitor, and session continuation"
 }
@@ -602,6 +626,8 @@ test_codex_stall_retries_once_without_workspace_changes() {
   assert_contains "$run_dir/status.json" '"state": "finished"'
   assert_contains "$run_dir/final.md" "fake codex final"
   [[ "$(cat "$counter")" == "2" ]] || fail "expected exactly two Codex attempts"
+  # Continuation must resume the attempt that finished, not the one that stalled.
+  assert_contains "$run_dir/run.env" "SESSION_ID=fake-session-attempt-2"
 
   pass "codex-exec retries one silent stall when the workspace is unchanged"
 }
@@ -898,6 +924,7 @@ test_codex_review_stderr_session_only_keeps_final_empty() {
       --workspace "$workspace" \
       --run-root "$TMP_DIR/codex-review-session-only-runs" \
       --prompt "session id alone should not become final markdown" \
+      --no-json \
       --heartbeat 1 \
       > "$output" 2>&1
 

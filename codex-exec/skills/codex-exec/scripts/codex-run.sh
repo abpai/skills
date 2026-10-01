@@ -404,6 +404,34 @@ extract_session_id_from_file() {
   fi
 }
 
+# Codex prints `session id:` on stderr only in text mode. With --json (the
+# default here) it reports the session as a thread.started event on stdout.
+extract_session_id_from_run() {
+  local stderr_log="$1" stdout_log="$2" session_id=""
+  session_id="$(extract_session_id_from_file "$stderr_log")"
+  if [[ -z "$session_id" && -f "$stdout_log" ]]; then
+    session_id="$(python3 - "$stdout_log" <<'PY'
+import json
+import sys
+
+# A stall retry appends a second attempt to the same log; the last session is
+# the one that finished.
+session_id = ""
+with open(sys.argv[1], encoding="utf-8", errors="replace") as events:
+    for line in events:
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict) and event.get("type") == "thread.started" and event.get("thread_id"):
+            session_id = event["thread_id"]
+print(session_id)
+PY
+)"
+  fi
+  printf '%s' "$session_id"
+}
+
 load_continue_defaults() {
   if [[ -z "$CONTINUE_RUN_DIR" ]]; then
     return 0
@@ -419,7 +447,7 @@ load_continue_defaults() {
 
   local prior_workspace="" prior_run_root="" prior_heartbeat="" prior_timeout="" prior_stall_timeout=""
   local prior_reasoning="" prior_model="" prior_sandbox="" prior_ephemeral=""
-  local prior_session="" prior_status_workspace="" prior_status_session="" prior_stderr=""
+  local prior_session="" prior_status_workspace="" prior_status_session="" prior_stderr="" prior_stdout=""
   local key value
 
   # One python pass over run.env for all preserved settings.
@@ -445,8 +473,9 @@ load_continue_defaults() {
       workspace) prior_status_workspace="$value" ;;
       session_id) prior_status_session="$value" ;;
       stderr_log) prior_stderr="$value" ;;
+      stdout_log) prior_stdout="$value" ;;
     esac
-  done < <(read_env_values "$prior_status" workspace session_id stderr_log)
+  done < <(read_env_values "$prior_status" workspace session_id stderr_log stdout_log)
 
   if [[ -z "$prior_workspace" ]]; then
     prior_workspace="$prior_status_workspace"
@@ -455,7 +484,7 @@ load_continue_defaults() {
     prior_session="$prior_status_session"
   fi
   if [[ -z "$prior_session" ]]; then
-    prior_session="$(extract_session_id_from_file "$prior_stderr")"
+    prior_session="$(extract_session_id_from_run "$prior_stderr" "$prior_stdout")"
   fi
 
   if [[ "$WORKSPACE_SET" == "false" && -n "$prior_workspace" ]]; then
@@ -1557,7 +1586,7 @@ elif (( EXIT_CODE != 0 )); then
   FINAL_STATE="failed"
 fi
 if [[ "$EPHEMERAL" != "true" ]]; then
-  detected_session_id="$(extract_session_id_from_file "$STDERR_LOG")"
+  detected_session_id="$(extract_session_id_from_run "$STDERR_LOG" "$STDOUT_LOG")"
   if [[ -n "$detected_session_id" ]]; then
     SESSION_ID="$detected_session_id"
     RESUME_LAST="false"
