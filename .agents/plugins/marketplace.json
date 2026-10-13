@@ -221,6 +221,18 @@
       "category": "Tools"
     },
     {
+      "name": "visual-pr",
+      "source": {
+        "source": "local",
+        "path": "./visual-pr"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Tools"
+    },
+    {
       "name": "show-me",
       "source": {
         "source": "local",

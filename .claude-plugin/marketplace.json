@@ -135,6 +135,13 @@
       "keywords": ["visualization", "html", "diagrams", "explanation"]
     },
     {
+      "name": "visual-pr",
+      "description": "Create or update a pull request with a concise visual outline for reviewers.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "visual-pr" },
+      "category": "productivity",
+      "keywords": ["pull-request", "code-review", "visualization", "github"]
+    },
+    {
       "name": "show-me",
       "description": "Explain the current topic with the smallest useful visual: concise diagrams, code-shape sketches, diffs, or focused HTML artifacts.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "show-me" },
