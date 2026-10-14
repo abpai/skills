@@ -31,7 +31,24 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install cursor@abpai-skills
 /plugin install antigravity@abpai-skills
 /plugin install status-update@abpai-skills
+/plugin install visual-pr@abpai-skills
 ```
+
+### HumanLayer upstream skills
+
+`show-me` and `visual-pr` are adapted from HumanLayer. To use HumanLayer's
+originals instead, swap them out (HumanLayer's marketplace is named `skills`):
+
+```bash
+/plugin uninstall show-me@abpai-skills
+/plugin uninstall visual-pr@abpai-skills
+/plugin marketplace add humanlayer/skills
+/plugin install show-me@skills
+/plugin install visual-pr@skills
+```
+
+The local versions also work in Codex and in any repository. See
+[the sync record](docs/humanlayer-sync.md) for what differs.
 
 ### Codex
 
@@ -99,6 +116,7 @@ to `code understand`; `secure-dependencies` moves to `harness adopt`;
 | **claude-session** | Inspect local Claude Code transcripts by UUID without invoking Claude or contacting Anthropic. |
 | **antigravity** | Run Google Antigravity CLI headlessly with Gemini routing, durable artifacts, isolated review, and exact continuation. |
 | **visualize** | Generate single-file HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
+| **visual-pr** | Create or update a PR with a concise visual outline for reviewers; adapted from HumanLayer for Claude Code and Codex |
 | **show-me** | Explain the current topic with the smallest useful visual: an inline diagram, code-shape sketch, diff, or focused HTML artifact |
 
 ### Languages & Platforms

@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Visual PR"
+  short_description: "Explain a pull request with a concise visual outline."
+  default_prompt: "Use $visual-pr to create or update this task's pull request."
