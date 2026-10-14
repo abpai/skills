@@ -54,6 +54,10 @@ _META_INTERNAL_RE = re.compile(r"\s+internal:\s*true\s*")
 # Mirrors the original one-time WARN when PyYAML is unavailable.
 _YAML_WARNED = False
 
+# Skills the model may start on its own. Every other entrypoint is explicit-only.
+CLAUDE_MODEL_INVOCABLE = frozenset({"codex-exec", "show-me", "visual-pr"})
+CODEX_IMPLICIT_INVOCABLE = frozenset({"show-me", "visual-pr"})
+
 
 def _class_tokens(attrs: list[tuple[str, str | None]]) -> set[str]:
     for key, value in attrs:
@@ -238,8 +242,8 @@ def validate_skill_md(
     is_umbrella = skill_name == plugin_name
 
     claude_auto_invocable = (
-        plugin_name == "codex-exec"
-        and skill_name == "codex-exec"
+        skill_name == plugin_name
+        and skill_name in CLAUDE_MODEL_INVOCABLE
         and not internal
         and fields.get("disable-model-invocation") == "false"
     )
@@ -334,7 +338,7 @@ def validate_openai_yaml(path: Path, skill_name: str, rep: Reporter) -> None:
             if match is None:
                 rep.fail(
                     f"{path}: policy must contain exactly two-space indented "
-                    "allow_implicit_invocation: false"
+                    "allow_implicit_invocation: true|false"
                 )
                 # Keep scanning so interface problems surface in the same run
                 # instead of one per fix-and-rerun cycle.
@@ -374,12 +378,14 @@ def validate_openai_yaml(path: Path, skill_name: str, rep: Reporter) -> None:
         return
 
     policy = data.get("policy")
-    if not isinstance(policy, dict) or policy.get("allow_implicit_invocation") is not False:
+    implicit = skill_name in CODEX_IMPLICIT_INVOCABLE
+    if not isinstance(policy, dict) or policy.get("allow_implicit_invocation") is not implicit:
         # A malformed portable policy line already reported the specific defect.
         if not policy_malformed:
+            expected = "true" if implicit else "false"
             rep.fail(
-                f"{path}: must set policy.allow_implicit_invocation: false "
-                "so Codex does not invoke this skill implicitly"
+                f"{path}: must set policy.allow_implicit_invocation: {expected} "
+                "(see CODEX_IMPLICIT_INVOCABLE)"
             )
 
     interface = data.get("interface")
@@ -657,7 +663,7 @@ def validate_plugin(plugin_dir: Path, rep: Reporter) -> None:
         if not openai_yaml.is_file():
             rep.fail(
                 f"{skill_file}: missing agents/openai.yaml with "
-                "policy.allow_implicit_invocation: false"
+                "a policy.allow_implicit_invocation setting"
             )
         else:
             run_guarded(

@@ -1,5 +1,5 @@
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true
 interface:
   display_name: "Visual PR"
   short_description: "Explain a pull request with a concise visual outline."

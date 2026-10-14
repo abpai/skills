@@ -24,7 +24,8 @@ Local changes, to keep when resyncing:
   there, so the template holds only PR-body text.
 - `references/show-me.md` is trimmed to the views a PR outline uses. It is a
   deliberate copy: plugins cannot reference each other's files once installed.
-- Explicit-only invocation and Claude/Codex manifests and marketplace entries.
+- Model-invocable in Claude and Codex, plus Claude/Codex manifests and
+  marketplace entries.
 
 To resync, diff `plugins/visual-pr` from the recorded commit to upstream main
 and carry over what still applies.

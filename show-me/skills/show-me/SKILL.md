@@ -1,12 +1,12 @@
 ---
 name: show-me
-disable-model-invocation: true
+disable-model-invocation: false
 description: Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts. Use when the user asks to see, picture, sketch, or diagram how something works or what a change looks like.
 argument-hint: "[topic or question]"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.0.2"
+  version: "1.0.3"
   upstream_skill: https://github.com/humanlayer/skills/tree/main/plugins/show-me/skills/show-me
 ---
 

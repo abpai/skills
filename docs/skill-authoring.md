@@ -15,7 +15,7 @@ There are two different `agents/` conventions:
 - `<plugin>/agents/*.md` contains Claude agent definitions and is a plugin-root
   runtime directory.
 - `<plugin>/skills/<skill>/agents/openai.yaml` contains the required Codex
-  invocation policy (`policy.allow_implicit_invocation: false`) and may also
+  invocation policy (`policy.allow_implicit_invocation`) and may also
   contain UI metadata such as display name, short description, and default
   prompt. It stays beside the owning `SKILL.md`; do not move it to the
   plugin-root `agents/` directory.
@@ -45,9 +45,11 @@ https://code.claude.com/docs/en/skills#how-a-skill-gets-its-command-name
 
 ## Grouped workflow packs
 
-Skill entrypoints are explicit-only across both products, except `codex-exec`
-in Claude, which sets `disable-model-invocation: false` so Claude can delegate
-within user-authorized tasks. Its Codex policy remains explicit-only:
+Skill entrypoints are explicit-only across both products. The exceptions,
+listed in `scripts/validate_skills.py`, are `show-me` and `visual-pr`, which
+either model may start, and `codex-exec` in Claude, which sets
+`disable-model-invocation: false` so Claude can delegate within user-authorized
+tasks. Everything else uses:
 
 ```yaml
 # SKILL.md (Claude)
@@ -76,7 +78,7 @@ metadata:
 ```
 
 `scripts/validate-skills.sh` enforces this wrapper shape and the explicit-only
-policy for every entrypoint except the public Claude `codex-exec` skill.
+policy for every entrypoint except the allowlisted skills above.
 It fails when a hidden wrapper omits
 `metadata.internal: true`, and for packs with an umbrella it also requires
 `user-invocable: false`. Command-only Pi phase skills must also carry
@@ -114,8 +116,9 @@ exceptions, but document the reason.
 
 - Write frontmatter `description` as the blurb a human reads in the `/` and `$`
   menus. Explicit-only entrypoints set `disable-model-invocation: true`, so their
-  descriptions never trigger the model or enter context. The Claude `codex-exec`
-  exception uses its description for automatic selection. Say what the
+  descriptions never trigger the model or enter context. The model-invocable
+  exceptions (`show-me`, `visual-pr`, Claude `codex-exec`) use their
+  descriptions for automatic selection, so say when to reach for them. Say what the
   skill does and when to reach for it. For explicit-only skills, trigger keywords
   and synonym lists are dead weight.
 - Give every routed workflow an `argument-hint` and keep argument parsing local

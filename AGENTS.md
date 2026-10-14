@@ -13,9 +13,11 @@ enforces most of them.
 - Namespaced commands are skill subdirectories
   (`<plugin>/skills/<name>/SKILL.md` → `/<plugin>:<name>`), never plugin-root
   `commands/`.
-- Except for `codex-exec` in Claude, every skill entrypoint is human-invocable
-  only: `disable-model-invocation: true` in `SKILL.md`. Every Codex entrypoint
-  sets `policy.allow_implicit_invocation: false` in `agents/openai.yaml`.
+- Every skill entrypoint is human-invocable only:
+  `disable-model-invocation: true` in `SKILL.md` and
+  `policy.allow_implicit_invocation: false` in `agents/openai.yaml`. The
+  exceptions are `show-me` and `visual-pr` (model-invocable in both products)
+  and `codex-exec` (Claude only), listed in `scripts/validate_skills.py`.
 - No runtime self-update checks or installer side effects in skill bodies.
 
 ## Process

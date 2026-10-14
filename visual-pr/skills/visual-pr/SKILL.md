@@ -1,12 +1,12 @@
 ---
 name: visual-pr
-description: Create or update a pull request with a concise visual outline that explains the change to reviewers.
-disable-model-invocation: true
+description: Create or update a pull request with a concise visual outline that explains the change to reviewers. Use when opening a PR, when a branch is ready for review, or when a PR description needs writing or refreshing.
+disable-model-invocation: false
 argument-hint: "[current task or PR]"
 license: MIT
 metadata:
   author: HumanLayer
-  version: "1.0.0"
+  version: "1.0.1"
   upstream_skill: https://github.com/humanlayer/skills/tree/main/plugins/visual-pr/skills/visual-pr
 ---
 
