@@ -99,6 +99,11 @@ export const SKILL_CATALOG = {
     mode: "eve",
     owner: "Eve plus blank-environment outcome",
   },
+  "visual-pr": {
+    source: "visual-pr/skills/visual-pr",
+    mode: "host",
+    owner: "live gh dogfood",
+  },
   visualize: {
     source: "visualize/skills/visualize",
     mode: "browser",
