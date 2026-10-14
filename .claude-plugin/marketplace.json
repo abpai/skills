@@ -138,7 +138,7 @@
       "name": "visual-pr",
       "description": "Create or update a pull request with a concise visual outline for reviewers.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "visual-pr" },
-      "category": "productivity",
+      "category": "tools",
       "keywords": ["pull-request", "code-review", "visualization", "github"]
     },
     {

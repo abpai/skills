@@ -1,9 +1,6 @@
----
-name: show-me
-description: Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.
----
+# Visual views for the change outline
 
-Help the user understand the current topic of conversation visually. Skip the preamble and keep prose brief. Pick the smallest view that makes the key point clear.
+Pick the smallest view that makes each point clear, and keep only the calls, files, props, states, and boundaries a reviewer needs.
 
 - Show logic or an algorithm as pseudocode:
 
@@ -114,6 +111,6 @@ function expandSkill(command: string): string {
 }
 ```
 
-- For a visual UI, layout, state comparison, or concept too dense for Mermaid, create one focused HTML artifact. Match the product's colors, type, spacing, and components; use real labels and data; support desktop and mobile. Open or preview it with the environment's available file-opening tool. In the PR body, link only to artifacts reviewers can access.
+- For a visual UI, layout, or state comparison too dense for Mermaid, a focused HTML artifact can help. Link to it from the PR body only if reviewers can open it.
 
-- Place each visual next to the short text it supports. Keep only the calls, files, props, states, and boundaries needed to answer the user's current question.
+- Place each view next to the short text it supports.

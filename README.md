@@ -36,20 +36,19 @@ Run these slash commands **inside a Claude Code session**:
 
 ### HumanLayer upstream skills
 
-To use HumanLayer's upstream versions instead of the local `show-me` adaptation,
-run these commands inside Claude Code:
+`show-me` and `visual-pr` are adapted from HumanLayer. To use HumanLayer's
+originals instead, swap them out (HumanLayer's marketplace is named `skills`):
 
 ```bash
 /plugin uninstall show-me@abpai-skills
+/plugin uninstall visual-pr@abpai-skills
 /plugin marketplace add humanlayer/skills
 /plugin install show-me@skills
 /plugin install visual-pr@skills
 ```
 
-HumanLayer's marketplace is named `skills`. Install either its upstream
-`visual-pr@skills` or the Codex-compatible adaptation `visual-pr@abpai-skills`
-above to avoid duplicate commands. See [the sync record](docs/humanlayer-sync.md)
-for the upstream revision and local differences.
+The local versions also work in Codex and in any repository. See
+[the sync record](docs/humanlayer-sync.md) for what differs.
 
 ### Codex
 
