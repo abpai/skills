@@ -29,8 +29,9 @@ This repo is plugin-oriented:
    plus one per-command skill (`skills/<workflow>/SKILL.md`) with
    `disable-model-invocation: true`. Every entrypoint is explicit-only
    (`disable-model-invocation: true` and, in `agents/openai.yaml`,
-   `policy.allow_implicit_invocation: false`), except `codex-exec` in Claude,
-   which Claude may auto-invoke. See the README section "Why every
+   `policy.allow_implicit_invocation: false`), except `show-me` and
+   `visual-pr`, which either model may start, and `codex-exec`, which Claude
+   may start. See the README section "Why every
    namespaced command is a `skills/<name>/SKILL.md`".
 6. Plugin agents may use normal subagent frontmatter, but Claude plugin agents
    must not rely on `hooks`, `mcpServers`, or `permissionMode`. If you need
@@ -66,7 +67,7 @@ When importing from upstream:
 
 ## Versioning
 
-Every public skill must have a `metadata.version` field in its YAML frontmatter. This powers the auto-update check that notifies users when a newer version is available. Hidden per-command shims (`metadata.internal: true`) intentionally use the owning plugin version instead of carrying separate version metadata. All entrypoints are explicit-only, so version ownership follows the public/internal split, not model invocability.
+Every public skill must have a `metadata.version` field in its YAML frontmatter. This powers the auto-update check that notifies users when a newer version is available. Hidden per-command shims (`metadata.internal: true`) intentionally use the owning plugin version instead of carrying separate version metadata. Version ownership follows the public/internal split, not model invocability.
 
 When publishing changes to a skill:
 

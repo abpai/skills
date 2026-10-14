@@ -203,8 +203,9 @@ Every skill entrypoint in this marketplace is explicit-only: humans invoke it
 with `$skill` in Codex or `/skill` in Claude. `SKILL.md` sets
 `disable-model-invocation: true` for Claude and the skill-local
 `agents/openai.yaml` sets `policy.allow_implicit_invocation: false` for Codex.
-The one exception is `codex-exec` in Claude, which Claude may select on its own
-to delegate within a user-authorized task; it stays explicit-only in Codex.
+The exceptions: `show-me` and `visual-pr` may be started by the model in both
+Claude and Codex, and `codex-exec` may be started by Claude to delegate within
+a user-authorized task (it stays explicit-only in Codex).
 
 The pattern for a grouped workflow pack:
 
@@ -382,10 +383,10 @@ validation script below, which checks both Claude and Codex manifests.
 This repo includes a comprehensive validator at `scripts/validate-skills.sh` that checks:
 
 - Claude and Codex plugin manifests (name, version, description, paths)
-- SKILL.md frontmatter (name, description, explicit-only Claude policy, and
+- SKILL.md frontmatter (name, description, Claude invocation policy, and
   version metadata for public umbrella skills)
 - Skill-local Codex policy (`agents/openai.yaml` must set
-  `policy.allow_implicit_invocation: false`) and grouped-pack wrapper
+  `policy.allow_implicit_invocation`, `false` unless allowlisted) and grouped-pack wrapper
   invariants (wrappers with an umbrella require `metadata.internal: true` and
   `user-invocable: false`)
 - Both marketplace.json catalogs (completeness and consistency)

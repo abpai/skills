@@ -14,7 +14,9 @@ import validate_skills
 
 
 class OpenAIYamlValidationTest(unittest.TestCase):
-    def validate(self, content: str) -> tuple[bool, str]:
+    def validate(
+        self, content: str, skill_name: str = "status-update"
+    ) -> tuple[bool, str]:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "openai.yaml"
             path.write_text(content, encoding="utf-8")
@@ -25,7 +27,7 @@ class OpenAIYamlValidationTest(unittest.TestCase):
                 contextlib.redirect_stdout(output),
             ):
                 validate_skills.validate_openai_yaml(
-                    path, "status-update", reporter
+                    path, skill_name, reporter
                 )
             return reporter.failed, output.getvalue()
 
@@ -100,6 +102,24 @@ interface:
 
         self.assertTrue(failed)
         self.assertIn("allow_implicit_invocation: false", output)
+
+    def test_requires_implicit_policy_for_allowlisted_skills(self) -> None:
+        failed, output = self.validate(
+            """policy:
+  allow_implicit_invocation: true
+""",
+            skill_name="visual-pr",
+        )
+        self.assertFalse(failed, output)
+
+        failed, output = self.validate(
+            """policy:
+  allow_implicit_invocation: false
+""",
+            skill_name="visual-pr",
+        )
+        self.assertTrue(failed)
+        self.assertIn("allow_implicit_invocation: true", output)
 
     def test_accepts_blank_lines_and_comments_around_policy(self) -> None:
         # Codex documents policy and interface as sibling blocks, so the

@@ -1,7 +1,7 @@
 {
   "name": "visual-pr",
   "description": "Create or update a pull request with a concise visual outline for reviewers",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "Andy Pai"
   },
