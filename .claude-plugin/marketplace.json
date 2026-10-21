@@ -9,6 +9,22 @@
   },
   "plugins": [
     {
+      "name": "pstack",
+      "description": "Research coding tasks, select relevant principles, and write concise implementation plans.",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/abpai/skills.git",
+        "path": "pstack"
+      },
+      "category": "productivity",
+      "keywords": [
+        "plan",
+        "planning",
+        "code-quality",
+        "verification"
+      ]
+    },
+    {
       "name": "distill",
       "description": "Iteratively decompose complex systems into their essential primitives.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "distill" },

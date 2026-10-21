@@ -34,6 +34,13 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install visual-pr@abpai-skills
 ```
 
+### pstack
+
+`pstack plan` researches a task, selects relevant code-quality principles, and
+writes a short implementation plan. Use `$pstack plan [task]` in Codex or
+`/pstack plan [task]` in Claude Code. Adapted from
+[open-pstack](https://github.com/ericlitman/open-pstack).
+
 ### HumanLayer upstream skills
 
 `show-me` and `visual-pr` are adapted from HumanLayer. To use HumanLayer's
@@ -92,6 +99,7 @@ marketplace flow above.
 
 | Plugin | What it does |
 |--------|-------------|
+| **pstack** | Research a task, select relevant principles, and write a concise plan with `$pstack plan` or `/pstack plan`. |
 | **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, `/engineering ci-optimize`, or `/engineering reduce`. Code cleanup now lives under `/code simplify`. |
 
 ### Developer Productivity

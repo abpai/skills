@@ -1,0 +1,11 @@
+{
+  "name": "pstack",
+  "version": "0.3.1",
+  "description": "Research coding tasks, select relevant principles, and write concise implementation plans.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/"
+}
