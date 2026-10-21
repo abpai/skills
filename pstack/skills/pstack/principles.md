@@ -11,7 +11,7 @@ approach or prevents a concrete mistake; do not pad the plan with a checklist.
 | Input arrives from users, files, external services, or framework code | [Boundary discipline](principles/principle-boundary-discipline.md) |
 | Bulk updates or repeatable verification need tooling | [Script bulk operations](principles/principle-script-bulk-operations.md) |
 | The same correction or instruction keeps recurring | [Encode lessons in structure](principles/principle-encode-lessons-in-structure.md) |
-| A novel UI interaction or architectural decision has no useful precedent in the codebase | [Exhaust the design space](principles/principle-exhaust-the-design-space.md) |
+| A novel UI interaction, architectural decision, or product behavior policy has no useful precedent in the codebase | [Exhaust the design space](principles/principle-exhaust-the-design-space.md) |
 | Choosing product behavior, features, or usability tradeoffs | [Prioritize usability](principles/principle-prioritize-usability.md) |
 | A planned rewrite or migration has explicit verification checkpoints | [Outcome-oriented execution](principles/principle-outcome-oriented-execution.md) |
 | Reporting or acting on performance measurements or agent/model evaluation results | [Explain the number](principles/principle-explain-the-number.md) |
