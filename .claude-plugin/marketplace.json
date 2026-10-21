@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "pstack",
-      "description": "Research coding tasks, select relevant principles, and write concise implementation plans.",
+      "description": "Plan, verify, or carry out coding tasks with relevant engineering principles: researched plans, evidence-backed verification, and an auto plan-implement-verify loop.",
       "source": {
         "source": "git-subdir",
         "url": "https://github.com/abpai/skills.git",

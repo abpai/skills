@@ -5,7 +5,7 @@ approach or prevents a concrete mistake; do not pad the plan with a checklist.
 
 | When | Principle |
 | --- | --- |
-| Sizing a change or considering an abstraction | [Laziness protocol](principles/principle-laziness-protocol.md) |
+| Adding a helper, layer, or abstraction, or scope grows beyond the request | [Laziness protocol](principles/principle-laziness-protocol.md) |
 | A new requirement no longer fits the existing design cleanly | [Redesign from first principles](principles/principle-redesign-from-first-principles.md) |
 | Repeated fixes share an assumption and keep failing | [Attack the premise](principles/principle-attack-the-premise.md) |
 | Input arrives from users, files, external services, or framework code | [Boundary discipline](principles/principle-boundary-discipline.md) |

@@ -36,9 +36,12 @@ Run these slash commands **inside a Claude Code session**:
 
 ### pstack
 
-`pstack plan` researches a task, selects relevant code-quality principles, and
-writes a short implementation plan. Use `$pstack plan [task]` in Codex or
-`/pstack plan [task]` in Claude Code. Adapted from
+`pstack` applies relevant code-quality principles to a coding task. `plan`
+researches and writes a short implementation plan, `verify` checks an
+implementation against the original request with executed evidence, and `auto`
+plans, implements, verifies, and fixes within scope. Use
+`$pstack plan|verify|auto [task]` in Codex or `/pstack plan|verify|auto [task]`
+in Claude Code. Adapted from
 [open-pstack](https://github.com/ericlitman/open-pstack).
 
 ### HumanLayer upstream skills
@@ -99,7 +102,7 @@ marketplace flow above.
 
 | Plugin | What it does |
 |--------|-------------|
-| **pstack** | Research a task, select relevant principles, and write a concise plan with `$pstack plan` or `/pstack plan`. |
+| **pstack** | Plan, verify, or carry out a coding task with relevant principles via `plan`, `verify`, or `auto` (`$pstack` / `/pstack`). |
 | **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, `/engineering ci-optimize`, or `/engineering reduce`. Code cleanup now lives under `/code simplify`. |
 
 ### Developer Productivity

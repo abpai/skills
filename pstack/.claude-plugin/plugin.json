@@ -1,7 +1,7 @@
 {
   "name": "pstack",
-  "version": "0.3.1",
-  "description": "Research coding tasks, select relevant principles, and write concise implementation plans.",
+  "version": "0.4.0",
+  "description": "Plan, verify, or carry out coding tasks with relevant engineering principles: researched plans, evidence-backed verification, and an auto plan-implement-verify loop.",
   "author": {
     "name": "Andy Pai"
   },

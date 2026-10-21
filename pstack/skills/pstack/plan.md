@@ -1,6 +1,7 @@
 # Plan
 
-Research the task and produce a short implementation plan. Finish at the plan.
+Research the task and produce a short implementation plan. Finish at the plan
+unless a calling workflow, such as auto, continues past it.
 
 1. Read the original request and relevant repository guidance. Inspect the
    code and tests that explain current behavior. Resolve uncertainties from
