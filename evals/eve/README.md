@@ -38,6 +38,7 @@ evals/eve/
 │   ├── safety/             # prompt-injection: transcript directives are inert data
 │   ├── contracts/          # skill invariants (e.g. hexagon "does not apply")
 │   ├── routing/            # description-trigger matrix + negative controls
+│   ├── pstack/             # plan/verify/auto against seeded fixture repos
 │   └── support/            # shared helpers (not discovered as evals)
 └── scripts/
     ├── prepare-skills.ts   # materialize (+ --ablate / --omit variants)
@@ -253,6 +254,28 @@ fixtures/<name>/input.js        # sent to the model verbatim, inside the prompt
 fixtures/<name>/hidden.test.js  # mounted read-only only after the reply exists
 ```
 
+### pstack: evals against a real repository
+
+pstack's contracts need a repository to research, check, and edit, so
+`evals/pstack/` (tag `pstack`) seeds one. `support/pstack.ts` packs
+`fixtures/pstack-<id>/base` as a git repository (plus `change.patch`, left
+uncommitted, for verify fixtures) and sends it as an attachment in a setup turn;
+Eve stages attachments under `/workspace/attachments/`. After the pstack turn, a
+final turn runs one fixed command whose bash output reports the working tree
+hash and the diff against the base commit:
+
+- plan and verify gate on that hash matching the untouched fixture (caches
+  such as `__pycache__` excluded), so "no edits" covers shell edits too;
+- auto's diff is applied to a host copy and run with
+  `fixtures/pstack-a06-job-durations/hidden/` in the isolated verifier
+  container, using a pinned Bun image (`bun run outcome:pull` fetches both).
+
+Expected answers live only in the eval files and `hidden/`, never in the
+archive. `bun run test:pstack-graders` proves the graders can fail without a
+model: the tree hash changes on an edit or a leftover probe file and ignores
+caches, the hidden suite passes the reference solution and fails a careless
+parser and an empty diff, and the principle predicates reject a padded plan.
+
 ## What is proven
 
 - **Proven (always-on / secretless):** `prepare-skills` normalizes the real
@@ -264,7 +287,13 @@ fixtures/<name>/hidden.test.js  # mounted read-only only after the reply exists
   `safety/codex-session-injection`) were live-green under `gpt-5.6-luna`,
   measured before the default moved to `gpt-6-luna`. The routing matrix +
   negatives extend that gate; `bun run eval:live` is the
-  whole-lane acceptance check. Marginal single-sample gates sit outside the
+  whole-lane acceptance check.
+- **pstack (live, `gpt-6-luna`, 2026-10-21, pstack 0.4.0):** across five
+  runs, the auto candidate passed the hidden suite every time, and the verify
+  evals and `plan-attack-premise` held. Two evals stay red on skill behavior,
+  not grader noise: `route-unsupported-mode` (the model reviewed
+  `pstack review ...` as verify in 2 of 4 runs) and `plan-design-space`
+  (Exhaust the design space selected in 1 of 5 runs). Marginal single-sample gates sit outside the
   lane under the `quarantine` tag — see "Quarantined evals" above.
 
 Eve is public preview — the version is pinned in `package.json` and the
