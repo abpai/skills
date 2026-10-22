@@ -10,7 +10,7 @@ is complete; behavioral validation is tracked in `docs/pstack-handoff.md`.
 | Boundary Discipline | Approved; reconciled | `pstack/skills/pstack/principles/principle-boundary-discipline.md`; includes pure logic, thin I/O, examples, testability, and qualified trust. |
 | Build the Lever | Approved; renamed | `pstack/skills/pstack/principles/principle-script-bulk-operations.md`; name changed only, retaining bulk updates, one-off verification, placement, and paired example. |
 | Encode Lessons in Structure | Approved; reconciled | `pstack/skills/pstack/principles/principle-encode-lessons-in-structure.md`; includes ownership, authoritative guidance, failure examples, and retiring redundant reminders. |
-| Exhaust the Design Space | Approved | `pstack/skills/pstack/principles/principle-exhaust-the-design-space.md`; limited to novel UI interactions or architectural decisions without useful precedent. |
+| Exhaust the Design Space | Approved | `pstack/skills/pstack/principles/principle-exhaust-the-design-space.md`; limited to novel UI interactions, architectural decisions, or product behavior policies without useful precedent (widened in `b2715a4a`; see below). |
 | Experience First | Approved; renamed | `pstack/skills/pstack/principles/principle-prioritize-usability.md`; renamed Prioritize Usability. |
 | Explain the Number | Approved; reconciled | `pstack/skills/pstack/principles/principle-explain-the-number.md`; includes measured limiter, alternative explanations, retained evidence, and both local dependencies. |
 | Fix Root Causes | Drafted; in approved wording pass | `pstack/skills/pstack/principles/principle-fix-root-causes.md`. Individual review skipped at the user's request. |
@@ -83,3 +83,17 @@ deferred behavioral and packaging validation is still pending.
 The Laziness Protocol trigger "Sizing a change or considering an abstraction"
 matched every task. It now reads "Adding a helper, layer, or abstraction, or
 scope grows beyond the request". Principle text is unchanged.
+
+## Changes after the 0.4.0 dogfood
+
+Made in response to dogfood and eval evidence, recorded in
+`docs/pstack-dogfood.md`. They have not had a separate user content review;
+review them in the draft PR.
+
+- `b2715a4a`: the Exhaust the Design Space trigger also covers a product
+  behavior policy with no precedent, and in plan mode the agent compares the
+  options and proposes prototypes instead of building them.
+- `221737ac`: routing change. `SKILL.md` now shows usage and stops unless the
+  mode is exactly `plan`, `verify`, or `auto`, and does not map synonyms such as
+  `review`. `plan.md` asks for state the approach depends on that the code does
+  not keep yet, and links selected principles as `principles/<file>.md`.

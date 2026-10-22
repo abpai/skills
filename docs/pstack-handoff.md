@@ -5,11 +5,26 @@
 Finish the general-purpose pstack plugin for Codex and Claude. Keep its text
 short, concrete, and independent of Garage roles or a particular harness.
 
-All 24 upstream principles have been considered. The retained principles and
-the plan, verify, and auto workflows are drafted. Verify and auto are approved
-but not connected to the command router. The skill and this handoff are being
-captured in a draft PR. Keep it draft until the remaining work is complete;
+All 24 upstream principles have been considered. Version 0.4.0 routes `plan`,
+`verify`, and `auto` from the umbrella, with hidden wrappers, and the router
+stops with usage on any other mode. Implementation items 1-4 below are done.
+Dogfood round 1, a `claude -p` host smoke, and two live Eve iterations are
+recorded in [the dogfood record](pstack-dogfood.md#pstack-040-plan-verify-and-auto),
+and the packaging lane passed at the final content snapshot. Keep the PR draft;
 merging or releasing requires a separate request.
+
+Still open (details in the dogfood record):
+
+- Unrepaired verify/auto friction: Codex verify can skip `verify.md`; no rule
+  for a blocked required check; auto's verify step can shrink to running
+  tests; plan length; Script bulk operations not selected on renames.
+- `/pstack:verify|plan|auto` wrappers are silent no-ops in `claude -p`;
+  interactive Claude and `/pstack:pstack verify|auto` through the host were
+  not run.
+- Codex native `$pstack` discovery and the plugin install are unproven at
+  runtime.
+- The `b2715a4a` and `221737ac` repairs were rechecked by Eve, not by
+  repeating the failing dogfood cases.
 
 Key files:
 
@@ -19,8 +34,8 @@ Key files:
   [auto](../pstack/skills/pstack/auto.md)
 - [Principle selection index](../pstack/skills/pstack/principles.md)
 - [Approval ledger](pstack-approval-ledger.md)
-- [Earlier dogfood record](pstack-dogfood.md): historical evidence, not
-  validation of the current drafts
+- [Dogfood record](pstack-dogfood.md): 0.4.0 runs at the end; earlier
+  sections are historical
 
 ## Preserve these decisions
 
@@ -41,7 +56,7 @@ Key files:
 - User requested drafting first and validation afterward. Drafting is now done;
   behavioral and packaging validation remain.
 
-## Remaining implementation
+## Remaining implementation (done in 0.4.0)
 
 1. Reconcile the ledger against the actual files and conversation. Fix Root
    Causes, Model the Domain, and Sequence Verifiable Units still have historical
@@ -95,8 +110,8 @@ focused evidence, not a broad reliability claim. No model comparison is required
 
 ## Packaging and completion
 
-Read [skill authoring](skill-authoring.md). Current version is 0.3.1; choose an
-appropriate next version from the actual repository state. Update the public
+Read [skill authoring](skill-authoring.md). The version is 0.4.0 (new relative
+to `origin/main`). Update the public
 metadata and applicable descriptions/docs, then run the repository lane:
 
 ```sh
