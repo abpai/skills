@@ -1,0 +1,12 @@
+[
+  { "id": "t_1001", "name": "Acme Corp", "plan": "enterprise",
+    "usage": [{ "day": "2026-10-01", "apiCalls": 1200, "storageMb": 340 }, { "day": "2026-10-02", "apiCalls": 980, "storageMb": 342 }] },
+  { "id": "t_1002", "name": "Globex", "plan": "team",
+    "usage": [{ "day": "2026-10-01", "apiCalls": 310, "storageMb": 52 }] },
+  { "id": "t_1003", "name": "Initech", "plan": "free",
+    "usage": [{ "day": "2026-10-01", "apiCalls": 12, "storageMb": 1 }] },
+  { "id": "t_1004", "name": "Hooli & Partners", "plan": "team",
+    "usage": [{ "day": "2026-10-01", "apiCalls": 450, "storageMb": 77 }] },
+  { "id": "t_1005", "name": "Acme-Corp", "plan": "free",
+    "usage": [{ "day": "2026-10-01", "apiCalls": 3, "storageMb": 0 }] }
+]

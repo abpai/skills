@@ -15,8 +15,9 @@
 //   --ablate <ablationId>  materialize with the named heading span removed —
 //                          from SKILL.md, or from a sibling workflow module
 //                          when the ablation span names a `file`
+//                          (a `text` span removes exact passages instead)
 //   --omit <skillId>       materialize everything except that skill
-// Both hard-error on a silent no-op (missing file, missing heading, or
+// Both hard-error on a silent no-op (missing file, missing heading or text, or
 // byte-identical output).
 import {
   cpSync,
@@ -26,6 +27,8 @@ import {
   readFileSync,
   writeFileSync,
   readdirSync,
+  lstatSync,
+  realpathSync,
 } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -96,6 +99,44 @@ function isInsidePackage(packageDir: string, candidate: string): boolean {
   const root = resolve(packageDir)
   const target = resolve(candidate)
   return target === root || target.startsWith(root + "/")
+}
+
+/**
+ * Remove each exact passage from `body`. A passage that is missing or occurs
+ * more than once is reported, never silently skipped.
+ */
+export function removeTextSpans(
+  body: string,
+  passages: readonly string[],
+): { result: string; missing: string[] } {
+  let result = body
+  const missing: string[] = []
+  for (const passage of passages) {
+    const first = result.indexOf(passage)
+    if (first === -1 || result.indexOf(passage, first + 1) !== -1) {
+      missing.push(passage)
+      continue
+    }
+    result = result.slice(0, first) + result.slice(first + passage.length)
+  }
+  return { result: result.replace(/\n{3,}/g, "\n\n"), missing }
+}
+
+/**
+ * A symlink resolving to its own package or an ancestor is a cycle (e.g. a
+ * stray `pstack/skills/pstack/pstack -> .`). Copying it recursively fails with
+ * EISDIR and takes the whole lane down, so skip it. Other symlinks (composer's
+ * bin/ wrappers) copy as before.
+ */
+function isCyclicLink(path: string, packageRoot: string): boolean {
+  try {
+    if (!lstatSync(path).isSymbolicLink()) return false
+    const target = realpathSync(path)
+    const root = realpathSync(packageRoot)
+    return root === target || root.startsWith(target + "/")
+  } catch {
+    return false
+  }
 }
 
 /** Remove from `## Heading` through the next same-or-higher heading. */
@@ -202,8 +243,14 @@ function materialize(): void {
     mkdirSync(skillDest, { recursive: true })
     for (const entry of readdirSync(src, { withFileTypes: true })) {
       if (entry.name === "SKILL.md") continue
-      cpSync(join(src, entry.name), join(skillDest, entry.name), {
+      const from = join(src, entry.name)
+      if (isCyclicLink(from, src)) {
+        console.warn(`  skipped cyclic symlink ${rel}/${entry.name}`)
+        continue
+      }
+      cpSync(from, join(skillDest, entry.name), {
         recursive: true,
+        filter: (path) => !isCyclicLink(path, src),
       })
     }
 
@@ -211,6 +258,38 @@ function materialize(): void {
     const baseline = buildEveSkill(description, baselineBody)
     let eveSkill = baseline
     let note = ""
+
+    if (ablation && ablation.skillId === id && ablation.span && "text" in ablation.span) {
+      const { text } = ablation.span
+      const targetFile = ablation.span.file ?? "SKILL.md"
+      const ablationId = ablation.id
+      const cut = (before: string): string => {
+        const { result, missing } = removeTextSpans(before, text)
+        if (missing.length > 0) {
+          throw new Error(
+            `prepare-skills: ablation "${ablationId}" text not found exactly once in ${id}/${targetFile}: ${JSON.stringify(missing[0].slice(0, 80))}`,
+          )
+        }
+        if (result === before) {
+          throw new Error(
+            `prepare-skills: ablation "${ablationId}" is a silent no-op — ${id}/${targetFile} is byte-identical to baseline`,
+          )
+        }
+        return result
+      }
+      if (targetFile === "SKILL.md") {
+        eveSkill = buildEveSkill(description, cut(baselineBody))
+      } else {
+        const modulePath = join(skillDest, targetFile)
+        if (!isInsidePackage(skillDest, modulePath) || !existsSync(modulePath)) {
+          throw new Error(
+            `prepare-skills: ablation "${ablationId}" file "${targetFile}" missing or outside the ${id} package`,
+          )
+        }
+        writeFileSync(modulePath, cut(readFileSync(modulePath, "utf8")))
+      }
+      note = ` [ablated: ${targetFile} text ×${text.length}]`
+    }
 
     if (ablation && ablation.skillId === id && ablation.span && "heading" in ablation.span) {
       const { heading } = ablation.span

@@ -1,0 +1,7 @@
+{
+  "jobs": [
+    { "name": "vacuum", "command": ["echo", "vacuum"], "timeout": 900000, "retries": 1, "retryDelay": 30000 },
+    { "name": "rotate-logs", "command": ["echo", "rotate"], "timeout": 60000 },
+    { "name": "reindex", "command": ["echo", "reindex"], "timeout": 5400000, "retryDelay": 600000, "retries": 2 }
+  ]
+}

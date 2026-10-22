@@ -78,7 +78,7 @@ function findFixtureRoot(): string {
 export const FIXTURE_ROOT: string = findFixtureRoot()
 const EVAL_ROOT = dirname(FIXTURE_ROOT)
 
-type ContainerRun = {
+export type ContainerRun = {
   readonly passed: boolean
   readonly output: string
   readonly infrastructureError?: string
@@ -98,6 +98,10 @@ function runInVerifier(
   opts: {
     readonly env?: Readonly<Record<string, string>>
     readonly mountDependencies?: boolean
+    /** Verifier image; defaults to the pinned Node image. */
+    readonly image?: string
+    /** Docker memory limit; defaults to 256m. */
+    readonly memory?: string
   } = {},
 ): ContainerRun {
   const name = `eve-outcome-${process.pid}-${randomUUID().slice(0, 12)}`
@@ -118,7 +122,7 @@ function runInVerifier(
     "--pids-limit",
     "64",
     "--memory",
-    "256m",
+    opts.memory ?? "256m",
     "--cpus",
     "1",
     "--user",
@@ -148,7 +152,7 @@ function runInVerifier(
   }
 
   args.push(
-    OUTCOME_IMAGE,
+    opts.image ?? OUTCOME_IMAGE,
     "timeout",
     "-s",
     "KILL",
@@ -189,6 +193,22 @@ function runInVerifier(
   }
 
   return { passed: result.status === 0, output }
+}
+
+/**
+ * Run a command in the same locked-down verifier container, for outcome evals
+ * whose fixture needs a different toolchain image (pstack's Bun fixtures).
+ */
+export function runIsolated(
+  dir: string,
+  command: readonly string[],
+  opts: {
+    readonly image: string
+    readonly env?: Readonly<Record<string, string>>
+    readonly memory?: string
+  },
+): ContainerRun {
+  return runInVerifier(dir, command, opts)
 }
 
 function runRuntimeSuite(dir: string, env?: Readonly<Record<string, string>>): ContainerRun {

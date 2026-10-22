@@ -134,7 +134,7 @@ jobs:
       - name: Run live behavioral evals
         env:
           # Subject model per provider (agent/agent.ts); the judge shares the
-          # same key. `openai` reaches gpt-5.6-luna — a Codex model — directly
+          # same key. `openai` reaches gpt-6-luna — a Codex model — directly
           # with a raw `sk-` key; the Vercel gateway is not involved.
           # `anthropic` reaches claude-sonnet-5, the other half of the audience.
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

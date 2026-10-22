@@ -1,0 +1,9 @@
+{
+  "name": "jobrunner",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "run-jobs": "bun src/cli.ts"
+  }
+}
