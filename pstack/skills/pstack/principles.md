@@ -1,9 +1,9 @@
 # Principles
 
 Select a principle when it changes the approach, prevents a concrete mistake,
-or supplies a step or check the work relies on. Keep at most five, those that
-matter most, and open each selected file: a row gives only the trigger, not
-the guidance.
+or supplies a step or check the work relies on. Keep the list short so the
+principles that matter stand out; leave out any that would only restate the
+work. Open each selected file: a row gives only the trigger, not the guidance.
 
 | When | Principle |
 | --- | --- |
@@ -13,7 +13,7 @@ the guidance.
 | Adding or changing validation, parsing, or error handling where input enters from users, files, configuration, the network, or external services | [Boundary discipline](principles/principle-boundary-discipline.md) |
 | A change repeats across many files or sites, or needs a rerunnable check | [Script bulk operations](principles/principle-script-bulk-operations.md) |
 | The same correction or instruction keeps recurring | [Encode lessons in structure](principles/principle-encode-lessons-in-structure.md) |
-| An open decision sets a new UI interaction, architecture, or product behavior policy, and this codebase has no precedent to follow | [Exhaust the design space](principles/principle-exhaust-the-design-space.md) |
+| A still-open decision would set a new UI interaction, architecture, or product behavior, and nothing in the codebase, request, or evidence settles it | [Exhaust the design space](principles/principle-exhaust-the-design-space.md) |
 | A product, UX, or feature-scope tradeoff must be made | [Prioritize usability](principles/principle-prioritize-usability.md) |
 | A planned rewrite or migration runs in phases, and intermediate states tempt compatibility code | [Outcome-oriented execution](principles/principle-outcome-oriented-execution.md) |
 | Trusting, reporting, or acting on a measured number: a speedup, regression, throughput, latency, or eval result | [Explain the number](principles/principle-explain-the-number.md) |
