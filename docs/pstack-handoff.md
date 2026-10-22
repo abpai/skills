@@ -66,11 +66,12 @@ Product status:
 
 Open (details in the dogfood record):
 
-- **Principle-count gate:** 0.4.4 has no numeric cap, but four Eve evals
-  still gate on `atMostPrinciples(5)` and the dogfood grading README fails
-  more than five. Whether to keep, loosen or replace them is a policy choice,
-  left alone. In iteration 7, `plan-design-space` listed 6, two of which only
-  restated its check step.
+- **Principle-count gate (decided):** 0.4.4 has no numeric cap, but four Eve
+  evals keep `atMostPrinciples(5)` and the dogfood grading README keeps its
+  more-than-five rule, as a padding heuristic. A red like iteration 7's
+  `plan-design-space` (6 listed, two only restating its check step) is
+  accepted when the plan is otherwise reasonable. Do not add a numeric cap
+  back to the skill to make the gate pass.
 - **Not rerun at 0.4.4:** Codex (any case), `claude -p` routing, and the
   ablations (last at 0.4.3: `pstack-verify-request-first` and
   `pstack-route-verify` survive, `pstack-plan-missing-state` is flaky,

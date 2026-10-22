@@ -63,8 +63,9 @@ Open frictions at 0.4.4:
 - **Principle count:** without a numeric cap, r7 `p12` #1 listed 7 and Eve
   `plan-design-space` listed 6, two of which only restated its check step.
   The Eve gate `atMostPrinciples(5)` (four evals) and the grading README's
-  more-than-five rule predate 0.4.4; whether to keep, loosen or replace them
-  is a policy choice.
+  more-than-five rule stay as a padding heuristic (user decision, after
+  iteration 7): an occasional red like `plan-design-space` is accepted when
+  the plan is otherwise reasonable.
 - **Verify text (r8, minor):** every Decision gets options although 0.4.4
   limited that in plan only (`verify.md:33-34`); a Decision can come from a
   plan's goal rather than the request; Non-blocking notes are always present
