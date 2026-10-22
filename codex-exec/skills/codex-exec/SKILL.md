@@ -115,10 +115,10 @@ scripts/codex-run.sh review \
 
 Use `--base REF` or `--commit SHA` when that is the requested scope, and
 `--fast` for a quick turnaround. Pass one scope flag: `--base` or `--commit`
-replaces the default `--uncommitted`. With `--prompt`, the wrapper runs plain
-`codex exec` and writes the scope into `prompt.txt`, so `command.txt` shows no
-`review` or scope flag. Keep the review read-only and verify each reported
-finding before forwarding it.
+replaces the default `--uncommitted`. With `--prompt` or `--prompt-file`, the
+wrapper runs plain `codex exec` and writes the scope into `prompt.txt`, so
+`command.txt` shows no `review` or scope flag. Keep the review read-only and
+verify each reported finding before forwarding it.
 
 ## Continue
 
@@ -154,8 +154,9 @@ generated `monitor.sh`. The monitor is finite: it exits when the wrapper
 process recorded in `status.json` is gone without a terminal state, and after
 `CODEX_EXEC_MONITOR_TIMEOUT_SECONDS` (default 3600, `0` disables) as a
 last-resort bound. If your tool calls are capped (for example at 600 seconds),
-set it below that cap and rerun `monitor.sh` after each exit 124 until the run
-reaches a terminal state; a monitor timeout does not stop Codex.
+set it below that cap and rerun `monitor.sh` after each exit 124; a monitor
+timeout does not stop Codex. Any other exit is final: the run's own exit code
+on a terminal state, or 1 when the wrapper died without one.
 
 ## Liveness And Recovery
 
