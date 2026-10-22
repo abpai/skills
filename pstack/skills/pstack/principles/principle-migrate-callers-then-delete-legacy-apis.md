@@ -1,7 +1,7 @@
 # Migrate callers, then delete legacy APIs
 
-When replacing an internal API as part of a simplification or refactor, and
-the project can update all code using it together without breaking external users:
+When a new internal API replaces an old one that still has callers, and the
+project can update all of them together without breaking external users:
 
 - Update the code using the API and remove the old API in the same change or
   coordinated set of changes.

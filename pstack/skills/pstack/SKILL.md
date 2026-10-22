@@ -6,7 +6,7 @@ argument-hint: "plan|verify|auto [task] - e.g. plan fix login retry, verify, aut
 license: MIT
 metadata:
   author: Andy Pai
-  version: "0.4.1"
+  version: "0.4.2"
   upstream_skill: "https://github.com/ericlitman/open-pstack/tree/9046eecb4ec4461374b1fd8cda7bd60abbaa6d9e/plugins/pstack/skills"
 ---
 

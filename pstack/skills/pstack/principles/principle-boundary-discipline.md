@@ -11,9 +11,8 @@ network input, or an external API:
 - Use application concepts in public interfaces. Keep network, storage, and
   framework-specific types inside the code that connects to those systems.
 - Keep business functions pure: compute outputs from inputs without reading
-  or changing outside state.
-- Parse data, build prompts, and calculate scores using that pattern. Keep
-  input/output handling and framework code around those functions.
+  or changing outside state. Keep input/output handling and framework code
+  around those functions.
 - Handle invalid input and external-system failures explicitly. Pass other
   errors to the code responsible for handling them.
 

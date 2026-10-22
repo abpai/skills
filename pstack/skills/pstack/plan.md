@@ -9,11 +9,16 @@ unless a calling workflow, such as auto, continues past it.
 2. Identify the structural decisions and prerequisites that will shape the
    task, including state the approach depends on that the code does not keep
    yet. Note which decisions the evidence settles and which remain open.
-3. Select from [principles.md](principles.md) the principles whose triggers
-   match the task, its findings, or its open decisions. Read their files.
-4. Draft the smallest approach that covers the request and every confirmed
-   cause it depends on. Use the selected principles to challenge it and to
-   settle open decisions. Remove unnecessary steps.
+3. For an open decision with no precedent in this codebase, compare two or
+   three real options before choosing, following
+   [Exhaust the design space](principles/principle-exhaust-the-design-space.md).
+   Then write a rough draft of the smallest approach that covers the request
+   and every confirmed cause it depends on.
+4. Select from [principles.md](principles.md) the principles whose triggers
+   match the task, its findings, or the draft. Read their files, use them to
+   challenge the draft, and revise it. Remove unnecessary steps.
+5. Recheck the revised plan against each selected principle. Keep those that
+   changed it or supply a check it relies on, and drop the rest.
 
 Return only the refined, human-skimmable plan with:
 

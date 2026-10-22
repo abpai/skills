@@ -1,6 +1,7 @@
 # Explain the number
 
-Before trusting, reporting, or acting on performance measurements or evaluation results:
+Before trusting, reporting, or acting on a measured number, such as a speedup,
+regression, throughput, latency, or evaluation result:
 
 - **Ask "why not double?"** Identify the resource or part of the code limiting
   the result: a CPU core, lock, disk, network, or even the tool generating

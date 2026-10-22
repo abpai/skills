@@ -3,8 +3,10 @@
 Create and carry out a verification plan for the implementation. Report
 findings without changing it.
 
-1. Read the original request and identify what success requires before reading
-   the plan. Then inspect the plan and implementation for gaps or deviations.
+1. Read the original request, such as the task or a pull request's
+   description and linked issue, and identify what success requires. If a
+   plan is supplied, read it only after that. Then inspect the implementation,
+   and any plan, for gaps or deviations.
 2. Select relevant principles from [principles.md](principles.md), always
    including [Prove it works](principles/principle-prove-it-works.md), and
    read their files. Review whether the implementation follows them; report
@@ -20,7 +22,9 @@ findings without changing it.
 Return a concise report with these sections, saying "none" for an empty one:
 
 - Requirements: what success requires from the original request, noting any
-  the supplied plan omits or contradicts.
+  that a supplied plan omits or contradicts. When the only statement of the
+  request is the pull request's own description, say so: it can share the
+  implementation's blind spots.
 - The checks run, with their commands, and what they establish.
 - The principles applied, each with the check or finding it shaped.
 - Findings: defects with locations, evidence, and the requirement or
@@ -32,5 +36,5 @@ Return a concise report with these sections, saying "none" for an empty one:
 - Anything unverified: the attempt and its result, or why it cannot run, and
   what is needed to check it.
 
-The original request is the source of requirements; the plan may be wrong.
+The original request is the source of requirements; a plan may be wrong.
 Do not treat missing evidence as success.

@@ -1,6 +1,6 @@
 # Prioritize usability
 
-When choosing product behavior, features, or usability tradeoffs:
+When a product, UX, or feature-scope tradeoff must be made:
 
 - Favor the user's experience over implementation convenience.
 - Justify every feature, control, and option by how it serves the main workflow.

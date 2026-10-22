@@ -1,6 +1,6 @@
 # Attack the premise
 
-When repeated fixes rely on the same assumption and keep failing:
+When two or more fixes that rest on one assumption have failed the same check:
 
 - **Name the assumption.** Write the belief the failed fixes share.
 - **Test it.** Find an observation that would differ if the assumption were

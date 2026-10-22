@@ -3,6 +3,8 @@ import { prompt } from "../support/text"
 import { noFailedSkillLoads, noWrites } from "../support/tools"
 import {
   MODULE,
+  WEBHOOK_EXTRA_ATTEMPT,
+  WEBHOOK_KEY_CHANGES,
   captureState,
   checkUnchanged,
   mentionsAll,
@@ -45,21 +47,11 @@ export default defineEval({
     t.check(turn.message, mentionsAll([/dispatch\.ts/], "locates findings in src/dispatch.ts"))
     t.check(
       turn.message,
-      mentionsAll(
-        [/<=\s*maxAttempts|\b(4|four)\s+(total\s+)?(requests|attempts|calls|deliveries|tries|sends)\b|off[- ]by[- ]one|one (extra|too many)/i],
-        "finds the attempt cap allows a fourth attempt",
-      ),
+      mentionsAll([WEBHOOK_EXTRA_ATTEMPT], "finds the attempt cap allows a fourth attempt"),
     )
     t.check(
       turn.message,
-      mentionsAll(
-        [
-          /idempotency/i,
-          // `retr(y|ies)`: "the key changes between retries" is the finding too.
-          /randomUUID|(new|different|fresh|regenerat\w*|chang\w*|differ\w*)[^.\n]{0,60}\b(key|attempt|retr(y|ies))|\b(per|each|every) (attempt|retry)\b[^.\n]{0,60}(new|different|fresh|key)/i,
-        ],
-        "finds the idempotency key changes between attempts",
-      ),
+      mentionsAll(WEBHOOK_KEY_CHANGES, "finds the idempotency key changes between attempts"),
     )
 
     t.check(turn.toolCalls, ranCommand(/\bbun\b|\bnode\b|\bnpx\b|\btsx\b/, "executed a check")).soft()

@@ -1,13 +1,13 @@
 # Subtract before you add
 
-When changing a system:
+When dead code, redundant checks, or unneeded layers sit where an addition or
+refactor will land:
 
 - Remove obsolete code and unnecessary layers before building on them.
 - Simplify before polishing or adding new behavior.
 - Design for current requirements and how the system is actually used.
 - Add input validation, parsing, and defensive checks for specific requirements
   or failure cases.
-- Remove redundant prompt instructions and excessive templates.
 - Delete references that add no new information rather than leaving empty stubs.
 
 Related principles:

@@ -1,6 +1,7 @@
 # Model the domain
 
-When the design depends on changing state or many conditional decisions:
+When state is spread across flags or many branches, one shape assumption
+repeats across files, or core types and data structures are being chosen:
 
 - Identify the allowed states, the code responsible for them, and the rules
   that must always hold.

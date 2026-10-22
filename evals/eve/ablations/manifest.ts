@@ -165,13 +165,13 @@ export const ABLATIONS: readonly Ablation[] = [
     span: {
       file: "verify.md",
       text: [
-        "Read the original request and identify what success requires before reading\n   the plan. Then ",
-        "The original request is the source of requirements; the plan may be wrong.\n",
+        "Read the original request, such as the task or a pull request's\n   description and linked issue, and identify what success requires. If a\n   plan is supplied, read it only after that. Then ",
+        "The original request is the source of requirements; a plan may be wrong.\n",
       ],
     },
     guardedBy: ["pstack/verify-flawed-plan"],
     hypothesis:
-      "Expected KILLED: these two sentences are the only place telling verify to derive success from the original request rather than the supplied plan, which omits the --since filter the request asked for. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): SURVIVED 2/2; the control with pstack omitted missed --since, so the skill matters but this eval does not isolate these sentences (the prompt itself names --since). Iteration 2 (pstack at 221737ac, --runs 2): SURVIVED 2/2 again. Iteration 3 (fdc6b1eb, --runs 2): SURVIVED 2/2. Iteration 4 (d98be54b, after the wrapper removal, --runs 2): SURVIVED 2/2. Iteration 5 (pstack 0.4.1 at 0ad0de4f, --runs 2): SURVIVED 2/2.",
+      "Expected KILLED: these two sentences are the only place telling verify to derive success from the original request rather than the supplied plan, which omits the --since filter the request asked for. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): SURVIVED 2/2; the control with pstack omitted missed --since, so the skill matters but this eval does not isolate these sentences (the prompt itself names --since). Iteration 2 (pstack at 221737ac, --runs 2): SURVIVED 2/2 again. Iteration 3 (fdc6b1eb, --runs 2): SURVIVED 2/2. Iteration 4 (d98be54b, after the wrapper removal, --runs 2): SURVIVED 2/2. Iteration 5 (pstack 0.4.1 at 0ad0de4f, --runs 2): SURVIVED 2/2. Re-spanned for pstack 0.4.2 (plan now optional; request may come from a pull request), not yet re-measured.",
   },
   {
     id: "pstack-plan-principle-links",
@@ -179,13 +179,13 @@ export const ABLATIONS: readonly Ablation[] = [
     span: {
       file: "plan.md",
       text: [
-        "Select from [principles.md](principles.md) the principles whose triggers\n   match the task, its findings, or its open decisions. Read their files.\n4. ",
+        "Select from [principles.md](principles.md) the principles whose triggers\n   match the task, its findings, or the draft. Read their files, use them to\n   challenge the draft, and revise it. Remove unnecessary steps.\n5. ",
         "- Selected principle names, each linked as `principles/<file>.md` relative to\n  this skill, with a short reason.\n",
       ],
     },
     guardedBy: ["pstack/plan-attack-premise", "pstack/plan-dashed-migration"],
     hypothesis:
-      "Expected KILLED: without the selection step and the output bullet, plan has no instruction to read principles.md, pick principles, or link their files. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): KILLED 2/2 on both evals (no principles.md read, no links, Attack the premise / Migrate callers not selected). Iteration 2 (221737ac, output bullet re-spanned to the new wording): KILLED 2/2 again. Iteration 3 (fdc6b1eb, --runs 2): KILLED 2/2. Iteration 4 (d98be54b, --runs 2): KILLED 2/2. Selection step re-spanned for pstack 0.4.1 (selection now matches task, findings and open decisions, before the draft step). Iteration 5 (pstack 0.4.1 at 0ad0de4f, --runs 2): KILLED 2/2 on the re-spanned text.",
+      "Expected KILLED: without the selection step and the output bullet, plan has no instruction to read principles.md, pick principles, or link their files. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): KILLED 2/2 on both evals (no principles.md read, no links, Attack the premise / Migrate callers not selected). Iteration 2 (221737ac, output bullet re-spanned to the new wording): KILLED 2/2 again. Iteration 3 (fdc6b1eb, --runs 2): KILLED 2/2. Iteration 4 (d98be54b, --runs 2): KILLED 2/2. Selection step re-spanned for pstack 0.4.1 (selection now matches task, findings and open decisions, before the draft step). Iteration 5 (pstack 0.4.1 at 0ad0de4f, --runs 2): KILLED 2/2 on the re-spanned text. Selection step re-spanned again for pstack 0.4.2 (selection after a rough draft, then a recheck), not yet re-measured.",
   },
   {
     id: "pstack-route-verify",

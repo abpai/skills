@@ -351,6 +351,17 @@ export const MODULE = {
   principles: /pstack\/principles\.md\b/,
 } as const
 
+// The two defects seeded in fixture pstack-v04-webhook-retries, as a report
+// states them: the attempt cap allows a fourth attempt, and the
+// Idempotency-Key is regenerated per attempt.
+export const WEBHOOK_EXTRA_ATTEMPT =
+  /<=\s*maxAttempts|\b(4|four)\s+(total\s+)?(requests|attempts|calls|deliveries|tries|sends)\b|off[- ]by[- ]one|one (extra|too many)/i
+export const WEBHOOK_KEY_CHANGES = [
+  /idempotency/i,
+  // `retr(y|ies)`: "the key changes between retries" is the finding too.
+  /randomUUID|(new|different|fresh|regenerat\w*|chang\w*|differ\w*)[^.\n]{0,60}\b(key|attempt|retr(y|ies))|\b(per|each|every) (attempt|retry)\b[^.\n]{0,60}(new|different|fresh|key)/i,
+] as const
+
 // ---------------------------------------------------------------------------
 // Principle selection, graded on content
 

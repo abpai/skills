@@ -6,8 +6,9 @@ Before declaring a task complete:
 - Observe live state directly where it matters; agent self-reports,
   timestamps, summaries, and cached results are not proof of the behavior
   being checked.
-- If verification fails, confirm that the check measures the intended thing
-  before deciding what is wrong with the system.
+- Before relying on a check's result, pass or fail, confirm it can tell
+  correct behavior from incorrect, for example by expecting a different
+  result from inputs the change should affect.
 - Prefer deterministic checks: repeat the same comparison with the same inputs
   and expected result. Use
   [Script Bulk Operations](principle-script-bulk-operations.md) where helpful.

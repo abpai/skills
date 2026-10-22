@@ -1,9 +1,9 @@
 # Exhaust the design space
 
-Use only for a novel UI interaction, architectural decision, or product
-behavior policy with no useful precedent in the codebase, even when a common
-approach exists elsewhere. Skip routine changes and patterns this codebase
-already establishes.
+Use only when an open decision sets a new UI interaction, architecture, or
+product behavior policy and this codebase has no precedent to follow, even
+when a common approach exists elsewhere. Skip routine changes and patterns
+this codebase already establishes.
 
 - Build two or three small prototypes of meaningfully different approaches.
   When only planning, compare the options, recommend one, and propose the

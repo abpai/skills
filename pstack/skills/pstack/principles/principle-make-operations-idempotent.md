@@ -1,7 +1,7 @@
 # Make operations idempotent
 
-When designing commands or processing steps that may restart or retry, make
-them safe to repeat—even after a partial failure.
+When designing commands or processing steps that may crash, restart, or retry
+partway, make them safe to repeat, even after a partial failure.
 
 - Read the current state, compare it with the goal, and apply only the changes
   still needed. Do not assume the previous run finished.
