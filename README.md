@@ -41,8 +41,27 @@ researches and writes a short implementation plan, `verify` checks an
 implementation against the original request with executed evidence, and `auto`
 plans, implements, verifies, and fixes within scope. Use
 `$pstack plan|verify|auto [task]` in Codex or `/pstack plan|verify|auto [task]`
-in Claude Code. Adapted from
-[open-pstack](https://github.com/ericlitman/open-pstack).
+in Claude Code.
+
+### pstack upstream
+
+`pstack` is adapted from [poteto](https://x.com/poteto)'s pstack, which
+[backnotprop/pstack](https://github.com/backnotprop/pstack) mirrors for Claude
+Code, Codex, and other agents. The port started from
+[open-pstack](https://github.com/ericlitman/open-pstack). To use the full
+original set instead, remove this one and install the upstream skills:
+
+```bash
+/plugin uninstall pstack@abpai-skills
+npx skills add backnotprop/pstack
+```
+
+The local version keeps only the code-quality principles and three modes:
+`plan`, `verify`, and `auto`. It leaves out the multi-turn and teaching skills
+(such as `teach`, `how`, `tdd`, and `interrogate`), which other plugins here
+cover. It also leaves out the context-budget, delegation, and approval rules,
+which belong to the harness. See [the dogfood record](docs/pstack-dogfood.md)
+for what was changed and tested.
 
 ### HumanLayer upstream skills
 
