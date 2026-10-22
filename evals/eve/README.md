@@ -314,8 +314,15 @@ parser and an empty diff, and the principle predicates reject a padded plan.
   killed `pstack-plan-principle-links` and `pstack-route-unsupported-stop`
   2/2; `pstack-verify-request-first`, `pstack-route-verify`, and now
   `pstack-plan-missing-state` survived 2/2, so the missing-state clause is no
-  longer measurably guarded. All text spans still match. This lane runs
-  OpenAI only; Codex host behavior is unverified here.
+  longer measurably guarded. All text spans still match.
+  Iteration 4 (d98be54b, after the hidden `plan`/`verify`/`auto` wrapper
+  skills were removed; no eval or span referenced them): two full runs went
+  10/11 and 11/11, with the same red as iteration 3 (`plan-design-space`
+  picked one conflict strategy without comparing alternatives, so Exhaust the
+  design space was not selected). Ablation (`--runs 2`, green baselines)
+  repeated iteration 3 exactly: `pstack-plan-principle-links` and
+  `pstack-route-unsupported-stop` KILLED 2/2; the other three SURVIVED 2/2.
+  This lane runs OpenAI only; Codex host behavior is unverified here.
 
 Eve is public preview — the version is pinned in `package.json` and the
 lockfile; bump it deliberately. The verifier's Node image is pinned by digest

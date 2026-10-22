@@ -171,7 +171,7 @@ export const ABLATIONS: readonly Ablation[] = [
     },
     guardedBy: ["pstack/verify-flawed-plan"],
     hypothesis:
-      "Expected KILLED: these two sentences are the only place telling verify to derive success from the original request rather than the supplied plan, which omits the --since filter the request asked for. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): SURVIVED 2/2; the control with pstack omitted missed --since, so the skill matters but this eval does not isolate these sentences (the prompt itself names --since). Iteration 2 (pstack at 221737ac, --runs 2): SURVIVED 2/2 again. Iteration 3 (fdc6b1eb, --runs 2): SURVIVED 2/2.",
+      "Expected KILLED: these two sentences are the only place telling verify to derive success from the original request rather than the supplied plan, which omits the --since filter the request asked for. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): SURVIVED 2/2; the control with pstack omitted missed --since, so the skill matters but this eval does not isolate these sentences (the prompt itself names --since). Iteration 2 (pstack at 221737ac, --runs 2): SURVIVED 2/2 again. Iteration 3 (fdc6b1eb, --runs 2): SURVIVED 2/2. Iteration 4 (d98be54b, after the wrapper removal, --runs 2): SURVIVED 2/2.",
   },
   {
     id: "pstack-plan-principle-links",
@@ -185,7 +185,7 @@ export const ABLATIONS: readonly Ablation[] = [
     },
     guardedBy: ["pstack/plan-attack-premise", "pstack/plan-dashed-migration"],
     hypothesis:
-      "Expected KILLED: without the selection step and the output bullet, plan has no instruction to read principles.md, pick principles, or link their files. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): KILLED 2/2 on both evals (no principles.md read, no links, Attack the premise / Migrate callers not selected). Iteration 2 (221737ac, output bullet re-spanned to the new wording): KILLED 2/2 again. Iteration 3 (fdc6b1eb, --runs 2): KILLED 2/2.",
+      "Expected KILLED: without the selection step and the output bullet, plan has no instruction to read principles.md, pick principles, or link their files. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): KILLED 2/2 on both evals (no principles.md read, no links, Attack the premise / Migrate callers not selected). Iteration 2 (221737ac, output bullet re-spanned to the new wording): KILLED 2/2 again. Iteration 3 (fdc6b1eb, --runs 2): KILLED 2/2. Iteration 4 (d98be54b, --runs 2): KILLED 2/2.",
   },
   {
     id: "pstack-route-verify",
@@ -197,7 +197,7 @@ export const ABLATIONS: readonly Ablation[] = [
     },
     guardedBy: ["pstack/verify-broken-impl", "pstack/verify-check-cannot-run"],
     hypothesis:
-      "Expected KILLED: with no verify route, `pstack verify ...` is an unsupported mode, so verify.md should not load and the review should not run. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): SURVIVED 2/2 — the model still found verify.md from the usage line and the other `verify` mentions, so the bullet alone is redundant for routing (control with pstack omitted failed). Iteration 2 (221737ac, --runs 2): SURVIVED 2/2 again, even with the explicit not-exactly-plan|verify|auto stop rule. Iteration 3 (fdc6b1eb, --runs 2): SURVIVED 2/2.",
+      "Expected KILLED: with no verify route, `pstack verify ...` is an unsupported mode, so verify.md should not load and the review should not run. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): SURVIVED 2/2 — the model still found verify.md from the usage line and the other `verify` mentions, so the bullet alone is redundant for routing (control with pstack omitted failed). Iteration 2 (221737ac, --runs 2): SURVIVED 2/2 again, even with the explicit not-exactly-plan|verify|auto stop rule. Iteration 3 (fdc6b1eb, --runs 2): SURVIVED 2/2. Iteration 4 (d98be54b, --runs 2): SURVIVED 2/2.",
   },
   {
     id: "pstack-route-unsupported-stop",
@@ -209,7 +209,7 @@ export const ABLATIONS: readonly Ablation[] = [
     },
     guardedBy: ["pstack/route-unsupported-mode"],
     hypothesis:
-      "Expected KILLED: this sentence (added in 221737ac) is the only unsupported-mode rule left in SKILL.md; without it `pstack review ...` has nothing telling the model to show usage instead of reviewing. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): KILLED 2/2 (read verify.md, no usage line, read principle files); unmutated baseline green. Iteration 3 (fdc6b1eb, --runs 2): KILLED 2/2.",
+      "Expected KILLED: this sentence (added in 221737ac) is the only unsupported-mode rule left in SKILL.md; without it `pstack review ...` has nothing telling the model to show usage instead of reviewing. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): KILLED 2/2 (read verify.md, no usage line, read principle files); unmutated baseline green. Iteration 3 (fdc6b1eb, --runs 2): KILLED 2/2. Iteration 4 (d98be54b, --runs 2): KILLED 2/2.",
   },
   {
     id: "pstack-plan-missing-state",
@@ -222,7 +222,7 @@ export const ABLATIONS: readonly Ablation[] = [
     },
     guardedBy: ["pstack/plan-design-space"],
     hypothesis:
-      "Expected KILLED: the clause (added in 221737ac) is the only prompt to surface state the code does not keep yet, which plan-design-space checks as the missing base/last-synced state. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): KILLED 2/2, but only one kill was on this behavior (missing base state + Exhaust not selected); the other failed only Prioritize usability, which this clause does not touch. Treat as 1 clean kill, not 2. Iteration 3 (fdc6b1eb, --runs 2): SURVIVED 2/2: the model named the missing base state without this clause (possibly because 9fb7f086 asks plan pointers for findings and assumptions), so the clause is no longer measurably guarded.",
+      "Expected KILLED: the clause (added in 221737ac) is the only prompt to surface state the code does not keep yet, which plan-design-space checks as the missing base/last-synced state. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): KILLED 2/2, but only one kill was on this behavior (missing base state + Exhaust not selected); the other failed only Prioritize usability, which this clause does not touch. Treat as 1 clean kill, not 2. Iteration 3 (fdc6b1eb, --runs 2): SURVIVED 2/2: the model named the missing base state without this clause (possibly because 9fb7f086 asks plan pointers for findings and assumptions), so the clause is no longer measurably guarded. Iteration 4 (d98be54b, --runs 2): SURVIVED 2/2 again.",
   },
   {
     id: "omit-codex-session",
