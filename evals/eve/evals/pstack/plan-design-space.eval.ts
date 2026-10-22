@@ -35,14 +35,14 @@ import {
 export default defineEval({
   description:
     "pstack plan selects Exhaust the design space and Prioritize usability for a novel conflict-handling decision.",
-  // QUARANTINED 2026-10-21: flips run to run with the skill text unchanged.
-  // After the Exhaust trigger was widened (b2715a4a) both principle gates
-  // passed in 2 of 2 iteration-1 runs, but run 2 failed the base-state gate:
-  // the plan chose "preserve both" without saying how sync can tell a
-  // two-sided edit from a one-sided one (no last-synced record exists). That
-  // is a real plan gap, not a regex miss, so the gate stays as written. Run
-  // manually: bunx eve eval pstack/plan-design-space
-  tags: ["quarantine", "pstack", "contract"],
+  // Quarantined 2026-10-21: iteration 1 run 2 chose "preserve both" without
+  // saying how sync can tell a two-sided edit from a one-sided one (no
+  // last-synced record exists). Back in `live` after 221737ac added "state the
+  // approach depends on that the code does not keep yet" to plan.md: 6 of 6
+  // runs at that snapshot named the missing state and selected both
+  // principles (iteration 2: two full runs, the ablate baseline, three votes;
+  // the baseline run first failed on a too-narrow regex, widened below).
+  tags: ["live", "pstack", "contract"],
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-p12-notes-sync", "notes-sync")
@@ -66,7 +66,9 @@ export default defineEval({
     t.check(
       turn.message,
       mentionsAll(
-        [/\bbase(line)?\b|last[- ]?sync|common ancestor|merge[- ]base|three[- ]way|\bhistory\b|(version|sync) (metadata|record)/i],
+        // Iteration 2 (ablate baseline) wrote "The current code has no record
+        // of a previous shared version" and missed the narrower alternatives.
+        [/\bbase(line)?\b|last[- ]?sync|common ancestor|merge[- ]base|three[- ]way|\bhistory\b|(version|sync) (metadata|record)|record of (a|the) (previous|prior|last)|(previous|prior|last)[- ](shared|synced|common) (version|copy|state)/i],
         "names the missing last-synced/base state needed to detect a conflict",
       ),
     )

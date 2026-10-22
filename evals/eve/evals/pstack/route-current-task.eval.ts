@@ -52,7 +52,10 @@ export default defineEval({
     t.check(turn.toolCalls, readFileMatching(MODULE.plan, "read pstack/plan.md"))
 
     // It planned the conversation's task rather than asking or printing usage.
-    t.check(turn.message, mentionsAll([/account\./, /acct/], "plans the acct. -> account. rename"))
+    // The new prefix plus either the old one or the word rename: iteration-2
+    // run 2 planned the rename ("Rename the four account events to
+    // `account.*`") without spelling `acct` and failed an /acct/ gate.
+    t.check(turn.message, mentionsAll([/account\./, /\bacct\b|renam/i], "plans the acct. -> account. rename"))
     // Soft: this eval guards routing. Measured 2026-10-21 (gpt-6-luna): the
     // plan named the dynamic name in trail.ts but omitted a rerunnable
     // leftover search in 1 of 2 runs and never selected Script bulk

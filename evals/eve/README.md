@@ -294,10 +294,16 @@ parser and an empty diff, and the principle predicates reject a padded plan.
   went 10/11 each, with a different eval red in each:
   `route-unsupported-mode` (reviewed `pstack review ...` as verify; red in
   3 of 6 runs overall) and `plan-design-space` (omitted the missing
-  last-synced state in 1 of 2). Both now carry the `quarantine` tag; their red
-  runs are skill findings, not grader noise. Ablation (`--runs 2`) killed
-  `pstack-plan-principle-links`; `pstack-verify-request-first` and
-  `pstack-route-verify` survived, so those sentences are not yet guarded.
+  last-synced state in 1 of 2). Both were quarantined. Iteration 2 (pstack
+  at 221737ac, which made the unsupported-mode stop rule explicit and asked
+  plan for state the code does not keep yet): two full runs went 11/11 and
+  10/11 (the red was a too-strict `/acct/` gate in `route-current-task`, now
+  widened), and both formerly quarantined evals were green 6 of 6 at that
+  snapshot, so they are back in `live`. Ablation (`--runs 2`) killed
+  `pstack-plan-principle-links`, `pstack-route-unsupported-stop`, and
+  `pstack-plan-missing-state` (one clean kill of two);
+  `pstack-verify-request-first` and `pstack-route-verify` survived in both
+  iterations, so those sentences are not yet guarded.
   pstack's flat modules have no `##` headings, so these entries use `text`
   spans (exact passages) instead.
 

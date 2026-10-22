@@ -24,13 +24,13 @@ import {
 // the skill, which this gate exists to catch.
 export default defineEval({
   description: "pstack with an unsupported mode shows usage instead of reviewing anyway.",
-  // QUARANTINED 2026-10-21: passes or fails on run-to-run variance with the
-  // skill text unchanged — red in 2 of 4 authoring runs and 1 of 2 iteration-1
-  // runs (the model read verify.md and principle files and ran the tests).
-  // The red runs are a real routing finding against SKILL.md's unsupported-mode
-  // rule, not grader noise; it returns to `live` once the skill holds across
-  // repeated runs. Run manually: bunx eve eval pstack/route-unsupported-mode
-  tags: ["quarantine", "pstack", "routing"],
+  // Quarantined 2026-10-21 after red runs (2 of 4 authoring, 1 of 2
+  // iteration 1) at the old SKILL.md. Back in `live` after 221737ac made the
+  // unsupported-mode rule explicit ("not exactly plan, verify, or auto ...
+  // stop; do not map synonyms such as review"): 6 of 6 green at that snapshot
+  // (iteration 2: two full runs, the ablate baseline, three votes), and
+  // ablating that sentence turns it red 2 of 2 (pstack-route-unsupported-stop).
+  tags: ["live", "pstack", "routing"],
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-v05-pagekit-slugs", "pagekit")
