@@ -19,7 +19,7 @@ const CHECK_STEPS: Step[] = [
 
 const INTEGRATION_STEPS: Step[] = [
   ["materialize skills from canonical sources", "prepare-skills"],
-  ["pull pinned verifier images", "outcome:pull", 250_000],
+  ["pull pinned outcome verifier images", "outcome:pull", 250_000],
   ["outcome verifier isolation", "test:outcome-isolation", 180_000],
   ["smoke eval (mock model, no secrets)", "eval:smoke", 300_000],
 ];

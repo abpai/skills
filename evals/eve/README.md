@@ -125,7 +125,7 @@ Relevant PR changes run two independent jobs without secrets or model spend:
   coverage, live coverage controls and eval discovery. No Docker required.
 - `harness-smoke` (`bin/skills evals integration`): Docker verifier isolation
   and a complete mock-model session. Docker availability has a 10-second limit,
-  the pinned image pull has a 2-minute limit, and session boot has a 5-minute
+  each pinned image pull has a 2-minute limit, and session boot has a 5-minute
   limit. Steps announce their limits and stream progress while running.
 
 `bin/skills evals smoke` runs both parts locally, with the fast checks first.
