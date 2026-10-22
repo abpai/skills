@@ -264,4 +264,10 @@ with this record added:
   discoverable by the npx installer. Discovery only, not an install.
 - `git diff --check` passed. In `evals/eve`: `typecheck`, `test:catalog`
   (22 public skills), and `test:coverage` (45 live evals) passed.
-- Version gate on the committed tree: see the handoff's current state.
+- `bun scripts/skill-metadata.ts check-version-bump origin/main` on the
+  committed tree (`91f1bc2b`, clean worktree), exit 0:
+
+  ```text
+  [OK] pstack: new -> 0.4.0 (pstack/skills/pstack/SKILL.md)
+  Checked 1 plugin(s). All changed plugins have proper version bumps.
+  ```
