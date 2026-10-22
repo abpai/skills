@@ -118,9 +118,18 @@ trim, or when a result looks model-specific.
 
 ## CI: opt-in only
 
-`harness-smoke` runs on every PR. It needs no secrets, spends nothing, and
-catches harness rot. The live lane costs real tokens, so it **never** runs just
-because a PR was opened. Ask for it one of two ways:
+Relevant PR changes run two independent jobs without secrets or model spend:
+
+- `harness-checks` (`bin/skills evals check`): packaging, typechecking, catalog
+  coverage, live coverage controls and eval discovery. No Docker required.
+- `harness-smoke` (`bin/skills evals integration`): Docker verifier isolation
+  and a complete mock-model session. Docker availability has a 10-second limit,
+  the pinned image pull has a 2-minute limit, and session boot has a 5-minute
+  limit. Steps announce their limits and stream progress while running.
+
+`bin/skills evals smoke` runs both parts locally, with the fast checks first.
+The live lane waits for both jobs and costs real tokens, so it **never** runs
+just because a PR was opened. Ask for it one of two ways:
 
 ```bash
 # Manual, any branch, any provider, optionally a subset
@@ -132,7 +141,7 @@ gh workflow run eve-evals.yml --ref <branch> -f filter=contracts/harness-d7-safe
 Or add the **`run-evals`** label to a same-repo PR. That suits a stack squashed
 into one PR and ready for a real check. The label is **single-shot**: exactly
 the labeling moment triggers one full run, and later pushes run only
-`harness-smoke`. To re-prove after a push, remove and re-add the label, or
+the two harness jobs. To re-prove after a push, remove and re-add the label, or
 dispatch.
 
 ### Cost profile

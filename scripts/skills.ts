@@ -5,7 +5,7 @@
 //   skills gate [ids...]         the full lane CI runs, in order, stopping at the first failure
 //   skills fix                   rewrite derived version surfaces (manifests, versions.json, docs cards)
 //   skills bump <plugin> [level] bump a plugin once relative to the base, then fix
-//   skills evals smoke|live      Eve behavioral evals (not a gate: Docker + Node >= 24)
+//   skills evals check|integration|smoke|live   Eve checks and behavioral evals
 //
 // Exit codes: 0 ok, 1 a gate failed, 2 usage error, 3 prerequisite missing.
 
@@ -31,7 +31,9 @@ Commands:
   fix                          rewrite plugin.json versions, versions.json and docs/index.html cards
   bump <plugin> [patch|minor|major]
                                bump a plugin's version once relative to the base, then fix
-  evals smoke                  Eve harness smoke (mock model; needs Docker + Node >= 24)
+  evals check                  packaging, types, coverage and discovery (Node >= 24; no Docker)
+  evals integration            Docker isolation and mock-model session boot (Node >= 24)
+  evals smoke                  both check and integration
   evals live [eval ids...]     Eve live evals (spends model tokens)
 
 Options:
@@ -243,9 +245,9 @@ async function main(argv: string[]): Promise<number> {
     case "evals": {
       const [mode, ...ids] = options.positionals;
       const rep = new Reporter();
-      if (mode === "smoke") return evalsSmoke(ROOT, rep);
+      if (mode === "check" || mode === "integration" || mode === "smoke") return evalsSmoke(ROOT, rep, mode);
       if (mode === "live") return evalsLive(ROOT, ids, rep);
-      throw new UsageError("evals needs smoke or live");
+      throw new UsageError("evals needs check, integration, smoke or live");
     }
     default:
       throw new UsageError(`unknown command ${command}`);

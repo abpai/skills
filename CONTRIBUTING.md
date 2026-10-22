@@ -117,9 +117,11 @@ report. Exit codes: 0 ok, 1 failed, 2 usage error, 3 prerequisite missing.
 `scripts/validate-skills.sh` still works and forwards to `bin/skills`.
 
 Eve behavioral evals are not a gate because they need Docker and Node >= 24,
-and the live suite spends model tokens. `bin/skills evals smoke` runs the
-free mock-model harness check CI runs on every PR; `bin/skills evals live
-[eval ids...]` runs real sessions.
+and the live suite spends model tokens. `bin/skills evals check` runs packaging,
+typechecking, coverage controls and discovery without Docker.
+`bin/skills evals integration` runs Docker isolation and mock-model session boot.
+CI runs these as independent jobs; `bin/skills evals smoke` runs both locally.
+`bin/skills evals live [eval ids...]` runs real sessions.
 
 ## Pre-commit Hook
 
