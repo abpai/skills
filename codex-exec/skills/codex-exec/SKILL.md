@@ -114,8 +114,11 @@ scripts/codex-run.sh review \
 ```
 
 Use `--base REF` or `--commit SHA` when that is the requested scope, and
-`--fast` for a quick turnaround. Keep the review read-only and verify each
-reported finding before forwarding it.
+`--fast` for a quick turnaround. Pass one scope flag: `--base` or `--commit`
+replaces the default `--uncommitted`. With `--prompt`, the wrapper runs plain
+`codex exec` and writes the scope into `prompt.txt`, so `command.txt` shows no
+`review` or scope flag. Keep the review read-only and verify each reported
+finding before forwarding it.
 
 ## Continue
 
@@ -150,7 +153,9 @@ not daemonize; use the caller's background-process facility, then wait on the
 generated `monitor.sh`. The monitor is finite: it exits when the wrapper
 process recorded in `status.json` is gone without a terminal state, and after
 `CODEX_EXEC_MONITOR_TIMEOUT_SECONDS` (default 3600, `0` disables) as a
-last-resort bound.
+last-resort bound. If your tool calls are capped (for example at 600 seconds),
+set it below that cap and rerun `monitor.sh` after each exit 124 until the run
+reaches a terminal state; a monitor timeout does not stop Codex.
 
 ## Liveness And Recovery
 
@@ -168,7 +173,8 @@ side-effectful MCP tools or hooks, a replayed prompt can repeat those side
 effects; pass `--stall-timeout 0` for such prompts and supervise via
 `monitor.sh` instead.
 
-`--timeout` is a hard child-process deadline, not a monitor-detach operation.
+`--timeout` and `--stall-timeout` take seconds. `--timeout` is a hard
+child-process deadline, not a monitor-detach operation.
 Use `--stall-timeout 0` or `--timeout 0` only when another supervisor owns that
 limit.
 
