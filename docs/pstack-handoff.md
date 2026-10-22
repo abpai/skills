@@ -6,8 +6,9 @@ Finish the general-purpose pstack plugin for Codex and Claude. Keep its text
 short, concrete, and independent of Garage roles or a particular harness.
 
 All 24 upstream principles have been considered. Version 0.4.0 routes `plan`,
-`verify`, and `auto` from the umbrella, with hidden wrappers, and the router
-stops with usage on any other mode. Implementation items 1-4 below are done.
+`verify`, and `auto` from the umbrella, the only entrypoint (`/pstack <mode>`
+in Claude, `$pstack <mode>` in Codex), and the router stops with usage on any
+other mode. Implementation items 1-4 below are done.
 A `claude -p` host smoke and two live Eve iterations (at `221737ac`) are
 recorded in [the dogfood record](pstack-dogfood.md#pstack-040-plan-verify-and-auto).
 The first dogfood round there is superseded by the
@@ -44,9 +45,9 @@ Unverified and open (details in the dogfood record):
 - Plan principle links show paths and resolve only inside the skill.
 - Substitute-check scope is unbounded.
 - Some r1/r2 grades were not recorded.
-- `/pstack:verify|plan|auto` wrappers are silent no-ops in `claude -p`.
-  Interactive Claude and `/pstack:pstack verify|auto` through the host were
-  not run.
+- The hidden `plan`/`verify`/`auto` wrappers were removed because
+  `/pstack:verify` was a silent no-op in `claude -p`; `/pstack <mode>` routes
+  all three on a `claude -p` host. Interactive Claude was not run.
 
 Key files:
 
@@ -89,11 +90,13 @@ Key files:
 2. Check all retained principles are discoverable through the index, with useful
    triggers and valid relative links. Check for unresolved references and overlap.
 3. Route `plan`, `verify`, and `auto` in the umbrella, accepting the existing
-   optional `--` prefix. Update the argument hint and description. Add matching
-   hidden wrappers using the existing plan wrapper pattern if needed for the
-   repository's namespaced command convention. Preserve explicit-only policy.
-4. Keep instructions in the shared modules; wrappers should only route and pass
-   inputs. Preserve current-task fallback and clear missing-input behavior.
+   optional `--` prefix. Update the argument hint and description. Preserve
+   explicit-only policy. Per-mode wrappers were added, then removed: Claude
+   does not register hidden wrappers as commands, so the umbrella is the only
+   entrypoint.
+4. Keep instructions in the shared modules; the umbrella only routes and
+   passes inputs. Preserve current-task fallback and clear missing-input
+   behavior.
 
 The handoff preparation moved auto.md and verify.md from the plugin root into
 the shared module directory so their existing relative links resolve. Their

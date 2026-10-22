@@ -34,7 +34,7 @@ is complete; behavioral validation is tracked in `docs/pstack-handoff.md`.
 ## Supporting documents
 
 - `pstack/skills/pstack/verify.md` and `auto.md`: approved; routed from
-  `pstack/skills/pstack/SKILL.md` and hidden `verify`/`auto` wrappers in 0.4.0.
+  `pstack/skills/pstack/SKILL.md` in 0.4.0.
 
 - `pstack/skills/pstack/benchmark-checklist.md`: approved after restoring fair
   tuning, capacity arithmetic, measurement evidence, and per-run checks.
@@ -97,3 +97,9 @@ review them in the draft PR.
   mode is exactly `plan`, `verify`, or `auto`, and does not map synonyms such as
   `review`. `plan.md` asks for state the approach depends on that the code does
   not keep yet, and links selected principles as `principles/<file>.md`.
+- Entrypoints: the hidden `plan`, `verify`, and `auto` wrapper skills were
+  removed, leaving the `pstack` umbrella as the only entrypoint. Claude does
+  not register `user-invocable: false` skills as commands, so `/pstack:verify`
+  silently did nothing in `claude -p`, while `/pstack verify ...` routed
+  correctly. The user chose `/pstack plan|verify|auto` over the wrappers.
+  Mode text is unchanged.
