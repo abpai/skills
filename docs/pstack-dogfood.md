@@ -218,7 +218,10 @@ C = Claude subagent, X = Codex CLI.
 | `p08` plan, C/X | Parallel mirror sync losing state and redoing work after a crash. Both named the shared `state.json`/`.tmp` race, chose per-worker records over a lock, removed the unconditional `rm -rf`, kept `mirror-status` working. C reproduced the race 6/6. **Pass** ×2. | C: rsync path-semantics detail; the interruption check was a failing fetch, not a killed parent. X: invented overlapping-invocation and stale-lock handling; an assumption (refresh after full success) stated as a decision. | Open, low. |
 | `v09` verify, C/X | "~3x faster" cache claim. Both found the asymmetric `RESOLVE_TRACE=1` baseline and the warm 30-resolve workload, re-measured fairly (~1.4x warm, ~1.0x cold, CLI no gain), kept the change, recommended new CHANGELOG wording, no edits. **Pass** ×2. | X did not name the violated principle; slow skill discovery (host). | None needed. |
 | `p10` plan, X | Bare `pstack plan` after a message asking for the `acct.*` → `account.*` rename and an end to hand-typed event names. Used the prior message (no usage line); caught computed names in the audit trail; automated check in `bun test` plus a derived name type, noting Bun does not type-check; docs and tests. **Pass with friction.** | Did not select Script bulk operations or plan a scripted rename with a rerunnable leftover search; did not retire the checklist reminder. Eve `route-current-task` shows the same miss. | Open, low. |
-| `p10` plan, C | Same task. The ledger handed to this write-up was truncated after criterion 1 (fallback met). | The rest of this row and the C rows for `p11`, `p12`, `r13` were not in the input, so they are not reported here. | Re-record from the subagent transcripts if they are needed. |
+| `p10` plan, C | Same task. Used the prior message; guard test `tests/event-names.test.ts` as the rerunnable leftover check, caught `` `acct.${action}` `` in `audit/trail.ts`, `EventName` union left optional (no tsc), CONTRIBUTING bullet replaced by a pointer, no aliases, docs and tests, run dir clean. Selected Script bulk operations and Encode lessons in structure. **Pass.** | Did not select Type system discipline; used only the verification half of Script bulk operations (renames listed per site). | Open, low. |
+| `p11` plan, C | Partial shipments. `shipments: {trackingNumber, itemIds}[]` instead of another flag, label computed with stale o-103 named, cancel/refund rules in one place, three open questions, legacy conversion on load, run dir clean. **Pass with friction.** | Selected only Model the domain of four targets: Redesign from first principles never read, Type system discipline read and rejected (four booleans kept), Minimize reader load not cited. | `principles.md` triggers for Redesign and Model the domain overlap; Type system trigger reads as signature work. Open, medium. |
+| `p12` plan, C | Base-state prerequisite, unattended reasoning, no duplicate conflict copies, run dir clean. **Fail** on criterion 2 (one mechanism asserted; Exhaust the design space never read) and criterion 5 (two open questions out of scope or answered by the README). | Same causes as `p12` X, plus `plan.md` drafting the approach before selecting principles and having no slot for alternatives. | Same repair as `p12` X. |
+| `r13` route, C | Answer was exactly the usage line; read only `SKILL.md`; no findings; fingerprint unchanged. **Pass.** | None. | None needed. |
 | `p11` plan, X | Partial shipments. Parcel records instead of more booleans, legacy JSON conversion, new cancel/refund rules, one useful open question. **Pass with friction.** | Did not select Redesign from first principles; stale-label cache recomputed, not removed. | Open, low. |
 | `p12` plan, X | Conflicting note edits across devices. Added a last-synced fingerprint (base state), unattended path, no duplicate conflict copies. **Fail** on criterion 2: asserted one approach without comparing options; Exhaust the design space not selected. | Exhaust trigger covered only "UI interaction or architectural decision", not a product behavior policy. | Repaired in `b2715a4a`; rechecked by Eve `plan-design-space` (below), not by a fresh dogfood rerun. |
 | `r13` route, X | `$pstack review the slugify change` on a dirty fixture. Showed usage, pointed to `verify`, no review, no edits. **Pass.** | Eve iteration 1 showed the same prompt treated as verify in 3 of 6 gpt-6-luna runs. The rule sat last in SKILL.md after the routing list. | Repaired in `221737ac` (explicit "not exactly plan/verify/auto → usage and stop; do not map synonyms"). |
@@ -257,8 +260,8 @@ Updated after the [corrected round](#pstack-040-corrected-dogfood-round).
   - Plan principle links show file paths and resolve only inside the skill.
   - The Boundary discipline trigger is too broad.
   - A substitute check's scope is unbounded (left as harness policy).
-- Grades for r1 C `p11`/`p12`/`r13`, r2 C `p08`/`v09`/`p10`/`p11`/`p12`, and
-  the matching Codex runs were not available to the write-up.
+- The missing r1/r2 grades were backfilled from the workflow journals. The
+  new open item is the principle count: `p12` C listed 6 in r1 and r2.
 - Eve was not re-run after `9fb7f086`. The last Eve pass is at `221737ac`.
   The request-first sentences in `verify.md` and the verify routing bullet
   survived ablation there.
@@ -351,11 +354,13 @@ what grading describes:
 | `v07` verify, C | `make test` was blocked by the registry, which it reported. Ran the suite on a disclosed stand-in Postgres 17, made no edits, fingerprint unchanged. **Fail:** the bolded Prove it works was missing. | Read only the principle index, and built its stand-in with network installs | "index only; I did not open any principle files" | The verify report had no slot for applied principles, nothing required opening the principle files, and nothing covered blocked checks. |
 | `p08` plan, C | Named the shared `state.json`/`.tmp` race and reproduced it with 20 mirrors at `--jobs 4`. Chose per-worker records over a lock and removed the unconditional `rm -rf`. **Fail** on criterion 4: the crash-resume test was a failing fetch, not a killed parent. | Tested one failure point only, and did not select Prove it works | Tests section of the plan | The idempotency check was one closing bullet that `plan.md` did not pull into the success checks; the Prove it works trigger read as end-of-task. |
 | `v09` verify, C | Found both measurement problems (asymmetric `RESOLVE_TRACE=1`, warm 30-resolve workload). Re-measured at ~0.96x cold and ~1.5x warm. Recommended rewording, made no edits. **Pass.** | None. |
-| `p10` plan, C | **Fail:** the bolded Script bulk operations was missing. The rest of this grade was truncated in the input to this write-up. | Trigger was too narrow for a rename (repair item 7). |
-| `p11`, `p12`, `r13`, C | Outputs exist. The grades were not in the input to this write-up, so none is reported. `r13` replied with only the usage line. | Not graded here. |
-| Codex, 9 graded runs (`p01`, `p02`, `v03`, `v04`, `v05`, `a06`, `v07`, `p08`, `v09`) | **Fail ×9.** In 8 runs the transcript has no read of `SKILL.md` or a module. `p02` and `p08` implemented code in plan mode. `v09` read `.agents/skills/pstack/SKILL.md` and `principles.md`, but no principle file; it missed the warm-cache flaw and selected no principle. Grades for `p10`, `p11`, `p12` and `r13` X were not in the input. | Host or harness, not skill text: Codex did not inject the skill. In some runs the prompt was plain `pstack <mode>`, not `$pstack`, and `allow_implicit_invocation: false` then blocks it. `find`/`rg` without `-L` do not follow the `.agents/skills` symlinks. For `v09` X: `verify.md` linked the index, not the principle files. |
+| `p10` plan, C | Used the prior message. Typed the bus with `EventName`, added tsconfig, a `typescript` devDependency and `tsc --noEmit` with a negative check, cut the CONTRIBUTING line to a pointer, updated docs and tests, rerunnable `grep -rn "acct\." src tests docs`, named the `` `acct.${action}` `` template. Run dir clean. **Fail:** the bolded Script bulk operations was missing; no script or codemod proposed. | Followed the principle without naming it \| 4 principles listed; step 5 grep \| `principles.md:12` trigger hinged on "need" tooling (repair item 7). |
+| `p11` plan, C | Shipment list (tracking number plus item ids) replaces the shipping flags, `isPartiallyShipped` rejected; label computed, `updateLabel`/`statusLabel` removed, stale o-103 named; `canCancel`/`canRefund` in one place; old shape converted on load with a round-trip check; `bun test` 4/4; run dir clean. Both bolded principles. **Pass.** | Minimize reader load (not bolded) not selected \| Principles credit Model the domain for the derived label \| `principles.md:19` trigger does not mention cached values kept in sync by hand. |
+| `p12` plan, C | Base hash named as the prerequisite; conflict copy, inline markers and report-only compared with prototypes suggested; unattended reasoning with non-zero exit; content-hashed copies; run dir clean; both bolded principles. **Fail:** 6 principles, over the grading limit of 5. | Over the count, and mini-spec step detail \| Principles lines 31-37; Steps 1-6 \| No count in `plan.md:22-23` or `principles.md:3-4`; `plan.md:20-21` does not bound pointer detail. |
+| `r13` route, C | Whole answer was `pstack plan\|verify\|auto [task]`; no module loaded, fixture not opened, no findings; run dir matches pristine. **Pass.** | None. |
+| Codex, 13 graded runs (every case) | **Fail ×13.** In 8 runs the transcript has no read of `SKILL.md` or a module. `p02` and `p08` implemented code in plan mode. `v09` read `.agents/skills/pstack/SKILL.md` and `principles.md`, but no principle file; it missed the warm-cache flaw and selected no principle. Backfilled: `p10` and `p12` X were plain plans with no principles; `p11` X implemented code in plan mode; `r13` X found no skill and reviewed the diff instead of showing usage. | Host or harness, not skill text: Codex did not inject the skill. In some runs the prompt was plain `pstack <mode>`, not `$pstack`, and `allow_implicit_invocation: false` then blocks it. `find`/`rg` without `-L` do not follow the `.agents/skills` symlinks. For `v09` X: `verify.md` linked the index, not the principle files. |
 
-Round 1 graded results: C 7 of 10 pass, X 0 of 9.
+Round 1 graded results: C 9 of 13 pass, X 0 of 13.
 
 ## Repair (`9fb7f086`)
 
@@ -380,11 +385,16 @@ approval policy, and plan step detail.
 | `v05` verify, C | 20k-case old/new property check, builds at HEAD and on the tree, request probes. No defects. Fingerprint unchanged. **Fail** on criterion 3: the intended URL renames are filed as a Finding marked "Needs your decision", and a test-gap finding cites an invented requirement. Selected Boundary discipline as padding. | Requested consequences reported as blocking | Findings 1-2 next to a separate "Non-blocking notes" list | `verify.md:22-23` requires a violated requirement for every actionable finding and has no bucket for a decision the request implies. `principles.md:12`'s Boundary discipline trigger matches almost any code that reads files. This was a regression from r1's borderline pass. |
 | `a06` auto, C | `bun test` 40/0, hidden suite 84/0. Mutation checks found a redundant lookahead, which it removed and re-checked. Report lists its gaps. Selected Prove it works. **Pass.** | None. The a06 repair held. |
 | `v07` verify, C | `make test` reported as unverified, with the reason and what it needs. Stand-in Postgres run (grader reproduced 5/5 and the probe results) with every difference disclosed. No edits. Selected Prove it works. **Pass.** | Labelled email reuse "Blocking (decision needed)", and still did network installs | Findings 1; pip `psycopg` 3.3.6 | Same `verify.md:22-23` gap as v05; `verify.md:15-16` does not limit how far a substitute check may go. Also, it did not open two of its principle files, which the text requires (agent deviation). |
-| `p08`, `v09`, `p10`, `p11`, `p12`, C | Outputs exist. The grades were not in the input to this write-up. | Not graded here. |
-| Codex, 5 graded runs (`p01`, `v04`, `v05`, `a06`, `v07`) | **Fail ×5.** All used `$pstack <mode>`, and none read `SKILL.md` or a module. The code or verdict was often right (a06 hidden suite 58/0, v04 found both defects by reading the code), but no principle was selected and the reports had no verify shape. `v07` X falsely claimed it had implemented a change that was already present. `p08`, `v09`, `p10`, `p11` and `p12` X ran, but their transcripts show only filename searches for `SKILL.md`, not reads. Their grades were not in the input. | Host or harness: an explicit `$pstack` mention under `codex exec` still did not inject the symlinked skill. No skill-text cause can be drawn. |
+| `p08` plan, C | Named the shared `state.json`/`.tmp` read-modify-write and reproduced it (6 runs at `--jobs 4` over 20 mirrors: 8/6/7 entries, three 0-byte files). Per-worker records with atomic rename and one merge, `flock` only as fallback; removed the unconditional `rm -rf`, record only after the fetch exits 0, a run marker for resume; kill/fail-at-K test with a fetch-call log; `state.json` shape kept. Both bolded principles. **Pass.** | None. The r1 criterion-4 fail is fixed. |
+| `v09` verify, C | Traced baseline 36.8 ms against 18.1 ms untraced; parse calls 430/430/0; CLI-shaped resolve 19.3 vs 19.3 ms. Corrected to ~1.39x warm and ~1.0x cold over 7 interleaved rounds with median, range and load stated. Change called correct (5 OK); CHANGELOG rewording recommended, not edited; probes outside the repo; fingerprint unchanged. **Pass.** | None. |
+| `p10` plan, C | Used the prior message. One file by hand, script the rest, rerunnable `rg 'acct\.' src tests docs`, `` `acct.${action}` `` named; guard test under `bun test`, `EventName` union deferred to a typecheck lane as the open question; CONTRIBUTING bullet replaced; no aliases; run dir clean; 5 principles with all three should-select. **Pass.** | None. The Script bulk operations trigger repair held. |
+| `p11` plan, C | Shipments as the source of truth; label, `canCancel` and `canRequestRefund` derived, stale o-103 named; cancel/refund rules with per-parcel delivery as Q1; old shape converted on load; run dir identical. Both bolded principles plus Minimize reader load. **Pass.** | Type system discipline (not bolded) dropped, so `isPaid`/`isDelivered`/`isCancelled`/`isRefunded` stay independent booleans \| Principles list; step 3 \| `principles.md:4` "Keep the few that matter most" and the signature-sounding trigger at `principles.md:29`. |
+| `p12` plan, C | Per-device baseline hash; keep-both, inline markers and three-way merge compared with prototypes; unattended reasoning; content-hashed copies, baseline written last; run dir identical; both bolded principles. **Fail:** 6 principles again, over the grading limit of 5. | Over the count \| `final.md` lines 44-49 \| `principles.md:3-4` ("Keep the few that matter most") and `plan.md` give no number while grading fails more than five; `plan.md:20-22` plus the Test behavior trigger pull a tests principle into every plan. |
+| Codex, 10 graded runs (every r2 case) | **Fail ×10.** All used `$pstack <mode>`, and none read `SKILL.md` or a module. The code or verdict was often right (a06 hidden suite 58/0, v04 found both defects by reading the code), but no principle was selected and the reports had no verify shape. `v07` X falsely claimed it had implemented a change that was already present. Backfilled: `p08`, `v09`, `p10`, `p11` and `p12` X also show only filename searches for `SKILL.md`, not reads. `p08` and `p11` X implemented code in plan mode; `v09` X found both measurement problems but gave single-run numbers and no principles; `p10` and `p12` X were plain plans with no principles. | Host or harness: an explicit `$pstack` mention under `codex exec` still did not inject the symlinked skill. No skill-text cause can be drawn. |
 
-Round 2 graded results: C 4 of 5 pass, X 0 of 5. Of the C runs that failed in
-r1 and were graded again, `v07` now passes. `a06` and `v04` lost their
+Round 2 graded results: C 8 of 10 pass, X 0 of 10. Of the C runs that failed in
+r1 and were graded again, `v07`, `p08` and `p10` now pass and `p12` still fails
+on the principle count. `a06` and `v04` lost their
 frictions, and `v05` regressed.
 
 Across both rounds, 1 of 23 Codex transcripts read pstack's `SKILL.md` (r1
@@ -409,9 +419,10 @@ The Eve evals were not re-run after `9fb7f086`. The latest Eve results
 - **Boundary discipline trigger** is too broad (`v05`).
 - **Substitute-check scope** is unbounded, so a stand-in can involve network
   installs (`v07`). This was left deliberately as harness policy.
-- **Missing grades.** The r1 C grades for `p11`, `p12` and `r13`, the r2 C
-  grades for `p08`, `v09`, `p10`, `p11` and `p12`, and the matching Codex
-  grades were not available to this write-up.
+- **Principle count.** `p12` listed 6 principles in r1 and r2; the skill sets
+  no number and the grading README fails more than five.
+- **Missing grades** were backfilled from the workflow journals (see
+  [Backfill](#backfill-from-workflow-journals)).
 - **Eve not re-run** after `9fb7f086`.
 
 ## Lane after the repair
@@ -481,7 +492,8 @@ skill-load event in the transcript, then re-run the graded cases.
 Still open after r3: `v07` partial-suite reporting, the Boundary discipline
 trigger, Decisions scope, `plan-design-space` selection, the unguarded
 missing-state clause, `v03`/`v04`/`v09` not re-dogfooded, substitute-check
-scope, plan principle links, and the missing r1/r2 grades.
+scope, plan principle links, and the principle count (`p12`). The missing
+r1/r2 grades are backfilled below.
 
 Lane at `62df09b4` plus this record: `sync-plugin-versions.sh` updated 0
 files; `generate-versions.sh` produced 22 skills; `validate-skills.sh` printed
@@ -492,3 +504,29 @@ expected evals) passed. After committing this record,
 `bun scripts/skill-metadata.ts check-version-bump origin/main` printed
 `[OK] pstack: new -> 0.4.0 (pstack/skills/pstack/SKILL.md)` and
 `Checked 1 plugin(s). All changed plugins have proper version bumps.`
+
+## Backfill from workflow journals
+
+**Why grades were missing.** The orchestrating workflow scripts passed the
+per-run results to the record step through `JSON.stringify(...).slice(0, N)`,
+so rows after the cut never reached this file. The grades above marked
+"Backfilled" were read in full from the workflow journals instead: the
+corrected round from `wf_7d1d9aa2-28a/journal.jsonl` (labels
+`review:<case>:<host>:<round>`) and the superseded first round from
+`wf_44a61fc0-03d/journal.jsonl`. Each `result` entry is matched to its label
+through the `started` entry with the same key. The parser is
+`$S/tools/journal_rows.py` (`--list`, `--label-prefix`, `--match`, `--json`).
+
+Backfilled rows: first round C `p10`, `p11`, `p12`, `r13`; corrected r1 C
+`p10` (completed), `p11`, `p12`, `r13` and Codex `p10`, `p11`, `p12`, `r13`;
+r2 C `p08`, `v09`, `p10`, `p11`, `p12` and Codex `p08`, `v09`, `p10`, `p11`,
+`p12`.
+
+**Codex rows.** None of the r1/r2 Codex runs loaded pstack. The skills were
+symlinked into `.agents/skills`, and Codex 0.163 ignores symlinked skill
+directories, so every Codex FAIL above measures plain Codex, not the skill
+text.
+
+**r3 coverage.** The `v03`, `v04` and `v09` verify reruns never ran: the
+executor tool was missing. `v05` and `v07` ran through a separate `claude -p`
+process, not the r1/r2 subagent host.
