@@ -11,7 +11,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "2.2.8"
+  version: "2.3.0"
 ---
 
 # Codex CLI
@@ -94,7 +94,10 @@ The wrapper defaults to the user's configured model, medium reasoning,
 JSONL events, a five-minute meaningful-inactivity limit, and a 45-minute hard
 limit. Pass `--model` only when the user requests a model. Use `--reasoning
 high` for genuinely difficult work rather than by habit. A model or reasoning
-level set in the user's standing instructions counts as a request.
+level set in the user's standing instructions counts as a request. Add `--fast`
+to `run` or `review` when turnaround matters, such as a second opinion: it
+requests the fast service tier with the same model and reasoning, at higher
+plan usage.
 
 Write runs capture the workspace baseline, status, changed files, full diff,
 and diff stat. Do not ask a workspace-write run in a linked worktree to commit:
@@ -110,8 +113,9 @@ scripts/codex-run.sh review \
   --prompt "Find concrete bugs and regressions. Findings first."
 ```
 
-Use `--base REF` or `--commit SHA` when that is the requested scope. Keep the
-review read-only and verify each reported finding before forwarding it.
+Use `--base REF` or `--commit SHA` when that is the requested scope, and
+`--fast` for a quick turnaround. Keep the review read-only and verify each
+reported finding before forwarding it.
 
 ## Continue
 
@@ -122,8 +126,8 @@ Prefer the run-specific helper:
 ```
 
 It resumes the captured session with the prior workspace, sandbox, reasoning,
-timeouts, and run root. Use `codex exec resume --last` only when guessing the
-latest session is explicitly intended.
+service tier, timeouts, and run root. Use `codex exec resume --last` only when
+guessing the latest session is explicitly intended.
 
 ## Artifact Contract
 
