@@ -3,7 +3,7 @@
 Thirteen scenarios that run `pstack plan`, `verify` and `auto` against small
 fixture repos, on Claude subagents and on Codex, with fixed grading criteria
 for each. Use it to dogfood any pstack change the same way earlier rounds did.
-Every round is recorded in `docs/pstack-dogfood.md`.
+Results are summarized in `docs/pstack-dogfood.md`.
 
 **Executing agents must never read this directory.** `grading/` holds the
 expected answers and the a06 hidden tests, `scenarios.json` names the target
@@ -123,8 +123,9 @@ FAIL. Two or more padding principles is still a FAIL.
 
 ## Record results
 
-Add each round to `docs/pstack-dogfood.md` in full, as earlier rounds were:
-skill snapshot, hosts and model, one row per run (result, skill loaded, mode
-file read, principles, evidence, suspected cause), then what improved and
-what still fails. Round outputs stay outside the repo, so quote the evidence
-in the doc.
+`docs/pstack-dogfood.md` stays short: add a row to its rounds table, replace
+the latest-round section, and update the current state. Put the full round
+(skill snapshot, hosts and model, one row per run with result, skill loaded,
+mode file read, principles, evidence and suspected cause, then what improved
+and what still fails) in the pull request that carries the change. Round
+outputs stay outside the repo, so quote the evidence there.
