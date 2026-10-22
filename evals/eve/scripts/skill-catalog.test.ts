@@ -29,7 +29,7 @@ for (const [id, entry] of Object.entries(SKILL_CATALOG)) {
   assert.ok(entry.owner.trim(), `${id} must name its proof owner`);
   const skillPath = join(repoRoot, entry.source, "SKILL.md");
   assert.ok(existsSync(skillPath), `${id} source is missing: ${entry.source}`);
-  // Keep in sync with CLAUDE_MODEL_INVOCABLE in scripts/validate_skills.py.
+  // Keep in sync with CLAUDE_MODEL_INVOCABLE in scripts/lib/structure.ts.
   assert.match(
     readFileSync(skillPath, "utf8"),
     MODEL_INVOCABLE.has(id)

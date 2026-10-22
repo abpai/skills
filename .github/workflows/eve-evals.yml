@@ -2,7 +2,7 @@ name: Eve skill evals
 
 # Non-blocking behavioral-contract lane. This runs REAL model sessions against
 # packaged SKILL.md dirs via Eve, so it complements — never replaces — the
-# structural validate-skills.sh gate and the manual Claude/Codex dogfood.
+# structural `bin/skills gate` lane and the manual Claude/Codex dogfood.
 # It is intentionally NOT a required check: Eve is public preview (pinned in
 # evals/eve/package.json) and live evals need a model key.
 
@@ -15,6 +15,7 @@ on:
     paths:
       - "**/skills/**/SKILL.md"
       - "evals/eve/**"
+      - "scripts/lib/evals.ts"
       - ".github/workflows/eve-evals.yml"
   push:
     branches: [main]
@@ -52,24 +53,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Install (frozen)
-        run: bun install --frozen-lockfile
-      - name: Materialize skills from canonical sources
-        run: bun run prepare-skills
-      - name: Typecheck eval files against Eve types
-        run: bun run typecheck
-      - name: Prove public skill catalog coverage
-        run: bun run test:catalog
-      - name: Prove live coverage controls
-        run: bun run test:coverage
-      - name: Pull pinned outcome verifier image
-        run: bun run outcome:pull
-      - name: Prove outcome verifier isolation
-        run: bun run test:outcome-isolation
-      - name: Discover evals
-        run: bun run list
-      - name: Smoke eval (mock model, no secrets)
-        run: bun run eval:smoke
+      # Steps live in scripts/lib/evals.ts so local and CI smoke stay identical:
+      # install, prepare-skills, typecheck, catalog + coverage + outcome-isolation
+      # tests, outcome image pull, eval discovery, mock-model smoke eval.
+      - name: Eve harness smoke
+        working-directory: .
+        run: bin/skills evals smoke
 
   # Live behavioral evals against a real model. OPT-IN and SINGLE-SHOT — these
   # cost real tokens (~1M input tokens per full suite), so every full run is an

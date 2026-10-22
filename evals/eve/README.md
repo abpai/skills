@@ -9,7 +9,7 @@ It **complements, never replaces** the existing checks:
 
 | Lane | Tests | Where |
 | --- | --- | --- |
-| `scripts/validate-skills.sh` | structure, packaging, versions, wrapper parity | always, blocking |
+| `bin/skills gate` | structure, packaging, versions, wrapper parity, installer discovery | always, blocking |
 | **this lane** | portable *behavioral contracts* under a real model | opt-in, non-blocking |
 | Claude/Codex dogfood | host-specific behavior (`disable-model-invocation`, `$ARGUMENTS`, slash/`$` menus, tool/permission semantics) | manual |
 

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Front door for repo validation. See `bin/skills --help` or scripts/skills.ts.
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if ! command -v bun >/dev/null 2>&1; then
+  echo "skills: bun is required (https://bun.sh)" >&2
+  exit 3
+fi
+
+# The structure gate parses frontmatter with the same npm `yaml` package the
+# `npx skills` installer uses, so make sure the pinned copy is installed.
+if [[ ! -f "$ROOT_DIR/node_modules/yaml/package.json" ]]; then
+  (cd "$ROOT_DIR" && bun install --frozen-lockfile >/dev/null) || {
+    echo "skills: bun install --frozen-lockfile failed in $ROOT_DIR" >&2
+    exit 3
+  }
+fi
+
+exec bun "$ROOT_DIR/scripts/skills.ts" "$@"

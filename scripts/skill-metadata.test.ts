@@ -7,7 +7,10 @@ import { spawnSync } from "node:child_process";
 import {
   checkVersionBumps,
   collectVersionSources,
+  compareVersions,
   generateVersionsJson,
+  nextVersion,
+  planManifestSync,
   syncPluginManifestVersions,
 } from "./skill-metadata";
 
@@ -332,5 +335,48 @@ metadata:
       failed: ["widget: version (1.0.0) in widget/skills/widget/SKILL.md was not bumped"],
       ok: [],
     });
+  });
+
+  test("rejects a version that goes backwards relative to the base", () => {
+    const root = makeRoot();
+    git(root, ["init"]);
+    git(root, ["config", "user.email", "test@example.com"]);
+    git(root, ["config", "user.name", "Test User"]);
+    writeManifest(root, "widget", "1.2.0");
+    writeSkill(root, "widget", "widget", `description: Widget\nmetadata:\n  version: "1.2.0"\n`);
+    git(root, ["add", "."]);
+    git(root, ["commit", "-m", "base"]);
+    const base = git(root, ["rev-parse", "HEAD"]);
+
+    writeSkill(root, "widget", "widget", `description: Widget changed\nmetadata:\n  version: "1.1.9"\n`);
+    git(root, ["add", "."]);
+    git(root, ["commit", "-m", "downgrade"]);
+
+    expect(checkVersionBumps(root, base).failed).toEqual([
+      `widget: version 1.1.9 in widget/skills/widget/SKILL.md is lower than ${base} (1.2.0)`,
+    ]);
+  });
+
+  test("plans manifest syncs without writing them", () => {
+    const root = makeRoot();
+    writeManifest(root, "widget", "1.0.0");
+    writeSkill(root, "widget", "widget", `description: Widget\nmetadata:\n  version: "1.1"\n`);
+
+    const before = readFileSync(join(root, "widget", ".claude-plugin", "plugin.json"), "utf8");
+    expect(planManifestSync(root)).toEqual([
+      { path: "widget/.claude-plugin/plugin.json", from: "1.0.0", to: "1.1.0" },
+      { path: "widget/.codex-plugin/plugin.json", from: "1.0.0", to: "1.1.0" },
+    ]);
+    expect(readFileSync(join(root, "widget", ".claude-plugin", "plugin.json"), "utf8")).toBe(before);
+  });
+});
+
+describe("version arithmetic", () => {
+  test("compares numeric cores and computes the next version", () => {
+    expect(compareVersions("1.10.0", "1.9.9")).toBeGreaterThan(0);
+    expect(compareVersions("2.0.0", "2.0.0-rc.1")).toBe(0);
+    expect(nextVersion("1.2.3", "patch")).toBe("1.2.4");
+    expect(nextVersion("1.2.3", "minor")).toBe("1.3.0");
+    expect(nextVersion("1.2.3", "major")).toBe("2.0.0");
   });
 });
