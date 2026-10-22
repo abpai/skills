@@ -17,8 +17,9 @@ unless a calling workflow, such as auto, continues past it.
 Return only the refined, human-skimmable plan with:
 
 - The intended outcome, in one sentence.
-- A few ordered pointers: relevant code locations, constraints, dependencies,
-  and what would demonstrate success. Keep implementation details flexible.
+- A few ordered pointers: relevant code locations, findings and assumptions,
+  constraints, dependencies, and what would demonstrate success, including the
+  checks of selected principles. Keep implementation details flexible.
 - Selected principle names, each linked as `principles/<file>.md` relative to
   this skill, with a short reason.
 - Open questions only where missing information materially affects the plan.
