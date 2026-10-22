@@ -330,6 +330,26 @@ parser and an empty diff, and the principle predicates reject a padded plan.
   widened). Ablation (`--runs 2`, green baselines) matched iteration 4:
   `pstack-plan-principle-links` (re-spanned) and
   `pstack-route-unsupported-stop` KILLED 2/2; the other three SURVIVED 2/2.
+  Iteration 6 (pstack 0.4.3 at 89b0f999, remote Docker host, 12 evals with
+  the new `verify-pr-only`): two full runs went 10/12 and 9/12.
+  `verify-pr-only` was green in both. The skill-side reds were all principle
+  selection. `plan-attack-premise` never selected Attack the premise (0 of 3,
+  counting the ablation baseline; it chose Fix root causes). `route-current-task`
+  run 1 and `plan-attack-premise` run 2 selected Exhaust the design space, for
+  an enforcement mechanism and a filename policy, where the eval says the
+  trigger does not match. `plan-design-space` run 2 left out Prioritize
+  usability. One red was eval-side: in `verify-check-cannot-run` run 2 the
+  model set `TEST_DATABASE_URL` itself, so the tests errored on the missing
+  psycopg rather than skipping. Its report said so honestly but failed a bare
+  `/skip/` gate. The gate now accepts skipped or errored runs
+  (`DB_TESTS_DID_NOT_RUN`, covered in `test:pstack-graders`). Run 2's reply
+  passes the widened gate, and two re-runs were green. Ablation (`--runs 2`):
+  `pstack-route-unsupported-stop` KILLED 2/2, while `pstack-verify-request-first`
+  and `pstack-route-verify` SURVIVED 2/2 (controls failed).
+  `pstack-plan-missing-state` was FLAKY, killed 1 of 2 on the missing base
+  state. `pstack-plan-principle-links` returned ERROR because its
+  `plan-attack-premise` baseline was red, so the 0.4.2 re-span is still
+  unmeasured.
   This lane runs OpenAI only; Codex host behavior is unverified here.
 
 Eve is public preview — the version is pinned in `package.json` and the
