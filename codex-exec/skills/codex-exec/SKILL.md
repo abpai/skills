@@ -134,7 +134,8 @@ guessing the latest session is explicitly intended.
 
 ## Artifact Contract
 
-Every wrapper run writes:
+Every wrapper run writes a run directory under `--run-root` (default
+`$CODEX_HOME/codex-exec-runs`, or `~/.codex/codex-exec-runs`) containing:
 
 - `status.json`: source of truth for state, health, liveness, counts, paths,
   session id, and exit code.
@@ -157,9 +158,9 @@ last-resort bound. If your tool calls are capped (for example at 600 seconds),
 set it below that cap on each `monitor.sh` call, and launch the wrapper detached
 (for example `nohup ... &`) if your background facility shares the cap. Rerun
 `monitor.sh` only while it prints `monitor=timed-out` (stderr, exit 124); that
-does not stop Codex. `monitor=done` is final and exits with the run's own code,
-which is also 124 when the run itself stalled or timed out. `monitor=abandoned`
-(exit 1) means the wrapper died without a terminal state.
+does not stop Codex. `monitor=done` (stdout) is final and exits with the run's
+own code, which is also 124 when the run itself stalled or timed out.
+`monitor=abandoned` (exit 1) means the wrapper died without a terminal state.
 
 ## Liveness And Recovery
 
