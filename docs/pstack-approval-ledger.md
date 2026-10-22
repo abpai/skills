@@ -7,10 +7,10 @@ is complete; behavioral validation is tracked in `docs/pstack-handoff.md`.
 | Upstream principle | Status | Local file or disposition |
 | --- | --- | --- |
 | Attack the Premise | Approved; reconciled | `pstack/skills/pstack/principles/principle-attack-the-premise.md`; includes stop condition, distinction, and local cross-references. |
-| Boundary Discipline | Approved; reconciled | `pstack/skills/pstack/principles/principle-boundary-discipline.md`; includes pure logic, thin I/O, examples, testability, and qualified trust. |
+| Boundary Discipline | Approved; reconciled | `pstack/skills/pstack/principles/principle-boundary-discipline.md`; includes pure logic, thin I/O, testability, and qualified trust. The upstream prompt-construction example was merged into the pure-functions bullet in 0.4.2. |
 | Build the Lever | Approved; renamed | `pstack/skills/pstack/principles/principle-script-bulk-operations.md`; name changed only, retaining bulk updates, one-off verification, placement, and paired example. |
 | Encode Lessons in Structure | Approved; reconciled | `pstack/skills/pstack/principles/principle-encode-lessons-in-structure.md`; includes ownership, authoritative guidance, failure examples, and retiring redundant reminders. |
-| Exhaust the Design Space | Approved | `pstack/skills/pstack/principles/principle-exhaust-the-design-space.md`; limited to novel UI interactions, architectural decisions, or product behavior policies without useful precedent (widened in `b2715a4a`; see below). |
+| Exhaust the Design Space | Approved | `pstack/skills/pstack/principles/principle-exhaust-the-design-space.md`; limited to an open decision that sets a new UI interaction, architecture, or product behavior policy with no precedent in this codebase (widened in `b2715a4a`, reworded in 0.4.2, and linked from `plan.md` step 3; see below). |
 | Experience First | Approved; renamed | `pstack/skills/pstack/principles/principle-prioritize-usability.md`; renamed Prioritize Usability. |
 | Explain the Number | Approved; reconciled | `pstack/skills/pstack/principles/principle-explain-the-number.md`; includes measured limiter, alternative explanations, retained evidence, and both local dependencies. |
 | Fix Root Causes | Drafted; in approved wording pass | `pstack/skills/pstack/principles/principle-fix-root-causes.md`. Individual review skipped at the user's request. |
@@ -22,12 +22,12 @@ is complete; behavioral validation is tracked in `docs/pstack-handoff.md`.
 | Minimize Reader Load | Approved; reconciled | `pstack/skills/pstack/principles/principle-minimize-reader-load.md`; includes independent axes, returns over mutation, and the cost-benefit threshold. |
 | Model the Domain | Drafted; in approved wording pass | `pstack/skills/pstack/principles/principle-model-the-domain.md`; agreed read/write-pattern addition incorporated. Individual review skipped at the user's request. |
 | Never Block on the Human | Excluded | Autonomy and approval policy belong to the harness; avoid competing instructions. |
-| Outcome-Oriented Execution | Approved | `pstack/skills/pstack/principles/principle-outcome-oriented-execution.md`; planned rewrites and migrations with verification checkpoints. |
-| Prove It Works | Approved; reconciled | `pstack/skills/pstack/principles/principle-prove-it-works.md`; includes explicit self-report exclusion, executed deterministic checks, retained output, audit retention, and process example. |
+| Outcome-Oriented Execution | Approved | `pstack/skills/pstack/principles/principle-outcome-oriented-execution.md`; planned rewrites and migrations with verification checkpoints; its two headings were flattened in 0.4.2. |
+| Prove It Works | Approved; reconciled | `pstack/skills/pstack/principles/principle-prove-it-works.md`; includes explicit self-report exclusion, executed deterministic checks, retained output, audit retention, and process example. Since 0.4.2 a check is tested on pass or fail, not only on failure. |
 | Redesign from First Principles | Approved; reconciled | `pstack/skills/pstack/principles/principle-redesign-from-first-principles.md`; five bullets preserve the focused trigger and cost comparison. |
 | Separate Before Serializing Shared State | Approved | `pstack/skills/pstack/principles/principle-separate-before-serializing-shared-state.md`; includes the agreed Foundational Thinking concurrency guidance. |
 | Sequence Work into Verifiable Units | Drafted; in approved wording pass | `pstack/skills/pstack/principles/principle-sequence-verifiable-units.md`; agreed prerequisite-types/tooling addition incorporated. Individual review skipped at the user's request. |
-| Subtract Before You Add | Approved; reconciled | `pstack/skills/pstack/principles/principle-subtract-before-you-add.md`; includes prompt cleanup, empty-reference removal, and separate related-principle links. |
+| Subtract Before You Add | Approved; reconciled | `pstack/skills/pstack/principles/principle-subtract-before-you-add.md`; includes empty-reference removal and separate related-principle links. In 0.4.2 the prompt-cleanup bullet was removed and the opening narrowed to dead code, redundant checks, or unneeded layers. |
 | Test Behavior, Not Implementation | Approved | `pstack/skills/pstack/principles/principle-test-behavior-not-implementation.md`; includes the agreed Foundational Thinking testing guidance. |
 | Type System Discipline | Approved | `pstack/skills/pstack/principles/principle-type-system-discipline.md`. |
 
@@ -114,5 +114,46 @@ review them in the draft PR.
   `auto.md` reports selected principles and checks run. The plan order
   (select, then draft) departs from the handoff's preserved
   "drafts the smallest approach, then selects principles" decision, and round
-  5 showed principle over-selection; both are open. Not separately
-  content-reviewed.
+  5 showed principle over-selection. 0.4.2 resolved both (below). Not
+  separately content-reviewed.
+- `7ad0641a` (0.4.2): edits approved in conversation before the commit, plus
+  four prompt-audit hunks (`docs/pstack-prompt-audit.md`).
+  - **Plan ordering.** Research; then, for an open decision with no
+    precedent in this codebase, compare two or three options following
+    Exhaust the Design Space; then a rough draft of the smallest approach
+    that covers the request and every confirmed cause; then select principles
+    against the task, findings and draft, read them and revise; then recheck
+    and drop principles that changed nothing. This restores the preserved
+    "draft, then select" order. `principles.md` now says "Keep at most five".
+  - **Verify from a PR alone.** The plan is optional. The request can be a
+    pull request's description and linked issue, and the report says when
+    the PR's own description is the only statement of the request.
+  - **Trigger rewrites.** 12 rows in `principles.md` rewritten against the
+    upstream descriptions (Laziness Protocol, Attack the Premise, Boundary
+    Discipline, Exhaust the Design Space, Prioritize Usability,
+    Outcome-Oriented Execution, Explain the Number, Subtract Before You Add,
+    Model the Domain, Sequence Verifiable Units, Make Operations Idempotent,
+    Migrate Callers Then Delete Legacy APIs), with each matching principle
+    file's opening line aligned. Earlier notes said 13 rows; the diff
+    changes 12.
+  - **Audit hunks.** Prove It Works tests a check on pass or fail; the
+    Boundary Discipline prompt-construction aside merged into the previous
+    bullet; the Subtract Before You Add prompt-cleanup bullet removed;
+    Outcome-Oriented Execution headings flattened.
+  - Round 6 (`docs/pstack-dogfood.md`): Claude subagent 10 of 13, Codex
+    `gpt-6.1-sol` 12 of 13. Over-selection is gone, but Exhaust the Design
+    Space was padding in 8 of 12 plan runs and the recheck dropped two
+    bolded should-select principles. Open; no further skill change made.
+- `89b0f999` (0.4.3): the held audit hunk for `SKILL.md` routing. "Otherwise,
+  before any other step, read the mode's module file below in full and follow
+  it ... do not infer them" became "Otherwise read the mode's module file
+  below and follow it; the steps and report format of each mode exist only in
+  that file." Applied because `gpt-6.1-sol` read the mode file first in all 12
+  round-6 mode runs. The unsupported-mode stop and the `verify` route bullet
+  are unchanged, so their ablation spans still match. Not rerun on either
+  dogfood host; Eve iteration 6 (`gpt-6-luna`) passed every mode-file read
+  gate on it.
+
+Neither 0.4.2 nor 0.4.3 has had a separate user content review of the
+changed text beyond the conversation approvals noted above; review them in
+the draft PR.

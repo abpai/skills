@@ -854,3 +854,222 @@ passed; in `evals/eve`, `typecheck`, `test:catalog` (22 public skills) and
 `test:coverage` (45 expected evals) passed. The version-bump check is
 reported with the commit that adds this record, since it evaluates committed
 changes only.
+
+# pstack 0.4.2 full round (r6)
+
+Round 6 ran all 13 scenarios on both hosts at `7ad0641a` (pstack 0.4.2), the
+full round that round 5 skipped. The runs started at 11:57 and the last
+finished at 12:06 local time; `89b0f999` (0.4.3) was committed at 12:17, so
+every run read 0.4.2 text. Same fixtures (`$S/rerun/pristine/`) and grading
+notes (`$S/grading/`) as rounds 4 and 5; a separate reviewer graded each run.
+Every run copy's tracked files were unchanged at the end.
+
+- **C:** a Claude subagent reading `pstack/skills/pstack/` in this worktree.
+  Its mode-file reads come from its own process log.
+- **X:** `codex exec` (codex-cli 0.163.0) with **`gpt-6.1-sol` on the fast
+  service tier**, the production Codex model. Each of the 13 session
+  rollouts in `~/.codex/sessions/2026/10/22/` records model `gpt-6.1-sol` and
+  `service_tier` `priority`. `pstack/skills/pstack` was copied as a real
+  directory into each run copy's `.agents/skills/pstack` (identical to the
+  snapshot by `diff -r`) and invoked with `$pstack <mode>`. `SKILL.md` came
+  from the mention; no run read it by command. Mode-file reads are taken from
+  the transcript and `$S/rerun/r6/summary.json`.
+
+**Codex model change.** Rounds 4 and 5 ran Codex on `gpt-6-luna`. This round
+runs `gpt-6.1-sol`, so every X comparison below mixes a model change with the
+skill change (0.4.1 → 0.4.2 for the round-5 cases, 0.4.0 → 0.4.2 for the
+others). No run separates them: there is no `gpt-6-luna` run at 0.4.2 and no
+`gpt-6.1-sol` run at 0.4.0 or 0.4.1.
+
+Outputs: `$S/rerun/r6/<case>-<subagent|codex>` (run copy), with `.final.md`,
+`.review.json`, and `.process.md` (C) or `.jsonl`, `.commands.txt`,
+`.prompt.txt`, `.stderr` and `.exit` (X). Short names below: Exhaust =
+Exhaust the design space, Test behavior = Test behavior, not implementation,
+Migrate callers = Migrate callers, then delete legacy APIs, Separate =
+Separate before serializing shared state, Script bulk = Script bulk
+operations.
+
+| Case | Host | Mode file read? | Principles selected | Result | observation \| evidence \| suspected skill cause | Paths |
+| --- | --- | --- | --- | --- | --- | --- |
+| `p01` plan | C | yes (`SKILL.md`, `plan.md`) | Attack the premise, Fix root causes, Exhaust (padding), Test behavior, Prove it works | **Pass** | Rejects the flush premise with the 10-vs-9 failure and a computed 65% per-attempt collision rate; fix at `fileNameFor` (`src/reports.ts:8`) with `${tenant.id}.csv`; delay, retry and timeout removed; ran the CLI on `data/tenants.json` ("wrote 5 reports", 4 files). Exhaust replaced Subtract before you add; two-sentence outcome; about 10 pointers, 5325 chars (r4: 4109) \| principles list, `final.md` \| `plan.md:12-14` names Exhaust inline for any "open decision with no precedent", so the settled id-vs-name choice became a 4-option comparison; `principles.md:20` narrowed Subtract to dead code; `plan.md:26-29` widened pointer content with no size bound. | `$S/rerun/r6/p01-tenant-reports-subagent.{final.md,process.md,review.json}`, `$S/rerun/r6/p01-cli-out/` |
+| `p01` plan | X | yes (`plan.md` first command) | Attack the premise, Fix root causes, Exhaust (padding), Test behavior, Prove it works | **Pass** | A fixed two-tenant probe put both tenants in one file and "disproves the filesystem-flush explanation"; ID-based names; workarounds removed; deterministic punctuation-collision test; names the bundled-dataset collision. Same Exhaust-for-Subtract swap as C; 2831 chars (r4: 1492); left an unused copy at `/private/tmp/tenant-reports-plan-52h73mjx` \| principles list \| `plan.md:12-14` and `principles.md:20`, as for C. | `$S/rerun/r6/p01-tenant-reports-codex.{final.md,jsonl,review.json}` |
+| `p02` plan | C | yes | Migrate callers, Test behavior, Laziness protocol, Prove it works | **Pass** | All 7 call sites in 4 files migrated, `legacyRequest` and its types deleted with no shim; 404 → null and 422 → `ValidationError` via `HttpError.status`; spy tests moved to `setTransport`/`fakeTransport`; grep plus `bun test` as success. Longest p02 plan (738 words, r4: 581); a planning-time probe was left behind \| `$S/rerun/r6/p02-probe-missing-export/` \| `principle-prove-it-works.md:9-11` is not scoped to plan mode and `plan.md:27-28` pulls principle checks into the plan; `plan.md` has no counterpart to `verify.md:16-17` on where probes go. | `$S/rerun/r6/p02-ledger-client-subagent.{final.md,process.md,review.json}` |
+| `p02` plan | X | yes (`plan.md` first command) | Migrate callers, Boundary discipline, Test behavior, Prove it works | **Pass** | 5 steps, no code; deletes the legacy API in the same change ("No compatibility adapter is needed"); now names `HttpError` and "Rethrow other failures", the r4 gap; zero legacy-symbol matches plus `bun test` (baseline 13/0 in a `git archive` copy). None. | `$S/rerun/r6/p02-ledger-client-codex.{final.md,jsonl,review.json}` |
+| `p08` plan | C | yes | Separate, Make operations idempotent, Fix root causes, Prove it works, Exhaust (padding) | **Fail** (criterion 3) | Count fixed (5). Race reproduced (40 runs at `--jobs 4`: 21 short, 19 empty `state.json`); per-mirror journal records with the parent as the only writer; lock rejected with a reason. Keeps `rm -rf "$dest"` at `bin/mirror-sync-one:11` ("This plan leaves the fetch alone"; dropping it is "Not now"), so a cut-off 40 GB mirror is copied again; says dropping it changes the layout, which the reviewer disproved with rsync 3.4.1 and openrsync; 109 lines; 3 MB of probe output in the run copy's git-ignored `tmp/` \| `final.md` options table \| `plan.md:12-14` turned a confirmed cause into a deferred option; `plan.md:15-16` "smallest approach" beat "every confirmed cause"; `plan.md:26-29` eight content kinds became eight sections. Same failure as r4. | `$S/rerun/r6/p08-mirror-sync-subagent.{final.md,process.md,review.json}`, `$S/rerun/r6/p08-mirror-sync-subagent-scripts/` |
+| `p08` plan | X | yes (`plan.md` first command) | Fix root causes, Separate, Make operations idempotent, Exhaust (padding), Prove it works | **Pass** (weak on criterion 3) | Probe in a `/private/tmp` copy reproduced 8 missing-tmp errors and an empty `state.json`; per-mirror completion files merged by one parent writer and published by rename; unfinished-run checkpoint; "historical timestamps alone must never cause permanent skipping". Says to fix the unconditional delete but gives no mechanism and accepts re-copying a partial mirror; unrequested coordinator-ownership and config-rejection scope \| pointers 1-4 \| `plan.md:26-29` still lists findings and decisions separately, so a cause is not paired with the decision that resolves it (the r5 friction); `plan.md:12-14` added Exhaust. | `$S/rerun/r6/p08-mirror-sync-codex.{final.md,jsonl,review.json}` |
+| `p10` plan | C | yes | Encode lessons in structure, Exhaust (padding), Migrate callers, Test behavior, Prove it works | **Fail** (principles) | Content passes: prior message as task, `acct.${action}` template handled, a catalogue check in `Bus` plus a source-scan test because bun strips types, CONTRIBUTING bullet deleted, `docs/events.md` and tests updated, no aliases. Bolded Script bulk missing: read, then dropped at the recheck ("the scan test covers the rerunnable check"); the 14-site rename is still a hand edit \| `process.md:48` \| `plan.md:20-21` drops a principle whose trigger matches literally once another principle carries its check; `plan.md:12-14` gave Exhaust a slot. Regression from r4 and r5. | `$S/rerun/r6/p10-billing-events-subagent.{final.md,process.md,review.json}` |
+| `p10` plan | X | yes (`plan.md` first command) | Encode lessons in structure, Script bulk, Exhaust (padding), Prove it works | **Pass** | First Codex pass on p10: read README, CONTRIBUTING and `docs/events.md`; scripted replacements with computed names handled separately; an AST source guard run by `bun test`; the reminder replaced by a pointer to the check; docs and tests updated; no aliases. Type system discipline dropped; the leftover scan has no command or expected result \| plan steps 2-3 \| `plan.md:12-14` (Exhaust); `principle-type-system-discipline.md:7-8` answers its own objection but assumes a type checker; `plan.md:26-28` does not ask for the command `principle-script-bulk-operations.md:14` wants. `plan.md:6` is unchanged since r5, so part of the gain may be variance. | `$S/rerun/r6/p10-billing-events-codex.{final.md,jsonl,review.json}` |
+| `p11` plan | C | yes | Model the domain, Exhaust (padding), Boundary discipline, Migrate callers (padding), Test behavior | **Fail** (principles) | Count fixed (5). Content criteria 1-5 pass: `LineItem.shipment` replaces `isShipped`/`trackingNumber`, options A/B/C compared, cancel only before any shipment, refund only after delivery, stale o-103 label named, legacy documents converted in `loadOrders`. Bolded Redesign from first principles missing (read, dropped as overlapping Model the domain and Exhaust) and two padding picks; keeps the cached `statusLabel` that r4 and r5 removed; about 8.0 KB \| `process.md`, decisions 1-5 \| `plan.md:12-16` ran the reshape as an Exhaust comparison, then `plan.md:20-21` dropped Redesign because the draft already reflected it; `principles.md:4` has no preference among overlapping matches (`:11`, `:16`, `:22`); the `principles.md:27` Migrate callers trigger fires on any signature change. | `$S/rerun/r6/p11-order-fulfilment-subagent.{final.md,process.md,review.json}` |
+| `p11` plan | X | yes (`plan.md` first command) | Model the domain, Exhaust (padding), Boundary discipline, Test behavior, Prove it works | **Fail** (principles) | Content criteria 1-5 pass for the first time on Codex: `shipments: {itemIds, trackingNumber?}[]`, stored flags and label removed, status and actions derived, stale refund label named, `store.ts` validates and converts legacy JSON (it read `data/orders.json` and README, which r5 missed). Bolded Redesign never opened; its second command already globbed for the Exhaust file by name. Silently drops the automatic refund on paid pre-shipment cancellation, with no open question \| `.jsonl` commands 2-3 \| `plan.md:12-14` names only Exhaust in the steps, while `plan.md:9-11` (state the code does not keep) is Redesign's cue and has no link; `plan.md:8,32-33` let the literal request settle a money-affecting policy. | `$S/rerun/r6/p11-order-fulfilment-codex.{final.md,jsonl,review.json}` |
+| `p12` plan | C | yes | Exhaust, Prioritize usability, Separate, Make operations idempotent, Test behavior | **Pass** | Count fixed (5; three dropped "because of the five-principle cap"). Per-device sync base at `jot/sync.py:44-49`; three conflict policies compared; conflict copy chosen on unattended cron/launchd/phone runs and visibility in `jot list`; A-vs-B prototype; a rerun reuses an identical copy. 1131 words over 8 sections; `principles/...` links do not resolve from the run copy \| `final.md` \| `plan.md:26-28,35` give no length budget; `plan.md:30-31` link base; `principles.md:4` read as a quota. | `$S/rerun/r6/p12-notes-sync-subagent.{final.md,process.md,review.json}` |
+| `p12` plan | X | yes (`plan.md` first command) | Fix root causes, Exhaust, Model the domain, Prioritize usability, Make operations idempotent | **Pass** | r5 partial fixed: rejects prompting because it "blocks cron and phone jobs", never prompts, adds `jot resolve`, and both clients must adopt it; device-local last-synced digest backed by a repro in a temp clone; 442 words. Selected Prioritize usability without opening its file; snapshots hidden from `jot list` weaken cross-device visibility (a design choice, not skill text) \| `.jsonl` items 3 and 5 \| `principles.md:4-6` and `plan.md:17-19` put "open each selected file" in a trailing clause. | `$S/rerun/r6/p12-notes-sync-codex.{final.md,jsonl,review.json}` |
+| `r13` unsupported | C | none needed (`SKILL.md` only) | none | **Pass** | Printed only the usage line from `SKILL.md:17` and stopped; no module read, no git or test command; diff fingerprint unchanged. None. | `$S/rerun/r6/r13-unsupported-review-subagent.{final.md,process.md,review.json}` |
+| `r13` unsupported | X | none needed (0 commands) | none | **Pass** | "`review` is unsupported." then the usage line; zero commands; diff fingerprint unchanged. None. | `$S/rerun/r6/r13-unsupported-review-codex.{final.md,jsonl,review.json}` |
+| `v03` verify | C | yes (`verify.md`) | Prove it works, Test behavior, Minimize reader load | **Pass** | Requirements from the ticket before the plan; says plan step 3 omits `--since`; parity probe 21/40 with a fixed-copy control at 40/40; quoting test mutation-checked. About 8,000 chars; two Decisions come from the plan's outcome line, not the ticket \| `final.md` \| `verify.md:33-34,39` do not say whether a plan's outcome may produce Decisions; `verify.md:17-20` pulls against "concise". Minor. | `$S/rerun/r6/v03-orders-export-subagent.{final.md,process.md,review.json}`, `$S/rerun/r6/v03-orders-export-subagent.probes/` |
+| `v03` verify | X | yes (`verify.md` first command) | Prove it works, Test behavior, Fix root causes | **Pass** | Both earlier failures fixed: "The plan omits date filtering"; the probe writes out expected IDs and runs `list` as a control on every case, with 3 date-filter FAILs (`--since 2027-01-01` gives 7 rows instead of 0). Read the plan straight after `verify.md`, with no requirement list first \| `/tmp/orders-export-verify-r6.log` \| `verify.md:6-8` asks for no visible requirement step before the plan. Minor. | `$S/rerun/r6/v03-orders-export-codex.{final.md,jsonl,review.json}` |
+| `v04` verify | C | yes | Make operations idempotent, Prove it works, Test behavior | **Pass** | Both defects (`attempt <= maxAttempts` at `src/dispatch.ts:38`, per-attempt `randomUUID()` at `:43`), shown by a 20-case probe (17 pass, 3 fail) and a corrected control (20/20); the existing tests are shown blind to both. None. | `$S/rerun/r6/v04-webhook-retries-subagent.{final.md,process.md,review.json}`, `$S/rerun/r6/v04-webhook-retries-subagent.probe/` |
+| `v04` verify | X | yes (`verify.md` first command) | Prove it works, Make operations idempotent, Test behavior, Boundary discipline | **Pass** | Both defects with a probe in `/tmp/webhook-verify.1aBqNH` (4 requests, delays 200/400/800; 3 distinct keys); the r4 gaps are closed: Make operations idempotent is listed and `verify.md` was read. `codex exec --json` left out the failed probe command; the reviewer recovered it from the session rollout. None. | `$S/rerun/r6/v04-webhook-retries-codex.{final.md,jsonl,review.json}` |
+| `v05` verify | C | yes | Prove it works, Test behavior, Script bulk (padding) | **Pass** (friction) | No findings; the new tests fail on HEAD (3 of 6); a 50,000-input differential found 0 mismatches; URL change under Decisions. The Boundary discipline padding is gone (0.4.2 trigger rewrite) but Script bulk took its slot; the verdict calls the URL change a pre-ship decision \| principles list \| `principles.md:14` "needs a rerunnable check" matches every verify; `verify.md:10-13` has no recheck-and-drop step like `plan.md:20-21`. | `$S/rerun/r6/v05-pagekit-slugs-subagent.{final.md,process.md,review.json}`, `$S/rerun/r6/v05-pagekit-slugs-subagent.probes/` |
+| `v05` verify | X | yes (`verify.md` first command) | Prove it works, Test behavior, Boundary discipline (padding) | **Pass** (friction) | No findings; 13 edge cases, a 5,000-case seeded differential, and the new tests fail on the old `slugify`; the URL change is now under Decisions (r4: "None"). Boundary discipline is padding, with a reason that shaped no check \| principles list \| `principles.md:13` trigger still matches a pure helper; `verify.md:10-13` has no drop step. | `$S/rerun/r6/v05-pagekit-slugs-codex.{final.md,jsonl,review.json}` |
+| `v07` verify | C | yes | Prove it works, Test behavior, Model the domain, Make operations idempotent | **Pass** | Kept the `make test` failure; ran a labelled substitute (Postgres 17.7, a stub domain, psycopg 3.2.3 now matching the pin) with its gaps listed; the new tests error against HEAD's `repo.py`. Never ran bare `python -m unittest`; the opening verdict is less hedged; psycopg came from PyPI without saying so \| `$S/rerun/r6/v07-users-soft-delete-subagent.probe/` \| `verify.md:17-20` still does not bound network installs or substitute environments; no rule for the opening verdict. | `$S/rerun/r6/v07-users-soft-delete-subagent.{final.md,process.md,review.json}` |
+| `v07` verify | X | yes (`verify.md` first command) | Prove it works, Test behavior, Make operations idempotent | **Pass** | First Codex pass on v07: `make test` exit 2 quoted; `python -m unittest -v` reported as skipping all 5 without `TEST_DATABASE_URL`; the needs list names the image, Docker, requirements and `make test`; a failed PyPI install and a failed `initdb` are both reported. Static review is one sentence; registry/VPN only implied \| `.jsonl` \| `verify.md:17-20` is unchanged since r5, so the likely text help is `principle-prove-it-works.md:9-11`; the model change also applies. | `$S/rerun/r6/v07-users-soft-delete-codex.{final.md,jsonl,review.json}` |
+| `v09` verify | C | yes | Explain the number, Prove it works, Test behavior, Laziness protocol | **Pass** | Both problems (trace only on the baseline at `compare.sh:5`, 2.04x; one `Registry` for 30 resolves, 430 parses and 0 cache hits per cold resolve); 1.48x warm, 1.00x fresh, no CLI difference over 15 rounds; a name-keyed mutant passes the suite (a test gap). 9.4k chars. None. | `$S/rerun/r6/v09-resolver-cache-subagent.{final.md,process.md,review.json}`, `$S/rerun/r6/v09-resolver-cache-subagent-probes/` |
+| `v09` verify | X | yes (`verify.md` first command) | Prove it works, Explain the number, Test behavior | **Pass** | Both problems found; 5 interleaved samples per configuration: 1.4x warm with trace off, 18.9 vs 18.6 ms with a fresh registry, 61.4 vs 62.0 ms for the CLI; 156 parity comparisons against HEAD; read `principle-explain-the-number.md` and `benchmark-checklist.md`. None; `benchmark-checklist.md:23-24` is unchanged, so the gain is not tied to a text change. | `$S/rerun/r6/v09-resolver-cache-codex.{final.md,jsonl,review.json}`, `/tmp/pstack-resolver-verification/` |
+| `a06` auto | C | yes (`auto.md`, `plan.md`, `verify.md`) | Boundary discipline, Test behavior, Laziness protocol, Prove it works | **Pass** | `bun test` 79/0, hidden 123/0; exact BigInt rounding after a 700k-input float probe; a mutation pass found two survivors, fixed and re-run; principles listed with what each shaped (r4 named none); Bun `setTimeout` overflow raised as a decision. Report about 6 KB; opened Exhaust and reasoned it away \| `$S/rerun/r6/a06-probes/` \| `plan.md:12-14` links Exhaust in the main flow. Minor. | `$S/rerun/r6/a06-job-durations-subagent.{final.md,process.md,review.json}` |
+| `a06` auto | X | yes (`auto.md` first command, then `plan.md`, `verify.md`) | Boundary discipline, Laziness protocol, Test behavior, Prove it works | **Pass** (weak report) | `bun test` 119/0, hidden 163/0; fixed its own 2 failing tests and an EOF blank line, then re-ran. The final says only "No blockers": it omits that explicit `null` timeouts now throw (pristine defaults them), that `.5h` is accepted, and the fixes; float summation mis-rounds `520.8235s`; no principle-file read is logged \| `final.md`, `.jsonl` \| `auto.md:14-15` asks for gaps but not decisions or behavior changes; `auto.md:10-12` "use verify.md" again collapsed to the agent's own tests (carried from r4). | `$S/rerun/r6/a06-job-durations-codex.{final.md,jsonl,review.json}` |
+
+C: **10 of 13** pass (fails: `p08`, `p10`, `p11`). X: **12 of 13** pass
+(fail: `p11`).
+
+## Compared with rounds 4 and 5
+
+| Case | C r4 (0.4.0) | C r5 (0.4.1) | C r6 (0.4.2) | X r4 (luna, 0.4.0) | X r5 (luna, 0.4.1) | X r6 (sol, 0.4.2) |
+| --- | --- | --- | --- | --- | --- | --- |
+| `p01` | Pass | not run | Pass | Pass | not run | Pass |
+| `p02` | Pass | not run | Pass | Pass | not run | Pass |
+| `p08` | Fail (criterion 3) | Fail (6 principles) | Fail (criterion 3) | Fail | Pass (weak) | Pass (weak) |
+| `p10` | Pass | Pass | **Fail** (Script bulk) | Fail | Fail | **Pass** |
+| `p11` | Pass | Fail (7 principles) | Fail (Redesign, 2 padding) | Fail | Fail | Fail (Redesign) |
+| `p12` | Fail (criterion 2) | Fail (8 principles) | **Pass** | Fail | Pass (partial) | Pass |
+| `r13` | Pass | not run | Pass | Pass | not run | Pass |
+| `v03` | Pass | Pass | Pass | Fail (criterion 3) | Fail (criterion 2) | **Pass** |
+| `v04` | Pass | not run | Pass | Pass (borderline) | not run | Pass |
+| `v05` | Pass | not run | Pass | Pass | not run | Pass |
+| `v07` | Pass | Pass | Pass | Fail | Fail | **Pass** |
+| `v09` | Pass | Pass | Pass | Fail | Fail | **Pass** |
+| `a06` | Pass | not run | Pass | Pass | not run | Pass |
+| Total | 11 of 13 | 4 of 7 | 10 of 13 | 6 of 13 | 2 of 7 | 12 of 13 |
+
+What improved:
+
+- **Over-selection is gone.** No run listed more than five principles (round
+  5: C `p08` 6, `p11` 7, `p12` 8, X `p11` 6). `principles.md:4` "Keep at
+  most five" fixed it. It reads as a quota: 9 of 12 plan runs listed exactly
+  five, and C `p12` cites "the five-principle cap" rather than the recheck.
+- **Codex read the mode file as its first command in all 12 mode runs**
+  (round 4: 7 of 12; round 5: 5 of 7), and read none in `r13`, as it should.
+  `summary.json` counts `r13` as a read too, which is where the "all 13 runs"
+  in the `89b0f999` commit message comes from. Every C process log records
+  `SKILL.md` and then the mode file.
+- **Codex content gaps closed:** `v03`, `v07`, `v09` and `p10` pass for the
+  first time, and `p11` meets every content criterion. With the model change,
+  this is not attributable to 0.4.2 text alone.
+- **The 0.4.1 auto report contract is observed for the first time:** both
+  `a06` reports list principles with what each shaped (round 4 named none).
+- **Checks test themselves.** Controls or mutants appear in C `v03`, `v04`,
+  `v07`, `v09`, `a06` and X `v03`, in line with the 0.4.2 Prove it works line
+  (`principle-prove-it-works.md:9-11`).
+
+What still fails, or is new in 0.4.2:
+
+- **Exhaust the design space as padding (new).** `plan.md:12-14` names it
+  inline in step 3. It was selected as padding in 8 of 12 plan runs (`p01`,
+  `p08`, `p10`, `p11` on both hosts), and C read and dropped it in `p02` and
+  `a06`. Eve iteration 6 shows the same in `route-current-task` and
+  `plan-attack-premise`.
+- **The recheck drops should-select principles (new).** `plan.md:20-21`
+  removes a principle once the draft already reflects it or another
+  principle carries its check: C `p10` Script bulk, C `p11` Redesign, and
+  Subtract before you add on both hosts in `p01`. X `p11` never opened
+  Redesign, because step 3 points only at Exhaust. Every round-6 failure is
+  principle selection except C `p08`.
+- **A confirmed cause is not paired with the decision that resolves it.**
+  `p08`: C keeps `rm -rf` (fails as in round 4), X names it without a
+  mechanism (weak pass, as in round 5). `plan.md:15-16,26-29` unchanged in
+  effect.
+- **Plan length.** Every plan grew from round 4 on both hosts. C plans run
+  738 to 1326 words (round 4: 581 to 825) against "a few ordered pointers";
+  X plans run 249 to 442 words (round 4: 171 to 250, on the other model).
+  `plan.md:26-29` lists eight content kinds and `plan.md:35` gives no budget.
+- **Verify has no recheck-and-drop step.** `v05` carries one padding
+  principle on each host (Boundary discipline on X; Script bulk on C).
+- **Auto report omits behavior changes.** X `a06` changed explicit `null`
+  handling and accepted `.5h` without reporting either; `auto.md:14-15` asks
+  only for gaps.
+- **Carried over:** Type system discipline assumes a type checker (`p10`
+  both hosts); Minimize reader load unselected in `p11` for the third round;
+  network installs and substitute environments unbounded (`v07` both hosts);
+  Decisions scope loose (C `v03`, `v05`; the hosts file the `v07` email index
+  differently); plan principle links do not resolve from the repo (C `p12`);
+  Codex selected a principle without opening it (X `p12`); planning-time
+  probes left behind (C `p02`, C `p08` inside the run copy's ignored `tmp/`);
+  a money-affecting policy decided without an open question (X `p11`).
+
+Not skill-caused: the `dcg` hook blocked `rm -rf` and some heredoc probes in
+several runs, and the agents rewrote them; `codex exec --json` omits some
+commands (X `v04` probe run, X `a06` file reads), so command counts are lower
+bounds; Codex stderr shows model-refresh timeouts and a system-skills install
+error that did not affect any run.
+
+## Routing hunk (0.4.3, `89b0f999`)
+
+The prompt audit held its `SKILL.md:18-20` hunk (a mode-file sentence written
+for `gpt-6-luna`) until the `gpt-6.1-sol` rerun. Sol read the mode file first
+in all 12 mode runs above, so `89b0f999` applied only that hunk from the
+audit diff with `git apply --include`: "Otherwise read the mode's module file
+below and follow it; the steps and report format of each mode exist only in
+that file." The version went to 0.4.3 in `SKILL.md`, both `plugin.json` files,
+`versions.json` and the `docs/index.html` card. At that commit
+`validate-skills.sh` passed, `git diff --check` was clean, and every pstack
+span in `evals/eve/ablations/manifest.ts` still matched the skill text once.
+
+Not rerun on either dogfood host at 0.4.3. Eve iteration 6 (below) ran 0.4.3
+with `gpt-6-luna`, the model the longer sentence was written for: the
+mode-file read gates in 11 of the 12 evals (all but `route-no-task-asks`)
+passed in both full runs. That is Eve's harness, not `codex exec`.
+
+## Eve iteration 6 (`89b0f999`, recorded in `37328684`)
+
+Run on the contabo host with the default `gpt-6-luna` subject, pstack 0.4.3,
+12 evals including the new `verify-pr-only`. Nothing ran locally.
+`bun run test:pstack-graders` passed 14 checks, and 15 after the fix below.
+
+Two full runs (`--tag pstack`): **10/12 and 9/12**; re-grading run 2 with
+the fixed `verify-check-cannot-run` gate gives 10/12.
+
+| Eval | Passes | Red runs |
+| --- | --- | --- |
+| `auto-job-durations` | 2/2 | |
+| `plan-attack-premise` | 0/2 | Skill-side: selected Fix root causes, never Attack the premise; run 2 also selected Exhaust. The ablation baseline failed the same way (0 of 3). |
+| `plan-dashed-migration` | 2/2 | |
+| `plan-design-space` | 1/2 | Skill-side: run 2 left out Prioritize usability. |
+| `route-current-task` | 1/2 | Skill-side: run 1 selected Exhaust for the event-name enforcement choice, which the eval says does not match. |
+| `route-no-task-asks` | 2/2 | |
+| `route-unsupported-mode` | 2/2 | |
+| `verify-broken-impl` | 2/2 | |
+| `verify-check-cannot-run` | 1/2 | Eval-side, fixed in `b01fef54`: the model set `TEST_DATABASE_URL`, so the tests errored on missing psycopg instead of skipping; the honest report failed a gate that only accepted "skip". `DB_TESTS_DID_NOT_RUN` now accepts skipped or errored and still rejects "5 passed, 0 errors". Two fresh re-runs passed, both on the skipped path. |
+| `verify-correct-change` | 2/2 | |
+| `verify-flawed-plan` | 2/2 | |
+| `verify-pr-only` (new) | 2/2 | |
+
+Ablations (`--runs 2`): `pstack-verify-request-first` and
+`pstack-route-verify` SURVIVED 2/2 with failing controls;
+`pstack-route-unsupported-stop` KILLED 2/2; `pstack-plan-missing-state`
+FLAKY (killed 1 of 2, on the missing last-synced state; the first kill since
+iterations 3-5); `pstack-plan-principle-links` ERROR because its
+`plan-attack-premise` baseline was red, so the 0.4.2 re-span is unmeasured.
+Logs: `$S/evalrun-r6/{run1,run2,ablate,graders,graders-after-fix,rerun-v07-1,rerun-v07-2}.log`.
+
+## Unverified
+
+- The 0.4.3 routing sentence on either dogfood host.
+- Verify from a pull request description alone: no dogfood scenario covers
+  it; only Eve `verify-pr-only` on `gpt-6-luna`.
+- How much of the Codex change comes from the model and how much from the
+  skill text (see above).
+- Run-to-run variance: one run per case per host (C `p08` has alternated
+  between failure modes across rounds).
+- Whether X `a06` and X `p12` opened the principle files they selected
+  (`codex exec --json` under-logs reads).
+- Interactive Claude, interactive Codex, and the native Codex plugin install.
+
+## Lane at `37328684` plus this record
+
+Run locally (no Docker; Eve's live runs were on the contabo host):
+`sync-plugin-versions.sh` updated 0 files; `generate-versions.sh` produced 22
+skills; `validate-skills.sh` printed `Validation passed.`;
+`validate-npx-install.sh` found all 40 skills discoverable; `git diff --check`
+passed; in `evals/eve`, `typecheck`, `test:catalog` (22 public skills) and
+`test:coverage` (46 expected evals, one more than iteration 5 for
+`verify-pr-only`) passed. The version-bump check is reported with the commit
+that adds this record, since it evaluates committed changes only.
