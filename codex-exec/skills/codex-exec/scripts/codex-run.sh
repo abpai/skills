@@ -22,6 +22,7 @@ Common options:
   --stall-timeout SECS   Kill after no meaningful progress (default: 300, 0 disables).
   --reasoning LEVEL      model_reasoning_effort value (default: medium).
   --model MODEL          Pass a model only when explicitly requested.
+  --fast                 Request the fast service tier (service_tier="fast").
   --json                 Ask Codex to emit JSONL events; also mirrors stdout to events.jsonl.
   --ephemeral            Run without persisting Codex session files.
   --dry-run              Write run files and command.txt, but do not launch Codex.
@@ -87,6 +88,7 @@ TIMEOUT_SECONDS="${CODEX_EXEC_TIMEOUT_SECONDS:-2700}"
 STALL_TIMEOUT_SECONDS="${CODEX_EXEC_STALL_TIMEOUT_SECONDS:-300}"
 REASONING="medium"
 MODEL=""
+FAST="false"
 JSON_OUTPUT="true"
 EPHEMERAL="false"
 DRY_RUN="false"
@@ -195,6 +197,10 @@ while [[ $# -gt 0 ]]; do
       require_value "$1" "$MODEL"
       MODEL_SET="true"
       shift 2
+      ;;
+    --fast)
+      FAST="true"
+      shift
       ;;
     --json)
       JSON_OUTPUT="true"
@@ -446,7 +452,7 @@ load_continue_defaults() {
   fi
 
   local prior_workspace="" prior_run_root="" prior_heartbeat="" prior_timeout="" prior_stall_timeout=""
-  local prior_reasoning="" prior_model="" prior_sandbox="" prior_ephemeral=""
+  local prior_reasoning="" prior_model="" prior_fast="" prior_sandbox="" prior_ephemeral=""
   local prior_session="" prior_status_workspace="" prior_status_session="" prior_stderr="" prior_stdout=""
   local key value
 
@@ -460,12 +466,13 @@ load_continue_defaults() {
       STALL_TIMEOUT_SECONDS) prior_stall_timeout="$value" ;;
       REASONING) prior_reasoning="$value" ;;
       MODEL) prior_model="$value" ;;
+      FAST) prior_fast="$value" ;;
       SANDBOX) prior_sandbox="$value" ;;
       EPHEMERAL) prior_ephemeral="$value" ;;
       SESSION_ID) prior_session="$value" ;;
     esac
   done < <(read_env_values "$prior_env" \
-    WORKSPACE RUN_ROOT HEARTBEAT_SECONDS TIMEOUT_SECONDS STALL_TIMEOUT_SECONDS REASONING MODEL SANDBOX EPHEMERAL SESSION_ID)
+    WORKSPACE RUN_ROOT HEARTBEAT_SECONDS TIMEOUT_SECONDS STALL_TIMEOUT_SECONDS REASONING MODEL FAST SANDBOX EPHEMERAL SESSION_ID)
 
   # One python pass over status.env for back-compat fallbacks (older runs predate run.env).
   while IFS=$'\t' read -r key value; do
@@ -507,6 +514,9 @@ load_continue_defaults() {
   fi
   if [[ "$MODEL_SET" == "false" && -n "$prior_model" ]]; then
     MODEL="$prior_model"
+  fi
+  if [[ "$prior_fast" == "true" ]]; then
+    FAST="true"
   fi
   if [[ "$SANDBOX_SET" == "false" && -n "$prior_sandbox" ]]; then
     SANDBOX="$prior_sandbox"
@@ -835,6 +845,11 @@ if [[ "$MODE" == "review" && "$HAS_PROMPT" == "true" ]]; then
 fi
 
 codex_cmd=(codex exec --cd "$WORKSPACE" -c "model_reasoning_effort=\"$REASONING\"")
+# Wrapper-owned config precedes caller -c args. The tier cannot widen access,
+# so unlike generic -c it does not affect RETRY_SAFE.
+if [[ "$FAST" == "true" ]]; then
+  codex_cmd+=(-c 'service_tier="fast"')
+fi
 if (( ${#CONFIG_ARGS[@]} > 0 )); then
   codex_cmd+=("${CONFIG_ARGS[@]}")
 fi
@@ -987,6 +1002,7 @@ write_run_env() {
     printf 'RESUME_LAST=%q\n' "$RESUME_LAST"
     printf 'REASONING=%q\n' "$REASONING"
     printf 'MODEL=%q\n' "$MODEL"
+    printf 'FAST=%q\n' "$FAST"
     printf 'JSON_OUTPUT=%q\n' "$JSON_OUTPUT"
     printf 'EPHEMERAL=%q\n' "$EPHEMERAL"
     printf 'SANDBOX=%q\n' "$SANDBOX"

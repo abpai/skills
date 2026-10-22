@@ -11,7 +11,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "2.2.8"
+  version: "2.3.0"
 ---
 
 # Codex CLI
@@ -94,7 +94,10 @@ The wrapper defaults to the user's configured model, medium reasoning,
 JSONL events, a five-minute meaningful-inactivity limit, and a 45-minute hard
 limit. Pass `--model` only when the user requests a model. Use `--reasoning
 high` for genuinely difficult work rather than by habit. A model or reasoning
-level set in the user's standing instructions counts as a request.
+level set in the user's standing instructions counts as a request. Add `--fast`
+to `run` or `review` when turnaround matters, such as a second opinion: it
+requests the fast service tier with the same model and reasoning, at higher
+plan usage.
 
 Write runs capture the workspace baseline, status, changed files, full diff,
 and diff stat. Do not ask a workspace-write run in a linked worktree to commit:
@@ -110,8 +113,12 @@ scripts/codex-run.sh review \
   --prompt "Find concrete bugs and regressions. Findings first."
 ```
 
-Use `--base REF` or `--commit SHA` when that is the requested scope. Keep the
-review read-only and verify each reported finding before forwarding it.
+Use `--base REF` or `--commit SHA` when that is the requested scope, and
+`--fast` for a quick turnaround. Pass one scope flag: `--base` or `--commit`
+replaces the default `--uncommitted`. With `--prompt` or `--prompt-file`, the
+wrapper runs plain `codex exec` and writes the scope into `prompt.txt`, so
+`command.txt` shows no `review` or scope flag. Keep the review read-only and
+verify each reported finding before forwarding it.
 
 ## Continue
 
@@ -122,12 +129,13 @@ Prefer the run-specific helper:
 ```
 
 It resumes the captured session with the prior workspace, sandbox, reasoning,
-timeouts, and run root. Use `codex exec resume --last` only when guessing the
-latest session is explicitly intended.
+service tier, timeouts, and run root. Use `codex exec resume --last` only when
+guessing the latest session is explicitly intended.
 
 ## Artifact Contract
 
-Every wrapper run writes:
+Every wrapper run writes a run directory under `--run-root` (default
+`$CODEX_HOME/codex-exec-runs`, or `~/.codex/codex-exec-runs`) containing:
 
 - `status.json`: source of truth for state, health, liveness, counts, paths,
   session id, and exit code.
@@ -146,7 +154,13 @@ not daemonize; use the caller's background-process facility, then wait on the
 generated `monitor.sh`. The monitor is finite: it exits when the wrapper
 process recorded in `status.json` is gone without a terminal state, and after
 `CODEX_EXEC_MONITOR_TIMEOUT_SECONDS` (default 3600, `0` disables) as a
-last-resort bound.
+last-resort bound. If your tool calls are capped (for example at 600 seconds),
+set it below that cap on each `monitor.sh` call, and launch the wrapper detached
+(for example `nohup ... &`) if your background facility shares the cap. Rerun
+`monitor.sh` only while it prints `monitor=timed-out` (stderr, exit 124); that
+does not stop Codex. `monitor=done` (stdout) is final and exits with the run's
+own code, which is also 124 when the run itself stalled or timed out.
+`monitor=abandoned` (exit 1) means the wrapper died without a terminal state.
 
 ## Liveness And Recovery
 
@@ -164,7 +178,8 @@ side-effectful MCP tools or hooks, a replayed prompt can repeat those side
 effects; pass `--stall-timeout 0` for such prompts and supervise via
 `monitor.sh` instead.
 
-`--timeout` is a hard child-process deadline, not a monitor-detach operation.
+`--timeout` and `--stall-timeout` take seconds. `--timeout` is a hard
+child-process deadline, not a monitor-detach operation.
 Use `--stall-timeout 0` or `--timeout 0` only when another supervisor owns that
 limit.
 

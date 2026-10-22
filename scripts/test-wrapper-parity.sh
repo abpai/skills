@@ -322,6 +322,7 @@ test_codex_exec_continue_contract() {
   assert_contains "$run_dir/status.json" '"state": "finished"'
   assert_contains "$run_dir/run.env" "SESSION_ID=fake-session-123"
   assert_contains "$run_dir/command.txt" "--sandbox read-only"
+  assert_not_contains "$run_dir/command.txt" "service_tier"
   assert_not_contains "$run_dir/command.txt" "codex prompt secret"
   assert_contains "$run_dir/prompt.txt" "codex prompt secret"
 
@@ -338,6 +339,8 @@ test_codex_exec_continue_contract() {
   continue_dir="$(extract_run_dir "$continue_output")"
   assert_contains "$continue_dir/command.txt" "resume fake-session-123"
   assert_contains "$continue_dir/command.txt" "--sandbox read-only"
+  assert_not_contains "$continue_dir/command.txt" "service_tier"
+  assert_contains "$continue_dir/run.env" "FAST=false"
   assert_contains "$continue_dir/status.env" "state=dry-run"
 
   # Runs from before the --json session fix recorded an empty session id.
@@ -738,6 +741,73 @@ test_codex_capability_passthrough_disables_retry() {
   [[ "$(cat "$counter")" == "1" ]] || fail "expected one bypassed attempt"
 
   pass "codex-exec does not replay a read-only label after capability passthrough"
+}
+
+test_codex_fast_tier_keeps_retry_and_continues() {
+  local fakebin="$TMP_DIR/fakebin"
+  local workspace="$TMP_DIR/workspace-codex-fast"
+  local output="$TMP_DIR/codex-fast-output.txt"
+  local counter="$TMP_DIR/codex-fast-attempts"
+  local continue_output="$TMP_DIR/codex-fast-continue-output.txt"
+  local review_output="$TMP_DIR/codex-fast-review-output.txt"
+  local config_output="$TMP_DIR/codex-fast-config-output.txt"
+
+  setup_workspace "$workspace"
+
+  # A service tier cannot widen access, so a read-only fast run keeps its replay.
+  FAKE_CODEX_STALL_COUNTER="$counter" PATH="$fakebin:$PATH" \
+    bash "$CODEX_RUN" run \
+      --workspace "$workspace" \
+      --run-root "$TMP_DIR/codex-fast-runs" \
+      --fast \
+      --prompt "fast read-only run" \
+      --heartbeat 1 \
+      --stall-timeout 1 \
+      --timeout 10 \
+      > "$output" 2>&1
+
+  local run_dir
+  run_dir="$(extract_run_dir "$output")"
+  assert_contains "$run_dir/command.txt" '-c service_tier=\"fast\"'
+  assert_contains "$run_dir/run.env" "FAST=true"
+  assert_contains "$run_dir/run.env" "RETRY_SAFE=true"
+  assert_contains "$output" "event=retry reason=stall attempt=2"
+  [[ "$(cat "$counter")" == "2" ]] || fail "expected a fast read-only stall to retry once"
+
+  PATH="$fakebin:$PATH" bash "$run_dir/continue.sh" \
+    --prompt "fast follow-up" \
+    --dry-run \
+    > "$continue_output" 2>&1
+  local continue_dir
+  continue_dir="$(extract_run_dir "$continue_output")"
+  assert_contains "$continue_dir/command.txt" "resume fake-session-attempt-2"
+  assert_contains "$continue_dir/command.txt" '-c service_tier=\"fast\"'
+  assert_contains "$continue_dir/run.env" "FAST=true"
+
+  PATH="$fakebin:$PATH" bash "$CODEX_RUN" review \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/codex-fast-review-runs" \
+    --fast \
+    --dry-run \
+    > "$review_output" 2>&1
+  local review_dir
+  review_dir="$(extract_run_dir "$review_output")"
+  assert_contains "$review_dir/command.txt" '-c service_tier=\"fast\" review --uncommitted'
+
+  # The same value through generic -c is still opaque config and disables replay.
+  PATH="$fakebin:$PATH" bash "$CODEX_RUN" run \
+    --workspace "$workspace" \
+    --run-root "$TMP_DIR/codex-fast-config-runs" \
+    -c 'service_tier="fast"' \
+    --prompt "generic config run" \
+    --dry-run \
+    > "$config_output" 2>&1
+  local config_dir
+  config_dir="$(extract_run_dir "$config_output")"
+  assert_contains "$config_dir/run.env" "FAST=false"
+  assert_contains "$config_dir/run.env" "RETRY_SAFE=false"
+
+  pass "codex-exec --fast sets the service tier, keeps read-only replay, and carries into continuation"
 }
 
 test_codex_workspace_content_progress_prevents_false_stall() {
@@ -1327,6 +1397,7 @@ main() {
   test_codex_monitor_waits_through_stall_retry
   test_codex_write_stall_never_retries
   test_codex_capability_passthrough_disables_retry
+  test_codex_fast_tier_keeps_retry_and_continues
   test_codex_workspace_content_progress_prevents_false_stall
   test_codex_retry_gets_a_fresh_stall_clock
   test_codex_hard_timeout_escalates_to_kill

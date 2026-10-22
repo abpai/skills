@@ -22,6 +22,10 @@ flags belong to which non-interactive path.
 
 - `--model <MODEL>`: choose the model
 - `-c model_reasoning_effort="medium"`: set reasoning effort
+- `-c service_tier="fast"`: request the fast service tier (wrapper: `--fast`).
+  Sessions record it as `priority`. Without it, `config.toml` picks the tier.
+  `codex debug models` lists each model's `service_tiers`; an unsupported tier
+  fails the turn with HTTP 400
 - `--ephemeral`: do not persist the session to disk
 - `--json`: stream JSONL events for machine parsing
 - `--output-schema <FILE>`: constrain final output to a JSON schema
