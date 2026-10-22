@@ -154,9 +154,12 @@ generated `monitor.sh`. The monitor is finite: it exits when the wrapper
 process recorded in `status.json` is gone without a terminal state, and after
 `CODEX_EXEC_MONITOR_TIMEOUT_SECONDS` (default 3600, `0` disables) as a
 last-resort bound. If your tool calls are capped (for example at 600 seconds),
-set it below that cap and rerun `monitor.sh` after each exit 124; a monitor
-timeout does not stop Codex. Any other exit is final: the run's own exit code
-on a terminal state, or 1 when the wrapper died without one.
+set it below that cap on each `monitor.sh` call, and launch the wrapper detached
+(for example `nohup ... &`) if your background facility shares the cap. Rerun
+`monitor.sh` only while it prints `monitor=timed-out` (stderr, exit 124); that
+does not stop Codex. `monitor=done` is final and exits with the run's own code,
+which is also 124 when the run itself stalled or timed out. `monitor=abandoned`
+(exit 1) means the wrapper died without a terminal state.
 
 ## Liveness And Recovery
 
