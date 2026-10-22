@@ -5,25 +5,31 @@
 Finish the general-purpose pstack plugin for Codex and Claude. Keep its text
 short, concrete, and independent of Garage roles or a particular harness.
 
-All 24 upstream principles have been considered. Version 0.4.0 routes `plan`,
+All 24 upstream principles have been considered. Version 0.4.1 routes `plan`,
 `verify`, and `auto` from the umbrella, the only entrypoint (`/pstack <mode>`
 in Claude, `$pstack <mode>` in Codex), and the router stops with usage on any
 other mode. Implementation items 1-4 below are done. The hidden per-mode
 wrappers were removed in `132d3f8e`; a `claude -p --plugin-dir` host check
 routed all three modes with `pstack:pstack` as the only command.
 
-The latest evidence is the
-[final pass](pstack-dogfood.md#pstack-040-final-pass-d98be54b) at `d98be54b`
-(pstack text unchanged since `fdc6b1eb`; no repair was attempted in it):
+`8c395a22` (0.4.1) repaired the round-4 friction: a mandatory mode-file read,
+plans that settle decisions the evidence supports and cover every confirmed
+cause, principle selection against the task before drafting, a narrower
+"precedent" for Exhaust the design space with a recommendation in plan mode,
+verify report sections for requirements, commands and attempted checks, and
+principles plus checks in the auto report. The latest evidence is
+[round 5](pstack-dogfood.md#pstack-041-friction-repair-and-rerun-8c395a22):
 
-- Round 4, all 13 graded scenarios on both hosts: Claude subagent 11 of 13,
-  Codex (`codex exec -m gpt-6-luna`, real skill copy in `.agents/skills`)
-  6 of 13. The skill was in use in all 26 runs.
-- Eve iteration 4: 21 of 22 (10/11, 11/11); ablations unchanged.
-- Earlier rounds are history: the
-  [corrected round](pstack-dogfood.md#pstack-040-corrected-dogfood-round)
-  and r3. Their Codex rows measure plain Codex, because Codex ignores
-  symlinked skill directories.
+- Round 5 re-ran only the 7 cases that failed on Codex in round 4 (`p08`,
+  `p10`, `p11`, `p12`, `v03`, `v07`, `v09`) on both hosts: Claude subagent
+  4 of 7, Codex (`codex exec -m gpt-6-luna`, real skill copy) 2 of 7. The
+  other 6 cases per host (`p01`, `p02`, `r13`, `v04`, `v05`, `a06`) passed in
+  round 4 on 0.4.0 and were not re-run; `a06` was meant to check the new auto
+  report and was not run.
+- Eve iteration 5 on 0.4.1 (run on the contabo host): 22 of 22 (11/11,
+  11/11); ablations unchanged from iteration 4.
+- Round 4 at `d98be54b` (Claude 11 of 13, Codex 6 of 13) and earlier rounds
+  are history for 0.4.0.
 
 Keep the PR draft; merging or releasing requires a separate request.
 
@@ -34,27 +40,33 @@ Product status:
 - **Codex:** static packaging validates; runtime use is verified for a
   repo-scoped real-directory skill copy under `codex exec` (`SKILL.md` comes
   from the `$pstack` mention). The native plugin install and interactive
-  Codex were not run. Codex skipped the mode file in 5 of 12 mode runs.
+  Codex were not run. Codex read the mode file in 5 of 7 round-5 runs; it
+  still skipped `verify.md` in `v03` and `v09`.
 
-Open (not repaired; details in the dogfood record):
+Open (details in the dogfood record):
 
-- `SKILL.md:17-21` makes the mode-file read easy to skip (Codex `a06`,
-  `p11`, `v04`, `v05`, `v09`); `p11` failed with it.
-- Plan flexibility (`plan.md:11-12,15,22`) drops concrete findings: `p08`
-  failed on both hosts by keeping the destructive delete of the destination.
-- Exhaust the design space is under-selected (`p12` on both hosts, Eve
-  `plan-design-space` 1/2); the `pstack-plan-missing-state`,
-  `pstack-verify-request-first` and `pstack-route-verify` ablations survive.
-- Principle selection is anchored on the draft (`plan.md:12-13`, Codex
-  `p10`); there is no tie-break between overlapping triggers.
-- Verify: no section for derived requirements or plan gaps (Codex `v03`);
-  "unverified" needs no attempt and listed checks need not have run (Codex
-  `v07` fabricated a check result); runnable checks can be deferred (Codex
-  `v09`).
-- Auto's report asks for no principles, and Codex never read `auto.md`.
-- Boundary discipline trigger too broad; Decisions scope loose;
-  substitute-check scope unbounded; Make operations idempotent omits
-  request-level keys; plan principle links resolve only inside the skill.
+- Principle over-selection, introduced by the 0.4.1 repair: Claude `p08` (6),
+  `p11` (7), `p12` (8) and Codex `p11` (6) exceed five, and Claude `p11`
+  regressed from a pass. Task-based selection (`plan.md:12-13`) and the
+  broadened Exhaust trigger have no cap (`principles.md:3-4`). The 0.4.1
+  order (select, then draft) also departs from the preserved decision below
+  that plan drafts first and then selects; decide which to keep.
+- Codex still skips the mode file sometimes (`v03`, `v09`) and skips principle
+  files it selected (`p11`, `v09`).
+- Codex content gaps: `p10` (Script bulk operations, docs, CONTRIBUTING),
+  `p11` (booleans, cached label, stored data), `v03` (a broken probe reported
+  as evidence), `v07` (no partial run, incomplete needs list), `v09`
+  (warm-cache artifact, no cold resolve).
+- Not re-run at 0.4.1: `p01`, `p02`, `r13`, `v04`, `v05`, `a06` on both
+  hosts, so the auto report change is unobserved. Required by the dogfood
+  rule before 0.4.1 counts as ready.
+- `pstack-verify-request-first`, `pstack-route-verify` and
+  `pstack-plan-missing-state` ablations still survive.
+- Carried over: Prioritize usability ignores unattended context; Type system
+  discipline does not suggest adding a type check; Boundary discipline
+  trigger too broad; Decisions scope loose; substitute-check scope
+  unbounded; Make operations idempotent omits request-level keys; plan
+  principle links resolve only inside the skill.
 
 Key files:
 
@@ -64,7 +76,7 @@ Key files:
   [auto](../pstack/skills/pstack/auto.md)
 - [Principle selection index](../pstack/skills/pstack/principles.md)
 - [Approval ledger](pstack-approval-ledger.md)
-- [Dogfood record](pstack-dogfood.md): 0.4.0 runs at the end; earlier
+- [Dogfood record](pstack-dogfood.md): 0.4.1 round 5 at the end; earlier
   sections are historical
 
 ## Preserve these decisions
@@ -142,7 +154,7 @@ focused evidence, not a broad reliability claim. No model comparison is required
 
 ## Packaging and completion
 
-Read [skill authoring](skill-authoring.md). The version is 0.4.0 (new relative
+Read [skill authoring](skill-authoring.md). The version is 0.4.1 (new relative
 to `origin/main`). Update the public
 metadata and applicable descriptions/docs, then run the repository lane:
 

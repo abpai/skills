@@ -689,3 +689,168 @@ three wrappers were removed); `git diff --check` passed; in `evals/eve`,
 `typecheck`, `test:catalog` (22 public skills) and `test:coverage` (45
 expected evals) passed. The version-bump check result is reported with the
 commit that adds this record, since it evaluates committed changes only.
+
+# pstack 0.4.1 friction repair and rerun (`8c395a22`)
+
+The four friction areas and the auto report gap from round 4 were repaired in
+`8c395a22` (pstack 0.4.0 → 0.4.1). Round 5 then re-ran only the seven
+scenarios that failed on Codex in round 4 (`p08`, `p10`, `p11`, `p12`, `v03`,
+`v07`, `v09`), on both hosts. The six Codex passes and the six other Claude
+passes from round 4 (`p01`, `p02`, `r13`, `v04`, `v05`, `a06`) were **not**
+re-run at this snapshot, so their round-4 results are for 0.4.0 text. `a06`
+was listed for a rerun to check the new auto report contract and was not run
+on either host. Eve covers part of the gap (below).
+
+## Repair (`8c395a22`)
+
+- **Mode-file read (`SKILL.md`).** "Otherwise load the sibling module…"
+  became "Otherwise, before any other step, read the mode's module file below
+  in full and follow it. The steps and report format of each mode exist only
+  in that file; do not infer them." It names no host. The unsupported-mode
+  stop sentence and the `verify` route bullet are byte-identical, so their
+  ablation spans still match. Evidence: Codex `a06`, `p11`, `v04`, `v05`,
+  `v09` never read the mode file.
+- **Plans dropping findings or deferring decisions (`plan.md`).** Step 2
+  separates decisions the evidence settles from those still open; step 4
+  drafts "the smallest approach that covers the request and every confirmed
+  cause it depends on"; the pointers list "confirmed findings, the decisions
+  taken and why"; "Keep implementation details flexible" became "Leave
+  flexible only details that do not change behavior or structure"; open
+  questions are "not for decisions the evidence already settles". Evidence:
+  `p08` on both hosts kept `rm -rf "$dest"`; Codex `p01`, `p12` left
+  decisions open.
+- **Exhaust the design space under-selected (`plan.md`,
+  `principle-exhaust-the-design-space.md`).** Step 3 now selects principles
+  before the draft, "whose triggers match the task, its findings, or its open
+  decisions". Precedent now means this codebase ("even when a common approach
+  exists elsewhere"; "patterns this codebase already establishes"), and in
+  plan mode the agent must "compare the options, recommend one, and propose
+  the prototypes that would confirm it". No other trigger changed and no
+  tie-break was added; `principles.md` is unchanged.
+- **Verify report gaps (`verify.md`).** "Run every check that can run here
+  rather than deferring it"; unverified "only after attempting it and keeping
+  the failure, or after stating why it cannot run here"; a new first
+  Requirements section that notes what the supplied plan omits or
+  contradicts; "The checks run, with their commands"; the unverified section
+  needs the attempt and its result. The Decisions section and both
+  `pstack-verify-request-first` spans are unchanged.
+- **Auto report (`auto.md`).** The summary must include "the selected
+  principles and what each shaped, the checks run and their results".
+- **Packaging.** Version 0.4.1 in `SKILL.md`; the sync scripts updated both
+  `plugin.json` files and `versions.json`; the pstack card in
+  `docs/index.html` was fixed by hand. `pstack-plan-principle-links` was
+  re-spanned to the new selection step in `evals/eve/ablations/manifest.ts`.
+
+The 0.4.1 plan order (select principles, then draft) departs from the handoff
+decision "Plan researches first, drafts the smallest approach, then selects
+principles to refine it". That decision is left as written in
+`docs/pstack-handoff.md`; whether to keep the new order is open (see the
+over-selection below).
+
+## Round 5 (`8c395a22`)
+
+Same hosts, fixtures and grading as round 4: **C** is a Claude subagent
+reading `pstack/skills/pstack/`; **X** is `codex exec -m gpt-6-luna` with a
+real-directory skill copy in `.agents/skills/pstack` (identical to the
+snapshot by `diff -r`), invoked with `$pstack <mode>`. Separate reviewers
+graded each run against `$S/grading/`. Every run loaded the skill and left
+its run copy unchanged.
+
+Outputs: `$S/rerun/r5/<case>-<subagent|codex>` (run copy), with `.final.md`,
+`.review.json`, and `.process.md` (C) or `.jsonl`, `.prompt.txt` and `.stderr`
+(X). Probes stayed outside the run copies: `$S/rerun/r5/p08-repro.sh`,
+`$S/rerun/r5/probe-v03-subagent/`, `$S/rerun/r5/probes-v09-subagent/`,
+`$S/rerun/r5/v07-probe/`.
+
+| Case | Host | Mode file read? | r4 → r5 | observation \| evidence \| suspected skill cause | Paths |
+| --- | --- | --- | --- | --- | --- |
+| `p08` plan | C | yes | Fail → **Fail** (6 principles) | r4 failure fixed: removes the unconditional `rm -rf`, resumes with rsync into `"$dest/"`, per-mirror `.state/<name>.json` written after the fetch, `mirror-sync` the only writer of `state.json`; race reproduced 5/5. Fails the 5-principle cap; Exhaust the design space is padding. Restart check injects a fetch failure instead of a mid-run kill \| principles list \| `plan.md:12-13` task-based selection widened the pick with no cap; `principles.md:3-4` "Keep the few that matter most" has no number; the broadened Exhaust trigger fires on an ordinary rsync-vs-journal choice. | `$S/rerun/r5/p08-mirror-sync-subagent.{final.md,process.md,review.json}` |
+| `p08` plan | X | yes (`plan.md` first command) | Fail → **Pass** (weak on criterion 3) | Per-mirror atomic completion records, coordinator publishes `state.json` by rename, "done" not inferred from a directory existing; 5 principles. Names the delete at `bin/mirror-sync-one:11` as a cause but no decision removes it, so a killed mirror is re-copied; adds an unrequested "fresh run recopies" rule \| pointers 1-2 \| `plan.md:21-24` lists findings and decisions separately and never pairs each confirmed cause with the decision that resolves it. | `$S/rerun/r5/p08-mirror-sync-codex.{final.md,jsonl,review.json}` |
+| `p10` plan | C | yes | Pass → **Pass** | Prior message as task; `acct.${action}` template handled; runtime guard plus source-scan test since bun has no typecheck; CONTRIBUTING bullet replaced; `docs/events.md` and tests updated; both bolded principles, 5 total. Rename is still a 13-site list with no codemod; Type system discipline dropped \| plan steps \| `principle-script-bulk-operations.md:12-13,27-28` lets a scan test alone satisfy it; `principle-type-system-discipline.md:3,5-6` assumes a type checker exists and never suggests adding one. | `$S/rerun/r5/p10-billing-events-subagent.{final.md,process.md,review.json}` |
+| `p10` plan | X | yes | Fail → **Fail** | Audit template now settled and a leftover outcome stated, but bolded Script bulk operations still missing (file never opened), no script or rerunnable leftover command, no `tsc --noEmit` path under bun, CONTRIBUTING never opened; regression: `docs/events.md` dropped \| searches limited to `src tests package.json` \| `principles.md:3-4` lets generic picks crowd out a trigger that matches a finding; `plan.md:6` "relevant repository guidance" too vague (no CONTRIBUTING, README, docs); `plan.md:21-23` success checks come out as statements, not commands. | `$S/rerun/r5/p10-billing-events-codex.{final.md,jsonl,review.json}` |
+| `p11` plan | C | yes | Pass → **Fail** (7 principles) | Content passes every criterion: `shipments[]` replace the flags, label and cancel/refund derived, stored `statusLabel` removed with o-103 named, legacy documents converted in `loadOrders`. Fails the cap with 7 principles, Exhaust the design space as padding; about 7.7 KB with 8 decisions \| principles list \| `plan.md:12-13` "open decisions" pulls Exhaust in for any open policy question; `plan.md:21-24` decisions-and-why grows the plan against "a few ordered pointers"; Minimize reader load still unselected (no tie-break). | `$S/rerun/r5/p11-order-fulfilment-subagent.{final.md,process.md,review.json}` |
+| `p11` plan | X | yes (`plan.md` first command) | Fail → **Fail** | The r4 cause is fixed: `plan.md` read first and both bolded principles selected; shipment records replace single tracking. Still keeps the five booleans and the cached `statusLabel`, ignores `data/orders.json` (explicit FAIL), lists 6 principles, and opened no principle files \| transcript: no principle-file reads; file listing filtered to `*.ts` \| `plan.md:12-13` "Read their files" is a trailing clause Codex skips; no cap in `principles.md:4`; `plan.md:6-11` never asks for persisted or serialized data when a type's shape changes. | `$S/rerun/r5/p11-order-fulfilment-codex.{final.md,jsonl,review.json}` |
+| `p12` plan | C | yes | Fail → **Fail** (8 principles) | r4 failure fixed: Exhaust selected, three conflict policies compared, (a) vs (b) prototyped on phone and editor; base hash, unattended runs, content-hash copies. Fails the cap with 8 principles (none padding); long plan with an unrequested lock file and atomic writes \| principles list \| `plan.md:12-13` lets every loosely matching trigger in; `principles.md:3-4` gives no number; `plan.md:21-23` checks of every selected principle lengthen the plan. | `$S/rerun/r5/p12-notes-sync-subagent.{final.md,process.md,review.json}` |
+| `p12` plan | X | yes | Fail → **Pass** (criterion 3 partial) | Compares keep-both vs text merge vs abort and picks keep-both; baseline fingerprint now a firm prerequisite; idempotent retries; 4 principles. UX reasoning still omits unattended cron/launchd and the phone app though it read `README.md:14-15`; prototypes proposed for a secondary question; principle links use `principles/...` and do not resolve from the repo root \| pointers 2-4 \| `principle-prioritize-usability.md:10` leans on visual detail; `principle-exhaust-the-design-space.md:9-10`; `plan.md:25-26` link form. | `$S/rerun/r5/p12-notes-sync-codex.{final.md,jsonl,review.json}` |
+| `v03` verify | C | yes | Pass → **Pass** | Requirements section first, says plan step 3 omits `--since`; executed evidence (`export --since 2026-03-18` 7 rows vs `list` 3); checks table with commands; no invented CSV defects; fingerprint unchanged. Both r4 frictions fixed. A maintainability note became a numbered finding \| `final.md` Finding 3 \| `verify.md:26-28` lets any principle citation promote a design suggestion to a finding. Minor. | `$S/rerun/r5/v03-orders-export-subagent.{final.md,process.md,review.json}` |
+| `v03` verify | X | **no** | Fail → **Fail** (criterion 2) | r4 failure fixed: Requirements section says the plan omits `--since`. But the only executed evidence is a broken probe: `splitlines()[2:]` dropped A-1001 and a 2025-02-01 cutoff excludes nothing in all-2026 data, so "list correctly excluded A-1001" is false. Announced it would read the verify instructions, then did not \| transcript has 4 commands, none reads `verify.md` \| `SKILL.md:18-20` still skipped on Codex; `principle-prove-it-works.md:9-10` checks what a probe measures only on failure; `verify.md:12-14` never asks for an expected result derived from the inputs. | `$S/rerun/r5/v03-orders-export-codex.{final.md,jsonl,review.json}` |
+| `v07` verify | C | yes | Pass → **Pass** | Tried `make test` and kept the failure; named Docker, VPN registry image, PG 16.4 and psycopg 3.2.3; ran a labelled substitute (PG 17, psycopg 3.3.6) with its gaps, plus a revert run; no findings; fingerprint unchanged. Never ran bare `python -m unittest` (`OK (skipped=5)`); opened no principle files \| `$S/rerun/r5/v07-probe/suite-change.txt` \| `verify.md:15-18` still gives no bound on network installs or hand-built substitute environments (same as r4). | `$S/rerun/r5/v07-users-soft-delete-subagent.{final.md,process.md,review.json}` |
+| `v07` verify | X | yes | Fail → **Fail** (PASS-1) | r4 fabrication fixed: it ran `make test` and quoted the real docker.sock error (exit 2). Never ran `python -m unittest`, so `OK (skipped=5)` was never seen; needs list names only the Docker daemon, not the registry/VPN, psycopg or `TEST_DATABASE_URL` it read in the README \| `.jsonl` commands \| `verify.md:15-18` is satisfied once the required command fails, with no prompt to run the part that can run; `verify.md:32-33` does not ask for every documented prerequisite. | `$S/rerun/r5/v07-users-soft-delete-codex.{final.md,jsonl,review.json}` |
+| `v09` verify | C | yes | Pass → **Pass** | Both seeded problems: trace asymmetry at `compare.sh:5` and warm-cache reuse (430 parses then 0); warm no-trace about 1.5x, CLI-shaped cold resolve 20.5 vs 20.8 ms; CHANGELOG rewording recommended; 4 principles. None. | `$S/rerun/r5/v09-resolver-cache-subagent.{final.md,process.md,review.json}`, `$S/rerun/r5/probes-v09-subagent/` |
+| `v09` verify | X | **no** | Fail → **Fail** | Found the trace asymmetry; 10 alternating runs, median 1.42x with range. Its own fair bench repeats the warm 30-resolve loop, so the warm-cache artifact is missed and no cold resolve is run; end-to-end listed as unverified with no attempt; selected Explain the number without opening it \| 5 commands, none reads `verify.md` \| `SKILL.md:17-21` still skipped on Codex; `benchmark-checklist.md:23-25` treats cache state as a tuning knob, not workload realism; `benchmark-checklist.md:42-44` lets a runnable end-to-end check be listed instead of run. | `$S/rerun/r5/v09-resolver-cache-codex.{final.md,jsonl,review.json}` |
+
+C: **4 of 7** re-run cases pass (`p10`, `v03`, `v07`, `v09`). X: **2 of 7**
+pass (`p08`, `p12`). With the six round-4 passes per host that were not
+re-run, the totals would be C 10 of 13 and X 8 of 13 if those still hold on
+0.4.1; that is not measured.
+
+## What improved
+
+- Each targeted round-4 failure moved: Codex `p08` and `p12` now pass; the
+  Codex `v03` plan omission, the `v07` fabricated check result and the `p11`
+  mode-file skip are gone; Claude `p08` removes the `rm -rf` and Claude `p12`
+  compares options and selects Exhaust the design space.
+- Codex read the mode file in 5 of 7 runs (`p08`, `p10`, `p11`, `p12`,
+  `v07`), against 7 of 12 in round 4. Every Claude run recorded the read.
+- Verify reports now open with requirements and list checks with commands on
+  both hosts; the Eve `verify-flawed-plan` reply in `run1.log` has the same
+  shape.
+
+## What still fails
+
+- **Principle over-selection (new, from the repair).** Claude `p08` (6),
+  `p11` (7), `p12` (8) and Codex `p11` (6) exceed the five-principle cap.
+  Claude `p11` was a pass in round 4 and is a regression. Cause: the 0.4.1
+  task-based selection in `plan.md:12-13` plus the broadened Exhaust trigger,
+  with no cap in `principles.md:3-4`. Exhaust is padding in Claude `p08` and
+  `p11`.
+- **Codex still skips `verify.md`** in `v03` and `v09` despite the mandatory
+  wording, and skips principle files it selected (`p11`, `v09`).
+- **Content gaps on Codex:** `p10` (Script bulk operations, docs, CONTRIBUTING),
+  `p11` (booleans, cached label, stored data), `v03` (invalid probe reported as
+  evidence), `v07` (no partial run, incomplete needs list), `v09` (warm cache,
+  no cold resolve).
+- **Carried over:** Prioritize usability ignores unattended context (X `p12`);
+  Type system discipline does not suggest adding a type check (C `p10`);
+  substitute environments unbounded (C `v07`); plan principle links do not
+  resolve from the repo root (X `p12`); a cause and the decision that resolves
+  it are not paired (X `p08`).
+
+## Eve iteration 5 (`0ad0de4f`, recorded in `05409cbb`)
+
+Run on the contabo host (Eve and Docker ran only there; nothing was started
+locally), gpt-6-luna subject and judge, pstack 0.4.1. Two runs: **11/11 and
+11/11**; every eval passed 2/2. Ablations (`--runs 2`, every baseline green)
+match iteration 4: `pstack-plan-principle-links` KILLED 2/2 (the first
+measurement of the re-spanned 0.4.1 selection step) and
+`pstack-route-unsupported-stop` KILLED 2/2; `pstack-verify-request-first`,
+`pstack-route-verify` and `pstack-plan-missing-state` SURVIVED 2/2, and their
+controls with pstack omitted failed, so the skill matters but those sentences
+are still not isolated.
+
+`0ad0de4f` fixed an eval-side regex in `verify-broken-impl.eval.ts`: it
+matched `retry` but not `retries`, which failed a correct "changes between
+retries" reply. An earlier interrupted attempt scored 9/11; besides that
+regex, `plan-design-space` failed the at-most-five-principles gate with 8
+principles, the same over-selection as round 5. That attempt is assumed to
+have run 0.4.1 text from its timestamp, not confirmed. Logs:
+`$S/evalrun-r5/{run1,run2,ablate}.log`, interrupted attempt in
+`$S/evalrun-r5/old/`.
+
+## Unverified
+
+- `p01`, `p02`, `r13`, `v04`, `v05` and `a06` on both hosts at 0.4.1,
+  including the new auto report contract.
+- The Codex mode-file skip in `v04`, `v05` and `a06` at 0.4.1.
+- Interactive Claude, interactive Codex, and the native Codex plugin install.
+
+## Lane at `05409cbb` plus this record
+
+Run locally (no Docker; Eve's live runs were on the contabo host):
+`sync-plugin-versions.sh` updated 0 files; `generate-versions.sh` produced 22
+skills; `validate-skills.sh` printed `Validation passed.`;
+`validate-npx-install.sh` found all 40 skills discoverable; `git diff --check`
+passed; in `evals/eve`, `typecheck`, `test:catalog` (22 public skills) and
+`test:coverage` (45 expected evals) passed. The version-bump check is
+reported with the commit that adds this record, since it evaluates committed
+changes only.

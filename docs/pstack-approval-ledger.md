@@ -103,3 +103,16 @@ review them in the draft PR.
   silently did nothing in `claude -p`, while `/pstack verify ...` routed
   correctly. The user chose `/pstack plan|verify|auto` over the wrappers.
   Mode text is unchanged.
+- `8c395a22` (0.4.1): repairs from the round-4 dogfood. `SKILL.md` says to
+  read the mode's module file in full before any other step. `plan.md`
+  separates settled from open decisions, selects principles against the task,
+  findings and open decisions before drafting, covers every confirmed cause,
+  and leaves flexible only details that do not change behavior or structure.
+  Exhaust the Design Space treats precedent as this codebase's and, in plan
+  mode, recommends one option. `verify.md` adds a Requirements section, checks
+  with commands, and unverified only after an attempt or a stated reason.
+  `auto.md` reports selected principles and checks run. The plan order
+  (select, then draft) departs from the handoff's preserved
+  "drafts the smallest approach, then selects principles" decision, and round
+  5 showed principle over-selection; both are open. Not separately
+  content-reviewed.
