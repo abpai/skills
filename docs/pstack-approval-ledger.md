@@ -154,6 +154,16 @@ review them in the draft PR.
   dogfood host; Eve iteration 6 (`gpt-6-luna`) passed every mode-file read
   gate on it.
 
-Neither 0.4.2 nor 0.4.3 has had a separate user content review of the
+- `09fa61c8` (0.4.4), approved in conversation: plan step 3 compares
+  options only for a still-open decision that would set new UI,
+  architecture, or product behavior that nothing settles, without naming
+  Exhaust the Design Space inline; the Exhaust trigger and file scope line
+  match. "Keep at most five" became a short-list rule with no number, per the
+  prompt audit. Plan pointers settle behavior and structure, leave coding to
+  implementation, and trace to the request or a finding. The user accepted
+  that the recheck may drop a principle the draft already follows. Checked on
+  Claude subagents only (round 7), by the user's choice.
+
+Neither 0.4.2, 0.4.3, nor 0.4.4 has had a separate user content review of the
 changed text beyond the conversation approvals noted above; review them in
 the draft PR.

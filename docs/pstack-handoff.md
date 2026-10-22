@@ -5,7 +5,7 @@
 Finish the general-purpose pstack plugin for Codex and Claude. Keep its text
 short, concrete, and independent of Garage roles or a particular harness.
 
-All 24 upstream principles have been considered. Version 0.4.3 routes `plan`,
+All 24 upstream principles have been considered. Version 0.4.4 routes `plan`,
 `verify`, and `auto` from the umbrella, the only entrypoint (`/pstack <mode>`
 in Claude, `$pstack <mode>` in Codex), and the router stops with usage on any
 other mode. Implementation items 1-4 below are done. The hidden per-mode
@@ -17,8 +17,16 @@ then select principles, then recheck and drop), added an options comparison
 for unprecedented decisions before the draft, capped selection at five,
 rewrote 12 trigger rows, let verify start from a pull request description
 with no plan, and applied four prompt-audit hunks. `89b0f999` (0.4.3) applied
-the held audit hunk that shortens the `SKILL.md` mode-file sentence. The
-latest evidence is [round 6](pstack-dogfood.md#pstack-042-full-round-r6):
+the held audit hunk that shortens the `SKILL.md` mode-file sentence. `09fa61c8` (0.4.4) compares options only for a still-open decision that
+nothing settles (no inline Exhaust link), replaces the five-principle cap with
+a short-list rule, and keeps plan pointers to behavior and structure. A
+focused Claude-subagent check
+([round 7](pstack-dogfood.md#pstack-044-focused-claude-plan-check-r7-09fa61c8))
+ran the 6 plan cases twice: Exhaust appeared only in `p12`, all 12 plans were
+judged reasonable, every plan was shorter than in round 6, and 6 of 12 passed
+the strict criteria (the rest are the accepted recheck drops, one
+7-principle list, and one `p08` keeping the delete). The user accepted
+Claude-only evidence for this change. Round 6 is the latest full evidence:
 
 - Round 6 ran all 13 cases on both hosts at 0.4.2 (`7ad0641a`): Claude
   subagent **10 of 13** (fails `p08`, `p10`, `p11`), Codex **12 of 13**
@@ -45,22 +53,17 @@ Product status:
 
 Open (details in the dogfood record):
 
-- **Exhaust the design space as padding.** `plan.md:12-14` names it inline in
-  step 3. It was padding in 8 of 12 round-6 plan runs (`p01`, `p08`, `p10`,
-  `p11`, both hosts) and in two Eve reds.
-- **The recheck drops should-select principles** (`plan.md:20-21`): Claude
-  `p10` Script bulk operations, Claude `p11` Redesign from first principles,
-  and Subtract before you add in `p01` on both hosts. Codex `p11` never
-  opened Redesign; step 3 points only at Exhaust. "Keep at most five"
-  (`principles.md:4`) fixed over-selection but reads as a quota.
+- **Resolved in 0.4.4 (Claude only):** Exhaust padding, the five-principle
+  quota, and plan length. The recheck dropping a should-select principle the
+  draft already follows is accepted behavior, not a defect.
+- **Not rerun at 0.4.4:** Codex, Eve, and the verify, auto, and
+  unsupported-mode cases. Without a numeric cap, one Claude plan listed 7.
 - **Eve principle-selection reds:** `plan-attack-premise` never selects
   Attack the premise (0 of 3), and `plan-design-space` missed Prioritize
   usability once.
 - `p08`: the confirmed cause at `bin/mirror-sync-one:11` (the unconditional
   delete) is still not paired with a decision that resolves it; Claude fails,
   Codex passes weakly.
-- Plans grew on both hosts against "a few ordered pointers"
-  (`plan.md:26-29`; no budget at `plan.md:35`).
 - Verify has no recheck-and-drop step (`v05` padding on both hosts); the auto
   report does not ask for behavior changes (Codex `a06`).
 - Not rerun: the 0.4.3 routing sentence on either dogfood host; verify from

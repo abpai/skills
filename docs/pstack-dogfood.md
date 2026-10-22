@@ -1073,3 +1073,58 @@ passed; in `evals/eve`, `typecheck`, `test:catalog` (22 public skills) and
 `test:coverage` (46 expected evals, one more than iteration 5 for
 `verify-pr-only`) passed. The version-bump check is reported with the commit
 that adds this record, since it evaluates committed changes only.
+
+
+# pstack 0.4.4 focused Claude plan check (r7, `09fa61c8`)
+
+Scope, as the user set it: a Claude-subagent-only check of the 0.4.4 plan
+changes. If Claude works, that is enough; Codex and Eve were not rerun. Each
+of the 6 plan scenarios ran twice from a fresh copy of
+`rerun/pristine/<fixture>`. One reviewer per scenario graded both runs
+against the fixed criteria and also judged whether a plan was reasonable
+even when it missed a strict criterion. Reviews are in
+`rerun/r7/<id>.review.json`.
+
+0.4.4 changes (`09fa61c8`):
+
+- Plan step 3 drafts first, and compares options only for a still-open
+  decision that would set new UI, architecture, or product behavior that
+  nothing in the codebase, request, or evidence settles. It no longer links
+  Exhaust the design space inline.
+- `principles.md` drops "keep at most five" for a short-list rule without a
+  number, following the prompt audit's guidance against numeric caps.
+- Plan pointers settle what changes behavior or structure, leave how to code
+  it to implementation, and trace each pointer to the request or a finding.
+
+| Run | Strict | Reasonable | Exhaust | Principles | Words | Reviewer summary |
+| --- | --- | --- | --- | --- | --- | --- |
+| `p01-tenant-reports` #1 | PASS | yes | no | 5 (0 padding) | 476 (r4 624, r6 825) | Clean pass on all 8 criteria, and diff -r against pristine is clean. Refuted the timing premise with a CLI run on data/tenants.json (5 reports, 4 files), traced the collision to fileNameFor, fixed it with the tenant id in the name, removed the delay, retry and… |
+| `p01-tenant-reports` #2 | PASS | yes | no | 4 (0 padding) | 528 (r4 624, r6 825) | Clean pass on all 8 criteria, and the run-dir is unchanged. Reproduced the failure locally (bun test: 1 fail) and with a probe outside the repo, then made a single source fix in fileNameFor (slug_id) and removed the workarounds. Planned a fail-first determinis… |
+| `p02-ledger-client` #1 | PASS | yes | no | 3 (0 padding) | 519 (r4 581, r6 738) | Clean pass on all 6 criteria. It selected 3 principles, each of which changed the plan, and dropped the Laziness protocol. It did not select Exhaust the design space and compared no options. In the fixture copy, only .git/index changed (git refreshed it when t… |
+| `p02-ledger-client` #2 | PASS | yes | no | 3 (0 padding) | 619 (r4 581, r6 738) | Clean pass on all 6 criteria, and the fixture copy matches the original byte for byte. The process log shows the Laziness protocol was read, then dropped because it did not change the plan, which is the intended 0.4.4 behavior. It did not select Exhaust the de… |
+| `p08-mirror-sync` #1 | FAIL | yes | no | 4 (0 padding) | 782 (r4 825, r6 1326) | The plan is sound. Per-worker record files with a single writer fix the race, and a run marker lets a rerun skip mirrors that already finished. It fails strict criteria 3 and 4 because it keeps the unconditional rm -rf. As a result, the interrupted mirror and … |
+| `p08-mirror-sync` #2 | PASS | yes | no | 4 (1 padding) | 750 (r4 825, r6 1326) | Full pass. It reproduces the race and names the shared tmp path. It uses separate state.d records with a single merging writer. It removes rm -rf so rsync syncs in place, and writes the completion record only after the fetch. Checks: a parallel test that fails… |
+| `p10-billing-events` #1 | FAIL | yes | no | 3 (0 padding) | 512 (r4 636, r6 797) | Strict FAIL: the bolded Script bulk operations was not selected (the agent read it and dropped it), and Type system discipline is missing too (friction). Otherwise sound. It uses the prior message as the task, catches `acct.${action}` in audit/trail.ts, has th… |
+| `p10-billing-events` #2 | PASS | yes | no | 3 (0 padding) | 526 (r4 636, r6 797) | PASS. Both bolded principles are selected and shape the plan: one file by hand, then a scripted sweep, a rerunnable grep, and a guard test with a positive case plus a CONTRIBUTING pointer. It catches the audit/trail.ts template, keeps no aliases, updates docs … |
+| `p11-order-fulfilment` #1 | FAIL | yes | no | 4 (0 padding) | 699 (r4 808, r6 1199) | A sound plan an engineer could act on. It meets all five content criteria (shipments[] model, derived label and view flags, the new rules, legacy loadOrders conversion, 6 ordered steps) and leaves the fixture unchanged (diff -r is clean). It does not select Ex… |
+| `p11-order-fulfilment` #2 | FAIL | yes | no | 4 (0 padding) | 638 (r4 808, r6 1199) | A concise, sound plan that meets every content criterion, with no padding principles and no option comparison. The fixture is unchanged. The strict grade fails only because the bolded 'Redesign from first principles' is missing. Type system discipline is also … |
+| `p12-notes-sync` #1 | FAIL | yes | yes | 7 (1 padding) | 892 (r4 709, r6 1131) | Sound, actionable plan that meets grading criteria 1-5. It adds a per-device base kept outside the shared folder and a decision table, compares three conflict policies with a prototype, and picks the conflict copy because sync runs unattended. It also has idem… |
+| `p12-notes-sync` #2 | FAIL | yes | yes | 5 (0 padding) | 855 (r4 709, r6 1131) | Strong plan that meets grading criteria 1-5. It names the missing sync base, compares three options (keep-both files, inline markers, 3-way merge with fallback) with a prototype, and recommends keep-both for unattended runs. It covers rerun and crash safety, a… |
+
+Results:
+
+- **Exhaust padding is fixed.** It was selected only in `p12` (both runs),
+  where it is the bolded should-select, and in none of the other 10 runs
+  (round 6: padding in 8 of 12 plan runs).
+- **Padding:** 1 weak padding principle in 12 runs. Without a numeric cap,
+  `p12` run 1 listed 7 principles, each tied to a step.
+- **Length:** every plan is shorter than in round 6, and 10 of 12 are
+  shorter than or close to round 4. Reviewers judged the removed text filler
+  (option tables for settled choices, code-level detail, rollout beyond the
+  request), with no findings, decisions, or checks lost.
+- **All 12 plans were judged reasonable.** Strict criteria passed in 6 of
+  12. The other failures are the accepted recheck behavior (a bolded
+  principle dropped because the draft already does what it says: `p10` #1,
+  `p11` #1 and #2, `p12` #2), `p12` #1 listing more than five principles,
+  and `p08` #1 keeping the unconditional delete as an open question.
+- Not run: Codex, Eve, verify and auto cases, the unsupported-mode case.
