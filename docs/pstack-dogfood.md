@@ -426,3 +426,69 @@ The lane ran at `9fb7f086` with this record added:
 
 `validate-npx-install.sh` and the version-bump check were not re-run, because
 the version is unchanged. The Eve evals were not re-run.
+
+## Repair 2 and round 3 (`fdc6b1eb`)
+
+**Cause of the r2 `v05` regression.** `verify.md:22-23` offered two places:
+"Actionable findings", each naming a violated requirement or principle, and
+non-blocking notes. The intended URL renames need a user decision, so the
+agent ruled out notes, filed them as a Finding marked "Needs your decision",
+and gave a test-gap finding a requirement the request never stated.
+
+**Repair, `fdc6b1eb`.** Changes only `pstack/skills/pstack/verify.md`. The
+report now has Findings (defects with location, evidence and a violated
+requirement or principle; without one it is a note), Decisions (consequences
+the request asks for or implies, with options; not defects), non-blocking
+notes and Unverified, saying "none" for an empty section. The bar for a
+Finding is unchanged, so the seeded defects in `v03`, `v04` and `v09` still
+qualify, and the "unverified" wording `v07` relies on is unchanged. "none"
+also covers the r1 Codex `v05` omission of the unverified item. Version stays
+0.4.0.
+
+**r3, `fdc6b1eb`.** Host: this session had no Agent tool, so the executor was
+a separate fresh `claude -p` process (claude-opus-5-5) given only the skill
+path, the invocation and the user context. That is a Claude host run, not the
+subagent host of r1/r2. Outputs are in `$S/rerun/r3/`.
+
+| Run | Checks and result | observation \| evidence \| suspected skill cause |
+| --- | --- | --- |
+| `v05` verify | Unittest 9 OK, builds before and after with file names compared, 15-input old/new probe outside the repo. Findings "None"; the two renamed URLs under Decisions, test gaps under non-blocking notes. Fingerprint unchanged. **Pass.** The regression is fixed. | Boundary discipline selected as padding (one, below the FAIL threshold) | `principles.md:12` trigger matches any slugify of front-matter titles. Also filed a "C++"/"C#" collision under Decisions although the build already raises on it | `verify.md` "asks for or implies" is loose enough to pull side observations into Decisions. |
+| `v07` verify | `make test` failed at the registry and was reported unverified with what it needs. Static review labelled as such, no success claim, no edits, fingerprint unchanged, Prove it works selected; email reuse now under Decisions. **Fail** on criterion 1: it never ran `python -m unittest`, so it never reported `OK (skipped=5)`. | Stopped at the infrastructure failure instead of running the part of the suite that could run | `verify.md:15-16` "report it as unverified" has no "run what can run; skipped is not passed" clause; `principle-prove-it-works.md:18-19` does not mention skips. A `dcg` hook also blocked its stand-in Postgres probe (not skill-caused). r2 passed this case on a different host, so the cause is not proven. |
+| `v03`, `v04`, `v09` | **Not run.** The reviewer subagents had no Agent tool and declined to merge executor and reviewer roles. | The claim that real defects are still flagged after `fdc6b1eb` is untested by dogfood. Eve `verify-broken-impl` and `verify-flawed-plan` passed 2/2 (below). |
+
+**Eve iteration 3 at `fdc6b1eb`** (gpt-6-luna subject and judge, two passes,
+recorded in `evals/eve` by `62df09b4`): 21 of 22. Run 1 10/11, run 2 11/11.
+`verify-correct-change` (the `v05` analogue) passed 2/2 and its judge accepted
+the Decisions section. The one red was `plan-design-space` in run 1: the plan
+picked one sync strategy without comparing alternatives and did not select
+Exhaust the design space, a skill-side principle-selection miss; the gate was
+kept. Ablations: `pstack-plan-principle-links` and
+`pstack-route-unsupported-stop` KILLED 2/2; `pstack-verify-request-first` and
+`pstack-route-verify` SURVIVED 2/2 as before; `pstack-plan-missing-state` now
+SURVIVED 2/2 (it was one clean kill), so no eval guards that clause any more.
+`9fb7f086`'s plan pointers for "findings and assumptions" may cover it; that
+is untested. Logs: `$S/evalrun/`.
+
+**Codex: UNVERIFIED, by the user's decision to skip it for now.** The dogfood
+harness never got Codex to load pstack: repo-scoped `.agents/skills` symlinks
+were ignored, and 1 of 23 transcripts read `SKILL.md`. No Codex result speaks
+to the skill text. Static Codex packaging (`.codex-plugin/plugin.json`,
+`agents/openai.yaml`) passes validation, and Eve runs only against OpenAI
+models through its own loader, not the Codex host. Next step: install the
+skills as real directories or through the native plugin install, confirm the
+skill-load event in the transcript, then re-run the graded cases.
+
+Still open after r3: `v07` partial-suite reporting, the Boundary discipline
+trigger, Decisions scope, `plan-design-space` selection, the unguarded
+missing-state clause, `v03`/`v04`/`v09` not re-dogfooded, substitute-check
+scope, plan principle links, and the missing r1/r2 grades.
+
+Lane at `62df09b4` plus this record: `sync-plugin-versions.sh` updated 0
+files; `generate-versions.sh` produced 22 skills; `validate-skills.sh` printed
+`Validation passed.`; `validate-npx-install.sh` found all 43 skills
+discoverable, with no skips; `git diff --check` passed; in `evals/eve`,
+`typecheck`, `test:catalog` (22 public skills) and `test:coverage` (45
+expected evals) passed. After committing this record,
+`bun scripts/skill-metadata.ts check-version-bump origin/main` printed
+`[OK] pstack: new -> 0.4.0 (pstack/skills/pstack/SKILL.md)` and
+`Checked 1 plugin(s). All changed plugins have proper version bumps.`

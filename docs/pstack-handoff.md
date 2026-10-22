@@ -16,20 +16,34 @@ started from rebuilt fixtures. Its r1 ran at `9abb72f6`, the repair landed in
 `9fb7f086` (skill text only, still 0.4.0), and r2 re-ran the ten affected
 cases. Graded Claude subagent runs passed 7 of 10 in r1 and 4 of 5 in r2. All
 graded Codex runs failed (0 of 9, then 0 of 5), because Codex did not load the
-skill. Keep the PR draft; merging or releasing requires a separate request.
+skill. A second repair, `fdc6b1eb` (`verify.md` only, still 0.4.0), gave the
+verify report a Decisions section and fixed the `v05` regression: r3 on a
+`claude -p` host passed `v05` and failed `v07` on one criterion, and Eve
+iteration 3 at `fdc6b1eb` passed 21 of 22. Codex runtime behavior is
+unverified by the user's decision to skip it for now. Keep the PR draft;
+merging or releasing requires a separate request.
 
-Still open (details in the dogfood record):
+Unverified and open (details in the dogfood record):
 
-- The Codex dogfood harness does not load pstack. Skills symlinked into
-  `.agents/skills` were not injected even with `$pstack`. Native discovery and
-  the plugin install are unproven at runtime.
-- Verify report buckets: a decision the request implies has nowhere to go
-  except "blocking" (`v05` regressed in r2).
+- **Codex: unverified** (skipped for now by the user). The dogfood harness
+  never loaded pstack: `.agents/skills` symlinks were ignored even with
+  `$pstack`, and 1 of 23 transcripts read `SKILL.md`. Static packaging passes
+  validation. Next: real skill dirs or the native plugin install, confirm the
+  skill load, re-run the graded cases.
+- `v07` (r3): stopped at the failed `make test` and never ran the runnable
+  part of the suite to report `OK (skipped=5)`. `verify.md:15-16` has no
+  "run what can run; skipped is not passed" clause. Cause not proven, since r2
+  passed on another host.
+- `v03`, `v04` and `v09` were not re-dogfooded after `fdc6b1eb`; only Eve's
+  verify evals cover defect detection there.
+- Decisions scope is loose: `v05` r3 put an already-guarded collision there.
+- The Boundary discipline trigger is too broad (padding in `v05` r2 and r3).
+- `plan-design-space` missed Exhaust the design space once in Eve iteration
+  3, and the `pstack-plan-missing-state` ablation now survives, so no eval
+  guards that clause.
 - Plan principle links show paths and resolve only inside the skill.
-- The Boundary discipline trigger is too broad.
 - Substitute-check scope is unbounded.
 - Some r1/r2 grades were not recorded.
-- Eve was not re-run after `9fb7f086`.
 - `/pstack:verify|plan|auto` wrappers are silent no-ops in `claude -p`.
   Interactive Claude and `/pstack:pstack verify|auto` through the host were
   not run.
