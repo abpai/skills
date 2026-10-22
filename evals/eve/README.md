@@ -350,6 +350,19 @@ parser and an empty diff, and the principle predicates reject a padded plan.
   state. `pstack-plan-principle-links` returned ERROR because its
   `plan-attack-premise` baseline was red, so the 0.4.2 re-span is still
   unmeasured.
+  Iteration 7 (pstack 0.4.4, skill text from 09fa61c8, tested at 1e5c4916,
+  remote Docker host, `gpt-6-luna`): one full run went 11/12, and
+  `test:pstack-graders` passed. `plan-attack-premise` selected Attack the
+  premise for the first time (0 of 3 in iteration 6) and left out Exhaust the
+  design space; `route-current-task` also left it out. The one red was
+  skill-side: `plan-design-space` selected six principles against the
+  at-most-5 gate. It kept Exhaust the design space and Prioritize usability,
+  but Prove it works and Test behavior, not implementation only restated its
+  own check step. 0.4.4 removed the numeric cap from `principles.md` and asks
+  instead to leave out principles that only restate the work, so this gate
+  now stands in for that sentence rather than a number the skill states.
+  `verify-check-cannot-run` was green under the widened gate, and the other
+  verify evals and `auto-job-durations` stayed green.
   This lane runs OpenAI only; Codex host behavior is unverified here.
 
 Eve is public preview — the version is pinned in `package.json` and the
