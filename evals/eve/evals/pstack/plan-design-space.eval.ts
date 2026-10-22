@@ -32,6 +32,9 @@ import {
 // compared two approaches in the plan body but did not list it. The gate is the positive half of
 // the both-directions principle check, so it stays a gate: a red result here
 // is a principle-selection finding for the skill, not grader noise.
+// Iteration 3 (fdc6b1eb): selected in 1 of 2 full runs (and in 2 of 2
+// missing-state ablation votes); the miss listed Model the domain instead and
+// compared no strategies.
 export default defineEval({
   description:
     "pstack plan selects Exhaust the design space and Prioritize usability for a novel conflict-handling decision.",

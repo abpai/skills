@@ -306,6 +306,16 @@ parser and an empty diff, and the principle predicates reject a padded plan.
   iterations, so those sentences are not yet guarded.
   pstack's flat modules have no `##` headings, so these entries use `text`
   spans (exact passages) instead.
+  Iteration 3 (pstack at fdc6b1eb, after the principle-selection repair and
+  the verify Decisions section): two full runs went 10/11 and 11/11; the red
+  was `plan-design-space` not selecting Exhaust the design space (it chose
+  one strategy without comparing alternatives), a skill-side selection miss.
+  `verify-correct-change` (v05) was green in both. Ablation (`--runs 2`)
+  killed `pstack-plan-principle-links` and `pstack-route-unsupported-stop`
+  2/2; `pstack-verify-request-first`, `pstack-route-verify`, and now
+  `pstack-plan-missing-state` survived 2/2, so the missing-state clause is no
+  longer measurably guarded. All text spans still match. This lane runs
+  OpenAI only; Codex host behavior is unverified here.
 
 Eve is public preview — the version is pinned in `package.json` and the
 lockfile; bump it deliberately. The verifier's Node image is pinned by digest
