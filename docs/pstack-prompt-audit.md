@@ -87,7 +87,7 @@ are listed here so the full change set can be reviewed in one place.
 
 Round 6 ran all 13 dogfood cases at `7ad0641a` on a Claude subagent (10 of
 13) and on Codex `gpt-6.1-sol` (12 of 13); see
-[the dogfood record](pstack-dogfood.md#pstack-042-full-round-r6). For the
+[the dogfood record](pstack-dogfood.md#rounds). For the
 edits above:
 
 - Exhaust the design space was padding in 8 of 12 plan runs (`p01`, `p08`,

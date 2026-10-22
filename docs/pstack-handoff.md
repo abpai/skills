@@ -17,65 +17,81 @@ then select principles, then recheck and drop), added an options comparison
 for unprecedented decisions before the draft, capped selection at five,
 rewrote 12 trigger rows, let verify start from a pull request description
 with no plan, and applied four prompt-audit hunks. `89b0f999` (0.4.3) applied
-the held audit hunk that shortens the `SKILL.md` mode-file sentence. `09fa61c8` (0.4.4) compares options only for a still-open decision that
+the held audit hunk that shortens the `SKILL.md` mode-file sentence.
+`09fa61c8` (0.4.4) compares options only for a still-open decision that
 nothing settles (no inline Exhaust link), replaces the five-principle cap with
-a short-list rule, and keeps plan pointers to behavior and structure. A
-focused Claude-subagent check
-([round 7](pstack-dogfood.md#pstack-044-focused-claude-plan-check-r7-09fa61c8))
-ran the 6 plan cases twice: Exhaust appeared only in `p12`, all 12 plans were
-judged reasonable, every plan was shorter than in round 6, and 6 of 12 passed
-the strict criteria (the rest are the accepted recheck drops, one
-7-principle list, and one `p08` keeping the delete). The user accepted
-Claude-only evidence for this change. Round 6 is the latest full evidence:
+a short-list rule, and keeps plan pointers to behavior and structure. The
+skill text has not changed since.
 
-- Round 6 ran all 13 cases on both hosts at 0.4.2 (`7ad0641a`): Claude
-  subagent **10 of 13** (fails `p08`, `p10`, `p11`), Codex **12 of 13**
-  (fails `p11`). Codex is now `codex exec` with `gpt-6.1-sol` on the fast
-  service tier and a real skill copy. Rounds 4 and 5 used `gpt-6-luna`, so
-  the Codex gain mixes a model change with the skill change.
-- Eve iteration 6 on 0.4.3 (contabo host, `gpt-6-luna`): 10/12 and 9/12, and
-  10/12 for run 2 after an eval-side gate fix. Every skill-side red is
-  principle selection.
-- Rounds 4 and 5 (0.4.0, 0.4.1) and earlier are history.
+Latest evidence ([dogfood record](pstack-dogfood.md#current-state-at-044)):
+
+- **Round 7, Claude subagent, 0.4.4:** the 6 plan cases twice each. Exhaust
+  appeared only in `p12`, all 12 plans were judged reasonable, every plan was
+  shorter than in round 6, and 6 of 12 passed the strict criteria (the rest
+  are the accepted recheck drops, one 7-principle list, and one `p08` keeping
+  the delete).
+- **Round 8, Claude subagent, 0.4.4:** the 7 non-plan cases (`v03`, `v04`,
+  `v05`, `v07`, `v09`, `a06`, `r13`) once each: **7 of 7** pass and
+  reasonable, the same as round 6, with no padding (round 6: one in `v05`).
+  `v07` passed every criterion in full for the first time.
+- **Eve iteration 7, 0.4.4** (contabo host, `gpt-6-luna`, one full run):
+  **11 of 12** (iteration 6: 10/12 and 9/12). `plan-attack-premise` selected
+  Attack the premise for the first time; the one red is `plan-design-space`
+  selecting 6 principles against the eval's at-most-5 gate.
+- **Round 6, both hosts, 0.4.2** is the latest Codex evidence: Claude
+  subagent 10 of 13, Codex `gpt-6.1-sol` 12 of 13 (fails `p11`). Rounds 4
+  and 5 used `gpt-6-luna`, so the Codex gain mixes a model change with the
+  skill change.
+
+The user accepted Claude-only evidence for 0.4.4. The dogfood harness
+(scenarios, fixture builders, grading notes, Codex runner) is in
+`evals/pstack-dogfood/`, and a fresh build reproduces all 12 fixtures. The
+dogfood record is now a short summary; the full round-by-round history is in
+the pull request description and in git history at `c208f986`.
 
 Keep the PR draft; merging or releasing requires a separate request.
 
 Product status:
 
 - **Claude:** static packaging validates; `/pstack <mode>` routes in
-  `claude -p`; the subagent's process log shows `SKILL.md` and then the mode
-  file in every round-6 mode run. Interactive Claude was not run.
+  `claude -p` (checked at 0.4.0); the subagent's process log shows `SKILL.md`
+  and then the mode file in every round-7 and round-8 mode run. Interactive
+  Claude was not run.
 - **Codex:** static packaging validates; runtime use is verified for a
   repo-scoped real-directory skill copy under `codex exec` (`SKILL.md` comes
   from the `$pstack` mention). `gpt-6.1-sol` read the mode file as its first
-  command in all 12 round-6 mode runs, and none for the unsupported mode. The
-  native plugin install and interactive Codex were not run.
+  command in all 12 round-6 mode runs, and none for the unsupported mode. Not
+  rerun at 0.4.3 or 0.4.4. The native plugin install and interactive Codex
+  were not run.
 
 Open (details in the dogfood record):
 
-- **Resolved in 0.4.4 (Claude only):** Exhaust padding, the five-principle
-  quota, and plan length. The recheck dropping a should-select principle the
-  draft already follows is accepted behavior, not a defect.
-- **Not rerun at 0.4.4:** Codex, Eve, and the verify, auto, and
-  unsupported-mode cases. Without a numeric cap, one Claude plan listed 7.
-- **Eve principle-selection reds:** `plan-attack-premise` never selects
-  Attack the premise (0 of 3), and `plan-design-space` missed Prioritize
-  usability once.
+- **Principle-count gate:** 0.4.4 has no numeric cap, but four Eve evals
+  still gate on `atMostPrinciples(5)` and the dogfood grading README fails
+  more than five. Whether to keep, loosen or replace them is a policy choice,
+  left alone. In iteration 7, `plan-design-space` listed 6, two of which only
+  restated its check step.
+- **Not rerun at 0.4.4:** Codex (any case), `claude -p` routing, and the
+  ablations (last at 0.4.3: `pstack-verify-request-first` and
+  `pstack-route-verify` survive, `pstack-plan-missing-state` is flaky,
+  `pstack-plan-principle-links` is unmeasured).
+- **Accepted:** the plan recheck dropping a should-select principle the draft
+  already follows.
 - `p08`: the confirmed cause at `bin/mirror-sync-one:11` (the unconditional
-  delete) is still not paired with a decision that resolves it; Claude fails,
-  Codex passes weakly.
-- Verify has no recheck-and-drop step (`v05` padding on both hosts); the auto
-  report does not ask for behavior changes (Codex `a06`).
-- Not rerun: the 0.4.3 routing sentence on either dogfood host; verify from
-  a pull request alone (only Eve `verify-pr-only` covers it).
-- Ablations: `pstack-verify-request-first` and `pstack-route-verify` still
-  survive; `pstack-plan-missing-state` is flaky (killed 1 of 2);
-  `pstack-plan-principle-links` is unmeasured (red baseline).
-- Carried over: Type system discipline assumes a type checker; Minimize
-  reader load unselected in `p11`; Boundary discipline still padding on
-  Codex `v05`; Decisions scope loose; substitute-check and network-install
-  scope unbounded; plan principle links resolve only inside the skill;
-  planning-time probes are left behind.
+  delete) is still not always paired with a decision that resolves it.
+- Minor verify-text frictions from round 8: every Decision gets options
+  (0.4.4 changed that only in plan); a Decision can come from a plan's goal;
+  non-blocking notes are always present; probes are "temporary" while Prove
+  it works asks for repeatable checks; substitute-check installs need not be
+  reported; the reworded Exhaust trigger matches verify product choices.
+- Carried from round 6, not rechecked at 0.4.4: the auto report does not ask
+  for behavior changes (Codex `a06`); Codex `v05` Boundary discipline
+  padding; Type system discipline assumes a type checker; Minimize reader
+  load unselected in `p11`; plan principle links resolve only inside the
+  skill; planning-time probes are left behind.
+- Verify from a pull request alone is covered only by Eve `verify-pr-only`.
+- `evals/pstack-dogfood/README.md` ("Record results") still says to add each
+  round to the dogfood record in full; it should match the short format.
 
 Key files:
 
@@ -85,8 +101,11 @@ Key files:
   [auto](../pstack/skills/pstack/auto.md)
 - [Principle selection index](../pstack/skills/pstack/principles.md)
 - [Approval ledger](pstack-approval-ledger.md)
-- [Dogfood record](pstack-dogfood.md): 0.4.2 round 6 and Eve iteration 6 at
-  the end; earlier sections are historical
+- [Dogfood record](pstack-dogfood.md): current state at 0.4.4, the rounds
+  table, round 8 and Eve iteration 7; the full history is in the PR and at
+  `c208f986`
+- [Dogfood harness](../evals/pstack-dogfood/README.md): scenarios, fixture
+  builders, grading notes and the Codex runner
 - [Prompt audit](pstack-prompt-audit.md): the 0.4.2 audit and which hunks
   were applied
 
@@ -165,7 +184,7 @@ focused evidence, not a broad reliability claim. No model comparison is required
 
 ## Packaging and completion
 
-Read [skill authoring](skill-authoring.md). The version is 0.4.3 (new relative
+Read [skill authoring](skill-authoring.md). The version is 0.4.4 (new relative
 to `origin/main`). Update the public
 metadata and applicable descriptions/docs, then run the repository lane:
 
