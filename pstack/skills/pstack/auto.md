@@ -11,5 +11,6 @@ Take the task through planning, implementation, and verification.
    Fix the findings, then repeat the affected checks until they pass or a
    concrete blocker prevents progress.
 
-Return a short summary of what changed, the verification evidence, and any
-remaining gaps or blockers. Do not claim completion beyond what was verified.
+Return a short summary of what changed, the selected principles and what each
+shaped, the checks run and their results, and any remaining gaps or blockers.
+Do not claim completion beyond what was verified.

@@ -8,21 +8,24 @@ unless a calling workflow, such as auto, continues past it.
    available evidence; distinguish requirements, findings, and assumptions.
 2. Identify the structural decisions and prerequisites that will shape the
    task, including state the approach depends on that the code does not keep
-   yet. Draft the smallest approach that covers the request, surfacing
-   uncertainties before choosing principles.
-3. Select from [principles.md](principles.md) only the principles relevant to
-   the draft. Read their files and use them to challenge and reshape it.
-   Remove unnecessary steps and details best resolved during implementation.
+   yet. Note which decisions the evidence settles and which remain open.
+3. Select from [principles.md](principles.md) the principles whose triggers
+   match the task, its findings, or its open decisions. Read their files.
+4. Draft the smallest approach that covers the request and every confirmed
+   cause it depends on. Use the selected principles to challenge it and to
+   settle open decisions. Remove unnecessary steps.
 
 Return only the refined, human-skimmable plan with:
 
 - The intended outcome, in one sentence.
-- A few ordered pointers: relevant code locations, findings and assumptions,
-  constraints, dependencies, and what would demonstrate success, including the
-  checks of selected principles. Keep implementation details flexible.
+- A few ordered pointers: relevant code locations, confirmed findings, the
+  decisions taken and why, assumptions, constraints, dependencies, and what
+  would demonstrate success, including the checks of selected principles.
+  Leave flexible only details that do not change behavior or structure.
 - Selected principle names, each linked as `principles/<file>.md` relative to
   this skill, with a short reason.
-- Open questions only where missing information materially affects the plan.
+- Open questions only where missing information materially affects the plan,
+  not for decisions the evidence already settles.
 
 Keep it as short as the task allows. Preserve the original request as the
 source of requirements; the plan guides implementation rather than replacing it.
