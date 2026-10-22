@@ -25,6 +25,16 @@ export type AblationSpan =
        */
       readonly file?: string
     }
+  | {
+      /**
+       * Exact passages to remove; each must occur exactly once in `file`
+       * (default "SKILL.md"). For short flat modules with no `##` heading to
+       * cut (pstack's plan.md / verify.md / auto.md), where one sentence is
+       * the contract.
+       */
+      readonly text: readonly string[]
+      readonly file?: string
+    }
   /** Reserved for future line-granularity cuts — not implemented yet. */
   | { readonly lines: readonly [number, number] }
 
@@ -148,6 +158,46 @@ export const ABLATIONS: readonly Ablation[] = [
     guardedBy: ["contracts/harness-readiness-evidence"],
     hypothesis:
       "Expected KILLED: removes the facts/unknowns/blockers boundary and its prohibition on invented scores or autonomous-ready assertions.",
+  },
+  {
+    id: "pstack-verify-request-first",
+    skillId: "pstack",
+    span: {
+      file: "verify.md",
+      text: [
+        "Read the original request and identify what success requires before reading\n   the plan. Then ",
+        "The original request is the source of requirements; the plan may be wrong.\n",
+      ],
+    },
+    guardedBy: ["pstack/verify-flawed-plan"],
+    hypothesis:
+      "Expected KILLED: these two sentences are the only place telling verify to derive success from the original request rather than the supplied plan, which omits the --since filter the request asked for. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): SURVIVED 2/2; the control with pstack omitted missed --since, so the skill matters but this eval does not isolate these sentences (the prompt itself names --since).",
+  },
+  {
+    id: "pstack-plan-principle-links",
+    skillId: "pstack",
+    span: {
+      file: "plan.md",
+      text: [
+        "Select from [principles.md](principles.md) only the principles relevant to\n   the draft. Read their files and use them to challenge and reshape it.\n   ",
+        "- Selected principle names with file links and a short reason for each.\n",
+      ],
+    },
+    guardedBy: ["pstack/plan-attack-premise", "pstack/plan-dashed-migration"],
+    hypothesis:
+      "Expected KILLED: without the selection step and the output bullet, plan has no instruction to read principles.md, pick principles, or link their files. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): KILLED 2/2 on both evals (no principles.md read, no links, Attack the premise / Migrate callers not selected).",
+  },
+  {
+    id: "pstack-route-verify",
+    skillId: "pstack",
+    span: {
+      text: [
+        "- `verify` → [verify.md](verify.md): the original request and the\n  implementation to inspect, such as a diff, branch, files, or current changes.\n",
+      ],
+    },
+    guardedBy: ["pstack/verify-broken-impl", "pstack/verify-check-cannot-run"],
+    hypothesis:
+      "Expected KILLED: with no verify route, `pstack verify ...` is an unsupported mode, so verify.md should not load and the review should not run. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): SURVIVED 2/2 — the model still found verify.md from the usage line and the other `verify` mentions, so the bullet alone is redundant for routing (control with pstack omitted failed).",
   },
   {
     id: "omit-codex-session",

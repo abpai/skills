@@ -51,10 +51,12 @@ export default defineEval({
     )
 
     t.check(turn.toolCalls, ranCommand(/export[^\n]*--since|--since[^\n]*export/, "probed export with --since")).soft()
+    // No "say the plan omitted it" clause: verify.md makes the request the
+    // source of requirements, not a plan critique, and a report that grades
+    // against the request without mentioning the plan scored 0 on it.
     t.judge.autoevals.closedQA(
       prompt(
-        "Does the report treat the original request as the authority, say the",
-        "plan itself omitted the --since requirement, and back the --since",
+        "Does the report treat the original request as the authority, and back the --since",
         "finding with executed or exactly traced evidence, without declaring the",
         "change done because it matches the plan and without inventing CSV",
         "quoting or format defects?",

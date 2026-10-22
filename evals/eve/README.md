@@ -290,11 +290,16 @@ parser and an empty diff, and the principle predicates reject a padded plan.
   whole-lane acceptance check.
 - **pstack (live, `gpt-6-luna`, 2026-10-21, pstack 0.4.0):** across five
   runs, the auto candidate passed the hidden suite every time, and the verify
-  evals and `plan-attack-premise` held. Two evals stay red on skill behavior,
-  not grader noise: `route-unsupported-mode` (the model reviewed
-  `pstack review ...` as verify in 2 of 4 runs) and `plan-design-space`
-  (Exhaust the design space selected in 1 of 5 runs). Marginal single-sample gates sit outside the
-  lane under the `quarantine` tag — see "Quarantined evals" above.
+  evals and `plan-attack-premise` held. Two further full runs (iteration 1)
+  went 10/11 each, with a different eval red in each:
+  `route-unsupported-mode` (reviewed `pstack review ...` as verify; red in
+  3 of 6 runs overall) and `plan-design-space` (omitted the missing
+  last-synced state in 1 of 2). Both now carry the `quarantine` tag; their red
+  runs are skill findings, not grader noise. Ablation (`--runs 2`) killed
+  `pstack-plan-principle-links`; `pstack-verify-request-first` and
+  `pstack-route-verify` survived, so those sentences are not yet guarded.
+  pstack's flat modules have no `##` headings, so these entries use `text`
+  spans (exact passages) instead.
 
 Eve is public preview — the version is pinned in `package.json` and the
 lockfile; bump it deliberately. The verifier's Node image is pinned by digest
