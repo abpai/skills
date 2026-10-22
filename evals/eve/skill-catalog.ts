@@ -84,6 +84,11 @@ export const SKILL_CATALOG = {
     mode: "eve",
     owner: "Eve",
   },
+  pstack: {
+    source: "pstack/skills/pstack",
+    mode: "eve",
+    owner: "Eve plus subagent/Codex dogfood",
+  },
   "show-me": {
     source: "show-me/skills/show-me",
     mode: "eve",

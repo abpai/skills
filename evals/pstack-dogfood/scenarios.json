@@ -1,0 +1,305 @@
+[
+ {
+  "id": "p01-tenant-reports",
+  "mode": "plan",
+  "invocation": "pstack plan The \"writes one report per tenant\" test in tests/reports.test.ts fails on CI every few runs. We already bumped its timeout to 10s, wrapped it in a 3-attempt retry, and added a 50ms delay after each write in writeTenantReports so the filesystem can flush. It still flakes. Plan a proper fix.",
+  "user_context": "Run from a fresh copy of the fixture repo (TypeScript, bun). Tests: `bun test`. No other context.",
+  "fixture": "p01-tenant-reports",
+  "grading": "grading/p01-tenant-reports.md",
+  "target_principles": [
+   "attack-the-premise",
+   "fix-root-causes",
+   "subtract-before-you-add",
+   "test-behavior-not-implementation"
+  ],
+  "irrelevant_principles": [
+   "separate-before-serializing-shared-state",
+   "make-operations-idempotent",
+   "explain-the-number",
+   "exhaust-the-design-space",
+   "prioritize-usability",
+   "migrate-callers-then-delete-legacy-apis",
+   "outcome-oriented-execution",
+   "redesign-from-first-principles",
+   "type-system-discipline",
+   "script-bulk-operations",
+   "encode-lessons-in-structure"
+  ],
+  "handoff_case": "(a) plan a small bug fix"
+ },
+ {
+  "id": "p02-ledger-client",
+  "mode": "plan",
+  "invocation": "pstack --plan Move every caller off legacyRequest onto fetchJson and delete legacyRequest. src/lib/http.ts is internal to this package; nothing outside src/ imports it.",
+  "user_context": "Run from a fresh copy of the fixture repo (TypeScript, bun). Tests: `bun test`. Also exercises routing with the `--plan` prefix.",
+  "fixture": "p02-ledger-client",
+  "grading": "grading/p02-ledger-client.md",
+  "target_principles": [
+   "migrate-callers-then-delete-legacy-apis",
+   "test-behavior-not-implementation",
+   "outcome-oriented-execution",
+   "sequence-verifiable-units"
+  ],
+  "irrelevant_principles": [
+   "exhaust-the-design-space",
+   "prioritize-usability",
+   "separate-before-serializing-shared-state",
+   "make-operations-idempotent",
+   "explain-the-number",
+   "attack-the-premise",
+   "fix-root-causes",
+   "encode-lessons-in-structure",
+   "redesign-from-first-principles"
+  ],
+  "handoff_case": "(b) plan an internal API migration; also routing via --plan"
+ },
+ {
+  "id": "v03-orders-export",
+  "mode": "verify",
+  "invocation": "pstack verify Add orders export --format csv: a header row, one row per order, fields containing commas or quotes properly quoted, and it must respect the same --since and --status filters as orders list.",
+  "user_context": "That is the original ticket text. We wrote a plan first (docs/plans/export.md) and implemented it; the implementation is the uncommitted change in the working tree. Tests: `python -m unittest`.",
+  "fixture": "v03-orders-export",
+  "grading": "grading/v03-orders-export.md",
+  "target_principles": [
+   "prove-it-works"
+  ],
+  "irrelevant_principles": [
+   "exhaust-the-design-space",
+   "make-operations-idempotent",
+   "separate-before-serializing-shared-state",
+   "explain-the-number",
+   "migrate-callers-then-delete-legacy-apis",
+   "outcome-oriented-execution",
+   "redesign-from-first-principles",
+   "type-system-discipline"
+  ],
+  "handoff_case": "(c) verify with a flawed supplied plan"
+ },
+ {
+  "id": "v04-webhook-retries",
+  "mode": "verify",
+  "invocation": "pstack verify Add retries to webhook delivery: retry on 5xx responses and network errors with exponential backoff (200ms, 400ms, ...), at most 3 attempts in total, never retry 4xx, and send the same Idempotency-Key header on every attempt so receivers can dedupe.",
+  "user_context": "The change is uncommitted in the working tree. Tests: `bun test`.",
+  "fixture": "v04-webhook-retries",
+  "grading": "grading/v04-webhook-retries.md",
+  "target_principles": [
+   "make-operations-idempotent",
+   "prove-it-works",
+   "test-behavior-not-implementation"
+  ],
+  "irrelevant_principles": [
+   "exhaust-the-design-space",
+   "redesign-from-first-principles",
+   "migrate-callers-then-delete-legacy-apis",
+   "explain-the-number",
+   "separate-before-serializing-shared-state",
+   "script-bulk-operations",
+   "prioritize-usability",
+   "encode-lessons-in-structure"
+  ],
+  "handoff_case": "(d) verify a plausible but broken implementation"
+ },
+ {
+  "id": "v05-pagekit-slugs",
+  "mode": "verify",
+  "invocation": "pstack verify Make slugify collapse runs of separators and trim leading and trailing hyphens: \"  Hello -- World! \" should become \"hello-world\" and \"C++ & Rust\" should become \"c-rust\". Non-ASCII letters should stay as they are today.",
+  "user_context": "The change is uncommitted in the working tree. Tests: `python -m unittest`; site build: `python -m pagekit build content <out-dir>`.",
+  "fixture": "v05-pagekit-slugs",
+  "grading": "grading/v05-pagekit-slugs.md",
+  "target_principles": [
+   "prove-it-works"
+  ],
+  "irrelevant_principles": [
+   "model-the-domain",
+   "type-system-discipline",
+   "minimize-reader-load",
+   "subtract-before-you-add",
+   "exhaust-the-design-space",
+   "redesign-from-first-principles",
+   "boundary-discipline",
+   "make-operations-idempotent",
+   "explain-the-number",
+   "separate-before-serializing-shared-state"
+  ],
+  "handoff_case": "(e) verify a correct small change"
+ },
+ {
+  "id": "a06-job-durations",
+  "mode": "auto",
+  "invocation": "pstack auto Let job configs use human-readable durations. In jobs.json, timeout and retryDelay should accept either a number of milliseconds (as today) or a duration string such as \"500ms\", \"45s\", \"90m\", \"1h30m\", \"1.5h\" or \"2d\". Units are ms, s, m, h, d; a string may combine units largest-first with no spaces, each unit at most once, and decimals are allowed. Durations resolve to whole milliseconds (round to nearest). Anything else, e.g. \"\", \"10\", \"5w\", \"-5s\", \"1h 30m\", \"30m1h\", must make config loading fail with a ConfigError that names the job and the field. Add parseDuration(input: string): number in src/duration.ts (throw on invalid input) and use it from the config loader. I've started tests in tests/duration.test.ts.",
+  "user_context": "Run from a fresh copy of the fixture repo (TypeScript, bun). Tests: `bun test`. Work directly in the repo; no commit needed.",
+  "fixture": "a06-job-durations",
+  "grading": "grading/a06-job-durations.md",
+  "target_principles": [
+   "boundary-discipline",
+   "type-system-discipline",
+   "prove-it-works",
+   "test-behavior-not-implementation",
+   "laziness-protocol"
+  ],
+  "irrelevant_principles": [
+   "exhaust-the-design-space",
+   "separate-before-serializing-shared-state",
+   "explain-the-number",
+   "make-operations-idempotent",
+   "migrate-callers-then-delete-legacy-apis",
+   "redesign-from-first-principles",
+   "prioritize-usability",
+   "outcome-oriented-execution"
+  ],
+  "handoff_case": "(f) auto a bounded change with hidden acceptance tests (grading/a06-job-durations/run-hidden.sh)"
+ },
+ {
+  "id": "v07-users-soft-delete",
+  "mode": "verify",
+  "invocation": "pstack verify Switch user deletion to a soft delete: delete_user should set deleted_at instead of removing the row, and list_users should leave soft-deleted users out unless called with include_deleted=True. Add the migration.",
+  "user_context": "The change is uncommitted in the working tree. The repo's test command is `make test` (see README).",
+  "fixture": "v07-users-soft-delete",
+  "grading": "grading/v07-users-soft-delete.md",
+  "target_principles": [
+   "prove-it-works"
+  ],
+  "irrelevant_principles": [
+   "exhaust-the-design-space",
+   "explain-the-number",
+   "separate-before-serializing-shared-state",
+   "migrate-callers-then-delete-legacy-apis",
+   "redesign-from-first-principles",
+   "type-system-discipline",
+   "script-bulk-operations"
+  ],
+  "handoff_case": "(g) a required check cannot run"
+ },
+ {
+  "id": "p08-mirror-sync",
+  "mode": "plan",
+  "invocation": "pstack plan Two problems with mirror-sync. With --jobs 4 the nightly run sometimes ends with entries missing from state.json, and once it left state.json empty so mirror-status failed. And when the nightly run dies partway (reboot, OOM kill), the next run copies every mirror from scratch even though most had finished; some mirrors are ~40 GB. Make parallel runs record state reliably and make a rerun resume instead of redoing finished work.",
+  "user_context": "Run from a fresh copy of the fixture repo (bash + jq). Local smoke test: `tests/smoke.sh`.",
+  "fixture": "p08-mirror-sync",
+  "grading": "grading/p08-mirror-sync.md",
+  "target_principles": [
+   "separate-before-serializing-shared-state",
+   "make-operations-idempotent",
+   "prove-it-works",
+   "sequence-verifiable-units"
+  ],
+  "irrelevant_principles": [
+   "exhaust-the-design-space",
+   "prioritize-usability",
+   "type-system-discipline",
+   "migrate-callers-then-delete-legacy-apis",
+   "explain-the-number",
+   "model-the-domain",
+   "redesign-from-first-principles",
+   "encode-lessons-in-structure"
+  ],
+  "handoff_case": "principle-coverage"
+ },
+ {
+  "id": "v09-resolver-cache",
+  "mode": "verify",
+  "invocation": "pstack verify I added caching of parsed requirements to the resolver. bench/compare.sh shows it is about 3x faster, and I want to ship it with \"~3x faster dependency resolution\" in the release notes (draft entry in CHANGELOG.md). Check the change and the claim.",
+  "user_context": "The change is uncommitted in the working tree. Tests: `python -m unittest`.",
+  "fixture": "v09-resolver-cache",
+  "grading": "grading/v09-resolver-cache.md",
+  "target_principles": [
+   "explain-the-number",
+   "prove-it-works"
+  ],
+  "irrelevant_principles": [
+   "exhaust-the-design-space",
+   "migrate-callers-then-delete-legacy-apis",
+   "separate-before-serializing-shared-state",
+   "type-system-discipline",
+   "model-the-domain",
+   "make-operations-idempotent",
+   "redesign-from-first-principles",
+   "prioritize-usability"
+  ],
+  "handoff_case": "principle-coverage"
+ },
+ {
+  "id": "p10-billing-events",
+  "mode": "plan",
+  "invocation": "pstack plan",
+  "user_context": "Prior message in the same conversation, before the invocation: \"We're renaming the acct.* events to account.* (acct.opened -> account.opened, acct.closed -> account.closed, acct.frozen -> account.frozen, acct.limit_changed -> account.limit_changed). There are raw event strings all over the place, and reviewers flag hand-typed event names in about every other PR. I want the rename done and I want to stop having that review conversation.\" Repo is TypeScript/bun; tests: `bun test`. Tests current-task fallback (no task text in the invocation).",
+  "fixture": "p10-billing-events",
+  "grading": "grading/p10-billing-events.md",
+  "target_principles": [
+   "script-bulk-operations",
+   "encode-lessons-in-structure",
+   "type-system-discipline"
+  ],
+  "irrelevant_principles": [
+   "exhaust-the-design-space",
+   "explain-the-number",
+   "separate-before-serializing-shared-state",
+   "make-operations-idempotent",
+   "redesign-from-first-principles",
+   "prioritize-usability",
+   "attack-the-premise",
+   "outcome-oriented-execution"
+  ],
+  "handoff_case": "principle-coverage; current-task fallback"
+ },
+ {
+  "id": "p11-order-fulfilment",
+  "mode": "plan",
+  "invocation": "pstack plan Orders can now ship in several parcels. Add partial shipments: ship(order, itemIds, trackingNumber) ships some line items; customers should see \"Partially shipped (2 of 3 items)\" until everything has shipped; cancellation is only allowed before anything has shipped; refunds only after delivery.",
+  "user_context": "Run from a fresh copy of the fixture repo (TypeScript, bun). Tests: `bun test`.",
+  "fixture": "p11-order-fulfilment",
+  "grading": "grading/p11-order-fulfilment.md",
+  "target_principles": [
+   "redesign-from-first-principles",
+   "model-the-domain",
+   "minimize-reader-load",
+   "type-system-discipline"
+  ],
+  "irrelevant_principles": [
+   "exhaust-the-design-space",
+   "explain-the-number",
+   "make-operations-idempotent",
+   "separate-before-serializing-shared-state",
+   "script-bulk-operations",
+   "attack-the-premise",
+   "migrate-callers-then-delete-legacy-apis"
+  ],
+  "handoff_case": "principle-coverage"
+ },
+ {
+  "id": "p12-notes-sync",
+  "mode": "plan",
+  "invocation": "pstack plan Two people lost edits because they changed the same note on their laptop and their phone before syncing, and jot sync silently kept whichever copy was newer. Plan how jot sync should handle conflicting edits instead.",
+  "user_context": "Run from a fresh copy of the fixture repo (Python CLI). Tests: `python -m unittest`.",
+  "fixture": "p12-notes-sync",
+  "grading": "grading/p12-notes-sync.md",
+  "target_principles": [
+   "exhaust-the-design-space",
+   "prioritize-usability"
+  ],
+  "irrelevant_principles": [
+   "type-system-discipline",
+   "migrate-callers-then-delete-legacy-apis",
+   "explain-the-number",
+   "outcome-oriented-execution",
+   "script-bulk-operations",
+   "encode-lessons-in-structure",
+   "redesign-from-first-principles",
+   "attack-the-premise"
+  ],
+  "handoff_case": "principle-coverage"
+ },
+ {
+  "id": "r13-unsupported-review",
+  "mode": "plan",
+  "invocation": "pstack review the slugify change",
+  "user_context": "Run from a fresh copy of the v05 fixture repo (it has an uncommitted slugify change). Tests the unsupported-mode path; the schema's mode field is set to plan only because 'review' is not an allowed value.",
+  "fixture": "v05-pagekit-slugs",
+  "grading": "grading/r13-unsupported-review.md",
+  "target_principles": [],
+  "irrelevant_principles": [
+   "all 21 principles (no principle selection expected)"
+  ],
+  "handoff_case": "routing: unsupported mode (pstack review)"
+ }
+]

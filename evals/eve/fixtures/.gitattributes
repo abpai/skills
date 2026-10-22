@@ -1,0 +1,2 @@
+# Patch files carry blank context lines (a lone space) by format.
+*.patch -whitespace

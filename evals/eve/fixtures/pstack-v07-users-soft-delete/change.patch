@@ -1,0 +1,72 @@
+diff --git a/migrations/003_users_soft_delete.sql b/migrations/003_users_soft_delete.sql
+new file mode 100644
+index 0000000..20e8532
+--- /dev/null
++++ b/migrations/003_users_soft_delete.sql
+@@ -0,0 +1,2 @@
++ALTER TABLE users ADD COLUMN deleted_at timestamptz;
++CREATE INDEX users_live_idx ON users (id) WHERE deleted_at IS NULL;
+diff --git a/tests/test_repo.py b/tests/test_repo.py
+index 35ffd6c..2ab64ed 100644
+--- a/tests/test_repo.py
++++ b/tests/test_repo.py
+@@ -14,12 +14,22 @@ class RepoTests(DbTestCase):
+         b = repo.create_user(self.conn, "b@example.com", "B")
+         self.assertEqual([u.id for u in repo.list_users(self.conn)], [a.id, b.id])
+ 
+-    def test_delete_user(self):
++    def test_delete_user_keeps_the_row(self):
+         user = repo.create_user(self.conn, "gone@example.com", "Gone")
+         self.assertTrue(repo.delete_user(self.conn, user.id))
+-        self.assertIsNone(repo.get_user(self.conn, user.id))
++        stored = repo.get_user(self.conn, user.id)
++        self.assertIsNotNone(stored.deleted_at)
+         self.assertFalse(repo.delete_user(self.conn, user.id))
+ 
++    def test_list_users_hides_deleted_by_default(self):
++        keep = repo.create_user(self.conn, "keep@example.com", "Keep")
++        gone = repo.create_user(self.conn, "gone@example.com", "Gone")
++        repo.delete_user(self.conn, gone.id)
++        self.assertEqual([u.id for u in repo.list_users(self.conn)], [keep.id])
++        self.assertEqual(
++            [u.id for u in repo.list_users(self.conn, include_deleted=True)], [keep.id, gone.id]
++        )
++
+     def test_email_is_unique_case_insensitively(self):
+         repo.create_user(self.conn, "Sam@example.com", "Sam")
+         with self.assertRaises(Exception):
+diff --git a/usersvc/repo.py b/usersvc/repo.py
+index b8789a7..80aebed 100644
+--- a/usersvc/repo.py
++++ b/usersvc/repo.py
+@@ -8,9 +8,10 @@ class User:
+     email: str
+     name: str
+     created_at: datetime
++    deleted_at: datetime | None = None
+ 
+ 
+-_COLUMNS = "id, email, name, created_at"
++_COLUMNS = "id, email, name, created_at, deleted_at"
+ 
+ 
+ def _user(row):
+@@ -29,11 +30,15 @@ def get_user(conn, user_id):
+     return _user(conn.execute(f"SELECT {_COLUMNS} FROM users WHERE id = %s", (user_id,)).fetchone())
+ 
+ 
+-def list_users(conn):
+-    rows = conn.execute(f"SELECT {_COLUMNS} FROM users ORDER BY id").fetchall()
++def list_users(conn, include_deleted=False):
++    where = "" if include_deleted else "WHERE deleted_at IS NULL "
++    rows = conn.execute(f"SELECT {_COLUMNS} FROM users {where}ORDER BY id").fetchall()
+     return [_user(r) for r in rows]
+ 
+ 
+ def delete_user(conn, user_id):
+-    cur = conn.execute("DELETE FROM users WHERE id = %s", (user_id,))
++    cur = conn.execute(
++        "UPDATE users SET deleted_at = now() WHERE id = %s AND deleted_at IS NULL",
++        (user_id,),
++    )
+     return cur.rowcount == 1

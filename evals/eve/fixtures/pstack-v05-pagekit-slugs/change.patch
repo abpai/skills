@@ -1,0 +1,41 @@
+diff --git a/pagekit/slug.py b/pagekit/slug.py
+index 1ce5e4c..b4b255d 100644
+--- a/pagekit/slug.py
++++ b/pagekit/slug.py
+@@ -1,3 +1,17 @@
+ def slugify(text):
+-    """Lowercase `text` and replace every non-alphanumeric character with a hyphen."""
+-    return "".join(ch if ch.isalnum() else "-" for ch in text.lower())
++    """Lowercase `text`, join runs of alphanumeric characters with single hyphens.
++
++    Any run of other characters becomes one hyphen, and the result never starts
++    or ends with a hyphen.
++    """
++    words = []
++    current = []
++    for ch in text.lower():
++        if ch.isalnum():
++            current.append(ch)
++        elif current:
++            words.append("".join(current))
++            current = []
++    if current:
++        words.append("".join(current))
++    return "-".join(words)
+diff --git a/tests/test_slug.py b/tests/test_slug.py
+index 8e7bd60..82b76e8 100644
+--- a/tests/test_slug.py
++++ b/tests/test_slug.py
+@@ -12,3 +12,12 @@ class SlugTests(unittest.TestCase):
+ 
+     def test_underscores_become_hyphens(self):
+         self.assertEqual(slugify("snake_case_title"), "snake-case-title")
++
++    def test_collapses_runs_of_separators(self):
++        self.assertEqual(slugify("  Hello -- World! "), "hello-world")
++
++    def test_symbols_collapse(self):
++        self.assertEqual(slugify("C++ & Rust"), "c-rust")
++
++    def test_only_separators_gives_empty_slug(self):
++        self.assertEqual(slugify("!!!"), "")

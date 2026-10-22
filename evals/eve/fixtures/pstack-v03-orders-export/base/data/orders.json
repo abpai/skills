@@ -1,0 +1,9 @@
+[
+  {"id": "A-1001", "customer": "Smith, Jane", "placed_on": "2026-02-11", "status": "shipped", "total_cents": 4599},
+  {"id": "A-1002", "customer": "Lee Kwan", "placed_on": "2026-02-27", "status": "cancelled", "total_cents": 1250, "note": "customer asked to cancel"},
+  {"id": "A-1003", "customer": "O'Brien Hardware", "placed_on": "2026-03-01", "status": "paid", "total_cents": 128000, "note": "deliver to \"loading dock B\""},
+  {"id": "A-1004", "customer": "Martinez, Ana", "placed_on": "2026-03-05", "status": "shipped", "total_cents": 2399},
+  {"id": "A-1005", "customer": "Northwind Traders", "placed_on": "2026-03-18", "status": "pending", "total_cents": 56010},
+  {"id": "A-1006", "customer": "Chen Wei", "placed_on": "2026-04-02", "status": "shipped", "total_cents": 999, "note": "gift wrap, no invoice"},
+  {"id": "A-1007", "customer": "Smith, Jane", "placed_on": "2026-04-09", "status": "paid", "total_cents": 15000}
+]

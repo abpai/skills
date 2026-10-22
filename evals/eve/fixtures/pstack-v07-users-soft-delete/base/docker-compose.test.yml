@@ -1,0 +1,13 @@
+services:
+  db:
+    image: registry.platform.internal/postgres-test:16.4-platform.7
+    environment:
+      POSTGRES_USER: usersvc
+      POSTGRES_PASSWORD: usersvc
+      POSTGRES_DB: usersvc
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "usersvc"]
+      interval: 2s
+      retries: 15

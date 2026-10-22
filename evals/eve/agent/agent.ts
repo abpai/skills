@@ -18,9 +18,9 @@ import { createAnthropic } from "@ai-sdk/anthropic"
 //     end to end without spending a token. `live`-tagged behavioral evals are
 //     meaningless under the mock and are not run.
 //
-//   - OPENAI_API_KEY: GPT-5.6-luna hit DIRECTLY via the OpenAI provider
-//     (api.openai.com). The model id is `gpt-5.6-luna`, NOT the gateway's
-//     `openai/gpt-5.6-luna` slug — that path needs a Vercel gateway key; this
+//   - OPENAI_API_KEY: GPT-6-luna hit DIRECTLY via the OpenAI provider
+//     (api.openai.com). The model id is `gpt-6-luna`, NOT the gateway's
+//     `openai/gpt-6-luna` slug — that path needs a Vercel gateway key; this
 //     one uses the OpenAI `sk-` key.
 //
 //   - ANTHROPIC_API_KEY: a Claude model. These skills mostly run under Claude
@@ -33,7 +33,7 @@ import { createAnthropic } from "@ai-sdk/anthropic"
 type Provider = "openai" | "anthropic" | "mock"
 
 const DEFAULT_MODEL: Record<Exclude<Provider, "mock">, string> = {
-  openai: "gpt-5.6-luna",
+  openai: "gpt-6-luna",
   anthropic: "claude-sonnet-5",
 }
 

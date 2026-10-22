@@ -1,0 +1,123 @@
+diff --git a/orders/cli.py b/orders/cli.py
+index 63ecd81..00431b2 100644
+--- a/orders/cli.py
++++ b/orders/cli.py
+@@ -3,7 +3,7 @@ import os
+ import sys
+ from datetime import date
+ 
+-from . import store, table
++from . import export, store, table
+ 
+ 
+ def _date(value):
+@@ -30,6 +30,18 @@ def cmd_list(args, out):
+     return 0
+ 
+ 
++def cmd_export(args, out):
++    orders = store.load(args.data)
++    if args.status:
++        orders = [o for o in orders if o.status == args.status]
++    if args.output:
++        with open(args.output, "w", newline="") as fh:
++            export.write_csv(orders, fh)
++    else:
++        export.write_csv(orders, out)
++    return 0
++
++
+ def build_parser():
+     parser = argparse.ArgumentParser(prog="orders")
+     parser.add_argument(
+@@ -40,6 +52,10 @@ def build_parser():
+     sub = parser.add_subparsers(dest="command", required=True)
+     list_cmd = sub.add_parser("list", parents=[_filters()], help="print orders as a table")
+     list_cmd.set_defaults(func=cmd_list)
++    export_cmd = sub.add_parser("export", parents=[_filters()], help="export orders")
++    export_cmd.add_argument("--format", choices=("csv",), default="csv")
++    export_cmd.add_argument("--output", help="write to this file instead of stdout")
++    export_cmd.set_defaults(func=cmd_export)
+     return parser
+ 
+ 
+diff --git a/orders/export.py b/orders/export.py
+new file mode 100644
+index 0000000..469c967
+--- /dev/null
++++ b/orders/export.py
+@@ -0,0 +1,14 @@
++import csv
++
++from .table import money
++
++COLUMNS = ("id", "customer", "placed_on", "status", "total", "note")
++
++
++def write_csv(orders, out):
++    writer = csv.writer(out, lineterminator="\n")
++    writer.writerow(COLUMNS)
++    for o in orders:
++        writer.writerow(
++            (o.id, o.customer, o.placed_on.isoformat(), o.status, money(o.total_cents).replace(",", ""), o.note)
++        )
+diff --git a/tests/test_export.py b/tests/test_export.py
+new file mode 100644
+index 0000000..1165113
+--- /dev/null
++++ b/tests/test_export.py
+@@ -0,0 +1,54 @@
++import csv
++import io
++import os
++import tempfile
++import unittest
++
++from orders.cli import main
++
++DATA = os.path.join(os.path.dirname(__file__), "..", "data", "orders.json")
++
++
++def export(*argv):
++    out = io.StringIO()
++    code = main(["--data", DATA, "export", *argv], out=out)
++    return code, out.getvalue()
++
++
++class ExportTests(unittest.TestCase):
++    def test_header_and_one_row_per_order(self):
++        code, text = export("--format", "csv")
++        self.assertEqual(code, 0)
++        rows = list(csv.reader(io.StringIO(text)))
++        self.assertEqual(rows[0], ["id", "customer", "placed_on", "status", "total", "note"])
++        self.assertEqual(len(rows), 8)
++
++    def test_quotes_commas_and_quotes(self):
++        _, text = export()
++        self.assertIn('"Smith, Jane"', text)
++        self.assertIn('"deliver to ""loading dock B"""', text)
++        rows = list(csv.reader(io.StringIO(text)))
++        self.assertEqual(rows[1][1], "Smith, Jane")
++
++    def test_total_is_plain_dollars(self):
++        _, text = export()
++        rows = {r[0]: r for r in csv.reader(io.StringIO(text))}
++        self.assertEqual(rows["A-1003"][4], "1280.00")
++
++    def test_status_filter(self):
++        _, text = export("--status", "shipped")
++        ids = [r[0] for r in list(csv.reader(io.StringIO(text)))[1:]]
++        self.assertEqual(ids, ["A-1001", "A-1004", "A-1006"])
++
++    def test_output_file(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            path = os.path.join(tmp, "orders.csv")
++            code, text = export("--output", path)
++            self.assertEqual(code, 0)
++            self.assertEqual(text, "")
++            with open(path, newline="") as fh:
++                self.assertEqual(len(list(csv.reader(fh))), 8)
++
++
++if __name__ == "__main__":
++    unittest.main()
