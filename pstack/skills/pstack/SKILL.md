@@ -6,7 +6,7 @@ argument-hint: "plan|verify|auto [task] - e.g. plan fix login retry, verify, aut
 license: MIT
 metadata:
   author: Andy Pai
-  version: "0.4.2"
+  version: "0.4.3"
   upstream_skill: "https://github.com/ericlitman/open-pstack/tree/9046eecb4ec4461374b1fd8cda7bd60abbaa6d9e/plugins/pstack/skills"
 ---
 
@@ -15,9 +15,9 @@ metadata:
 Take the first token of `$ARGUMENTS` as the mode, strip a leading `--`, and
 match it case-insensitively. If it is not exactly `plan`, `verify`, or `auto`,
 show `pstack plan|verify|auto [task]` and stop; do not map synonyms such as
-`review`. Otherwise, before any other step, read the mode's module file below
-in full and follow it. The steps and report format of each mode exist only in
-that file; do not infer them. Treat the remaining arguments as its input:
+`review`. Otherwise read the mode's module file below and follow it; the steps
+and report format of each mode exist only in that file. Treat the remaining
+arguments as its input:
 
 - `plan` → [plan.md](plan.md): the task to plan.
 - `verify` → [verify.md](verify.md): the original request and the

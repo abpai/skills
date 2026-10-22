@@ -27,7 +27,7 @@ scaffolds, no grader vocabulary and no stale paths. Three findings matter:
    (`SKILL.md:18-20`). It was added in 0.4.1 because `gpt-6-luna` skipped mode
    files, and it skipped `verify.md` in two runs even after the change.
    Re-test it on `gpt-6.1-sol`. If sol reads the mode files, take the shorter
-   wording.
+   wording. Done in 0.4.3: sol read the mode file in all 13 runs.
 2. **Prove it works checks a probe only when the probe fails**
    (`principle-prove-it-works.md:9-10`). That scoping let a probe that could
    not tell right from wrong pass as evidence (Codex v03, round 5).
@@ -43,7 +43,7 @@ config) not applicable.
 
 | Location | Evidence | Pattern | Why it no longer fits | Confidence | Action |
 | --- | --- | --- | --- | --- | --- |
-| `SKILL.md:18-20` | "before any other step, read the mode's module file below in full and follow it ... do not infer them" | 1d model-version workaround | Added in `8c395a22` for `gpt-6-luna`. Current models follow a plain instruction, and the luna runs still skipped files with the stronger wording, so the extra force did not do its job. Keep the context, that steps and format live only in the mode file. | Medium | rewrite (see diff); apply only if the `gpt-6.1-sol` rerun reads every mode file |
+| `SKILL.md:18-20` | "before any other step, read the mode's module file below in full and follow it ... do not infer them" | 1d model-version workaround | Added in `8c395a22` for `gpt-6-luna`. Current models follow a plain instruction, and the luna runs still skipped files with the stronger wording, so the extra force did not do its job. Keep the context, that steps and format live only in the mode file. | Medium | rewrite (see diff); applied in 0.4.3 after the `gpt-6.1-sol` rerun read the mode file in all 13 runs |
 | `principles/principle-prove-it-works.md:9-10` | "If verification fails, confirm that the check measures the intended thing" | Keep-list 11, re-baselining (add) | Checking a probe only on failure lets a passing or confirming probe through unchecked. In Codex v03 (round 5), a probe that excluded no rows was reported as evidence. | Medium | rewrite (see diff) |
 | `principles/principle-boundary-discipline.md:15-16` | "Parse data, build prompts, and calculate scores using that pattern." | 1c padding (kitchen-sink aside) | Upstream's "prompt construction" example from its own domain. The bullet before it already says to keep business functions pure, and current models apply asides where they don't fit. | Medium | rewrite (merge into the previous bullet) |
 | `principles/principle-subtract-before-you-add.md:11` | "Remove redundant prompt instructions and excessive templates." | 1c padding (kitchen-sink aside) | A prompt-file aside from upstream ("Simplify prompts") in a principle about code. It pulls prompt edits into unrelated tasks. | Medium | remove |
@@ -84,8 +84,8 @@ are listed here so the full change set can be reviewed in one place.
 
 One finding per hunk. The Prove it works, Boundary discipline, Subtract
 before you add, and Outcome-oriented execution hunks were applied in 0.4.2.
-The `SKILL.md` routing hunk waits on the `gpt-6.1-sol` rerun: apply it only
-if sol reads the mode file in every mode run.
+The `SKILL.md` routing hunk was held for the `gpt-6.1-sol` rerun and applied
+in 0.4.3 after sol read the mode file in all 13 runs.
 
 ```diff
 diff --git a/pstack/skills/pstack/SKILL.md b/pstack/skills/pstack/SKILL.md
