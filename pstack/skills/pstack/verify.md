@@ -15,12 +15,16 @@ findings without changing it.
    working tree under review. If a required check cannot run here, report it as
    unverified, and label any substitute check with what it does not cover.
 
-Return a concise report with:
+Return a concise report with these sections, saying "none" for an empty one:
 
 - The checks performed and what they establish.
 - The principles applied, each with the check or finding it shaped.
-- Actionable findings with locations, evidence, and the requirement or
-  principle violated. Put non-blocking notes separately, marked as such.
+- Findings: defects with locations, evidence, and the requirement or
+  principle violated. Without a violated requirement or principle, it is a
+  note.
+- Decisions: consequences the request asks for or implies that someone may
+  need to act on, with the options. These are not defects.
+- Non-blocking notes, marked as such.
 - Anything unverified and what is needed to check it.
 
 The original request is the source of requirements; the plan may be wrong.
