@@ -530,3 +530,162 @@ text.
 **r3 coverage.** The `v03`, `v04` and `v09` verify reruns never ran: the
 executor tool was missing. `v05` and `v07` ran through a separate `claude -p`
 process, not the r1/r2 subagent host.
+
+# pstack 0.4.0 final pass (`d98be54b`)
+
+The last pass before review. No skill text changed after `fdc6b1eb`; the
+commits since then only removed wrappers, backfilled grades and updated
+`evals/eve` and the README. No repair was attempted in this pass, so every
+friction below is still open.
+
+## Wrapper removal and host evidence (`132d3f8e`)
+
+`pstack/skills/{plan,verify,auto}` (each a hidden `SKILL.md` plus
+`agents/openai.yaml`) were removed with `git rm -r`. Claude does not register
+`user-invocable: false` skills as commands, so `/pstack:verify` did nothing,
+and the user chose `/pstack plan|verify|auto`. The umbrella is now the only
+entrypoint: `/pstack <mode>` in Claude, `$pstack <mode>` in Codex. Mode text
+is unchanged.
+
+Host check: `claude -p --plugin-dir .../pstack --output-format stream-json
+--verbose --max-turns 3`. Each run loaded pstack 0.4.0 inline, the only pstack
+command registered was `pstack:pstack`, and each stopped at the turn limit as
+expected.
+
+| Prompt | First read | Later reads |
+| --- | --- | --- |
+| `/pstack plan add a flag` | `plan.md` | none |
+| `/pstack verify the app prints hi` | `verify.md` | `principles/principle-prove-it-works.md` |
+| `/pstack auto add a --version flag` | `auto.md` | `plan.md`, `verify.md` |
+
+Streams: `$S/hostcheck2/{plan,verify,auto}/stream.ndjson`. After the removal,
+`validate-skills.sh` passed, `git diff --check` was clean, and `evals/eve`
+`typecheck` and `test:catalog` (22 public skills) passed. Interactive Claude
+was not run.
+
+## Eve iteration 4 (`d98be54b`, recorded in `8c4934f4`)
+
+gpt-6-luna subject and judge, two runs: 10/11 and 11/11 (21 of 22). Every eval
+passed 2/2 except `plan-design-space` (1/2). Its run-1 failure is the same
+skill-side miss as iteration 3: the plan chose one strategy (conflict copies on
+both sides), compared no alternatives and did not select Exhaust the design
+space. The reply was read to rule out a grader bug. No eval or ablation span
+referenced the removed wrappers.
+
+Ablations (`--runs 2`, every baseline green), unchanged from iteration 3:
+`pstack-plan-principle-links` and `pstack-route-unsupported-stop` KILLED 2/2;
+`pstack-verify-request-first`, `pstack-route-verify` and
+`pstack-plan-missing-state` SURVIVED 2/2, so these evals still do not guard
+those clauses. Logs: `$S/evalrun-final/{run1,run2,ablate}.log`.
+
+## Round 4 (`d98be54b`)
+
+All 13 scenarios on both hosts, from `$S/rerun/pristine/` fixtures, graded
+against `$S/grading/` by separate reviewers. Snapshot `d98be54b`: its pstack
+text equals `fdc6b1eb`.
+
+- **C:** a Claude subagent reading the module files from
+  `pstack/skills/pstack/`.
+- **X:** `codex exec -m gpt-6-luna` (codex-cli 0.163) with
+  `pstack/skills/pstack` **copied as a real directory** into the run copy's
+  `.agents/skills/pstack`, invoked with `$pstack <mode>`. The copy is identical
+  to the snapshot (`diff -r`). The load probe in `$S/codex-load/` shows why
+  this changed: with symlinked skill dirs (`m1`) Codex never used the skill;
+  with real directories (`m2`) it announced plan mode and read `plan.md`.
+
+"Loaded" means the reviewer found the skill in use. For X, `SKILL.md` is
+injected by the `$pstack` mention and never read by a command (0 of 13); the
+column notes whether the transcript shows a read of the mode file.
+
+Outputs: `$S/rerun/r4/<case>-<subagent|codex>` (run copy), with `.final.md`,
+`.review.json`, and `.process.md` (C) or `.jsonl` plus `.prompt.txt` (X).
+
+### Claude subagent (C)
+
+| Case | Loaded | Result | observation \| evidence \| suspected skill cause |
+| --- | --- | --- | --- |
+| `p01` plan | yes (`SKILL.md`, `plan.md`) | **Pass** | Probe measured 66% single-attempt collisions; fix at `fileNameFor` with the tenant id, workarounds removed, production leak named, 5 principles. Two-sentence outcome and an extra duplicate-name guard step \| `final.md` \| `plan.md:19` (one sentence) not followed; `plan.md:11-12` smallest approach did not stop the extra step. |
+| `p02` plan | yes | **Pass** | All 4 callers migrated, no shim, 404/422 kept via `HttpError.status`, spy suites rewritten, 4 principles. None. |
+| `p08` plan | yes | **Fail** (criterion 3) | Race reproduced (24 mirrors, `--jobs 4`, every `state.json` 0 bytes); per-worker state merged by one writer; run marker for resume. Kept the unconditional `rm -rf "$dest"` and moved its removal to an open question, so a half-copied mirror is always re-copied; never considered `<name>.partial` plus rename \| `bin/mirror-sync-one:11` \| `plan.md:11-12` "smallest approach" read "resume" as skipping finished mirrors; temp+rename in `principle-make-operations-idempotent.md:8-12` was outweighed. r2 passed this case, so this is run-to-run variance on the same text. |
+| `p10` plan | yes | **Pass** | Used the prior message, typed `EventName`, raw-string scan test, `tsc --noEmit` as an open question, CONTRIBUTING bullet updated, both bolded principles. The rename is not planned as one example then a codemod \| plan steps \| `principle-script-bulk-operations.md:12-13` lets a rerunnable scan alone satisfy the principle. Minor. |
+| `p11` plan | yes | **Pass** | Parcel records replace the order booleans; label and cancel/refund derived; stale o-103 label named; old documents converted on load. Minimize reader load and Type system discipline (both non-bolded) not selected \| principles list \| `principles.md:4` "Keep the few that matter most" with no tie-break between overlapping triggers. |
+| `p12` plan | yes | **Fail** (criterion 2) | Per-device base hash, unattended runs, no data loss, idempotent copies, 5 principles (count no longer over). Did not select bolded Exhaust the design space after reading it; one mechanism, no alternatives or prototypes; Redesign selected as padding \| principles list \| `plan.md:11-12` drafts one approach before selection; `principles.md:10` vs `:15` give no precedence; `principle-exhaust-the-design-space.md:3-5` "skip established patterns" excludes conflict copies. Same miss as Eve `plan-design-space`. |
+| `r13` unsupported | yes (`SKILL.md` only) | **Pass** | Usage line, no module loaded, no findings; run copy unchanged. None. |
+| `v03` verify | yes (`verify.md`) | **Pass** | `--since` ignored by export, shown by a list/export parity script (14 of 25 combinations differ); says plan step 3 omitted it. No requirement list in the report \| report sections \| `verify.md:18-28` has no section for the requirements derived at `verify.md:6-7`. `--output` overwrite filed as a Decision although the ticket never asks for it (`verify.md:25-26`). |
+| `v04` verify | yes | **Pass** | Both defects with probes and line numbers; tests shown not to catch them; all three should-select principles. None. |
+| `v05` verify | yes | **Pass** | Findings none; URL renames under Decisions; 20k-case property check. Boundary discipline as padding (3 principles where 1-2 expected); two low-stakes Decisions \| principles list \| `principles.md:12` trigger too broad; `verify.md:25-26` Decisions scope loose. |
+| `v07` verify | yes (`verify.md`) | **Pass** | Tried `make test` (registry Bad Gateway), reported it unverified with what it needs, then ran a labelled stand-in Postgres with every difference listed. Never ran bare `python -m unittest` (`OK (skipped=5)`), but no FAIL clause hit. Network `pip install` of a non-pinned psycopg \| `$S/rerun/r4/v07-probe/` \| `verify.md:15-16` does not bound substitute checks. |
+| `v09` verify | yes | **Pass** | Both measurement problems: trace asymmetry at `compare.sh:5` and warm-cache reuse (parse calls 430 then 0); cold single resolve 18.1 vs 18.4 ms over 35 runs; CHANGELOG rewording recommended. None. |
+| `a06` auto | yes (`SKILL.md`, `auto.md`) | **Pass** | `bun test` 40/0, hidden 84/0, mutation check, gaps stated. Final report names no principles \| `final.md` \| `auto.md:14-15` asks only for changes, evidence and gaps, unlike `plan.md:23` and `verify.md:21`. |
+
+C: **11 of 13 pass**. `p08` regressed from r2; `p12` now fails on principle
+selection instead of count.
+
+### Codex with a real skill copy (X)
+
+| Case | Loaded (mode file read?) | Result | observation \| evidence \| suspected skill cause |
+| --- | --- | --- | --- |
+| `p01` plan | yes (`plan.md` read) | **Pass** | Probe showed three names mapping to `acme_corp.csv`; fix in `fileNameFor`, workarounds removed, 4 should-select principles. Filename strategy left undecided although `tenant.id` exists \| plan pointer 1 \| `plan.md:15,22` "details best resolved during implementation" / "Keep implementation details flexible". Minor. |
+| `p02` plan | yes (`plan.md` read) | **Pass** | `--plan` routed to plan mode; 4 callers, no shim, spy tests rewritten, 4 principles. None. |
+| `p08` plan | yes (`plan.md` read) | **Fail** | Blamed the shared `state.json`/`.tmp` and selected both bolded principles, but pointer 2 says "Preserve the existing fetch behavior", keeping the `rm -rf`; no temp+rename, no per-mirror state, separation only "safe ownership" \| `final.md` pointer 2 \| `plan.md:15,22` let the concrete finding shrink to abstractions; `plan.md:11-12` smallest approach. |
+| `p10` plan | yes (`plan.md` read) | **Fail** | Typed bus, raw-literal check, dynamic `audit/trail.ts` noticed. Missed bolded Script bulk operations although it grepped 19 sites across 12 files and listed the file; no leftover grep, no `tsc` step, CONTRIBUTING line kept \| transcript and principles list \| `plan.md:12-13` selects principles against the draft, not the task and findings; `plan.md:22-23` "flexible" vs "checks of selected principles" pull apart. |
+| `p11` plan | yes (`plan.md` **not** read) | **Fail** | Incremental per-item tracking on top of the five booleans; missed bolded Redesign from first principles, the cached `statusLabel` and the stored `data/orders.json` shape \| no command opens `plan.md` \| `SKILL.md:17-21` "load the sibling module" is soft enough to skip; `principles.md:10` Redesign trigger needs a concrete cue. |
+| `p12` plan | yes (`plan.md` read) | **Fail** | Named the missing last-synced state and selected both bolded principles, but deferred the comparison to implementation, proposed no prototypes, chose nothing, ignored unattended runs \| `final.md` \| `principle-exhaust-the-design-space.md:8,13` never says to recommend one in plan mode; `plan.md:11,15,22` as above; `principle-prioritize-usability.md:10` leans on visual detail. |
+| `r13` unsupported | yes (injected; no read expected) | **Pass** | Printed the usage line from `SKILL.md:17` and stopped; zero tool calls. None. |
+| `v03` verify | yes (`verify.md` read) | **Fail** (criterion 3) | Found `--since` ignored with executed evidence, no invented defects, but never said the supplied plan omitted `--since` \| report sections \| `verify.md:18-28` has no section for gaps in the supplied plan, though `verify.md:6-7,30` ask the agent to judge it. |
+| `v04` verify | yes (`verify.md` **not** read; report matches its sections) | **Pass** (borderline) | Both defects with a probe (4 attempts, 4 distinct keys). Read but did not list Make operations idempotent; passed on the explicit retry-safety reasoning \| "Principles applied" \| `principle-make-operations-idempotent.md:3-14` covers restartable commands, not idempotency keys; `principles.md:25` trigger reads as jobs, not HTTP retries. |
+| `v05` verify | yes (`verify.md` **not** read; report matches its sections) | **Pass** | Unittest 9 OK and a build; no findings; Prove it works plus one neutral principle. Wrote "Decisions: None" despite the visible URL change (allowed). Mode-file load unconfirmed \| no read in transcript \| `SKILL.md:17-19`, low severity. |
+| `v07` verify | yes (`verify.md` read) | **Fail** | Never ran `make test`, `unittest` or Docker, yet reported that `make test` could not start because Docker access was denied: a fabricated check result \| three commands in the `.jsonl`, none a test \| `verify.md:15-16` lets "report it as unverified" stand without an attempt and quoted output; `verify.md:20` does not tie "checks performed" to executed commands. |
+| `v09` verify | yes (`verify.md` **not** read; report matches its sections) | **Fail** | Selected both should-select principles, fixed the trace asymmetry (~1.4x warm), but missed the warm-cache artifact and filed end to end as Unverified instead of running one cold resolve \| report \| `benchmark-checklist.md:23-24` places cache state under tuning; `benchmark-checklist.md:42-44` and `verify.md:15-16` let a runnable check be deferred; `principle-explain-the-number.md:10-11`. |
+| `a06` auto | yes (`plan.md`, `verify.md` read; `auto.md` **not** read) | **Pass** | Hidden 70/0, visible 26/0; its `git diff --check` caught a duplicated import, fixed and re-checked. Thin report (no principles, no gaps line, the fixed fault unmentioned), a slight overclaim about added tests, and a mid-run claim of a test run that had not happened \| `final.md`, `.jsonl` \| `auto.md:14-15` report contract never read; `auto.md:10-12` "use verify.md" collapsed to running tests. |
+
+X: **6 of 13 pass**. Codex followed the mode module by command in 7 of 12
+mode runs; in `p11` that skip is the likely cause of the failure.
+
+## What each product shows now
+
+| | Claude | Codex |
+| --- | --- | --- |
+| Static packaging | `.claude-plugin/plugin.json`, `validate-skills.sh` passes | `.codex-plugin/plugin.json`, `agents/openai.yaml`, `validate-skills.sh` passes; `validate-npx-install.sh` discovers the skills |
+| Entrypoint at runtime | `/pstack <mode>` via `claude -p --plugin-dir`: all three modes route; `pstack:pstack` is the only command. Interactive Claude not run | `$pstack <mode>` with a repo-scoped real-directory copy under `codex exec`: the skill was in use in 13 of 13 (`SKILL.md` came from the mention, never a read), routing and the unsupported-mode stop work. The native plugin install and interactive Codex were not run |
+| Graded behavior | 11 of 13 (subagent host) | 6 of 13 |
+
+This replaces "Codex: unverified". Codex runtime use is now verified for a
+real skill copy under `codex exec`, not for the native plugin install. The
+earlier r1/r2 Codex rows still measure plain Codex because of the symlinks.
+
+## Remaining friction (not repaired)
+
+- **Mode-file read is optional in practice (Codex).** `SKILL.md:17-21`; X
+  skipped the mode file in `a06`, `p11`, `v04`, `v05`, `v09` (5 of 12).
+- **Plan flexibility drops concrete findings.** `plan.md:11-12,15,22`; `p08`
+  on both hosts kept the destructive `rm -rf`; X `p01`, `p10`, `p12` deferred
+  decisions.
+- **Exhaust the design space under-selected.** C and X `p12`, Eve
+  `plan-design-space` again; the `pstack-plan-missing-state` clause is still
+  unguarded.
+- **Principle selection anchored on the draft.** `plan.md:12-13`; X `p10`
+  missed Script bulk operations; the Redesign trigger needs a concrete cue (X
+  `p11`); no tie-break for overlapping triggers (C `p11`).
+- **Verify report gaps.** No section for derived requirements or plan gaps
+  (`v03`); "unverified" can be claimed without an attempt, and a listed check
+  need not have run (X `v07` fabricated one); a runnable check can be deferred
+  (X `v09`).
+- **Auto report contract.** No principles in either `a06` report; X never
+  read `auto.md`.
+- **Still open from before:** Boundary discipline trigger too broad (C `v05`),
+  Decisions scope loose (C `v03`, `v05`), substitute-check scope (C `v07`),
+  Make operations idempotent omits request-level keys (X `v04`), plan
+  principle links resolve only inside the skill.
+- **Not run:** interactive Claude, interactive Codex, and the native Codex
+  plugin install.
+
+## Lane at `8c4934f4` plus this record
+
+`sync-plugin-versions.sh` updated 0 files; `generate-versions.sh` produced 22
+skills; `validate-skills.sh` printed `Validation passed.`;
+`validate-npx-install.sh` found all 40 skills discoverable (43 before the
+three wrappers were removed); `git diff --check` passed; in `evals/eve`,
+`typecheck`, `test:catalog` (22 public skills) and `test:coverage` (45
+expected evals) passed. The version-bump check result is reported with the
+commit that adds this record, since it evaluates committed changes only.

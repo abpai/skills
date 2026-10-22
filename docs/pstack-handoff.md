@@ -8,46 +8,53 @@ short, concrete, and independent of Garage roles or a particular harness.
 All 24 upstream principles have been considered. Version 0.4.0 routes `plan`,
 `verify`, and `auto` from the umbrella, the only entrypoint (`/pstack <mode>`
 in Claude, `$pstack <mode>` in Codex), and the router stops with usage on any
-other mode. Implementation items 1-4 below are done.
-A `claude -p` host smoke and two live Eve iterations (at `221737ac`) are
-recorded in [the dogfood record](pstack-dogfood.md#pstack-040-plan-verify-and-auto).
-The first dogfood round there is superseded by the
-[corrected round](pstack-dogfood.md#pstack-040-corrected-dogfood-round), which
-started from rebuilt fixtures. Its r1 ran at `9abb72f6`, the repair landed in
-`9fb7f086` (skill text only, still 0.4.0), and r2 re-ran the ten affected
-cases. Graded Claude subagent runs passed 7 of 10 in r1 and 4 of 5 in r2. All
-graded Codex runs failed (0 of 9, then 0 of 5), because Codex did not load the
-skill. A second repair, `fdc6b1eb` (`verify.md` only, still 0.4.0), gave the
-verify report a Decisions section and fixed the `v05` regression: r3 on a
-`claude -p` host passed `v05` and failed `v07` on one criterion, and Eve
-iteration 3 at `fdc6b1eb` passed 21 of 22. Codex runtime behavior is
-unverified by the user's decision to skip it for now. Keep the PR draft;
-merging or releasing requires a separate request.
+other mode. Implementation items 1-4 below are done. The hidden per-mode
+wrappers were removed in `132d3f8e`; a `claude -p --plugin-dir` host check
+routed all three modes with `pstack:pstack` as the only command.
 
-Unverified and open (details in the dogfood record):
+The latest evidence is the
+[final pass](pstack-dogfood.md#pstack-040-final-pass-d98be54b) at `d98be54b`
+(pstack text unchanged since `fdc6b1eb`; no repair was attempted in it):
 
-- **Codex: unverified** (skipped for now by the user). The dogfood harness
-  never loaded pstack: `.agents/skills` symlinks were ignored even with
-  `$pstack`, and 1 of 23 transcripts read `SKILL.md`. Static packaging passes
-  validation. Next: real skill dirs or the native plugin install, confirm the
-  skill load, re-run the graded cases.
-- `v07` (r3): stopped at the failed `make test` and never ran the runnable
-  part of the suite to report `OK (skipped=5)`. `verify.md:15-16` has no
-  "run what can run; skipped is not passed" clause. Cause not proven, since r2
-  passed on another host.
-- `v03`, `v04` and `v09` were not re-dogfooded after `fdc6b1eb`; only Eve's
-  verify evals cover defect detection there.
-- Decisions scope is loose: `v05` r3 put an already-guarded collision there.
-- The Boundary discipline trigger is too broad (padding in `v05` r2 and r3).
-- `plan-design-space` missed Exhaust the design space once in Eve iteration
-  3, and the `pstack-plan-missing-state` ablation now survives, so no eval
-  guards that clause.
-- Plan principle links show paths and resolve only inside the skill.
-- Substitute-check scope is unbounded.
-- Some r1/r2 grades were not recorded.
-- The hidden `plan`/`verify`/`auto` wrappers were removed because
-  `/pstack:verify` was a silent no-op in `claude -p`; `/pstack <mode>` routes
-  all three on a `claude -p` host. Interactive Claude was not run.
+- Round 4, all 13 graded scenarios on both hosts: Claude subagent 11 of 13,
+  Codex (`codex exec -m gpt-6-luna`, real skill copy in `.agents/skills`)
+  6 of 13. The skill was in use in all 26 runs.
+- Eve iteration 4: 21 of 22 (10/11, 11/11); ablations unchanged.
+- Earlier rounds are history: the
+  [corrected round](pstack-dogfood.md#pstack-040-corrected-dogfood-round)
+  and r3. Their Codex rows measure plain Codex, because Codex ignores
+  symlinked skill directories.
+
+Keep the PR draft; merging or releasing requires a separate request.
+
+Product status:
+
+- **Claude:** static packaging validates; `/pstack <mode>` routes in
+  `claude -p`. Interactive Claude was not run.
+- **Codex:** static packaging validates; runtime use is verified for a
+  repo-scoped real-directory skill copy under `codex exec` (`SKILL.md` comes
+  from the `$pstack` mention). The native plugin install and interactive
+  Codex were not run. Codex skipped the mode file in 5 of 12 mode runs.
+
+Open (not repaired; details in the dogfood record):
+
+- `SKILL.md:17-21` makes the mode-file read easy to skip (Codex `a06`,
+  `p11`, `v04`, `v05`, `v09`); `p11` failed with it.
+- Plan flexibility (`plan.md:11-12,15,22`) drops concrete findings: `p08`
+  failed on both hosts by keeping the destructive delete of the destination.
+- Exhaust the design space is under-selected (`p12` on both hosts, Eve
+  `plan-design-space` 1/2); the `pstack-plan-missing-state`,
+  `pstack-verify-request-first` and `pstack-route-verify` ablations survive.
+- Principle selection is anchored on the draft (`plan.md:12-13`, Codex
+  `p10`); there is no tie-break between overlapping triggers.
+- Verify: no section for derived requirements or plan gaps (Codex `v03`);
+  "unverified" needs no attempt and listed checks need not have run (Codex
+  `v07` fabricated a check result); runnable checks can be deferred (Codex
+  `v09`).
+- Auto's report asks for no principles, and Codex never read `auto.md`.
+- Boundary discipline trigger too broad; Decisions scope loose;
+  substitute-check scope unbounded; Make operations idempotent omits
+  request-level keys; plan principle links resolve only inside the skill.
 
 Key files:
 
