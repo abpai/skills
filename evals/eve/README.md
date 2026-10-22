@@ -322,6 +322,14 @@ parser and an empty diff, and the principle predicates reject a padded plan.
   design space was not selected). Ablation (`--runs 2`, green baselines)
   repeated iteration 3 exactly: `pstack-plan-principle-links` and
   `pstack-route-unsupported-stop` KILLED 2/2; the other three SURVIVED 2/2.
+  Iteration 5 (pstack 0.4.1 at 0ad0de4f, run on a remote Docker host): two
+  full runs went 11/11 and 11/11. An interrupted earlier attempt at the same
+  skill text went 9/11: `plan-design-space` listed 8 principles against the
+  at-most-5 gate (skill-side padding), and `verify-broken-impl` missed a
+  correct "key changes between retries" finding (eval-side regex, now
+  widened). Ablation (`--runs 2`, green baselines) matched iteration 4:
+  `pstack-plan-principle-links` (re-spanned) and
+  `pstack-route-unsupported-stop` KILLED 2/2; the other three SURVIVED 2/2.
   This lane runs OpenAI only; Codex host behavior is unverified here.
 
 Eve is public preview — the version is pinned in `package.json` and the
