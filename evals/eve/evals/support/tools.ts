@@ -20,6 +20,7 @@ import { satisfies } from "eve/evals/expect"
 
 /** Every tool Eve advertises to the harness agent. */
 export const KNOWN_TOOLS = [
+  "ask_question",
   "bash",
   "glob",
   "grep",

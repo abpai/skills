@@ -297,8 +297,10 @@ function runEntry(entry: Ablation, runs: number): Row {
     if ("lines" in entry.span) {
       throw new Error(`${entry.id}: line-span ablations are not implemented`)
     }
+    const where =
+      "text" in entry.span ? `text ×${entry.span.text.length}` : `## ${entry.span.heading}`
     console.log(
-      `\n══ ablate ${entry.id}  (${entry.span.file ?? "SKILL.md"} ## ${entry.span.heading})` +
+      `\n══ ablate ${entry.id}  (${entry.span.file ?? "SKILL.md"} ${where})` +
         `${runs > 1 ? `  ×${runs}` : ""} ══`,
     )
     // Establish the green baseline first, so a KILLED below can only mean the

@@ -19,7 +19,7 @@ const CHECK_STEPS: Step[] = [
 
 const INTEGRATION_STEPS: Step[] = [
   ["materialize skills from canonical sources", "prepare-skills"],
-  ["pull pinned outcome verifier image", "outcome:pull", 130_000],
+  ["pull pinned verifier images", "outcome:pull", 250_000],
   ["outcome verifier isolation", "test:outcome-isolation", 180_000],
   ["smoke eval (mock model, no secrets)", "eval:smoke", 300_000],
 ];
@@ -104,7 +104,7 @@ export async function evalsLive(root: string, ids: string[], rep: Reporter): Pro
   rep.warn(`live evals spend real model tokens (${ids.length > 0 ? ids.join(" ") : "full --tag live suite, ~1M input tokens"})`);
   if (!(await install(cwd, rep))) return 1;
   for (const script of ["prepare-skills", "outcome:pull"]) {
-    const code = await runEvalCommand(["bun", "run", script], { cwd, label: script, timeoutMs: 130_000 });
+    const code = await runEvalCommand(["bun", "run", script], { cwd, label: script, timeoutMs: 250_000 });
     if (code !== 0) {
       rep.fail(`bun run ${script} failed`);
       return 1;

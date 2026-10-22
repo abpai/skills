@@ -1,0 +1,9 @@
+{
+  "name": "tenant-reports",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "reports": "bun src/cli.ts"
+  }
+}

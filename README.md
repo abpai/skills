@@ -34,6 +34,35 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install visual-pr@abpai-skills
 ```
 
+### pstack
+
+`pstack` applies relevant code-quality principles to a coding task. `plan`
+researches and writes a short implementation plan, `verify` checks an
+implementation against the original request with executed evidence, and `auto`
+plans, implements, verifies, and fixes within scope. Use
+`$pstack plan|verify|auto [task]` in Codex or `/pstack plan|verify|auto [task]`
+in Claude Code.
+
+### pstack upstream
+
+`pstack` is adapted from [poteto](https://x.com/poteto)'s pstack, which
+[backnotprop/pstack](https://github.com/backnotprop/pstack) mirrors for Claude
+Code, Codex, and other agents. The port started from
+[open-pstack](https://github.com/ericlitman/open-pstack). To use the full
+original set instead, remove this one and install the upstream skills:
+
+```bash
+/plugin uninstall pstack@abpai-skills
+npx skills add backnotprop/pstack
+```
+
+The local version keeps only the code-quality principles and three modes:
+`plan`, `verify`, and `auto`. It leaves out the multi-turn and teaching skills
+(such as `teach`, `how`, `tdd`, and `interrogate`), which other plugins here
+cover. It also leaves out the context-budget, delegation, and approval rules,
+which belong to the harness. See [the dogfood record](docs/pstack-dogfood.md)
+for what was changed and tested.
+
 ### HumanLayer upstream skills
 
 `show-me` and `visual-pr` are adapted from HumanLayer. To use HumanLayer's
@@ -92,6 +121,7 @@ marketplace flow above.
 
 | Plugin | What it does |
 |--------|-------------|
+| **pstack** | Plan, verify, or carry out a coding task with relevant principles via `plan`, `verify`, or `auto` (`$pstack` / `/pstack`). |
 | **engineering** | Groups engineering-practice workflows behind one scoped `/engineering` umbrella command; run a workflow with `/engineering grill-me`, `/engineering tdd`, `/engineering zoom-out`, `/engineering improve-architecture`, `/engineering defined-terms`, `/engineering complexity-report`, `/engineering ci-optimize`, or `/engineering reduce`. Code cleanup now lives under `/code simplify`. |
 
 ### Developer Productivity

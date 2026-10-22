@@ -16,5 +16,5 @@ import { createOpenAI } from "@ai-sdk/openai"
 const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 export default defineEvalConfig({
-  judge: { model: openai(process.env.EVE_JUDGE_MODEL ?? "gpt-5.6-luna") },
+  judge: { model: openai(process.env.EVE_JUDGE_MODEL ?? "gpt-6-luna") },
 })

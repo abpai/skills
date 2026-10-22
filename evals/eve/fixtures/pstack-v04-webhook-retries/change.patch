@@ -1,0 +1,123 @@
+diff --git a/src/dispatch.ts b/src/dispatch.ts
+index 731fc79..a01ef55 100644
+--- a/src/dispatch.ts
++++ b/src/dispatch.ts
+@@ -1,10 +1,19 @@
++import { randomUUID } from "node:crypto";
+ import { sign } from "./sign";
+ import type { DeliveryResult, Endpoint, Send, WebhookEvent } from "./types";
+ 
+ export interface DeliverDeps {
+   send: Send;
++  sleep?: (ms: number) => Promise<void>;
+ }
+ 
++export interface RetryOptions {
++  maxAttempts?: number;
++  baseDelayMs?: number;
++}
++
++const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
++
+ export function encode(event: WebhookEvent): string {
+   return JSON.stringify({
+     id: event.id,
+@@ -18,16 +27,28 @@ export async function deliver(
+   event: WebhookEvent,
+   endpoint: Endpoint,
+   deps: DeliverDeps,
++  options: RetryOptions = {},
+ ): Promise<DeliveryResult> {
++  const maxAttempts = options.maxAttempts ?? 3;
++  const baseDelayMs = options.baseDelayMs ?? 200;
++  const sleep = deps.sleep ?? defaultSleep;
+   const body = encode(event);
+-  const headers = {
+-    "content-type": "application/json",
+-    "x-signature": sign(endpoint.secret, body),
+-  };
+-  try {
+-    const res = await deps.send({ url: endpoint.url, headers, body });
+-    return { ok: res.status >= 200 && res.status < 300, status: res.status, attempts: 1 };
+-  } catch (err) {
+-    return { ok: false, attempts: 1, error: String(err) };
++
++  let last: DeliveryResult = { ok: false, attempts: 0 };
++  for (let attempt = 0; attempt <= maxAttempts; attempt++) {
++    if (attempt > 0) await sleep(baseDelayMs * 2 ** (attempt - 1));
++    const headers = {
++      "content-type": "application/json",
++      "x-signature": sign(endpoint.secret, body),
++      "idempotency-key": randomUUID(),
++    };
++    try {
++      const res = await deps.send({ url: endpoint.url, headers, body });
++      last = { ok: res.status >= 200 && res.status < 300, status: res.status, attempts: attempt + 1 };
++      if (last.ok || res.status < 500) return last;
++    } catch (err) {
++      last = { ok: false, attempts: attempt + 1, error: String(err) };
++    }
+   }
++  return last;
+ }
+diff --git a/tests/retry.test.ts b/tests/retry.test.ts
+new file mode 100644
+index 0000000..f61b239
+--- /dev/null
++++ b/tests/retry.test.ts
+@@ -0,0 +1,55 @@
++import { expect, test } from "bun:test";
++import { deliver } from "../src/dispatch";
++import { endpoint, event, scriptedSend } from "./helpers";
++
++function recordSleeps() {
++  const delays: number[] = [];
++  return { delays, sleep: async (ms: number) => void delays.push(ms) };
++}
++
++test("retries a 5xx and succeeds", async () => {
++  const { send, requests } = scriptedSend([503, 200]);
++  const { delays, sleep } = recordSleeps();
++  const result = await deliver(event, endpoint, { send, sleep });
++  expect(result).toEqual({ ok: true, status: 200, attempts: 2 });
++  expect(requests).toHaveLength(2);
++  expect(delays).toEqual([200]);
++});
++
++test("retries network errors", async () => {
++  const { send } = scriptedSend([new Error("ECONNRESET"), 202]);
++  const { sleep } = recordSleeps();
++  const result = await deliver(event, endpoint, { send, sleep });
++  expect(result.ok).toBe(true);
++  expect(result.attempts).toBe(2);
++});
++
++test("does not retry 4xx", async () => {
++  const { send, requests } = scriptedSend([404]);
++  const { delays, sleep } = recordSleeps();
++  const result = await deliver(event, endpoint, { send, sleep });
++  expect(result.ok).toBe(false);
++  expect(requests).toHaveLength(1);
++  expect(delays).toEqual([]);
++});
++
++test("backs off exponentially", async () => {
++  const { send } = scriptedSend([500, 502, 200]);
++  const { delays, sleep } = recordSleeps();
++  await deliver(event, endpoint, { send, sleep });
++  expect(delays).toEqual([200, 400]);
++});
++
++test("gives up when the endpoint keeps failing", async () => {
++  const { send } = scriptedSend([500, 500, 500, 500, 500, 500]);
++  const { sleep } = recordSleeps();
++  const result = await deliver(event, endpoint, { send, sleep });
++  expect(result.ok).toBe(false);
++  expect(result.status).toBe(500);
++});
++
++test("sends an idempotency key", async () => {
++  const { send, requests } = scriptedSend([200]);
++  await deliver(event, endpoint, { send });
++  expect(requests[0].headers["idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/);
++});
