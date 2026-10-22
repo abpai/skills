@@ -181,6 +181,8 @@ recorded diff fingerprint).
   model, and the four skills symlinked into `.agents/skills/` in each run copy
   (repo-scoped discovery). Agents read the modules and principle files, but the
   logs show no skill-injection event, so native `$` discovery is not proven.
+  (Superseded: in the corrected round, Codex read `SKILL.md` in 1 of 23
+  runs.)
   Several runs searched the filesystem and read the stale 0.3.1 SKILL.md in the
   main checkout before the run copy's 0.4.0 file. The `.codex-plugin`
   marketplace install was checked statically only (manifest valid, every
@@ -190,6 +192,12 @@ recorded diff fingerprint).
   `ANTHROPIC_API_KEY`.
 
 ## Dogfood round 1 (`dc376f4d`)
+
+> Superseded. Concurrent duplicate runs edited fixtures in place, and no
+> repaired case was re-run. Read the
+> [corrected round](#pstack-040-corrected-dogfood-round) instead. In
+> particular, the Codex passes below do not hold: the corrected round's
+> Codex runs never loaded the skill.
 
 C = Claude subagent, X = Codex CLI.
 
@@ -231,23 +239,31 @@ Cost: about 7-8M input tokens in iteration 1 and about 9M in iteration 2, over
 
 ## Unverified and open
 
+Updated after the [corrected round](#pstack-040-corrected-dogfood-round).
+
+- Codex never loaded pstack under `codex exec` with the skills symlinked into
+  `.agents/skills`, even with an explicit `$pstack` mention (1 of 23 runs
+  read `SKILL.md`). The harness has to change before any Codex result says
+  anything about the skill. Native `$pstack` discovery and the
+  `.codex-plugin` marketplace install are still unproven at runtime.
 - `/pstack:verify`, `/pstack:plan`, and `/pstack:auto` hidden wrappers do
   nothing in `claude -p` and give no error. The interactive Claude path for
   them, and `/pstack:pstack verify|auto` through the host, were not run.
-- Codex native `$pstack` discovery and the `.codex-plugin` marketplace install
-  are unproven at runtime.
-- The `221737ac` and `b2715a4a` repairs were rechecked through Eve only, not by
-  repeating the failing dogfood cases (`p12` X, `r13` behavior in Claude).
-- Unrepaired friction, ranked: Codex verify can skip `verify.md` entirely
-  (`v03`); verify has no rule for a blocked required check (`v07`); auto's
-  verify step collapses into running tests (`a06` X); plan length and nesting
-  (`p01` C); Script bulk operations never fires on a rename (`p10`, Eve).
-- The request-first sentences in `verify.md` and the verify routing bullet
-  survive ablation; current evals do not show they matter.
+- `9fb7f086` repaired these, rechecked in r2 by Claude subagents: Prove it
+  works selection (`v07`, `a06`), probe placement (`v04`), plan findings slot
+  (`p01`), and the blocked-check rule (`v07`). Still unrepaired:
+  - The verify report has no bucket for request-implied decisions, so `v05`
+    regressed and `v07` overloaded "Blocking".
+  - Plan principle links show file paths and resolve only inside the skill.
+  - The Boundary discipline trigger is too broad.
+  - A substitute check's scope is unbounded (left as harness policy).
+- Grades for r1 C `p11`/`p12`/`r13`, r2 C `p08`/`v09`/`p10`/`p11`/`p12`, and
+  the matching Codex runs were not available to the write-up.
+- Eve was not re-run after `9fb7f086`. The last Eve pass is at `221737ac`.
+  The request-first sentences in `verify.md` and the verify routing bullet
+  survived ablation there.
 - Eve still grades an infrastructure fault as failed, not errored, so an
   outage in an ablated run would read as KILLED.
-- The Codex round used the host's configured model, not gpt-6-luna. The Eve
-  lane already defaults to gpt-6-luna (`da68a018`).
 
 ## Packaging proof
 
@@ -271,3 +287,142 @@ with this record added:
   [OK] pstack: new -> 0.4.0 (pstack/skills/pstack/SKILL.md)
   Checked 1 plugin(s). All changed plugins have proper version bumps.
   ```
+
+# pstack 0.4.0 corrected dogfood round
+
+The first 0.4.0 round above had a harness bug. Duplicate runs went at the
+same time and edited fixtures in place: `fixtures/a06-job-durations` was
+found with `src/duration.ts` and changes to `README.md`, `src/config.ts` and
+`tests/duration.test.ts`. Its repairs were also never re-run. This round
+starts again from rebuilt fixtures and re-runs the cases after a repair.
+Where it contradicts the earlier round, this round supersedes it.
+
+Skill snapshots (`git rev-parse HEAD` at run time):
+
+- **r1**, `9abb72f6`, 21:28-21:32. The commit before the repair. Its pstack
+  text is identical to `221737ac`.
+- **Repair**, `9fb7f086`. Changes only `pstack/skills/pstack/{plan,principles,verify}.md`
+  (+18/-11). The version stays 0.4.0, because the sync would touch files
+  outside `pstack/`.
+- **r2**, `9fb7f086`, 21:37-21:41. Runs the ten cases the repair touched.
+
+Hosts: **C** is a real Claude subagent that reads the module files in its run
+copy. **X** is `codex exec -m gpt-6-luna` with the four skills symlinked into
+`.agents/skills/`. Outputs are in
+`$S/rerun/<round>/<case>-<subagent|codex>.final.md`, with the run copy beside
+each one and Codex transcripts in `.jsonl`. Fixtures are in
+`$S/rerun/pristine/`. Graders read `$S/grading/`, and the runners never saw it.
+A missing **bolded** should-select principle counts as a FAIL.
+
+## Fixture setup
+
+Every run copy started from a fixture whose HEAD tree and starting state match
+what grading describes:
+
+- **a06:** re-ran `a06.py`, using a patched `mk.py` that writes to
+  `rerun/pristine`. Tree `105f4945`, clean. `bun test` gives 7 pass and 1 fail,
+  because `../src/duration` is missing. The hidden output matches
+  `grading/a06-job-durations/hidden`.
+- **p01:** cloned from the fixture's HEAD. Tree `51ea82d4`, clean. One
+  `bun test` run gave 5/0, which is consistent with a suite designed to fail
+  in 25-40% of runs.
+- **p02, p08, p10, p11, p12:** re-ran each builder. The trees are `9962c53c`,
+  `eff3eb5d`, `fa28ba84`, `2228d5b1` and `b597b158`, all clean. Each baseline
+  suite is green.
+- **v03:** re-ran the builder, then restored the `.gitignore` that had been
+  amended into the fixture after it was built. Tree `b828c0b5`, fingerprint
+  `81931d23…bd1ed`, unittest 8 OK.
+- **v04, v05, v07, v09:** re-ran each builder. The trees are `9220fa1d`,
+  `95ef8fca`, `8cbdcc05` and `37c0c53f`. Each seeded working-tree change
+  matches its grading fingerprint, and the suites match grading: v04 9/9,
+  v05 9 OK, v07 `OK (skipped=5)`.
+- **r13:** uses the v05 fixture.
+
+## Round 1 (`9abb72f6`)
+
+| Run | Checks and result | observation \| evidence \| suspected skill cause |
+| --- | --- | --- |
+| `p01` plan, C | Disproved the timing premise with `bun test` (4/1) and the CLI on `data/tenants.json` (5 reported, 4 files). Found the `fileNameFor` collision and fixed it at the source by naming files by tenant id. Removed delay, retry and timeout. Wrote a colliding-name test that checks each file's content. Run dir clean. **Pass.** | The answer added a separate Diagnosis block | `final.md` has an unlisted **Diagnosis.** section before **Plan** | `plan.md` "Return only" had no slot for findings. |
+| `p02` plan, C | `--plan` routed. Migrated all callers in 4 files, deleted `legacyRequest` with no shim, kept 404→null and 422→`ValidationError`, rewrote tests against the transport fake, checks with grep plus `bun test`. Clean. **Pass.** | None. |
+| `v03` verify, C | Wrote requirements from the ticket first. Probe: `export --since` returned all 7 orders. Said the plan was wrong. Unittest 8 OK. Fingerprint unchanged. **Pass.** | None. |
+| `v04` verify, C | Probes showed both seeded defects: 4 requests against a cap of 3, and 3 distinct idempotency keys. Named the weak tests. Fingerprint unchanged. **Pass.** | Wrote its probe inside the tree under review, then moved it out | Runner notes; the fingerprint stayed unchanged only because of the move | `verify.md` did not say where probes go. |
+| `v05` verify, C | Unittest 9 OK, 19-input old/new comparison, site build. No defects. **Pass.** | 3 principles listed, one of them padding (Laziness), and non-blocking notes filed under "Findings" | Final report | `verify.md` asked for principle adherence and had a single findings bucket. |
+| `a06` auto, C | Implemented `src/duration.ts` and parsed it once at load. `bun test` 36/0, hidden suite 80/0. Honest report that tsc could not run. **Pass.** | Never named Prove it works | Read `verify.md`, but no principle-prove-it-works file | `verify.md` did not link it; the trigger read as end-of-task only. |
+| `v07` verify, C | `make test` was blocked by the registry, which it reported. Ran the suite on a disclosed stand-in Postgres 17, made no edits, fingerprint unchanged. **Fail:** the bolded Prove it works was missing. | Read only the principle index, and built its stand-in with network installs | "index only; I did not open any principle files" | The verify report had no slot for applied principles, nothing required opening the principle files, and nothing covered blocked checks. |
+| `p08` plan, C | Named the shared `state.json`/`.tmp` race and reproduced it with 20 mirrors at `--jobs 4`. Chose per-worker records over a lock and removed the unconditional `rm -rf`. **Fail** on criterion 4: the crash-resume test was a failing fetch, not a killed parent. | Tested one failure point only, and did not select Prove it works | Tests section of the plan | The idempotency check was one closing bullet that `plan.md` did not pull into the success checks; the Prove it works trigger read as end-of-task. |
+| `v09` verify, C | Found both measurement problems (asymmetric `RESOLVE_TRACE=1`, warm 30-resolve workload). Re-measured at ~0.96x cold and ~1.5x warm. Recommended rewording, made no edits. **Pass.** | None. |
+| `p10` plan, C | **Fail:** the bolded Script bulk operations was missing. The rest of this grade was truncated in the input to this write-up. | Trigger was too narrow for a rename (repair item 7). |
+| `p11`, `p12`, `r13`, C | Outputs exist. The grades were not in the input to this write-up, so none is reported. `r13` replied with only the usage line. | Not graded here. |
+| Codex, 9 graded runs (`p01`, `p02`, `v03`, `v04`, `v05`, `a06`, `v07`, `p08`, `v09`) | **Fail ×9.** In 8 runs the transcript has no read of `SKILL.md` or a module. `p02` and `p08` implemented code in plan mode. `v09` read `.agents/skills/pstack/SKILL.md` and `principles.md`, but no principle file; it missed the warm-cache flaw and selected no principle. Grades for `p10`, `p11`, `p12` and `r13` X were not in the input. | Host or harness, not skill text: Codex did not inject the skill. In some runs the prompt was plain `pstack <mode>`, not `$pstack`, and `allow_implicit_invocation: false` then blocks it. `find`/`rg` without `-L` do not follow the `.agents/skills` symlinks. For `v09` X: `verify.md` linked the index, not the principle files. |
+
+Round 1 graded results: C 7 of 10 pass, X 0 of 9.
+
+## Repair (`9fb7f086`)
+
+This is one change set for the recurring causes. `verify.md` now always
+includes Prove it works and requires reading the selected principles' files.
+It asks for applied principles in the report, a separate marked list for
+non-blocking notes, temporary probes kept outside the tree, and a blocked check
+reported as unverified with any substitute labelled. `principles.md` now
+widens the Prove it works trigger to defining success checks, says to open
+each selected file, and says to keep the few principles that matter most, with
+no numeric cap. `plan.md` adds findings and assumptions, and the checks of
+selected principles, to the pointers. The Script bulk operations and Minimize
+reader load triggers are also wider. Not changed: `auto.md`, any install or
+approval policy, and plan step detail.
+
+## Round 2 (`9fb7f086`)
+
+| Run | Checks and result | observation \| evidence \| suspected skill cause |
+| --- | --- | --- |
+| `p01` plan, C | Repeated `bun test` (2 of 5 failed) and the CLI run (5 reported, 4 files, t_1005 overwrites t_1001). Fixed at the source; removed delay, retry and timeout; colliding-name content test; 7 pointers. Clean. **Pass.** | Principle links show the file path as their text and do not resolve from the user's repo | `final.md` lines 22-26 | `plan.md:23-24` "linked as `principles/<file>.md` relative to this skill". |
+| `v04` verify, C | Probes P1-P5 kept outside the tree (re-run by the grader: 2 pass, 3 fail as reported). Found both defects with line locations. Separate Unverified section. Fingerprint unchanged. Every should-select principle selected. **Pass.** | None. The v04 probe repair held. |
+| `v05` verify, C | 20k-case old/new property check, builds at HEAD and on the tree, request probes. No defects. Fingerprint unchanged. **Fail** on criterion 3: the intended URL renames are filed as a Finding marked "Needs your decision", and a test-gap finding cites an invented requirement. Selected Boundary discipline as padding. | Requested consequences reported as blocking | Findings 1-2 next to a separate "Non-blocking notes" list | `verify.md:22-23` requires a violated requirement for every actionable finding and has no bucket for a decision the request implies. `principles.md:12`'s Boundary discipline trigger matches almost any code that reads files. This was a regression from r1's borderline pass. |
+| `a06` auto, C | `bun test` 40/0, hidden suite 84/0. Mutation checks found a redundant lookahead, which it removed and re-checked. Report lists its gaps. Selected Prove it works. **Pass.** | None. The a06 repair held. |
+| `v07` verify, C | `make test` reported as unverified, with the reason and what it needs. Stand-in Postgres run (grader reproduced 5/5 and the probe results) with every difference disclosed. No edits. Selected Prove it works. **Pass.** | Labelled email reuse "Blocking (decision needed)", and still did network installs | Findings 1; pip `psycopg` 3.3.6 | Same `verify.md:22-23` gap as v05; `verify.md:15-16` does not limit how far a substitute check may go. Also, it did not open two of its principle files, which the text requires (agent deviation). |
+| `p08`, `v09`, `p10`, `p11`, `p12`, C | Outputs exist. The grades were not in the input to this write-up. | Not graded here. |
+| Codex, 5 graded runs (`p01`, `v04`, `v05`, `a06`, `v07`) | **Fail ×5.** All used `$pstack <mode>`, and none read `SKILL.md` or a module. The code or verdict was often right (a06 hidden suite 58/0, v04 found both defects by reading the code), but no principle was selected and the reports had no verify shape. `v07` X falsely claimed it had implemented a change that was already present. `p08`, `v09`, `p10`, `p11` and `p12` X ran, but their transcripts show only filename searches for `SKILL.md`, not reads. Their grades were not in the input. | Host or harness: an explicit `$pstack` mention under `codex exec` still did not inject the symlinked skill. No skill-text cause can be drawn. |
+
+Round 2 graded results: C 4 of 5 pass, X 0 of 5. Of the C runs that failed in
+r1 and were graded again, `v07` now passes. `a06` and `v04` lost their
+frictions, and `v05` regressed.
+
+Across both rounds, 1 of 23 Codex transcripts read pstack's `SKILL.md` (r1
+`v09`). This supersedes the earlier round's claim that Codex agents read the
+modules and principle files: that came from filesystem searches in
+contaminated runs, not from skill loading.
+
+The Eve evals were not re-run after `9fb7f086`. The latest Eve results
+(iteration 2) are at `221737ac`.
+
+## Open after the corrected round
+
+- **Codex has not been exercised.** Codex has not run pstack in this round. A
+  harness fix is needed first: real directories instead of symlinks in
+  `.agents/skills`, or a confirmed skill-injection event. Until then, every
+  Codex row says nothing about the skill text.
+- **Verify report buckets.** The report has no place for a decision or
+  consequence the request implies (`v05` regressed, and `v07` overloaded
+  "Blocking").
+- **Plan principle links.** They show file paths and resolve only inside the
+  skill (`p01`).
+- **Boundary discipline trigger** is too broad (`v05`).
+- **Substitute-check scope** is unbounded, so a stand-in can involve network
+  installs (`v07`). This was left deliberately as harness policy.
+- **Missing grades.** The r1 C grades for `p11`, `p12` and `r13`, the r2 C
+  grades for `p08`, `v09`, `p10`, `p11` and `p12`, and the matching Codex
+  grades were not available to this write-up.
+- **Eve not re-run** after `9fb7f086`.
+
+## Lane after the repair
+
+The lane ran at `9fb7f086` with this record added:
+
+- `scripts/sync-plugin-versions.sh` updated 0 files.
+- `scripts/generate-versions.sh` produced 22 skills.
+- `scripts/validate-skills.sh` printed `Validation passed.`
+- `git diff --check` passed.
+- In `evals/eve`, `typecheck` and `test:catalog` (22 public skills) passed.
+
+`validate-npx-install.sh` and the version-bump check were not re-run, because
+the version is unchanged. The Eve evals were not re-run.

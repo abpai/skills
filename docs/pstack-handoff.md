@@ -8,23 +8,31 @@ short, concrete, and independent of Garage roles or a particular harness.
 All 24 upstream principles have been considered. Version 0.4.0 routes `plan`,
 `verify`, and `auto` from the umbrella, with hidden wrappers, and the router
 stops with usage on any other mode. Implementation items 1-4 below are done.
-Dogfood round 1, a `claude -p` host smoke, and two live Eve iterations are
-recorded in [the dogfood record](pstack-dogfood.md#pstack-040-plan-verify-and-auto),
-and the packaging lane passed at the final content snapshot. Keep the PR draft;
-merging or releasing requires a separate request.
+A `claude -p` host smoke and two live Eve iterations (at `221737ac`) are
+recorded in [the dogfood record](pstack-dogfood.md#pstack-040-plan-verify-and-auto).
+The first dogfood round there is superseded by the
+[corrected round](pstack-dogfood.md#pstack-040-corrected-dogfood-round), which
+started from rebuilt fixtures. Its r1 ran at `9abb72f6`, the repair landed in
+`9fb7f086` (skill text only, still 0.4.0), and r2 re-ran the ten affected
+cases. Graded Claude subagent runs passed 7 of 10 in r1 and 4 of 5 in r2. All
+graded Codex runs failed (0 of 9, then 0 of 5), because Codex did not load the
+skill. Keep the PR draft; merging or releasing requires a separate request.
 
 Still open (details in the dogfood record):
 
-- Unrepaired verify/auto friction: Codex verify can skip `verify.md`; no rule
-  for a blocked required check; auto's verify step can shrink to running
-  tests; plan length; Script bulk operations not selected on renames.
-- `/pstack:verify|plan|auto` wrappers are silent no-ops in `claude -p`;
-  interactive Claude and `/pstack:pstack verify|auto` through the host were
+- The Codex dogfood harness does not load pstack. Skills symlinked into
+  `.agents/skills` were not injected even with `$pstack`. Native discovery and
+  the plugin install are unproven at runtime.
+- Verify report buckets: a decision the request implies has nowhere to go
+  except "blocking" (`v05` regressed in r2).
+- Plan principle links show paths and resolve only inside the skill.
+- The Boundary discipline trigger is too broad.
+- Substitute-check scope is unbounded.
+- Some r1/r2 grades were not recorded.
+- Eve was not re-run after `9fb7f086`.
+- `/pstack:verify|plan|auto` wrappers are silent no-ops in `claude -p`.
+  Interactive Claude and `/pstack:pstack verify|auto` through the host were
   not run.
-- Codex native `$pstack` discovery and the plugin install are unproven at
-  runtime.
-- The `b2715a4a` and `221737ac` repairs were rechecked by Eve, not by
-  repeating the failing dogfood cases.
 
 Key files:
 
