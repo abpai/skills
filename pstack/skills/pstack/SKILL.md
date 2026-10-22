@@ -13,8 +13,10 @@ metadata:
 # pstack
 
 Take the first token of `$ARGUMENTS` as the mode, strip a leading `--`, and
-match it case-insensitively. Load the sibling module and treat the remaining
-arguments as its input:
+match it case-insensitively. If it is not exactly `plan`, `verify`, or `auto`,
+show `pstack plan|verify|auto [task]` and stop; do not map synonyms such as
+`review`. Otherwise load the sibling module and treat the remaining arguments
+as its input:
 
 - `plan` → [plan.md](plan.md): the task to plan.
 - `verify` → [verify.md](verify.md): the original request and the
@@ -25,5 +27,4 @@ When the remaining arguments are empty, use the current task. If neither
 supplies a task, ask for one. For `verify`, if the original request or an
 implementation to inspect is still missing, ask for it rather than guessing.
 
-With no mode or an unsupported mode, show `pstack plan|verify|auto [task]`.
 If a required file cannot be read, report it and stop.

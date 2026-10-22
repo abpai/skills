@@ -7,7 +7,8 @@ unless a calling workflow, such as auto, continues past it.
    code and tests that explain current behavior. Resolve uncertainties from
    available evidence; distinguish requirements, findings, and assumptions.
 2. Identify the structural decisions and prerequisites that will shape the
-   task. Draft the smallest approach that covers the request, surfacing
+   task, including state the approach depends on that the code does not keep
+   yet. Draft the smallest approach that covers the request, surfacing
    uncertainties before choosing principles.
 3. Select from [principles.md](principles.md) only the principles relevant to
    the draft. Read their files and use them to challenge and reshape it.
@@ -18,7 +19,8 @@ Return only the refined, human-skimmable plan with:
 - The intended outcome, in one sentence.
 - A few ordered pointers: relevant code locations, constraints, dependencies,
   and what would demonstrate success. Keep implementation details flexible.
-- Selected principle names with file links and a short reason for each.
+- Selected principle names, each linked as `principles/<file>.md` relative to
+  this skill, with a short reason.
 - Open questions only where missing information materially affects the plan.
 
 Keep it as short as the task allows. Preserve the original request as the
