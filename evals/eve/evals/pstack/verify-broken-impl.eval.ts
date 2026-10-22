@@ -55,7 +55,8 @@ export default defineEval({
       mentionsAll(
         [
           /idempotency/i,
-          /randomUUID|(new|different|fresh|regenerat\w*|chang\w*|differ\w*)[^.\n]{0,60}\b(key|attempt|retry)|\b(per|each|every) (attempt|retry)\b[^.\n]{0,60}(new|different|fresh|key)/i,
+          // `retr(y|ies)`: "the key changes between retries" is the finding too.
+          /randomUUID|(new|different|fresh|regenerat\w*|chang\w*|differ\w*)[^.\n]{0,60}\b(key|attempt|retr(y|ies))|\b(per|each|every) (attempt|retry)\b[^.\n]{0,60}(new|different|fresh|key)/i,
         ],
         "finds the idempotency key changes between attempts",
       ),
