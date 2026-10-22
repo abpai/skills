@@ -20,7 +20,7 @@ There are two different `agents/` conventions:
   prompt. It stays beside the owning `SKILL.md`; do not move it to the
   plugin-root `agents/` directory.
 
-`scripts/validate-skills.sh` validates both surfaces independently.
+`bin/skills gate structure` validates both surfaces independently.
 
 Paths referenced from a skill must stay inside the owning plugin. Installed
 plugins are copied into runtime caches, so checkout-relative paths like
@@ -46,7 +46,7 @@ https://code.claude.com/docs/en/skills#how-a-skill-gets-its-command-name
 ## Grouped workflow packs
 
 Skill entrypoints are explicit-only across both products. The exceptions,
-listed in `scripts/validate_skills.py`, are `show-me` and `visual-pr`, which
+listed in `scripts/lib/structure.ts`, are `show-me` and `visual-pr`, which
 either model may start, and `codex-exec` in Claude, which sets
 `disable-model-invocation: false` so Claude can delegate within user-authorized
 tasks. Everything else uses:
@@ -77,7 +77,7 @@ metadata:
   internal: true
 ```
 
-`scripts/validate-skills.sh` enforces this wrapper shape and the explicit-only
+`bin/skills gate structure` enforces this wrapper shape and the explicit-only
 policy for every entrypoint except the allowlisted skills above.
 It fails when a hidden wrapper omits
 `metadata.internal: true`, and for packs with an umbrella it also requires
@@ -180,29 +180,22 @@ files:
 - `README.md`
 - `docs/index.html`
 
-`docs/index.html` is still a manual sync surface. If validation reports only a
-docs-card version drift, patch the card to match the metadata source.
+`bin/skills fix` rewrites the `docs/index.html` card versions. Adding or
+removing a card, and the plugin counts, stay manual edits; the `surfaces` gate
+reports any drift.
 
 ## Validation lane
 
 Before opening or updating a PR for plugin changes, run:
 
 ```bash
-scripts/sync-plugin-versions.sh
-scripts/generate-versions.sh
-scripts/validate-skills.sh
-scripts/validate-npx-install.sh
-git diff --check
-bun scripts/skill-metadata.ts check-version-bump origin/main
+bin/skills bump <plugin>   # once per changed plugin; a no-op if already bumped
+bin/skills gate
 ```
 
-`check-version-bump origin/main` only checks committed changes. If it reports
-`Checked 0 plugin(s)` in a dirty working tree, commit first and rerun before
-opening the PR.
-
-If unrelated untracked scratch trees under `tmp/` make `scripts/validate-skills.sh`
-fail on missing dependencies, validate from a clean temporary copy or detached
-worktree while preserving the untracked files unchanged.
+The `version` gate only sees committed changes. If it reports
+`checked 0 changed plugin(s)` in a dirty working tree, commit first and rerun
+before opening the PR.
 
 ## Claude Code hooks
 

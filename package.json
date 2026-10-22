@@ -1,0 +1,14 @@
+{
+  "name": "@abpai/skills-repo",
+  "private": true,
+  "type": "module",
+  "description": "Repo tooling for the abpai/skills marketplace: the `skills` CLI and its gates.",
+  "scripts": {
+    "skills": "bun scripts/skills.ts",
+    "check": "bun scripts/skills.ts check",
+    "gate": "bun scripts/skills.ts gate"
+  },
+  "devDependencies": {
+    "yaml": "^2.8.3"
+  }
+}

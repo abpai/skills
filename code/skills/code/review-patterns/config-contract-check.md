@@ -37,7 +37,7 @@ surface.
    `metadata.version` of `"1.4"` normalizes to `"1.4.0"` in `plugin.json`;
    `"1.4.2"` stays `"1.4.2"`. Comparing `1.4` against `1.4.0` across files is the
    sync rule, NOT a mismatch — do not raise a false finding on the
-   two-vs-three-component format. This is exactly what `sync-plugin-versions.sh`
+   two-vs-three-component format. This is exactly what `bin/skills fix`
    encodes.
 4. **Namespaced commands MUST be `skills/<name>/SKILL.md`, never `commands/`.** A
    namespaced command like `/code:review` only registers from a skill
@@ -50,8 +50,8 @@ surface.
 5. **Internal-wrapper three-flag invariant (CI-enforced).** A wrapper with
    `disable-model-invocation: true` MUST also set `metadata.internal: true`, and
    — when its pack has an umbrella sibling `skills/<plugin>/SKILL.md` — also
-   `user-invocable: false`. Missing either fails `validate-skills.sh` (the
-   `validate_skill_md` wrapper-flag checks in `scripts/validate_skills.py`) →
+   `user-invocable: false`. Missing either fails `bin/skills gate structure`
+   (the `validateSkillMd` wrapper-flag checks in `scripts/lib/structure.ts`) →
    `validate-pr.yml`. Each flag prevents a specific failure, so
    you can judge intent rather than pattern-match:
    - `disable-model-invocation: true` — stops the model auto-invoking the wrapper
@@ -78,14 +78,14 @@ surface.
    root; confine every referenced path to its owning plugin.
 8. **Runner-wrapper parity is a config contract.** The `codex-run.sh` and
    `claude-run.sh` wrappers must expose the same surface (flags, file modes,
-   error contract). `test-wrapper-parity.sh` is the committed, runnable check —
+   error contract). `bin/skills gate runners` is the committed, runnable check —
    run it instead of eyeballing whenever either runner wrapper changes.
 
 ## Quick pass
 
 1. List changed config files and the contract files they reference (manifests,
    `versions.json`, `SKILL.md`, loader paths).
-2. Run `validate-skills.sh`; record the command and exit status.
+2. Run `bin/skills check`; record the command and exit status.
 3. Confirm the four-file version fan-out agrees, treating `X.Y` ↔ `X.Y.0` as
    equal (Gotcha 3).
 4. Confirm `.codex-plugin/plugin.json` exists and is version-synced with the
@@ -98,32 +98,30 @@ surface.
 ## Deep pass
 
 Escalate for published/marketplace changes, release version bumps, new wrappers,
-or loader-behavior changes. Run the version-spine checkers end to end:
-`generate-versions.sh` (regenerates/validates root `versions.json` from the
-manifests — the canonical four-file agreement check) and
-`sync-plugin-versions.sh` (surfaces `SKILL.md` → `plugin.json` drift with the
-`X.Y` → `X.Y.0` rule). On runner-wrapper changes run `test-wrapper-parity.sh`.
+or loader-behavior changes. Run the whole lane with `bin/skills gate`: its
+`surfaces` gate is the canonical four-file agreement check (`SKILL.md` →
+both `plugin.json` files → `versions.json` → `docs/index.html`, with the
+`X.Y` → `X.Y.0` rule), `version` checks the bump against `origin/main`, and
+`runners` covers runner-wrapper parity.
 Verify install/load paths, the namespaced-registration of every changed command,
 and the version map together as one chain.
 
 ## Scripts
 
 This gate is repo-native: the checkers already live at the marketplace repo root
-under `scripts/` and are the canonical source of truth. Run them from the repo
+under `bin/` and `scripts/` and are the canonical source of truth. Run them from the repo
 root — do not vendor copies into this lens, which would silently drift from the
 real CI checkers.
 
-- `scripts/validate-skills.sh` — the real contract checker: frontmatter validity,
-  the wrapper three-flag invariant, and the version map. Run:
-  `bash scripts/validate-skills.sh` (add `--skip-versions` to isolate
-  frontmatter). Fails CI via `validate-pr.yml`.
-- `scripts/generate-versions.sh` — validates root `versions.json` against the
-  plugin manifests (the four-file agreement). Run: `bash scripts/generate-versions.sh`.
-- `scripts/sync-plugin-versions.sh` — syncs `plugin.json` from `SKILL.md`
-  `metadata.version`, encoding `X.Y` → `X.Y.0`. Run:
-  `bash scripts/sync-plugin-versions.sh` to surface or fix version drift.
-- `scripts/test-wrapper-parity.sh` — checks `codex-run.sh` / `claude-run.sh`
-  parity. Run: `bash scripts/test-wrapper-parity.sh` when either runner wrapper
+- `bin/skills gate` — the real contract checker and the same gates CI runs.
+  `bin/skills gate --list` names them; `bin/skills gate structure` isolates
+  frontmatter validity and the wrapper three-flag invariant, and
+  `bin/skills gate surfaces` the version map. Fails CI via `validate-pr.yml`.
+- `bin/skills fix` — rewrites both `plugin.json` versions, `versions.json` and
+  the `docs/index.html` cards from `SKILL.md` `metadata.version`, encoding
+  `X.Y` → `X.Y.0`. Gates never write; this is the fixer.
+- `bin/skills gate runners` — the shell fixture tests, including
+  `codex-run.sh` / `claude-run.sh` parity. Run it when either runner wrapper
   changes.
 
 ## False positives

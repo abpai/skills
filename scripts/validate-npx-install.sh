@@ -7,8 +7,8 @@
 # lenient, so a skill can work in-app yet be completely un-installable via
 # `npx skills add/update` (we shipped exactly that bug when an umbrella
 # description gained an unquoted "Subcommands: '...'" — a bare ': ' inside a
-# plain scalar). validate-skills.sh now catches this class offline via a strict
-# PyYAML parse; this script is the belt-and-suspenders check that runs the
+# plain scalar). The `structure` gate now catches this class offline with the
+# installer's own `yaml` parser; this script is the belt-and-suspenders check that runs the
 # actual installer so we catch anything the proxy misses (discovery, structure,
 # CLI behaviour changes).
 #

@@ -406,11 +406,12 @@ done
 ### Codex
 
 Codex does not currently have a built-in `validate` command. Use the project
-validation script below, which checks both Claude and Codex manifests.
+validation lane below, which checks both Claude and Codex manifests.
 
-### Project validation script
+### Project validation lane
 
-This repo includes a comprehensive validator at `scripts/validate-skills.sh` that checks:
+`bin/skills gate` runs every check this repo enforces, the same gates CI runs.
+Among other things it checks:
 
 - Claude and Codex plugin manifests (name, version, description, paths)
 - SKILL.md frontmatter (name, description, Claude invocation policy, and
@@ -422,12 +423,16 @@ This repo includes a comprehensive validator at `scripts/validate-skills.sh` tha
 - Both marketplace.json catalogs (completeness and consistency)
 - versions.json (all skills present with matching versions)
 - docs/index.html catalog cards, versions, and plugin counts
+- that the real `npx skills` installer discovers every skill, and that each
+  changed plugin bumped its version
 
 ```bash
-bash scripts/validate-skills.sh
+bin/skills gate           # the whole lane
+bin/skills check          # fast offline subset; the pre-commit hook runs this
+bin/skills bump <plugin>  # bump once against origin/main and sync every version surface
 ```
 
-The script is also run automatically as a pre-commit hook.
+See [CONTRIBUTING.md](CONTRIBUTING.md#validation) for the gate list.
 
 ## License
 

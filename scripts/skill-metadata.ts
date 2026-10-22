@@ -299,8 +299,9 @@ function firstPublicSkillVersion(plugin: PluginInfo): string | null {
   return null;
 }
 
-export function syncPluginManifestVersions(root = process.cwd()): SyncResult {
-  const updated: ManifestUpdate[] = [];
+/** The manifest version changes a sync would make, without writing them. */
+export function planManifestSync(root = process.cwd()): ManifestUpdate[] {
+  const updates: ManifestUpdate[] = [];
 
   for (const plugin of listPlugins(root)) {
     const skillVersion = firstPublicSkillVersion(plugin);
@@ -314,16 +315,46 @@ export function syncPluginManifestVersions(root = process.cwd()): SyncResult {
       }
       const data = readJson(manifest);
       const current = typeof data.version === "string" ? data.version : "";
-      if (current === targetVersion) {
-        continue;
+      if (current !== targetVersion) {
+        updates.push({ path: rel(root, manifest), from: current, to: targetVersion });
       }
-      data.version = targetVersion;
-      writeJson(manifest, data);
-      updated.push({ path: rel(root, manifest), from: current, to: targetVersion });
     }
   }
 
+  return updates;
+}
+
+export function syncPluginManifestVersions(root = process.cwd()): SyncResult {
+  const updated = planManifestSync(root);
+  for (const update of updated) {
+    const manifest = join(root, update.path);
+    const data = readJson(manifest);
+    data.version = update.to;
+    writeJson(manifest, data);
+  }
   return { updated };
+}
+
+/** Where a plugin's version lives: its first public SKILL.md, else its Claude manifest. */
+export function pluginVersionSource(
+  root: string,
+  pluginName: string,
+): { path: string; kind: VersionSourceKind; version: string | null } | null {
+  const plugin = listPlugins(root).find((candidate) => candidate.name === pluginName);
+  if (!plugin) {
+    return null;
+  }
+  const skill = versionedSkillSources(plugin).find((candidate) => candidate.version);
+  if (skill) {
+    return { path: rel(root, skill.path), kind: "skill", version: skill.version };
+  }
+  return { path: rel(root, plugin.claudeManifest), kind: "manifest", version: manifestVersion(plugin.claudeManifest) };
+}
+
+/** The version a source file had at `ref`, or null when it did not exist there. */
+export function versionAtRef(root: string, ref: string, path: string, kind: VersionSourceKind): string | null {
+  const text = git(root, ["show", `${ref}:${path}`], { allowFail: true });
+  return kind === "skill" ? extractVersionFromSkillText(text) : extractVersionFromManifestText(text);
 }
 
 function usage(): never {
@@ -373,6 +404,27 @@ function git(root: string, args: string[], { input, allowFail }: { input?: strin
     throw new Error(`git ${args.join(" ")} exited ${result.status}: ${result.stderr || result.stdout}`.trim());
   }
   return result.stdout;
+}
+
+/** Compare the numeric major.minor.patch core of two versions (prerelease tags ignored). */
+export function compareVersions(a: string, b: string): number {
+  const core = (version: string) => version.split(/[-+]/)[0].split(".").map((part) => Number(part) || 0);
+  const [left, right] = [core(a), core(b)];
+  for (let i = 0; i < 3; i += 1) {
+    const diff = (left[i] ?? 0) - (right[i] ?? 0);
+    if (diff !== 0) {
+      return diff;
+    }
+  }
+  return 0;
+}
+
+/** Next version after `version` for a patch, minor or major bump. */
+export function nextVersion(version: string, level: "patch" | "minor" | "major"): string {
+  const [major = 0, minor = 0, patch = 0] = version.split(/[-+]/)[0].split(".").map((part) => Number(part) || 0);
+  if (level === "major") return `${major + 1}.0.0`;
+  if (level === "minor") return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
 }
 
 function extractVersionFromSkillText(text: string): string | null {
@@ -448,6 +500,8 @@ export function checkVersionBumps(root: string, baseRef: string): { checked: num
     checked += 1;
     if (baseVersion && currentVersion === baseVersion) {
       failed.push(`${dir}: version (${currentVersion}) in ${versionFile} was not bumped`);
+    } else if (baseVersion && compareVersions(currentVersion, baseVersion) < 0) {
+      failed.push(`${dir}: version ${currentVersion} in ${versionFile} is lower than ${baseRef} (${baseVersion})`);
     } else {
       ok.push(`${dir}: ${baseVersion || "new"} -> ${currentVersion} (${versionFile})`);
     }

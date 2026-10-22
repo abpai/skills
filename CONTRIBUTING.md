@@ -63,7 +63,7 @@ When importing from upstream:
 - [ ] `metadata.version` is set in frontmatter for public skills
   (hidden per-command shims use the owning plugin version).
 - [ ] Root docs mention any new plugin or runtime exception.
-- [ ] Validation script passes.
+- [ ] `bin/skills gate` passes.
 
 ## Versioning
 
@@ -71,42 +71,57 @@ Every public skill must have a `metadata.version` field in its YAML frontmatter.
 
 When publishing changes to a skill:
 
-1. Bump `metadata.version` in the public skill's `SKILL.md`, or bump
-   `.claude-plugin/plugin.json` for command-only plugins.
+1. Run `bin/skills bump <plugin> [patch|minor|major]`. It bumps the version
+   source (the public skill's `metadata.version`, or `.claude-plugin/plugin.json`
+   for command-only plugins) once relative to `origin/main`, then rewrites
+   both `plugin.json` files, `versions.json` and the `docs/index.html` card.
+   Running it again after a rebase or restack does nothing.
 2. Commit and open a PR.
 
-CI enforces that changed plugins have bumped versions. On merge, plugin manifests (`.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`) and `versions.json` are auto-synced from the public `SKILL.md` version when one exists; command-only plugins are tracked from the plugin manifest version.
+CI (`check-version-bump`) fails a PR that changes a plugin's skills, agents,
+hooks or manifests without bumping it, always measured against `main`, so a
+stacked PR bumps once. Nothing commits version changes after merge: the PR
+carries every version surface. If a rebase conflicts in `versions.json` or a
+`plugin.json`, take either side and run `bin/skills fix`.
 
 ## Validation
 
-Run:
+One command runs the whole lane, the same gates CI runs:
 
 ```bash
-scripts/validate-skills.sh
+bin/skills gate
 ```
 
-Local validation requires Bun because the repo uses a shared Bun/TypeScript
-metadata resolver and builds/tests shipped TypeScript helpers. CI installs Bun
-before running the same gate.
+It needs Bun (it installs the repo's one dependency, the npm `yaml` parser the
+`npx skills` installer uses, on first run). It stops at the first failing gate
+and prints the command that reruns only that gate. `bin/skills gate --list`
+shows them all:
 
-For wrapper changes that affect `codex-exec` or `claude`, also run:
+| Gate | Checks |
+| --- | --- |
+| `surfaces` | both `plugin.json` versions, `versions.json` and `docs/index.html` cards match the version sources (`bin/skills fix` repairs them) |
+| `structure` | manifests, `SKILL.md` frontmatter parsed exactly as the installer parses it, `agents/openai.yaml`, plugin agents, `hooks.json`, both marketplaces |
+| `tooling` | repo tooling tests, finish-lane, TypeScript builds, bash/python syntax, Codex strict-mode schemas, mirrored support docs |
+| `runners` | shell fixture tests for the Claude, Codex, Cursor and Antigravity wrappers (fake binaries, no subscriptions) |
+| `version` | every changed plugin is bumped once relative to `origin/main` |
+| `install` | the real `npx skills` installer discovers every skill (needs network) |
+| `whitespace` | `git diff --check` since `origin/main` |
 
-```bash
-scripts/test-wrapper-parity.sh
-```
+Gates only read; `bin/skills fix` and `bin/skills bump` are the only commands
+that write. A gate that cannot run (offline, no `python3`) is reported as
+"not proven" instead of passing; CI adds `--strict`, which fails on that.
+`bin/skills check` runs the fast offline subset (`surfaces`, `structure`,
+`whitespace`) in well under a second. `--json` prints a machine-readable
+report. Exit codes: 0 ok, 1 failed, 2 usage error, 3 prerequisite missing.
 
-`validate-skills.sh` performs local structural validation: it checks skill
-names and `SKILL.md` structure against the `agentskills.io` spec (e.g. the
-≤ 500-line and ≤ 1024-char description guidelines), enforces the version and
-manifest checks, and also validates Claude plugin command frontmatter, plugin
-agent frontmatter, plugin-manifest path safety, and `hooks/hooks.json`
-structure so plugin-only workflows like `pi` stay aligned with current Claude
-plugin conventions. It does not call any external validator.
+`scripts/validate-skills.sh` still works and forwards to `bin/skills`.
 
-The wrapper parity test uses fake `codex` and `claude` binaries to
-verify prompt transport, private run artifacts, generated monitor/continue
-helpers, session continuation, and safe env-file parsing without requiring real
-agent subscriptions in CI.
+Eve behavioral evals are not a gate because they need Docker and Node >= 24,
+and the live suite spends model tokens. `bin/skills evals check` runs packaging,
+typechecking, coverage controls and discovery without Docker.
+`bin/skills evals integration` runs Docker isolation and mock-model session boot.
+CI runs these as independent jobs; `bin/skills evals smoke` runs both locally.
+`bin/skills evals live [eval ids...]` runs real sessions.
 
 ## Pre-commit Hook
 
@@ -117,6 +132,4 @@ uv tool install pre-commit
 uvx pre-commit install
 ```
 
-Then commits will run:
-
-- `scripts/validate-skills.sh` (structural checks)
+Then commits will run `bin/skills check` (surfaces, structure, whitespace).
