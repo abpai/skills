@@ -123,8 +123,8 @@ Relevant PR changes run two independent jobs without secrets or model spend:
 
 - `harness-checks` (`bin/skills evals check`): packaging, typechecking, catalog
   coverage, live coverage controls and eval discovery. No Docker required.
-- `harness-smoke` (`bin/skills evals integration`): Docker verifier isolation
-  and a complete mock-model session. Docker availability has a 10-second limit,
+- `harness-smoke` (`bin/skills evals integration`): Docker verifier isolation,
+  the pstack grader-direction controls and a complete mock-model session. Docker availability has a 10-second limit,
   each pinned image pull has a 2-minute limit, and session boot has a 5-minute
   limit. Steps announce their limits and stream progress while running.
 
