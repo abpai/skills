@@ -67,7 +67,7 @@ test("fast checks complete without contacting Docker and strip provider credenti
 test("integration retains isolation and mock boot without repeating fast checks", async () => {
   const result = await lane("integration");
   expect(result.code, result.output).toBe(0);
-  for (const script of ["prepare-skills", "outcome:pull", "test:outcome-isolation", "eval:smoke"]) {
+  for (const script of ["prepare-skills", "outcome:pull", "test:outcome-isolation", "test:pstack-graders", "eval:smoke"]) {
     expect(result.commands).toContain(`bun run ${script}\n`);
   }
   expect(result.commands).toContain("docker info");
@@ -96,6 +96,7 @@ test("a failed image pull prevents isolation and session boot from reporting suc
   expect(result.code, result.output).toBe(1);
   expect(result.output).toContain("progress: outcome:pull");
   expect(result.commands).not.toContain("bun run test:outcome-isolation");
+  expect(result.commands).not.toContain("bun run test:pstack-graders");
   expect(result.commands).not.toContain("bun run eval:smoke");
 });
 
