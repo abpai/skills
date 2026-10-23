@@ -7,7 +7,9 @@ findings without changing it.
    description and linked issue, and identify what success requires. If a
    plan is supplied, read it only after that. Then inspect the implementation,
    and any plan, for gaps or deviations. When the implementation is one commit
-   in a series, judge it against what the finished series must do.
+   in a series, judge it against what the finished series must do: a piece a
+   later commit adds, such as a caller or a doc update, is not a gap in this
+   one, but behavior this commit breaks is.
 2. Check the premise: does the change address the request's real problem, and
    is all of it needed? Doubt it only on evidence, such as an existing tool
    that already does the job, a need nothing demonstrates, or a stated problem
@@ -34,17 +36,15 @@ Return a concise report with these sections, saying "none" for an empty one:
 - The principles applied, each with the check or finding it shaped.
 - Findings: defects with locations, evidence, and the requirement or
   principle violated. A defect stays a finding when its fix belongs in
-  another file or commit; say where. A piece that a later commit in the
-  series adds, such as a caller or a doc update, is not a defect; behavior
-  this commit breaks still is. Without a violated requirement or principle,
-  it is a note.
+  another file or commit; say where. Without a violated requirement or
+  principle, it is a note.
 - Premise: the result of the check in one line. When it is in doubt, say
   whether to drop the change or what problem it should solve instead, and
   name the smaller alternative.
-- Decisions: choices only the requester can make, where the answer changes
-  what ships and nothing in the request, repository, or evidence settles it,
-  each with its options. Leave out what the request already decides, gaps a
-  later commit closes, and recommendations to keep things as they are.
+- Decisions: choices only the requester can make, each with its options:
+  the answer changes what ships, and nothing in the request, repository, or
+  evidence settles it. A recommendation to keep something as it is is not a
+  decision.
 - Non-blocking notes: wording and commit-message fixes, follow-ups outside
   the request, and, for a commit in a series, a single note listing the gaps
   that close when later commits land.

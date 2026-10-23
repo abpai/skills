@@ -20,10 +20,10 @@ import {
 } from "../support/pstack"
 
 // Contract (verify.md): judge one commit of a series against what the finished
-// series must do; keep a defect a finding wherever its fix lands; report a
-// premise doubt with the smaller alternative; keep Decisions to choices only
-// the requester can make, leaving out what the request already decides and
-// gaps a later commit closes (one note at most).
+// series must do, so a piece a later commit adds is not a gap (one note at
+// most); keep a defect a finding wherever its fix lands; report a premise
+// doubt with the smaller alternative; keep Decisions to choices only the
+// requester can make, which nothing in the request settles.
 //
 // Fixture pstack-v10-series-commit: base plus a three-commit series for one
 // PR. The review target is the middle commit (HEAD~1, "logs: add --follow"):
