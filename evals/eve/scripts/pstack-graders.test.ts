@@ -160,6 +160,16 @@ assert.equal(SERIES_DROP_OR_SPLIT.test("The symbols command works and its tests 
 const livePremise = "this commit is not ready as-is: the unrelated symbolication feature should be separated."
 assert.ok(SERIES_SYMBOLS.test(livePremise) && SERIES_DROP_OR_SPLIT.test(livePremise), "live Premise phrasing passes")
 assert.equal(SERIES_DROP_OR_SPLIT.test("Logs and symbols live in separate files."), false)
+// Live reports 2026-10-23 (0.4.5): the doubt as a scope Finding.
+for (const yes of [
+  "That feature is outside the requested logs change and violates the principle to keep changes scoped and leave unrelated work separate.",
+  "Scope violation — unrelated symbolication feature. That work is outside the logs-follow request and violates the laziness principle to leave unrelated work out.",
+]) {
+  assert.ok(SERIES_DROP_OR_SPLIT.test(yes), `SERIES_DROP_OR_SPLIT should match: ${yes}`)
+}
+for (const no of ["The follow output is outside the redaction path.", "Leave the interval default as it is."]) {
+  assert.equal(SERIES_DROP_OR_SPLIT.test(no), false, `SERIES_DROP_OR_SPLIT should not match: ${no}`)
+}
 // The bypass site: the helper's file, or the helper the --follow path calls.
 for (const yes of ["src/stream.ts:12 prints raw lines", "The follow path sends output through `pipeFile` (src/logs.ts:35)"]) {
   assert.ok(SERIES_BYPASS_SITE.test(yes), `SERIES_BYPASS_SITE should match: ${yes}`)

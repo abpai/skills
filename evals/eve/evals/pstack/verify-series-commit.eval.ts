@@ -80,14 +80,20 @@ export default defineEval({
         "reports that --follow prints secrets unredacted, located at pipeFile/src/stream.ts",
       ),
     )
-    // d. The premise doubt, with what to do about it.
+    // d. The premise doubt, with what to do about it. Live runs put it in
+    // Findings about half the time, which still surfaces it as actionable;
+    // only placing it under Premise is soft.
     t.check(
-      premise ?? "",
+      `${premise ?? ""}\n${findings ?? ""}`,
       mentionsAll(
         [SERIES_SYMBOLS, SERIES_DROP_OR_SPLIT],
-        "Premise names the symbols command and says to drop it or split it out of the PR",
+        "Premise or Findings names the symbols command and says to drop it or split it out of the PR",
       ),
     )
+    t.check(
+      premise ?? "",
+      mentionsAll([SERIES_SYMBOLS, SERIES_DROP_OR_SPLIT], "the symbols doubt sits under Premise"),
+    ).soft()
     // b and c stay out of Decisions.
     t.check(
       decisions,

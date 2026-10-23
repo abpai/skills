@@ -404,7 +404,7 @@ export const SERIES_BYPASS_SITE = /stream\.ts|\bpipeFile\b/
 export const SERIES_SYMBOLS = /\bsymbols?\b|\bsymbolicat\w*/i
 // What to do about the symbols command: drop it, or move it out of this PR.
 export const SERIES_DROP_OR_SPLIT =
-  /\bdrop\w*|\bseparated\b|\bseparate (it|them|that)\b|\bremov\w*|\bsplit\w*|\bseparate (PR|pull request|commit|change|branch)|\b(out of|outside( of)?) (this|the) (PR|pull request|change|series|scope)|\bits own (PR|pull request|commit|change)|\b(follow-?up|another|a separate|a different) (PR|pull request)|\bout of scope\b|\bunrelated\b[^.\n]{0,60}\b(PR|pull request)\b/i
+  /\bdrop\w*|\bseparated\b|\bseparate (it|them|that)\b|\bremov\w*|\bsplit\w*|\bseparate (PR|pull request|commit|change|branch)|\b(out of|outside( of)?) (this|the) (PR|pull request|change|series|scope)|\bits own (PR|pull request|commit|change)|\b(follow-?up|another|a separate|a different) (PR|pull request)|\bout of scope\b|\bunrelated\b[^.\n]{0,60}\b(PR|pull request)\b|\bscope violation\b|\boutside the [\w-]+( [\w-]+)? (request|change)\b|\bleave (the )?unrelated (work|code|changes?) (out|separate)\b/i
 // The helper the next commit calls, named or described as uncalled.
 export const SERIES_UNCALLED_HELPER =
   /parseInterval|interval\.ts|\binterval (helper|parser|function)|\b(uncalled|unused|dead)\b[^.\n]{0,40}\b(helper|export|function|code)\b|\b(helper|export|function)\b[^.\n]{0,40}\b(uncalled|unused|no (callers?|call sites?|usages?)|not (yet )?(called|used|wired|referenced|imported)|nothing (calls|uses|imports) it)\b/i
