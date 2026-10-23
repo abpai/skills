@@ -1,0 +1,312 @@
+logs: add --follow to stream new lines
+
+`devkit logs --follow` keeps printing lines as the service appends them,
+reusing the existing pipeFile streaming helper. --follow rejects --grep:
+pipe the stream to grep instead.
+
+Also adds `devkit symbols <trace> <map>` to symbolicate production stack
+traces locally while I was in here, and parseInterval for the polling
+interval option that lands next.
+
+diff --git a/README.md b/README.md
+index 420e74d..7e3a42b 100644
+--- a/README.md
++++ b/README.md
+@@ -4,8 +4,10 @@ Developer CLI for the storefront services.
+ 
+ ```sh
+ bun src/cli.ts logs [file] [--grep TEXT]   # print a service log, secrets redacted
++bun src/cli.ts logs [file] --follow        # keep printing new lines as they arrive
+                                            # (file defaults to devkit.json logFile, then logs/app.log)
+ bun src/cli.ts tail <file> [--follow]      # print build output as-is
++bun src/cli.ts symbols <trace> <map>       # symbolicate a stack trace locally
+ bun test
+ ```
+ 
+diff --git a/src/cli.ts b/src/cli.ts
+index 54e3af5..e70e920 100644
+--- a/src/cli.ts
++++ b/src/cli.ts
+@@ -1,10 +1,12 @@
+ #!/usr/bin/env bun
+ import type { Io } from "./io";
+ import { runLogs } from "./logs";
++import { runSymbols } from "./symbols";
+ import { runTail } from "./tail";
+ 
+ const COMMANDS: Record<string, (args: readonly string[], io: Io) => Promise<number>> = {
+   logs: runLogs,
++  symbols: runSymbols,
+   tail: runTail,
+ };
+ 
+diff --git a/src/interval.ts b/src/interval.ts
+new file mode 100644
+index 0000000..d66be33
+--- /dev/null
++++ b/src/interval.ts
+@@ -0,0 +1,10 @@
++const MIN_INTERVAL_MS = 50;
++
++/** Parse a polling interval such as "500ms", "2s", or "1.5s" into milliseconds. */
++export function parseInterval(value: string): number {
++  const match = /^(\d+(?:\.\d+)?)(ms|s)$/.exec(value.trim());
++  if (!match) throw new Error(`invalid interval "${value}" (use e.g. 500ms or 2s)`);
++  const ms = match[2] === "s" ? Number(match[1]) * 1000 : Number(match[1]);
++  if (ms < MIN_INTERVAL_MS) throw new Error(`interval ${value} is below the ${MIN_INTERVAL_MS}ms minimum`);
++  return Math.round(ms);
++}
+diff --git a/src/logs.ts b/src/logs.ts
+index 90bc691..8ef9cd0 100644
+--- a/src/logs.ts
++++ b/src/logs.ts
+@@ -2,17 +2,20 @@ import { readFileSync } from "node:fs";
+ import { resolveLogPath } from "./config";
+ import type { Io } from "./io";
+ import { printLines } from "./output";
++import { pipeFile } from "./stream";
+ 
+ interface LogsArgs {
+   file?: string;
+   grep?: string;
++  follow: boolean;
+ }
+ 
+ function parse(args: readonly string[]): LogsArgs {
+-  const parsed: LogsArgs = {};
++  const parsed: LogsArgs = { follow: false };
+   for (let i = 0; i < args.length; i++) {
+     const arg = args[i];
+     if (arg === "--grep") parsed.grep = args[++i];
++    else if (arg === "--follow" || arg === "-f") parsed.follow = true;
+     else if (!arg.startsWith("-")) parsed.file = arg;
+     else throw new Error(`unknown option ${arg}`);
+   }
+@@ -20,8 +23,20 @@ function parse(args: readonly string[]): LogsArgs {
+ }
+ 
+ export async function runLogs(args: readonly string[], io: Io): Promise<number> {
+-  const { file, grep } = parse(args);
+-  const lines = readFileSync(resolveLogPath(file), "utf8")
++  const { file, grep, follow } = parse(args);
++  const path = resolveLogPath(file);
++
++  if (follow) {
++    // One code path for the live stream: filter it with your shell instead.
++    if (grep !== undefined) {
++      io.err("devkit logs: --follow does not support --grep; pipe the output to grep instead");
++      return 2;
++    }
++    await pipeFile(path, io, { follow: true });
++    return 0;
++  }
++
++  const lines = readFileSync(path, "utf8")
+     .split("\n")
+     .filter((line) => line !== "")
+     .filter((line) => grep === undefined || line.includes(grep));
+diff --git a/src/symbols.ts b/src/symbols.ts
+new file mode 100644
+index 0000000..090134e
+--- /dev/null
++++ b/src/symbols.ts
+@@ -0,0 +1,129 @@
++import { readFileSync } from "node:fs";
++import type { Io } from "./io";
++
++/**
++ * Symbolicate a production stack trace against a source map (version 3), so a
++ * frame like `at r (app.min.js:1:9)` reads `at handleOrder (src/orders.ts:2:0)`.
++ */
++
++const BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++
++export interface SourceMap {
++  version: number;
++  sources: string[];
++  names?: string[];
++  mappings: string;
++}
++
++/** One mapped segment, with every field already made absolute. */
++export interface Segment {
++  generatedColumn: number;
++  source: number;
++  originalLine: number;
++  originalColumn: number;
++  name?: number;
++}
++
++export interface OriginalPosition {
++  source: string;
++  line: number;
++  column: number;
++  name?: string;
++}
++
++/** Decode one base64 VLQ segment into its signed integers. */
++export function decodeVlq(segment: string): number[] {
++  const values: number[] = [];
++  let value = 0;
++  let shift = 0;
++  for (const char of segment) {
++    const digit = BASE64.indexOf(char);
++    if (digit < 0) throw new Error(`invalid VLQ character "${char}"`);
++    value += (digit & 31) << shift;
++    if (digit & 32) {
++      shift += 5;
++      continue;
++    }
++    values.push(value & 1 ? -(value >> 1) : value >> 1);
++    value = 0;
++    shift = 0;
++  }
++  if (shift !== 0) throw new Error(`truncated VLQ segment "${segment}"`);
++  return values;
++}
++
++/** Expand the `mappings` string into absolute segments per generated line. */
++export function parseMappings(mappings: string): Segment[][] {
++  const lines: Segment[][] = [];
++  let source = 0;
++  let originalLine = 0;
++  let originalColumn = 0;
++  let name = 0;
++  for (const line of mappings.split(";")) {
++    const segments: Segment[] = [];
++    let generatedColumn = 0;
++    for (const raw of line.split(",")) {
++      if (raw === "") continue;
++      const fields = decodeVlq(raw);
++      generatedColumn += fields[0];
++      if (fields.length < 4) continue;
++      source += fields[1];
++      originalLine += fields[2];
++      originalColumn += fields[3];
++      const segment: Segment = { generatedColumn, source, originalLine, originalColumn };
++      if (fields.length >= 5) {
++        name += fields[4];
++        segment.name = name;
++      }
++      segments.push(segment);
++    }
++    lines.push(segments);
++  }
++  return lines;
++}
++
++/** Map a 1-based generated line and 0-based column back to original source. */
++export function originalPosition(map: SourceMap, line: number, column: number): OriginalPosition | undefined {
++  const segments = parseMappings(map.mappings)[line - 1] ?? [];
++  let best: Segment | undefined;
++  for (const segment of segments) {
++    if (segment.generatedColumn > column) break;
++    best = segment;
++  }
++  if (!best) return undefined;
++  return {
++    source: map.sources[best.source],
++    line: best.originalLine + 1,
++    column: best.originalColumn,
++    name: best.name === undefined ? undefined : map.names?.[best.name],
++  };
++}
++
++const FRAME = /^(\s*at\s+)(?:([^\s(]+)\s+\()?([^():\s]+):(\d+):(\d+)\)?\s*$/;
++
++/** Rewrite every mappable `at fn (file:line:col)` frame in a trace. */
++export function symbolicate(trace: string, map: SourceMap): string {
++  return trace
++    .split("\n")
++    .map((frame) => {
++      const match = FRAME.exec(frame);
++      if (!match) return frame;
++      const [, lead, fn, , line, column] = match;
++      const pos = originalPosition(map, Number(line), Number(column));
++      if (!pos) return frame;
++      return `${lead}${pos.name ?? fn ?? "<anonymous>"} (${pos.source}:${pos.line}:${pos.column})`;
++    })
++    .join("\n");
++}
++
++export async function runSymbols(args: readonly string[], io: Io): Promise<number> {
++  const [traceFile, mapFile] = args;
++  if (!traceFile || !mapFile) {
++    io.err("usage: devkit symbols <trace-file> <source-map>");
++    return 2;
++  }
++  const map = JSON.parse(readFileSync(mapFile, "utf8")) as SourceMap;
++  if (map.version !== 3) throw new Error(`unsupported source map version ${map.version}`);
++  for (const line of symbolicate(readFileSync(traceFile, "utf8"), map).split("\n")) io.out(line);
++  return 0;
++}
+diff --git a/tests/follow.test.ts b/tests/follow.test.ts
+new file mode 100644
+index 0000000..e9741bd
+--- /dev/null
++++ b/tests/follow.test.ts
+@@ -0,0 +1,22 @@
++import { appendFileSync } from "node:fs";
++import { expect, test } from "bun:test";
++import { runLogs } from "../src/logs";
++import { capture, tempLog } from "./helpers";
++
++test("logs --follow prints existing lines, then lines appended later", async () => {
++  const controller = new AbortController();
++  const io = capture(controller.signal);
++  const path = tempLog("GET /health 200\n");
++  const running = runLogs([path, "--follow"], io);
++  setTimeout(() => appendFileSync(path, "GET /orders 200\n"), 50);
++  setTimeout(() => controller.abort(), 700);
++  expect(await running).toBe(0);
++  expect(io.lines).toEqual(["GET /health 200", "GET /orders 200"]);
++});
++
++test("logs --follow rejects --grep", async () => {
++  const io = capture();
++  expect(await runLogs([tempLog("GET /health 200\n"), "--follow", "--grep", "GET"], io)).toBe(2);
++  expect(io.errors[0]).toContain("--follow does not support --grep");
++  expect(io.lines).toEqual([]);
++});
+diff --git a/tests/symbols.test.ts b/tests/symbols.test.ts
+new file mode 100644
+index 0000000..f1ba06a
+--- /dev/null
++++ b/tests/symbols.test.ts
+@@ -0,0 +1,36 @@
++import { expect, test } from "bun:test";
++import { decodeVlq, originalPosition, parseMappings, symbolicate, type SourceMap } from "../src/symbols";
++
++// Generated line 1: col 0 -> orders.ts 1:0, col 9 -> orders.ts 1:9 named handleOrder.
++// Generated line 2: col 0 -> orders.ts 2:0.
++const MAP: SourceMap = {
++  version: 3,
++  sources: ["src/orders.ts"],
++  names: ["handleOrder"],
++  mappings: "AAAA,SAASA;AACT",
++};
++
++test("decodes VLQ segments", () => {
++  expect(decodeVlq("AAAA")).toEqual([0, 0, 0, 0]);
++  expect(decodeVlq("SAASA")).toEqual([9, 0, 0, 9, 0]);
++  expect(decodeVlq("D")).toEqual([-1]);
++  expect(decodeVlq("gB")).toEqual([16]);
++});
++
++test("makes segment fields absolute", () => {
++  const lines = parseMappings(MAP.mappings);
++  expect(lines[0][1]).toEqual({ generatedColumn: 9, source: 0, originalLine: 0, originalColumn: 9, name: 0 });
++  expect(lines[1][0]).toMatchObject({ generatedColumn: 0, originalLine: 1, originalColumn: 0 });
++});
++
++test("finds the original position", () => {
++  expect(originalPosition(MAP, 1, 12)).toEqual({ source: "src/orders.ts", line: 1, column: 9, name: "handleOrder" });
++  expect(originalPosition(MAP, 3, 0)).toBeUndefined();
++});
++
++test("rewrites mappable frames and keeps the rest", () => {
++  const trace = ["TypeError: x is undefined", "    at r (app.min.js:1:9)", "    at native code"].join("\n");
++  expect(symbolicate(trace, MAP)).toBe(
++    ["TypeError: x is undefined", "    at handleOrder (src/orders.ts:1:9)", "    at native code"].join("\n"),
++  );
++});

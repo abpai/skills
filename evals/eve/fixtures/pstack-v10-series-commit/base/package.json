@@ -1,0 +1,9 @@
+{
+  "name": "devkit",
+  "private": true,
+  "type": "module",
+  "bin": { "devkit": "src/cli.ts" },
+  "scripts": {
+    "test": "bun test"
+  }
+}

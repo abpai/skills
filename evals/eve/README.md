@@ -269,7 +269,14 @@ pstack's contracts need a repository to research, check, and edit, so
 `evals/pstack/` (tag `pstack`) seeds one. `support/pstack.ts` packs
 `fixtures/pstack-<id>/base` as a git repository (plus `change.patch`, left
 uncommitted, for verify fixtures) and sends it as an attachment in a setup turn;
-Eve stages attachments under `/workspace/attachments/`. After the pstack turn, a
+Eve stages attachments under `/workspace/attachments/`. A fixture with a
+`series/` directory gets one commit per `NN-<slug>.patch`, applied in name
+order, with the text before each patch's diff as its commit message.
+`verify-series-commit` uses this: it reviews the middle commit of a
+three-commit PR (`pstack-v10-series-commit`) and gates on a redaction bypass
+reported as a finding at the helper's file, an unrelated command named as a
+premise doubt, and a Decisions section that leaves out what the PR already
+decided and a helper the next commit calls. After the pstack turn, a
 final turn runs one fixed command whose bash output reports the working tree
 hash and the diff against the base commit:
 
@@ -283,7 +290,9 @@ Expected answers live only in the eval files and `hidden/`, never in the
 archive. `bun run test:pstack-graders` proves the graders can fail without a
 model: the tree hash changes on an edit or a leftover probe file and ignores
 caches, the hidden suite passes the reference solution and fails a careless
-parser and an empty diff, and the principle predicates reject a padded plan.
+parser and an empty diff, the principle predicates reject a padded plan, a
+series fixture packs as its commits in order, and the report-section reader
+finds a section under any heading style without running into the next one.
 
 ## What is proven
 
