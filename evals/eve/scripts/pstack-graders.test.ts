@@ -26,8 +26,10 @@ import { FIXTURE_ROOT } from "../evals/support/outcome"
 import {
   DB_TESTS_DID_NOT_RUN,
   EXECUTED_CHECK,
+  SERIES_BYPASS_SITE,
   SERIES_DROP_OR_SPLIT,
   SERIES_REDACTION_BYPASS,
+  SERIES_SYMBOLS,
   SERIES_UNCALLED_HELPER,
   TEST_RUN,
   markdownSection,
@@ -154,6 +156,15 @@ for (const yes of [
   assert.ok(SERIES_DROP_OR_SPLIT.test(yes), `SERIES_DROP_OR_SPLIT should match: ${yes}`)
 }
 assert.equal(SERIES_DROP_OR_SPLIT.test("The symbols command works and its tests pass."), false)
+// Live report 2026-10-23: "the unrelated symbolication feature should be separated".
+const livePremise = "this commit is not ready as-is: the unrelated symbolication feature should be separated."
+assert.ok(SERIES_SYMBOLS.test(livePremise) && SERIES_DROP_OR_SPLIT.test(livePremise), "live Premise phrasing passes")
+assert.equal(SERIES_DROP_OR_SPLIT.test("Logs and symbols live in separate files."), false)
+// The bypass site: the helper's file, or the helper the --follow path calls.
+for (const yes of ["src/stream.ts:12 prints raw lines", "The follow path sends output through `pipeFile` (src/logs.ts:35)"]) {
+  assert.ok(SERIES_BYPASS_SITE.test(yes), `SERIES_BYPASS_SITE should match: ${yes}`)
+}
+assert.equal(SERIES_BYPASS_SITE.test("src/logs.ts:35 skips redaction"), false)
 for (const yes of [
   "parseInterval has no caller at this commit",
   "src/interval.ts is unused until HEAD",

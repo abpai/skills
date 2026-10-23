@@ -4,8 +4,10 @@ import { prompt } from "../support/text"
 import { noFailedSkillLoads, noWrites } from "../support/tools"
 import {
   MODULE,
+  SERIES_BYPASS_SITE,
   SERIES_DROP_OR_SPLIT,
   SERIES_REDACTION_BYPASS,
+  SERIES_SYMBOLS,
   SERIES_UNCALLED_HELPER,
   TEST_RUN,
   captureState,
@@ -74,15 +76,15 @@ export default defineEval({
     t.check(
       turn.message,
       mentionsAll(
-        [/--follow|\bfollow\b/i, SERIES_REDACTION_BYPASS, /stream\.ts/],
-        "reports that --follow prints secrets unredacted, located at src/stream.ts",
+        [/--follow|\bfollow\b/i, SERIES_REDACTION_BYPASS, SERIES_BYPASS_SITE],
+        "reports that --follow prints secrets unredacted, located at pipeFile/src/stream.ts",
       ),
     )
     // d. The premise doubt, with what to do about it.
     t.check(
       premise ?? "",
       mentionsAll(
-        [/\bsymbols?\b/i, SERIES_DROP_OR_SPLIT],
+        [SERIES_SYMBOLS, SERIES_DROP_OR_SPLIT],
         "Premise names the symbols command and says to drop it or split it out of the PR",
       ),
     )

@@ -397,9 +397,14 @@ export const WEBHOOK_KEY_CHANGES = [
 // The --follow path prints secrets that plain `logs` redacts.
 export const SERIES_REDACTION_BYPASS =
   /unredact\w*|un-redact\w*|without (any )?redact\w*|no redact\w*|(skip|bypass|miss|lose|lack|drop|omit|sidestep)\w*[^.\n]{0,60}\bredact\w*|\bredact\w*[^.\n]{0,60}\b(skipped|bypassed|missing|not (applied|run|called|used)|never (applied|runs|called)|is not|isn['’]t)|\b(secrets?|tokens?|passwords?)\b[^.\n]{0,60}\b(raw|in (the )?clear|plain ?text|unmasked|leak\w*|exposed)|\b(raw|in (the )?clear|unmasked)\b[^.\n]{0,40}\b(secrets?|tokens?|passwords?)\b/i
+// Where the bypass lives: the pipeFile helper in src/stream.ts, or the
+// --follow call into it in src/logs.ts (the fixture accepts either fix site).
+export const SERIES_BYPASS_SITE = /stream\.ts|\bpipeFile\b/
+// The symbols command, by name or by what it does (symbolication).
+export const SERIES_SYMBOLS = /\bsymbols?\b|\bsymbolicat\w*/i
 // What to do about the symbols command: drop it, or move it out of this PR.
 export const SERIES_DROP_OR_SPLIT =
-  /\bdrop\w*|\bremov\w*|\bsplit\w*|\bseparate (PR|pull request|commit|change|branch)|\b(out of|outside( of)?) (this|the) (PR|pull request|change|series|scope)|\bits own (PR|pull request|commit|change)|\b(follow-?up|another|a separate|a different) (PR|pull request)|\bout of scope\b|\bunrelated\b[^.\n]{0,60}\b(PR|pull request)\b/i
+  /\bdrop\w*|\bseparated\b|\bseparate (it|them|that)\b|\bremov\w*|\bsplit\w*|\bseparate (PR|pull request|commit|change|branch)|\b(out of|outside( of)?) (this|the) (PR|pull request|change|series|scope)|\bits own (PR|pull request|commit|change)|\b(follow-?up|another|a separate|a different) (PR|pull request)|\bout of scope\b|\bunrelated\b[^.\n]{0,60}\b(PR|pull request)\b/i
 // The helper the next commit calls, named or described as uncalled.
 export const SERIES_UNCALLED_HELPER =
   /parseInterval|interval\.ts|\binterval (helper|parser|function)|\b(uncalled|unused|dead)\b[^.\n]{0,40}\b(helper|export|function|code)\b|\b(helper|export|function)\b[^.\n]{0,40}\b(uncalled|unused|no (callers?|call sites?|usages?)|not (yet )?(called|used|wired|referenced|imported)|nothing (calls|uses|imports) it)\b/i
