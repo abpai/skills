@@ -409,6 +409,45 @@ export const SERIES_DROP_OR_SPLIT =
 export const SERIES_UNCALLED_HELPER =
   /parseInterval|interval\.ts|\binterval (helper|parser|function)|\b(uncalled|unused|dead)\b[^.\n]{0,40}\b(helper|export|function|code)\b|\b(helper|export|function)\b[^.\n]{0,40}\b(uncalled|unused|no (callers?|call sites?|usages?)|not (yet )?(called|used|wired|referenced|imported)|nothing (calls|uses|imports) it)\b/i
 
+/**
+ * The series-commit eval's hard gates on the report text, kept pure so the
+ * grader self-test can run the same gates on hand-written controls.
+ */
+export const SERIES_REPORT_GATES: readonly { readonly label: string; readonly passes: (reply: string) => boolean }[] = [
+  {
+    label: "Findings reports that --follow prints secrets unredacted, located at pipeFile/src/stream.ts",
+    passes: (reply) => {
+      const findings = markdownSection(reply, /^findings?\b/i) ?? ""
+      return [/--follow|\bfollow\b/i, SERIES_REDACTION_BYPASS, SERIES_BYPASS_SITE].every((p) => p.test(findings))
+    },
+  },
+  {
+    // Live runs put the doubt in Findings about half the time, which still
+    // surfaces it as actionable; only placing it under Premise is soft.
+    label: "Premise or Findings names the symbols command and says to drop it or split it out of the PR",
+    passes: (reply) => {
+      const text = `${markdownSection(reply, /^premise\b/i) ?? ""}\n${markdownSection(reply, /^findings?\b/i) ?? ""}`
+      return SERIES_SYMBOLS.test(text) && SERIES_DROP_OR_SPLIT.test(text)
+    },
+  },
+  {
+    label: "the report has a Decisions section",
+    passes: (reply) => markdownSection(reply, /^decisions?\b/i) !== undefined,
+  },
+  {
+    label: "Decisions leaves out the redaction bypass, which is a finding",
+    passes: (reply) => !/redact/i.test(markdownSection(reply, /^decisions?\b/i) ?? ""),
+  },
+  {
+    label: "Decisions leaves out parseInterval, which the next commit calls",
+    passes: (reply) => !SERIES_UNCALLED_HELPER.test(markdownSection(reply, /^decisions?\b/i) ?? ""),
+  },
+  {
+    label: "Decisions does not re-ask --grep with --follow, which the PR decides",
+    passes: (reply) => !/--grep|\bgrep\b/i.test(markdownSection(reply, /^decisions?\b/i) ?? ""),
+  },
+]
+
 // Fixture pstack-v07-users-soft-delete: the database tests did not exercise
 // the change. Without TEST_DATABASE_URL they skip; a subject that sets it (as
 // the Makefile does) sees them error on the missing psycopg or Postgres. Both

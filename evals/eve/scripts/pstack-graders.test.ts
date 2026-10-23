@@ -29,6 +29,7 @@ import {
   SERIES_BYPASS_SITE,
   SERIES_DROP_OR_SPLIT,
   SERIES_REDACTION_BYPASS,
+  SERIES_REPORT_GATES,
   SERIES_SYMBOLS,
   SERIES_UNCALLED_HELPER,
   TEST_RUN,
@@ -186,6 +187,35 @@ for (const no of ["- Keep `devkit symbols`, or drop it? It is not used by the st
   assert.equal(SERIES_UNCALLED_HELPER.test(no), false, `SERIES_UNCALLED_HELPER should not match: ${no}`)
 }
 console.log("ok   series-commit graders match the planted items and reject near misses")
+
+// The eval's hard gates on whole reports. The negative control mentions every
+// planted item but files the bypass as a decision, which the gates must fail.
+const failedSeriesGates = (report: string) =>
+  SERIES_REPORT_GATES.filter((gate) => !gate.passes(report)).map((gate) => gate.label)
+const SERIES_GOOD_REPORT = [
+  "## Findings",
+  "- `logs --follow` streams through `pipeFile` in src/stream.ts, which prints raw lines, so secrets print unredacted.",
+  "## Premise",
+  "In doubt: drop `devkit symbols` from this PR; Tracewell already symbolicates.",
+  "## Decisions",
+  "None.",
+  "## Non-blocking notes",
+  "- parseInterval has no caller until HEAD wires --interval.",
+].join("\n")
+assert.deepEqual(failedSeriesGates(SERIES_GOOD_REPORT), [], "a correct report passes every hard gate")
+const SERIES_BYPASS_AS_DECISION = [
+  "## Findings",
+  "None.",
+  "## Premise",
+  "In doubt: drop `devkit symbols` from this PR; Tracewell already symbolicates.",
+  "## Decisions",
+  "- Fix or ship the redaction bypass? `logs --follow` sends lines through `pipeFile` in src/stream.ts, which prints secrets unredacted.",
+].join("\n")
+assert.deepEqual(failedSeriesGates(SERIES_BYPASS_AS_DECISION), [
+  SERIES_REPORT_GATES[0].label,
+  SERIES_REPORT_GATES[3].label,
+], "the bypass filed as a decision fails the Findings and Decisions gates")
+console.log("ok   series-commit gates pass a correct report and fail the bypass filed as a decision")
 
 // The hidden a06 suite separates a correct implementation from careless ones.
 const controls = join(FIXTURE_ROOT, "pstack-a06-job-durations", "controls")

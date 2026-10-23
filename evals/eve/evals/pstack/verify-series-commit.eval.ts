@@ -4,9 +4,8 @@ import { prompt } from "../support/text"
 import { noFailedSkillLoads, noWrites } from "../support/tools"
 import {
   MODULE,
-  SERIES_BYPASS_SITE,
   SERIES_DROP_OR_SPLIT,
-  SERIES_REDACTION_BYPASS,
+  SERIES_REPORT_GATES,
   SERIES_SYMBOLS,
   SERIES_UNCALLED_HELPER,
   TEST_RUN,
@@ -68,51 +67,19 @@ export default defineEval({
     t.check(turn.toolCalls, ranCommand(TEST_RUN, "ran the test suite"))
 
     const reply = typeof turn.message === "string" ? turn.message : ""
-    const decisions = markdownSection(reply, /^decisions?\b/i)
     const premise = markdownSection(reply, /^premise\b/i)
     const findings = markdownSection(reply, /^findings?\b/i)
 
-    // a. The real defect, located at the helper whose output skips redaction.
-    t.check(
-      turn.message,
-      mentionsAll(
-        [/--follow|\bfollow\b/i, SERIES_REDACTION_BYPASS, SERIES_BYPASS_SITE],
-        "reports that --follow prints secrets unredacted, located at pipeFile/src/stream.ts",
-      ),
-    )
-    // d. The premise doubt, with what to do about it. Live runs put it in
-    // Findings about half the time, which still surfaces it as actionable;
-    // only placing it under Premise is soft.
-    t.check(
-      `${premise ?? ""}\n${findings ?? ""}`,
-      mentionsAll(
-        [SERIES_SYMBOLS, SERIES_DROP_OR_SPLIT],
-        "Premise or Findings names the symbols command and says to drop it or split it out of the PR",
-      ),
-    )
+    // a. The redaction bypass, as a finding located at pipeFile/src/stream.ts.
+    // d. The symbols premise doubt, with what to do about it.
+    // b, c, and a stay out of Decisions.
+    for (const gate of SERIES_REPORT_GATES) {
+      t.check(reply, satisfies((s: unknown) => typeof s === "string" && gate.passes(s), gate.label))
+    }
     t.check(
       premise ?? "",
       mentionsAll([SERIES_SYMBOLS, SERIES_DROP_OR_SPLIT], "the symbols doubt sits under Premise"),
     ).soft()
-    // b and c stay out of Decisions.
-    t.check(
-      decisions,
-      satisfies((s: unknown) => typeof s === "string", "the report has a Decisions section"),
-    )
-    t.check(
-      decisions ?? "",
-      satisfies(
-        (s: unknown) => typeof s === "string" && !SERIES_UNCALLED_HELPER.test(s),
-        "Decisions leaves out parseInterval, which the next commit calls",
-      ),
-    )
-    t.check(
-      decisions ?? "",
-      satisfies(
-        (s: unknown) => typeof s === "string" && !/--grep|\bgrep\b/i.test(s),
-        "Decisions does not re-ask --grep with --follow, which the PR decides",
-      ),
-    )
 
     // Soft evidence.
     t.check(turn.toolCalls, readFileMatching(/stream\.ts/, "inspected src/stream.ts")).soft()
@@ -124,13 +91,6 @@ export default defineEval({
           s.split("\n").filter((line) => /parseInterval/.test(line)).length <= 1 &&
           !SERIES_UNCALLED_HELPER.test(findings ?? ""),
         "parseInterval appears at most once, as a note rather than a finding",
-      ),
-    ).soft()
-    t.check(
-      decisions ?? "",
-      satisfies(
-        (s: unknown) => typeof s === "string" && !/redact/i.test(s),
-        "the redaction bypass is a finding, not a decision",
       ),
     ).soft()
     t.judge.autoevals.closedQA(
