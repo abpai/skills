@@ -46,9 +46,9 @@ export default defineEval({
   timeoutMs: 1_200_000,
   async test(t) {
     const repo = packRepo(FIXTURE, "jobrunner")
-    await seedRepo(t, repo)
+    const session = await seedRepo(t, repo)
 
-    const turn = await t.send(
+    const turn = await session.send(
       prompt(
         "pstack auto Let job configs use human-readable durations. In jobs.json,",
         "timeout and retryDelay should accept either a number of milliseconds (as",
@@ -65,7 +65,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(turn.toolCalls, readFileMatching(MODULE.auto, "read pstack/auto.md"))
     t.check(turn.toolCalls, readFileMatching(MODULE.plan, "used pstack/plan.md")).soft()
     t.check(turn.toolCalls, readFileMatching(MODULE.verify, "used pstack/verify.md")).soft()
@@ -98,7 +98,7 @@ export default defineEval({
       }, "report matches the executed test evidence"),
     )
 
-    const state: RepoState = await captureState(t, repo)
+    const state: RepoState = await captureState(session, repo)
     t.check(
       state,
       satisfies(

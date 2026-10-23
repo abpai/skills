@@ -14,6 +14,7 @@ const CHECK_STEPS: Step[] = [
   ["typecheck eval files against Eve types", "typecheck"],
   ["public skill catalog coverage", "test:catalog"],
   ["live coverage controls", "test:coverage"],
+  ["skill-load reader controls", "test:skill-loads"],
   ["discover evals", "list"],
 ];
 

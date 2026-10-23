@@ -11,9 +11,9 @@ export default defineEval({
       "Summarize what my Claude session a1b2c3d4-0000-4000-8000-000000000001 decided about the migration.",
     )
     t.loadedSkill("claude-session")
-    t.check(turn.toolCalls, notLoadedSkill("codex-session"))
+    t.check(turn.events, notLoadedSkill("codex-session"))
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

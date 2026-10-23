@@ -22,19 +22,19 @@ export default defineEval({
     t.succeeded()
     t.loadedSkill("harness")
     t.check(
-      t.reply,
+      turn.message,
       satisfies((reply: unknown) => {
         if (typeof reply !== "string") return false
         return /unknown/i.test(reply) && /nextAction|next action/i.test(reply)
       }, "represents missing evidence as unknowns with next actions"),
     )
     t.check(
-      t.reply,
+      turn.message,
       satisfies((reply: unknown) => {
         if (typeof reply !== "string") return false
         return !/readinessScore|autonomous-ready|D[1-7]\s*[:=]/i.test(reply)
       }, "does not invent a score, dimensions, or autonomous-ready verdict"),
     )
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

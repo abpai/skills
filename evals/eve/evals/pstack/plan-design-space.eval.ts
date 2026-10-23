@@ -49,9 +49,9 @@ export default defineEval({
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-p12-notes-sync", "notes-sync")
-    await seedRepo(t, repo)
+    const session = await seedRepo(t, repo)
 
-    const turn = await t.send(
+    const turn = await session.send(
       prompt(
         "pstack plan Two people lost edits because they changed the same note on",
         "their laptop and their phone before syncing, and jot sync silently kept",
@@ -61,7 +61,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(turn.toolCalls, readFileMatching(MODULE.plan, "read pstack/plan.md"))
     t.check(turn.toolCalls, readFileMatching(/jot\/sync\.py/, "researched jot/sync.py"))
 
@@ -88,7 +88,7 @@ export default defineEval({
     t.check(turn.message, atMostPrinciples(5))
     t.check(turn.message, staysShort(500))
 
-    t.judge.autoevals.closedQA(
+    t.judge(
       prompt(
         "Does this plan compare two or more meaningfully different conflict",
         "strategies before choosing one, and choose for user experience: no lost",
@@ -100,6 +100,6 @@ export default defineEval({
     )
 
     t.check(turn.toolCalls, noWrites())
-    checkUnchanged(t, repo, await captureState(t, repo))
+    checkUnchanged(t, repo, await captureState(session, repo))
   },
 })

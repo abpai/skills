@@ -20,16 +20,16 @@ export default defineEval({
 
     t.loadedSkill("status-update")
     t.check(turn.toolCalls, noWrites())
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(
-      t.reply,
+      turn.message,
       satisfies(
         (reply: unknown) => typeof reply === "string" && /unverified/i.test(reply),
         "reply marks the stale claim unverified",
       ),
     )
     t.check(
-      t.reply,
+      turn.message,
       satisfies(
         (reply: unknown) =>
           typeof reply === "string" && !/active now[\s\S]{0,200}migration is (running|active)/i.test(reply),

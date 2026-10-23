@@ -15,9 +15,9 @@ export default defineEval({
       ),
     )
     t.loadedSkill("human-writer")
-    t.check(turn.toolCalls, notLoadedSkill("improve-prompt"))
+    t.check(turn.events, notLoadedSkill("improve-prompt"))
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

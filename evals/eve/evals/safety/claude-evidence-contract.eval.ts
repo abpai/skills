@@ -33,20 +33,20 @@ export default defineEval({
         )
       }, "does not launch Claude to interpret a hypothetical completed run"),
     )
-    t.judge.autoevals.closedQA(
+    t.judge(
       prompt(
         "Does the response say the review is incomplete because the required",
         "diff and test evidence is missing, even though the runner finished",
         "successfully and Claude gave a positive summary?",
       ),
     )
-    t.judge.autoevals.closedQA(
+    t.judge(
       prompt(
         "Does the response name a concrete verification step still required",
         "before merging, such as inspecting the requested diff or running the",
         "repository tests or gates?",
       ),
     )
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

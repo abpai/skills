@@ -7,14 +7,16 @@ import { createOpenAI } from "@ai-sdk/openai"
 // is only reached when an eval opts in.
 //
 // The judge runs on the same OpenAI `sk-` key as the subject. No Vercel gateway
-// key is available, so a string id like "anthropic/claude-haiku-4.5" (which
-// routes through the gateway) would SKIP for lack of credentials. An AI SDK
-// model instance is used directly with OPENAI_API_KEY instead. NOTE: subject and
-// judge share a model family here — acceptable given the credential constraint,
-// but a cross-family judge (needs a gateway/Anthropic key) is the stronger setup
-// to revisit. Override the judge id with EVE_JUDGE_MODEL.
+// key is available, so the default gateway judge (`typesafe-ai/jev`) and string
+// ids would fail for lack of credentials. eve's judge takes a decision model,
+// not a language model, so use the provider's `decisionModel` with
+// OPENAI_API_KEY. NOTE: subject and judge share a model family here —
+// acceptable given the credential constraint, but a cross-family judge (needs a
+// gateway/Anthropic key) is the stronger setup to revisit. The model is fixed
+// here and deliberately not env-overridable: a gpt-5.4-mini judge scored
+// pstack series reports that met every clause at 0.
 const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 export default defineEvalConfig({
-  judge: { model: openai(process.env.EVE_JUDGE_MODEL ?? "gpt-6-luna") },
+  judge: { model: openai.decisionModel("gpt-6-luna") },
 })

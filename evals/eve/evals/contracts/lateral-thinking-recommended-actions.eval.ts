@@ -37,11 +37,11 @@ export default defineEval({
     t.succeeded()
     t.loadedSkill("lateral-thinking")
     // Ranked hypotheses are still expected (this is not a replacement for them)...
-    t.check(t.reply, includes("Hypothes"))
+    t.check(turn.message, includes("Hypothes"))
     // ...but the run must not stop there: a Recommended Actions section with a
     // small numbered list of concrete steps must follow.
     t.check(
-      t.reply,
+      turn.message,
       satisfies((r: unknown) => {
         if (typeof r !== "string") return false
         const m = r.match(/#+\s*Recommended Actions([\s\S]*)$/i)
@@ -52,6 +52,6 @@ export default defineEval({
     )
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

@@ -55,7 +55,7 @@ async function lane(part: string, extraEnv: Record<string, string> = {}) {
 test("fast checks complete without contacting Docker and strip provider credentials", async () => {
   const result = await lane("check", { EVE_TEST_DOCKER_EXIT: "1" });
   expect(result.code, result.output).toBe(0);
-  for (const script of ["prepare-skills", "typecheck", "test:catalog", "test:coverage", "list"]) {
+  for (const script of ["prepare-skills", "typecheck", "test:catalog", "test:coverage", "test:skill-loads", "list"]) {
     expect(result.commands).toContain(`bun run ${script}\n`);
   }
   expect(result.commands).not.toContain("docker");

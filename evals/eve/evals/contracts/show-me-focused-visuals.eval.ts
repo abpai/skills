@@ -29,7 +29,7 @@ export default defineEval({
     t.loadedSkill("show-me")
 
     t.check(
-      t.reply,
+      turn.message,
       satisfies((reply: unknown) => {
         if (typeof reply !== "string") return false
         const mermaidBlocks = reply.matchAll(/```mermaid\s*\n([\s\S]*?)```/gi)
@@ -46,7 +46,7 @@ export default defineEval({
       }, "no long top-down Mermaid block expands into a scroll-length process diagram"),
     )
 
-    t.judge.autoevals.closedQA(
+    t.judge(
       prompt(
         "Does the response visually explain the workflow in focused, readable",
         "chunks or a compact grouped overview, rather than one large end-to-end",
@@ -59,6 +59,6 @@ export default defineEval({
       ),
     )
 
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

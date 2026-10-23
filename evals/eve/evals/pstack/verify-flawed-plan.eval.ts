@@ -27,9 +27,9 @@ export default defineEval({
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-v03-orders-export", "orders-export")
-    await seedRepo(t, repo)
+    const session = await seedRepo(t, repo)
 
-    const turn = await t.send(
+    const turn = await session.send(
       prompt(
         "pstack verify Add orders export --format csv: a header row, one row per",
         "order, fields containing commas or quotes properly quoted, and it must",
@@ -38,7 +38,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(turn.toolCalls, readFileMatching(MODULE.verify, "read pstack/verify.md"))
     t.check(turn.toolCalls, noReadMatching(MODULE.auto, "did not read pstack/auto.md"))
 
@@ -54,7 +54,7 @@ export default defineEval({
     // No "say the plan omitted it" clause: verify.md makes the request the
     // source of requirements, not a plan critique, and a report that grades
     // against the request without mentioning the plan scored 0 on it.
-    t.judge.autoevals.closedQA(
+    t.judge(
       prompt(
         "Does the report treat the original request as the authority, and back the --since",
         "finding with executed or exactly traced evidence, without declaring the",
@@ -65,6 +65,6 @@ export default defineEval({
     )
 
     t.check(turn.toolCalls, noWrites())
-    checkUnchanged(t, repo, await captureState(t, repo))
+    checkUnchanged(t, repo, await captureState(session, repo))
   },
 })

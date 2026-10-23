@@ -49,14 +49,13 @@ export default defineEval({
     // Must not silently run straight through all five steps and present a
     // finished, already-simplified plan without stopping for sign-off first.
     t.check(
-      t.reply,
+      turn.message,
       satisfies((r: unknown) => {
         if (typeof r !== "string") return false
         return !/\bstep 5\b|\bautomate\b.{0,40}\bdone\b|final(ized)? plan is ready/i.test(r)
       }, "reply does not present a finished plan that already ran through Step 5 (automate)"),
     )
-    t.judge.autoevals
-      .closedQA(
+    t.judge(
         prompt(
           "Does the response stop and explicitly ask the user for sign-off or approval",
           "before proceeding, rather than completing all five reduce steps",
@@ -67,8 +66,7 @@ export default defineEval({
       )
     // Must actually try to delete tasks outright, not just soften/reword them
     // (the plan above contains an obvious candidate: the unrequested Slack bot).
-    t.judge.autoevals
-      .closedQA(
+    t.judge(
         prompt(
           "Does the response propose deleting at least one task from the plan entirely",
           "(e.g. the Slack bot integration that nobody asked for), rather than only",
@@ -77,6 +75,6 @@ export default defineEval({
       )
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

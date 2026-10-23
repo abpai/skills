@@ -28,9 +28,9 @@ export default defineEval({
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-v07-users-soft-delete", "usersvc")
-    await seedRepo(t, repo)
+    const session = await seedRepo(t, repo)
 
-    const turn = await t.send(
+    const turn = await session.send(
       prompt(
         "pstack verify Switch user deletion to a soft delete: delete_user should set",
         "deleted_at instead of removing the row, and list_users should leave",
@@ -40,7 +40,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(turn.toolCalls, readFileMatching(MODULE.verify, "read pstack/verify.md"))
 
     t.check(turn.toolCalls, ranCommand(/unittest|pytest|make test/, "tried the test suite"))
@@ -70,7 +70,7 @@ export default defineEval({
     // scored 0 in 2 of 2 iteration-1 runs on reports that said the behavior
     // was unverified against PostgreSQL in other words. The wording is not
     // the contract; not passing off the skipped check is.
-    t.judge.autoevals.closedQA(
+    t.judge(
       prompt(
         "Does the report state that the soft-delete behavior is unverified",
         "against a real database, and avoid presenting skipped tests, invented",
@@ -81,6 +81,6 @@ export default defineEval({
     )
 
     t.check(turn.toolCalls, noWrites())
-    checkUnchanged(t, repo, await captureState(t, repo))
+    checkUnchanged(t, repo, await captureState(session, repo))
   },
 })

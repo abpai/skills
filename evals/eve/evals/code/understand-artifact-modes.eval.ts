@@ -64,7 +64,7 @@ export default defineEval({
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in
     // support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
 
     // Case B (--map opt-in) is intentionally omitted here. Proving it would
     // need a second live turn tracing the same fixture through the full

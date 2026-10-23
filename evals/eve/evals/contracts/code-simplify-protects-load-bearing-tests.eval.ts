@@ -80,8 +80,7 @@ export default defineEval({
     // write tool on a test file that doesn't exist in this sandbox anyway.
     t.check(turn.toolCalls, noWrites())
     t.check(turn.toolCalls, noFailedCalls())
-    t.judge.autoevals
-      .closedQA(
+    t.judge(
         prompt(
           "Does the response recommend KEEPING test #3 (the expired-JWT auth/security guard), test #4 (the public API golden/contract fixture",
           "test), and test #6 (the no-circular-deps dependency-boundary gate) —",
@@ -98,10 +97,9 @@ export default defineEval({
     // tends to land on close-but-different phrasing — e.g. "architectural/
     // dependency-boundary gate" without "no-drift", or "feature-gated"
     // instead of "environment-gated".
-    t.check(t.reply, includes(/no-drift/i))
-    t.check(t.reply, includes(/environment[\w\s/-]{0,20}gated/i))
-    t.judge.autoevals
-      .closedQA(
+    t.check(turn.message, includes(/no-drift/i))
+    t.check(turn.message, includes(/environment[\w\s/-]{0,20}gated/i))
+    t.judge(
         prompt(
           "Does the response ALSO recommend KEEPING test #7 (the compile-time-only `@ts-expect-error` type proof, which has no runtime assertion)",
           "and test #8 (the environment-gated test shim that is currently",
@@ -115,6 +113,6 @@ export default defineEval({
       )
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

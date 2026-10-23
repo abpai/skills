@@ -25,7 +25,7 @@ export default defineEval({
     t.loadedSkill("hexagon-audit")
     // States non-applicability rather than inventing violations.
     t.check(
-      t.reply,
+      turn.message,
       satisfies(
         (r: unknown) =>
           typeof r === "string" && /(does not apply|not applicable|doesn't apply|no `?packages)/i.test(r),
@@ -34,6 +34,6 @@ export default defineEval({
     )
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

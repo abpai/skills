@@ -21,19 +21,19 @@ export default defineEval({
     t.succeeded()
     t.loadedSkill("harness")
     t.check(
-      t.reply,
+      turn.message,
       satisfies((reply: unknown) => {
         if (typeof reply !== "string") return false
         return /unknown/i.test(reply) && /scanner|deterministic/i.test(reply)
       }, "records unavailable deterministic scanner coverage as unknown"),
     )
     t.check(
-      t.reply,
+      turn.message,
       satisfies((reply: unknown) => {
         if (typeof reply !== "string") return false
         return !/readiness[^.\n]{0,20}\b\d{1,3}\s*(?:\/\s*100|%)/i.test(reply)
       }, "does not assign a numeric readiness score"),
     )
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

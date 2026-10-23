@@ -36,9 +36,9 @@ export default defineEval({
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-p01-tenant-reports", "tenant-reports")
-    await seedRepo(t, repo)
+    const session = await seedRepo(t, repo)
 
-    const turn = await t.send(
+    const turn = await session.send(
       prompt(
         "pstack plan The \"writes one report per tenant\" test in tests/reports.test.ts",
         "fails on CI every few runs. We already bumped its timeout to 10s, wrapped",
@@ -49,7 +49,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
 
     // Routing: the plan module, and only the plan module.
     t.check(turn.toolCalls, readFileMatching(MODULE.plan, "read pstack/plan.md"))
@@ -75,7 +75,7 @@ export default defineEval({
       mentionsAll([/fileNameFor|file ?name|collid|collision|overwrit/i], "names the file-name collision"),
     ).soft()
     t.check(turn.message, selectsPrinciple("fix-root-causes")).soft()
-    t.judge.autoevals.closedQA(
+    t.judge(
       prompt(
         "Is this a plan (not an implementation) that rejects the timing/flush",
         "explanation shared by the earlier fixes, fixes the cause at its source",
@@ -89,6 +89,6 @@ export default defineEval({
 
     // Plan never edits.
     t.check(turn.toolCalls, noWrites())
-    checkUnchanged(t, repo, await captureState(t, repo))
+    checkUnchanged(t, repo, await captureState(session, repo))
   },
 })

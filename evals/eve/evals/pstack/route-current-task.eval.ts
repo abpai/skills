@@ -31,9 +31,9 @@ export default defineEval({
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-p10-billing-events", "billing-events")
-    await seedRepo(t, repo)
+    const session = await seedRepo(t, repo)
 
-    const context = await t.send(
+    const context = await session.send(
       prompt(
         `Context for my next message, about \`${repo.dir}\` (do not start yet):`,
         "we are renaming the billing account events from the `acct.` prefix to",
@@ -45,10 +45,10 @@ export default defineEval({
     )
     t.check(context.toolCalls, noWrites())
 
-    const turn = await t.send("pstack plan")
+    const turn = await session.send("pstack plan")
     t.succeeded()
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(turn.toolCalls, readFileMatching(MODULE.plan, "read pstack/plan.md"))
 
     // It planned the conversation's task rather than asking or printing usage.
@@ -80,6 +80,6 @@ export default defineEval({
     t.check(turn.message, selectsPrinciple("type-system-discipline")).soft()
 
     t.check(turn.toolCalls, noWrites())
-    checkUnchanged(t, repo, await captureState(t, repo))
+    checkUnchanged(t, repo, await captureState(session, repo))
   },
 })

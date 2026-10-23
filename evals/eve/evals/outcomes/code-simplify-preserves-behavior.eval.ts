@@ -94,9 +94,9 @@ export default defineEval({
     t.loadedSkill("code")
     t.check(turn.toolCalls, noFailedCalls())
 
-    // `t.reply` is nullable: a turn that produced no final assistant message
+    // `turn.message` is nullable: a turn that produced no final assistant message
     // yields null, and that is an extraction failure, not a crash.
-    const result = verifyCandidate(FIXTURE, t.reply ?? "")
+    const result = verifyCandidate(FIXTURE, turn.message ?? "")
 
     t.check(
       result,
@@ -141,6 +141,6 @@ export default defineEval({
         `code is at least ${Math.round(MIN_REDUCTION * 100)}% shorter (${result.lines.before} -> ${result.lines.after} significant lines)`,
       ),
     )
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })
