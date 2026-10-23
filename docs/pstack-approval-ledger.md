@@ -164,6 +164,12 @@ review them in the draft PR.
   that the recheck may drop a principle the draft already follows. Checked on
   Claude subagents only (round 7), by the user's choice.
 
-Neither 0.4.2, 0.4.3, nor 0.4.4 has had a separate user content review of the
+- 0.4.5 (`verify.md` only), approved in conversation as the lean plan for a
+  real-series eval packet: series-aware review, a premise check with the
+  smaller alternative, defects kept as Findings wherever the fix lands, and
+  Decisions limited to choices that change what ships. Checked by a same-day
+  0.4.4 vs 0.4.5 rerun on 11 private commits (round 9) and the Eve lane.
+
+Neither 0.4.2, 0.4.3, 0.4.4, nor 0.4.5 has had a separate user content review of the
 changed text beyond the conversation approvals noted above; review them in
 the draft PR.

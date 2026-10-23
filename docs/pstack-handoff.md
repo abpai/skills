@@ -5,7 +5,7 @@
 Finish the general-purpose pstack plugin for Codex and Claude. Keep its text
 short, concrete, and independent of Garage roles or a particular harness.
 
-All 24 upstream principles have been considered. Version 0.4.4 routes `plan`,
+All 24 upstream principles have been considered. Version 0.4.5 routes `plan`,
 `verify`, and `auto` from the umbrella, the only entrypoint (`/pstack <mode>`
 in Claude, `$pstack <mode>` in Codex), and the router stops with usage on any
 other mode. Implementation items 1-4 below are done. The hidden per-mode
@@ -20,10 +20,18 @@ with no plan, and applied four prompt-audit hunks. `89b0f999` (0.4.3) applied
 the held audit hunk that shortens the `SKILL.md` mode-file sentence.
 `09fa61c8` (0.4.4) compares options only for a still-open decision that
 nothing settles (no inline Exhaust link), replaces the five-principle cap with
-a short-list rule, and keeps plan pointers to behavior and structure. The
-skill text has not changed since.
+a short-list rule, and keeps plan pointers to behavior and structure.
+0.4.5 changes only `verify.md`: it reviews a commit against its finished
+series, checks the premise, keeps a defect a Finding wherever its fix lands,
+and limits Decisions to choices that change what ships (round 9).
 
-Latest evidence ([dogfood record](pstack-dogfood.md#current-state-at-044)):
+Latest evidence ([dogfood record](pstack-dogfood.md#current-state-at-045)):
+
+- **Round 9, Claude subagent, 0.4.5 `verify.md`:** 0.4.4 and 0.4.5 side by
+  side on 11 commits of a private 50-commit series. 0.4.5 was preferred on
+  10 of 11, cut decisions from 29 to 14 (6 genuine in each), and found 21
+  real defects against 14. Reports are no shorter. The new Eve eval
+  `verify-series-commit` covers the same patterns on a synthetic fixture.
 
 - **Round 7, Claude subagent, 0.4.4:** the 6 plan cases twice each. Exhaust
   appeared only in `p12`, all 12 plans were judged reasonable, every plan was

@@ -10,8 +10,9 @@
  * sandbox starts with an empty `/workspace`, and Eve gives the eval driver no
  * sandbox handle. Eve does stage message attachments into the sandbox
  * (`/workspace/attachments/<sha16>/<name>`), so each fixture is packed on the
- * host as a git repository (base commit plus, for verify fixtures, the
- * uncommitted change) and sent as a `.tar.gz` in a setup turn the model only
+ * host as a git repository (base commit, then any committed `series/`, plus,
+ * for verify fixtures, the uncommitted change) and sent as a `.tar.gz` in a
+ * setup turn the model only
  * extracts. The archive holds nothing but the fixture: expected answers live
  * in the eval files and in `fixtures/pstack-*\/hidden`, which never enter the
  * sandbox.
@@ -28,7 +29,7 @@
  */
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { satisfies } from "eve/evals/expect"
@@ -88,8 +89,22 @@ export type PstackRepo = {
 }
 
 /**
- * Pack `fixtures/<fixture>/base` as a git repository named `name`, with
- * `change.patch` applied but uncommitted when the fixture has one.
+ * Split a `series/` patch into its commit message (everything before the
+ * first `diff --git` line; the first line is the subject) and its diff.
+ */
+export function splitSeriesPatch(text: string): { readonly message: string; readonly diff: string } {
+  const at = text.search(/^diff --git /m)
+  if (at < 0) throw new Error("series patch has no diff")
+  const message = text.slice(0, at).trim()
+  if (message === "") throw new Error("series patch has no commit message before its diff")
+  return { message, diff: text.slice(at) }
+}
+
+/**
+ * Pack `fixtures/<fixture>/base` as a git repository named `name`. When the
+ * fixture has a `series/` directory, each `NN-<slug>.patch` in it is applied
+ * and committed in name order, with the text before its diff as the commit
+ * message. Then `change.patch`, when present, is applied but left uncommitted.
  */
 export function packRepo(fixture: string, name: string): PstackRepo {
   const source = join(FIXTURE_ROOT, fixture)
@@ -99,6 +114,22 @@ export function packRepo(fixture: string, name: string): PstackRepo {
   run("git", ["init", "-q", "-b", "main"], root)
   run("git", ["add", "-A"], root)
   run("git", ["commit", "-q", "--no-verify", "-m", "Initial import"], root)
+  const series = join(source, "series")
+  if (existsSync(series)) {
+    const patches = readdirSync(series).filter((f) => f.endsWith(".patch")).sort()
+    if (patches.length === 0) throw new Error(`${fixture}: series/ has no .patch files`)
+    for (const file of patches) {
+      const { message, diff } = splitSeriesPatch(readFileSync(join(series, file), "utf8"))
+      const diffPath = join(work, `series-${file}`)
+      const messagePath = join(work, `series-${file}.msg`)
+      writeFileSync(diffPath, diff)
+      writeFileSync(messagePath, `${message}\n`)
+      run("git", ["apply", "--whitespace=nowarn", "--index", diffPath], root)
+      run("git", ["commit", "-q", "--no-verify", "-F", messagePath], root)
+      rmSync(diffPath)
+      rmSync(messagePath)
+    }
+  }
   const patch = join(source, "change.patch")
   if (existsSync(patch)) run("git", ["apply", "--whitespace=nowarn", patch], root)
 
@@ -362,6 +393,61 @@ export const WEBHOOK_KEY_CHANGES = [
   /randomUUID|(new|different|fresh|regenerat\w*|chang\w*|differ\w*)[^.\n]{0,60}\b(key|attempt|retr(y|ies))|\b(per|each|every) (attempt|retry)\b[^.\n]{0,60}(new|different|fresh|key)/i,
 ] as const
 
+// Fixture pstack-v10-series-commit, as a report states its seeded items.
+// The --follow path prints secrets that plain `logs` redacts.
+export const SERIES_REDACTION_BYPASS =
+  /unredact\w*|un-redact\w*|without (any )?redact\w*|no redact\w*|(skip|bypass|miss|lose|lack|drop|omit|sidestep)\w*[^.\n]{0,60}\bredact\w*|\bredact\w*[^.\n]{0,60}\b(skipped|bypassed|missing|not (applied|run|called|used)|never (applied|runs|called)|is not|isn['’]t)|\b(secrets?|tokens?|passwords?)\b[^.\n]{0,60}\b(raw|in (the )?clear|plain ?text|unmasked|leak\w*|exposed)|\b(raw|in (the )?clear|unmasked)\b[^.\n]{0,40}\b(secrets?|tokens?|passwords?)\b/i
+// Where the bypass lives: the pipeFile helper in src/stream.ts, or the
+// --follow call into it in src/logs.ts (the fixture accepts either fix site).
+export const SERIES_BYPASS_SITE = /stream\.ts|\bpipeFile\b/
+// The symbols command, by name or by what it does (symbolication).
+export const SERIES_SYMBOLS = /\bsymbols?\b|\bsymbolicat\w*/i
+// What to do about the symbols command: drop it, or move it out of this PR.
+export const SERIES_DROP_OR_SPLIT =
+  /\bdrop\w*|\bseparated\b|\bseparate (it|them|that)\b|\bremov\w*|\bsplit\w*|\bseparate (PR|pull request|commit|change|branch)|\b(out of|outside( of)?) (this|the) (PR|pull request|change|series|scope)|\bits own (PR|pull request|commit|change)|\b(follow-?up|another|a separate|a different) (PR|pull request)|\bout of scope\b|\bunrelated\b[^.\n]{0,60}\b(PR|pull request)\b|\bscope violation\b|\boutside the [\w-]+( [\w-]+)? (request|change)\b|\bleave (the )?unrelated (work|code|changes?) (out|separate)\b/i
+// The helper the next commit calls, named or described as uncalled.
+export const SERIES_UNCALLED_HELPER =
+  /parseInterval|interval\.ts|\binterval (helper|parser|function)|\b(uncalled|unused|dead)\b[^.\n]{0,40}\b(helper|export|function|code)\b|\b(helper|export|function)\b[^.\n]{0,40}\b(uncalled|unused|no (callers?|call sites?|usages?)|not (yet )?(called|used|wired|referenced|imported)|nothing (calls|uses|imports) it)\b/i
+
+/**
+ * The series-commit eval's hard gates on the report text, kept pure so the
+ * grader self-test can run the same gates on hand-written controls.
+ */
+export const SERIES_REPORT_GATES: readonly { readonly label: string; readonly passes: (reply: string) => boolean }[] = [
+  {
+    label: "Findings reports that --follow prints secrets unredacted, located at pipeFile/src/stream.ts",
+    passes: (reply) => {
+      const findings = markdownSection(reply, /^findings?\b/i) ?? ""
+      return [/--follow|\bfollow\b/i, SERIES_REDACTION_BYPASS, SERIES_BYPASS_SITE].every((p) => p.test(findings))
+    },
+  },
+  {
+    // Live runs put the doubt in Findings about half the time, which still
+    // surfaces it as actionable; only placing it under Premise is soft.
+    label: "Premise or Findings names the symbols command and says to drop it or split it out of the PR",
+    passes: (reply) => {
+      const text = `${markdownSection(reply, /^premise\b/i) ?? ""}\n${markdownSection(reply, /^findings?\b/i) ?? ""}`
+      return SERIES_SYMBOLS.test(text) && SERIES_DROP_OR_SPLIT.test(text)
+    },
+  },
+  {
+    label: "the report has a Decisions section",
+    passes: (reply) => markdownSection(reply, /^decisions?\b/i) !== undefined,
+  },
+  {
+    label: "Decisions leaves out the redaction bypass, which is a finding",
+    passes: (reply) => !/redact/i.test(markdownSection(reply, /^decisions?\b/i) ?? ""),
+  },
+  {
+    label: "Decisions leaves out parseInterval, which the next commit calls",
+    passes: (reply) => !SERIES_UNCALLED_HELPER.test(markdownSection(reply, /^decisions?\b/i) ?? ""),
+  },
+  {
+    label: "Decisions does not re-ask --grep with --follow, which the PR decides",
+    passes: (reply) => !/--grep|\bgrep\b/i.test(markdownSection(reply, /^decisions?\b/i) ?? ""),
+  },
+]
+
 // Fixture pstack-v07-users-soft-delete: the database tests did not exercise
 // the change. Without TEST_DATABASE_URL they skip; a subject that sets it (as
 // the Makefile does) sees them error on the missing psycopg or Postgres. Both
@@ -471,6 +557,59 @@ export function mentionsNone(patterns: readonly RegExp[], label: string) {
     (reply: unknown) => typeof reply === "string" && !patterns.some((p) => p.test(reply)),
     label,
   )
+}
+
+// ---------------------------------------------------------------------------
+// Report sections
+
+/** Names of verify.md's report sections, as a heading starts them. */
+const REPORT_SECTION =
+  /^(?:the\s+)?(?:requirements?|checks?(?:\s+run)?|principles?(?:\s+applied)?|findings?|premise(?:\s+check)?|decisions?(?:\s+for\s+the\s+requester)?|(?:non-blocking\s+)?notes|anything\s+unverified|unverified)\b/i
+
+type HeadingLine = { readonly name: string; readonly rest: string; readonly level?: number }
+
+/**
+ * Read a line as a section heading: `## Name`, `### 3. Name`, `**Name**`,
+ * `**Name:** inline text`, `- **Name**: inline text`, or `Name:` on its own
+ * line start. Bold and plain forms count only when they name a report section,
+ * so a bolded list item inside a section does not end it.
+ */
+function headingLine(line: string): HeadingLine | undefined {
+  const clean = (s: string) =>
+    s.replace(/[*_`]/g, "").replace(/^\s*\d+[.)]\s*/, "").replace(/\s*:\s*$/, "").trim()
+  const atx = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line)
+  if (atx) return { name: clean(atx[2]), rest: "", level: atx[1].length }
+  const bold = /^\s{0,3}(?:[-*+]\s+)?(?:\d+[.)]\s+)?(\*\*|__)(.+?)\1\s*:?\s*(.*)$/.exec(line)
+  if (bold && REPORT_SECTION.test(clean(bold[2]))) return { name: clean(bold[2]), rest: bold[3] }
+  const plain = /^\s{0,3}(?:[-*+]\s+)?([A-Z][A-Za-z -]{2,40}):\s*(.*)$/.exec(line)
+  if (plain && REPORT_SECTION.test(clean(plain[1]))) return { name: clean(plain[1]), rest: plain[2] }
+  return undefined
+}
+
+/**
+ * The body of the first section whose heading name matches `heading`, from a
+ * markdown report: inline text after a bold or `Name:` heading, plus every
+ * line up to the next report-section heading (or a `#` heading at the same or
+ * a higher level). Undefined when no heading matches.
+ */
+export function markdownSection(text: string, heading: RegExp): string | undefined {
+  const lines = text.split("\n")
+  const start = lines.findIndex((line) => {
+    const h = headingLine(line)
+    return h !== undefined && heading.test(h.name)
+  })
+  if (start < 0) return undefined
+  const head = headingLine(lines[start]) as HeadingLine
+  const body = head.rest === "" ? [] : [head.rest]
+  for (const line of lines.slice(start + 1)) {
+    const h = headingLine(line)
+    if (h) {
+      const sameOrHigher = h.level !== undefined && (head.level === undefined || h.level <= head.level)
+      if (sameOrHigher || REPORT_SECTION.test(h.name)) break
+    }
+    body.push(line)
+  }
+  return body.join("\n").trim()
 }
 
 // ---------------------------------------------------------------------------

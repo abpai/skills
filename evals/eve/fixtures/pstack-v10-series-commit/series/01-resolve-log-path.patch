@@ -1,0 +1,85 @@
+logs: resolve the log file from devkit.json
+
+diff --git a/README.md b/README.md
+index 2ec06ca..420e74d 100644
+--- a/README.md
++++ b/README.md
+@@ -4,6 +4,7 @@ Developer CLI for the storefront services.
+ 
+ ```sh
+ bun src/cli.ts logs [file] [--grep TEXT]   # print a service log, secrets redacted
++                                           # (file defaults to devkit.json logFile, then logs/app.log)
+ bun src/cli.ts tail <file> [--follow]      # print build output as-is
+ bun test
+ ```
+diff --git a/src/config.ts b/src/config.ts
+new file mode 100644
+index 0000000..3009825
+--- /dev/null
++++ b/src/config.ts
+@@ -0,0 +1,18 @@
++import { existsSync, readFileSync } from "node:fs";
++import { join } from "node:path";
++
++const DEFAULT_LOG = "logs/app.log";
++
++/**
++ * The service log to read: an explicit path wins, then `logFile` from
++ * `devkit.json` in `cwd`, then logs/app.log.
++ */
++export function resolveLogPath(explicit: string | undefined, cwd: string = process.cwd()): string {
++  if (explicit) return explicit;
++  const configPath = join(cwd, "devkit.json");
++  if (existsSync(configPath)) {
++    const config = JSON.parse(readFileSync(configPath, "utf8")) as { logFile?: unknown };
++    if (typeof config.logFile === "string" && config.logFile !== "") return join(cwd, config.logFile);
++  }
++  return join(cwd, DEFAULT_LOG);
++}
+diff --git a/src/logs.ts b/src/logs.ts
+index c84988f..90bc691 100644
+--- a/src/logs.ts
++++ b/src/logs.ts
+@@ -1,4 +1,5 @@
+ import { readFileSync } from "node:fs";
++import { resolveLogPath } from "./config";
+ import type { Io } from "./io";
+ import { printLines } from "./output";
+ 
+@@ -19,8 +20,8 @@ function parse(args: readonly string[]): LogsArgs {
+ }
+ 
+ export async function runLogs(args: readonly string[], io: Io): Promise<number> {
+-  const { file = "logs/app.log", grep } = parse(args);
+-  const lines = readFileSync(file, "utf8")
++  const { file, grep } = parse(args);
++  const lines = readFileSync(resolveLogPath(file), "utf8")
+     .split("\n")
+     .filter((line) => line !== "")
+     .filter((line) => grep === undefined || line.includes(grep));
+diff --git a/tests/config.test.ts b/tests/config.test.ts
+new file mode 100644
+index 0000000..bf5e48e
+--- /dev/null
++++ b/tests/config.test.ts
+@@ -0,0 +1,20 @@
++import { mkdtempSync, writeFileSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { expect, test } from "bun:test";
++import { resolveLogPath } from "../src/config";
++
++test("an explicit path wins", () => {
++  expect(resolveLogPath("x.log", "/nowhere")).toBe("x.log");
++});
++
++test("reads logFile from devkit.json", () => {
++  const dir = mkdtempSync(join(tmpdir(), "devkit-cfg-"));
++  writeFileSync(join(dir, "devkit.json"), JSON.stringify({ logFile: "var/api.log" }));
++  expect(resolveLogPath(undefined, dir)).toBe(join(dir, "var/api.log"));
++});
++
++test("falls back to logs/app.log", () => {
++  const dir = mkdtempSync(join(tmpdir(), "devkit-cfg-"));
++  expect(resolveLogPath(undefined, dir)).toBe(join(dir, "logs/app.log"));
++});

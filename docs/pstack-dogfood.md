@@ -31,14 +31,15 @@ cause) is in the pull request description and in git history at `c208f986`
   exactly (HEAD trees and verify fingerprints match the graded rounds). Run
   outputs stayed outside the repo; this record quotes the evidence it uses.
 
-## Current state at 0.4.4
+## Current state at 0.4.5
 
-The skill text is unchanged since `09fa61c8` (0.4.4).
+0.4.5 changes only `verify.md` (round 9). Plan, auto and routing text is
+unchanged since `09fa61c8` (0.4.4).
 
 | Mode | Claude subagent | Codex `gpt-6.1-sol` | Eve `gpt-6-luna` |
 | --- | --- | --- | --- |
 | plan | r7 at 0.4.4: 12 of 12 plans reasonable, 6 of 12 pass the strict criteria | r6 at 0.4.2: 5 of 6 (`p11` fails on Redesign; `p08` weak) | iteration 7 at 0.4.4: 3 of 4 plan evals (`plan-design-space` fails the 5-principle gate with 6) |
-| verify | r8 at 0.4.4: 5 of 5 | r6 at 0.4.2: 5 of 5 | iteration 7: 5 of 5, including `verify-pr-only` |
+| verify | r8 at 0.4.4: 5 of 5; r9 at 0.4.5: 10 of 11 real commits better than 0.4.4 | r6 at 0.4.2: 5 of 5 | iteration 7: 5 of 5, including `verify-pr-only` |
 | auto | r8 at 0.4.4: `a06` pass | r6 at 0.4.2: `a06` pass, weak report | iteration 7: `auto-job-durations` pass |
 | routing | r8 at 0.4.4: `r13` pass; `claude -p --plugin-dir` routed all three modes at 0.4.0 (`132d3f8e`) | r6 at 0.4.2: `r13` pass | iteration 7: `route-unsupported-mode` and `route-no-task-asks` pass |
 
@@ -98,33 +99,67 @@ C is the Claude subagent unless noted; X is Codex.
 | r6 | `7ad0641a` (0.4.2) | C, X `gpt-6.1-sol` fast tier, all 13 | C 10 of 13, X 12 of 13 | Sol read the mode file first in 12 of 12, so 0.4.3 (`89b0f999`) shortened the routing sentence. Exhaust padding in 8 of 12 plans, the cap read as a quota, and longer plans led to 0.4.4 (`09fa61c8`). |
 | r7 | `09fa61c8` (0.4.4) | C only, 6 plan cases twice | 12 of 12 reasonable, 6 of 12 strict; Exhaust only in `p12`; every plan shorter than r6 | Recheck drops accepted as intended. No skill change. |
 | r8 | `09fa61c8` (0.4.4) | C only, 7 non-plan cases | 7 of 7 pass and reasonable | No skill change. |
+| r9 | 0.4.5 `verify.md` | C (Sonnet subagents), 11 commits of a private 50-commit series, 0.4.4 and 0.4.5 side by side | 0.4.5 preferred on 10 of 11; decisions 29 to 14; real defects 14 to 21 | 0.4.5: series-aware verify, premise check, narrower Decisions. |
 
 The X move from 6 of 13 (r4) to 12 of 13 (r6) mixes a model change
 (`gpt-6-luna` to `gpt-6.1-sol`) with the skill change; no run separates them.
 
-## Round 8: verify, auto and unsupported mode at 0.4.4
+## Round 9: verify noise on a real commit series (0.4.5)
 
-Claude subagent, one run per case at `09fa61c8`, from fresh fixture copies,
-each graded by a separate reviewer. This checks the 0.4.4 changes (no numeric
-cap, no inline Exhaust link) against the cases round 7 did not run. Every run
-read `SKILL.md` first and then its mode file (`r13` correctly read only
-`SKILL.md`), and every run copy was unchanged at the end.
+Source: a private 50-commit series reviewed by pstack verify 0.4.4 plus
+Codex, with a triage step that turned unpatched findings into decisions.
+142 decisions reached the human. A label pass (kept outside the repo) found
+only 18 should have been decisions: 48 were gaps a later commit closed, 22
+were real defects, 27 were "keep" or already decided, and 16 were commit-message
+nits. Premise doubts were asked but answered weakly. Verify reports were 2.6
+times the size of Codex's.
 
-| Case | Result | Principles | Evidence | Friction |
-| --- | --- | --- | --- | --- |
-| `v03` verify | **Pass** | Prove it works, Test behavior, Laziness protocol | Requirements taken from the ticket before the plan; says plan step 3 applies only `--status`; list-vs-export parity table, with a fixed copy matching all 7 cases; quoting checked by a CLI round trip and a mutant. 1,167 words (r6: 1,206). | One Decision comes from the plan's goal, not the ticket (`verify.md:33-34`; two in r6); coverage pulls against "concise" (`verify.md:17-20` vs `:22`). Minor, eased. |
-| `v04` verify | **Pass** | Prove it works, Make operations idempotent, Test behavior, Laziness protocol | `attempt <= maxAttempts` at `src/dispatch.ts:38` (4 requests, delays 200/400/800 for a 500 and for ECONNREFUSED); `randomUUID()` per attempt at `:43` (3 keys); the existing tests pass on both the change and a corrected copy (9/9), so they catch neither defect. | None. |
-| `v05` verify | **Pass** | Prove it works, Test behavior | Unittest 9 OK; HEAD `slugify` fails 3 new tests; old and new site builds compared; an all-code-point equivalence probe found 0 mismatches and caught two mutants; URL rename under Decisions. r6 padding (Script bulk) gone. | Every Decision gets options (`verify.md:33-34`), so the settled rename got three plus a hypothetical second Decision; Non-blocking notes always present (`verify.md:22,35`); probes "temporary" vs repeatable (`verify.md:15-16`, `principle-prove-it-works.md:15-16`). Minor. |
-| `v07` verify | **Pass** | Prove it works, Test behavior | Kept the `make test` failure; ran bare `python -m unittest` and called `OK (skipped=5)` non-evidence, which the r4-r6 Claude runs never did; labelled stand-in Postgres 17 run. Every criterion passes in full for the first time. | Opened Exhaust and dropped it (`principles.md:16` trigger, no verify branch in the file); the psycopg install into a venv is not in the report, so the substitute cannot be repeated from it (`verify.md:17-20`). |
-| `v09` verify | **Pass** | Prove it works, Explain the number | Trace only on the baseline at `compare.sh:5` (16.4 ms of the 23.8 ms gap); one `Registry` for 30 resolves (430 parses and 0 hits on the first resolve); fair warm about 1.5x, cold about 1.0x, no CLI difference. | None. |
-| `a06` auto | **Pass** | Boundary discipline, Test behavior, Prove it works | `src/duration.ts` with exact BigInt rounding; `config.ts` wraps errors as `ConfigError` naming job and field; `runner.ts` untouched; `bun test` 60/0, `run-hidden.sh` 104/0 (60 visible plus 44 hidden). Never opened Exhaust (r6 did). | None. |
-| `r13` unsupported | **Pass** | none | Whole reply is `pstack plan\|verify\|auto [task]`; read only `SKILL.md`; no command run in the fixture. | None. |
+0.4.5 changes `verify.md` only:
 
-Result: 7 of 7, the same as round 6 on this host, with no regression.
-Padding went from 1 (r6 `v05`) to 0, and the six mode runs list 16 principles
-against 21 in r6 (2 to 4 each), so removing the cap did not inflate them.
+- A commit in a series is judged against the finished series; a piece a
+  later commit adds (a caller, a doc update) is not a defect, but behavior
+  the commit breaks still is.
+- A premise check (step 2) with its own report section, which names the
+  smaller alternative when in doubt.
+- A defect stays a Finding when its fix belongs in another file or commit.
+- Decisions are only choices the requester can make that change what ships;
+  already-decided items, later-commit gaps and "keep" recommendations stay out.
+- Checks are one line each; commit-message fixes and follow-ups are notes, and
+  series gaps share one note.
+
+Evidence (Claude Sonnet subagents, the run's original prompt, 0.4.4 and 0.4.5
+on the same 11 commits the same day, one neutral reviewer per pair checking
+disputed defects in the code):
+
+| Measure | 0.4.4 | 0.4.5 |
+| --- | ---: | ---: |
+| Preferred report | 1 | 10 |
+| Decisions | 29 | 14 |
+| Genuine decisions | 6 | 6 |
+| Real defects found | 14 | 21 |
+| Series gaps filed as decision or defect | 13 | 7 |
+| Bytes | 96,275 | 96,921 |
+
+The one loss (a rename that broke the intermediate commit, filed as a later
+gap) led to the "behavior the commit breaks still is" clause; two reruns of
+that commit then reported it as a defect. Not fixed: reports are no shorter,
+and premise doubts on weakly justified commits still often end in "keep"
+with visible reasons rather than a drop decision.
 
 ## Eve
+
+Iteration 8 (0.4.5 `verify.md`, contabo, `gpt-6-luna`): the 12 existing pstack
+evals passed in one full run, and `verify-broken-impl` and
+`verify-correct-change` passed again on the final text. The new
+`verify-series-commit` eval: every graded run kept the uncalled helper and the
+already-decided `--grep` rule out of Decisions and reported the `--follow`
+redaction bypass. Early reds were grader wording (the `symbols` doubt phrased
+as "separated" or "outside the requested change"); the graders now accept
+those, with near misses in `test:pstack-graders` (19 blocks, passed). The
+model puts that doubt under Findings more often than under Premise, so only
+the Premise placement is soft. The final run passed 14/14; one run hung on its
+own `logs --follow` probe until the 10-minute timeout. The sandbox has no
+`bun`, so these runs probe with Node.
 
 Iteration 7 tested `1e5c4916` (0.4.4; skill text from `09fa61c8`) with one
 full live run on the contabo host and the lane's default `gpt-6-luna`:
@@ -162,7 +197,10 @@ version-bump check runs on the commit that adds this record.
 - Codex at 0.4.3 or 0.4.4, and the plan cases on Codex since r6.
 - The native Codex plugin install, interactive Codex and interactive Claude;
   `claude -p` routing since 0.4.0.
-- Run-to-run variance: r8 ran each case once, and Eve iteration 7 once.
+- Run-to-run variance: r8 ran each case once, and Eve iteration 7 once;
+  r9 ran each commit once per version.
+- 0.4.5 `verify.md` on Codex, and on the round 1-8 verify fixtures other
+  than the Eve verify evals.
 - Verify from a pull request description alone, other than Eve
   `verify-pr-only` on `gpt-6-luna`.
 - Which ablated sentences each eval guards at 0.4.4.

@@ -9,8 +9,11 @@
  *     different tree after any real edit;
  *   - the a06 hidden suite passes the reference solution and fails a careless
  *     one and an empty diff, inside the isolated verifier container;
+ *   - a `series/` fixture packs as one commit per patch, in order, with the
+ *     patch's leading text as the commit message;
  *   - the principle and length predicates accept a good plan and reject a
- *     padded or overlong one.
+ *     padded or overlong one, and the report-section reader finds a section
+ *     under any heading style without running into the next one.
  *
  * Needs git, tar, and Docker with the pinned Bun image (`bun run outcome:pull`).
  */
@@ -23,7 +26,14 @@ import { FIXTURE_ROOT } from "../evals/support/outcome"
 import {
   DB_TESTS_DID_NOT_RUN,
   EXECUTED_CHECK,
+  SERIES_BYPASS_SITE,
+  SERIES_DROP_OR_SPLIT,
+  SERIES_REDACTION_BYPASS,
+  SERIES_REPORT_GATES,
+  SERIES_SYMBOLS,
+  SERIES_UNCALLED_HELPER,
   TEST_RUN,
+  markdownSection,
   mentionsPrinciple,
   reportsGap,
   testRunPassed,
@@ -44,6 +54,7 @@ const FIXTURES: ReadonlyArray<readonly [string, string, string]> = [
   ["pstack-v05-pagekit-slugs", "pagekit", "pagekit/slug.py"],
   ["pstack-v07-users-soft-delete", "usersvc", "usersvc/repo.py"],
   ["pstack-a06-job-durations", "jobrunner", "src/config.ts"],
+  ["pstack-v10-series-commit", "devkit", "src/stream.ts"],
 ]
 
 function sh(command: string, cwd: string): string {
@@ -81,6 +92,130 @@ for (const [fixture, name, file] of FIXTURES) {
     rmSync(box, { recursive: true, force: true })
   }
 }
+
+// A series fixture packs as one commit per patch, in order, nothing left over.
+{
+  const repo = packRepo("pstack-v10-series-commit", "devkit")
+  const box = mkdtempSync(join(tmpdir(), "eve-pstack-series-"))
+  try {
+    sh(`tar -xzf ${repo.archive} -C ${box}`, box)
+    const dir = join(box, "devkit")
+    assert.deepEqual(sh("git log --format=%s", dir).trim().split("\n"), [
+      "logs: add --interval to tune --follow polling",
+      "logs: add --follow to stream new lines",
+      "logs: resolve the log file from devkit.json",
+      "Initial import",
+    ])
+    assert.match(sh("git log -1 --format=%b HEAD~1", dir), /devkit symbols/)
+    assert.equal(sh("git status --porcelain", dir), "", "series fixture leaves no uncommitted change")
+    assert.equal(sh("git grep -l parseInterval HEAD~1 -- src", dir).trim(), "HEAD~1:src/interval.ts")
+    assert.match(sh("git grep -l parseInterval HEAD -- src", dir), /HEAD:src\/logs\.ts/)
+    console.log("ok   series fixture: three commits in order, helper called only at HEAD")
+  } finally {
+    rmSync(box, { recursive: true, force: true })
+  }
+}
+
+// Report sections: every heading style, stopping at the next section only.
+const REPORT_STYLES: Record<string, string> = {
+  atx: "## Findings\n- stream.ts skips redaction\n\n## Decisions\n- Keep `--tail`?\n  - **Option A**: yes\n\n## Non-blocking notes\n- parseInterval is wired in HEAD",
+  atxNumbered: "### 5. Findings\nbug\n### 6. Decisions\nnone\n### 7. Non-blocking notes\nparseInterval",
+  bold: "**Findings**\n- bug\n\n**Decisions**\n- Keep `--tail`?\n- **Option A**: yes\n\n**Non-blocking notes**\n- parseInterval",
+  boldInline: "- **Findings:** bug\n- **Decisions:** none\n- **Non-blocking notes:** parseInterval",
+  plain: "Findings: bug\nDecisions: none\nNon-blocking notes: parseInterval",
+}
+for (const [style, report] of Object.entries(REPORT_STYLES)) {
+  const decisions = markdownSection(report, /^decisions?\b/i)
+  assert.ok(decisions !== undefined, `${style}: Decisions found`)
+  assert.equal(SERIES_UNCALLED_HELPER.test(decisions), false, `${style}: Decisions stops before the notes`)
+  assert.equal(/bug|stream\.ts/.test(decisions), false, `${style}: Decisions starts after Findings`)
+}
+assert.match(markdownSection(REPORT_STYLES.bold, /^decisions?\b/i) ?? "", /Option A/, "bold list items stay inside")
+assert.equal(markdownSection(REPORT_STYLES.boldInline, /^decisions?\b/i), "none")
+assert.equal(markdownSection("## Findings\nbug", /^decisions?\b/i), undefined, "a missing section is undefined")
+assert.match(markdownSection("## Findings\n### 1. Redaction\nstream.ts\n## Premise\nok", /^findings?\b/i) ?? "", /stream\.ts/)
+console.log("ok   markdownSection reads ##, ###, numbered, bold, inline-bold, and plain headings")
+
+// Series-commit graders: the planted items as reports phrase them, and near misses.
+for (const yes of [
+  "`logs --follow` prints `token=abc123` unredacted",
+  "pipeFile in src/stream.ts skips redact(), so secrets print in the clear",
+  "The follow path bypasses redaction entirely.",
+  "redaction is never applied on the --follow path",
+]) {
+  assert.ok(SERIES_REDACTION_BYPASS.test(yes), `SERIES_REDACTION_BYPASS should match: ${yes}`)
+}
+for (const no of ["Plain `devkit logs` redacts secrets as required.", "--follow rejects --grep, as the PR decides."]) {
+  assert.equal(SERIES_REDACTION_BYPASS.test(no), false, `SERIES_REDACTION_BYPASS should not match: ${no}`)
+}
+for (const yes of [
+  "In doubt: drop `devkit symbols` from this PR; Tracewell already symbolicates.",
+  "Split the symbols command into its own PR.",
+  "symbols is out of scope for this pull request",
+  "move it to a separate PR",
+]) {
+  assert.ok(SERIES_DROP_OR_SPLIT.test(yes), `SERIES_DROP_OR_SPLIT should match: ${yes}`)
+}
+assert.equal(SERIES_DROP_OR_SPLIT.test("The symbols command works and its tests pass."), false)
+// Live report 2026-10-23: "the unrelated symbolication feature should be separated".
+const livePremise = "this commit is not ready as-is: the unrelated symbolication feature should be separated."
+assert.ok(SERIES_SYMBOLS.test(livePremise) && SERIES_DROP_OR_SPLIT.test(livePremise), "live Premise phrasing passes")
+assert.equal(SERIES_DROP_OR_SPLIT.test("Logs and symbols live in separate files."), false)
+// Live reports 2026-10-23 (0.4.5): the doubt as a scope Finding.
+for (const yes of [
+  "That feature is outside the requested logs change and violates the principle to keep changes scoped and leave unrelated work separate.",
+  "Scope violation — unrelated symbolication feature. That work is outside the logs-follow request and violates the laziness principle to leave unrelated work out.",
+]) {
+  assert.ok(SERIES_DROP_OR_SPLIT.test(yes), `SERIES_DROP_OR_SPLIT should match: ${yes}`)
+}
+for (const no of ["The follow output is outside the redaction path.", "Leave the interval default as it is."]) {
+  assert.equal(SERIES_DROP_OR_SPLIT.test(no), false, `SERIES_DROP_OR_SPLIT should not match: ${no}`)
+}
+// The bypass site: the helper's file, or the helper the --follow path calls.
+for (const yes of ["src/stream.ts:12 prints raw lines", "The follow path sends output through `pipeFile` (src/logs.ts:35)"]) {
+  assert.ok(SERIES_BYPASS_SITE.test(yes), `SERIES_BYPASS_SITE should match: ${yes}`)
+}
+assert.equal(SERIES_BYPASS_SITE.test("src/logs.ts:35 skips redaction"), false)
+for (const yes of [
+  "parseInterval has no caller at this commit",
+  "src/interval.ts is unused until HEAD",
+  "the exported helper is not yet called",
+]) {
+  assert.ok(SERIES_UNCALLED_HELPER.test(yes), `SERIES_UNCALLED_HELPER should match: ${yes}`)
+}
+for (const no of ["- Keep `devkit symbols`, or drop it? It is not used by the stated problem.", "none"]) {
+  assert.equal(SERIES_UNCALLED_HELPER.test(no), false, `SERIES_UNCALLED_HELPER should not match: ${no}`)
+}
+console.log("ok   series-commit graders match the planted items and reject near misses")
+
+// The eval's hard gates on whole reports. The negative control mentions every
+// planted item but files the bypass as a decision, which the gates must fail.
+const failedSeriesGates = (report: string) =>
+  SERIES_REPORT_GATES.filter((gate) => !gate.passes(report)).map((gate) => gate.label)
+const SERIES_GOOD_REPORT = [
+  "## Findings",
+  "- `logs --follow` streams through `pipeFile` in src/stream.ts, which prints raw lines, so secrets print unredacted.",
+  "## Premise",
+  "In doubt: drop `devkit symbols` from this PR; Tracewell already symbolicates.",
+  "## Decisions",
+  "None.",
+  "## Non-blocking notes",
+  "- parseInterval has no caller until HEAD wires --interval.",
+].join("\n")
+assert.deepEqual(failedSeriesGates(SERIES_GOOD_REPORT), [], "a correct report passes every hard gate")
+const SERIES_BYPASS_AS_DECISION = [
+  "## Findings",
+  "None.",
+  "## Premise",
+  "In doubt: drop `devkit symbols` from this PR; Tracewell already symbolicates.",
+  "## Decisions",
+  "- Fix or ship the redaction bypass? `logs --follow` sends lines through `pipeFile` in src/stream.ts, which prints secrets unredacted.",
+].join("\n")
+assert.deepEqual(failedSeriesGates(SERIES_BYPASS_AS_DECISION), [
+  SERIES_REPORT_GATES[0].label,
+  SERIES_REPORT_GATES[3].label,
+], "the bypass filed as a decision fails the Findings and Decisions gates")
+console.log("ok   series-commit gates pass a correct report and fail the bypass filed as a decision")
 
 // The hidden a06 suite separates a correct implementation from careless ones.
 const controls = join(FIXTURE_ROOT, "pstack-a06-job-durations", "controls")
