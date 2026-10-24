@@ -21,9 +21,9 @@ export default defineEval({
     )
 
     t.loadedSkill("engineering")
-    t.check(turn.toolCalls, notLoadedSkill("claude"))
-    t.check(turn.toolCalls, notLoadedSkill("codex-exec"))
+    t.check(turn.events, notLoadedSkill("claude"))
+    t.check(turn.events, notLoadedSkill("codex-exec"))
     t.check(turn.toolCalls, noWrites())
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

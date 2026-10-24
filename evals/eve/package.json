@@ -17,12 +17,14 @@
     "test:catalog": "bun scripts/skill-catalog.test.ts",
     "test:outcome-isolation": "bun scripts/outcome-isolation.test.ts",
     "test:pstack-graders": "bun scripts/pstack-graders.test.ts",
+    "test:skill-loads": "bun scripts/skill-loads.test.ts",
     "tools:audit": "bun scripts/audit-tools.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.22",
-    "@ai-sdk/openai": "^4.0.13",
-    "eve": "0.26.0"
+    "@ai-sdk/anthropic": "^4.0.87",
+    "@ai-sdk/openai": "^4.0.101",
+    "ai": "^7.0.150",
+    "eve": "0.83.0"
   },
   "devDependencies": {
     "@types/node": "^22",

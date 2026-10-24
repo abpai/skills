@@ -20,10 +20,10 @@ export default defineEval({
       turn.status,
       satisfies((s: unknown) => s !== "failed", "run completed or parked, not failed"),
     )
-    t.check(turn.toolCalls, notLoadedSkill("improve-prompt"))
-    t.check(turn.toolCalls, notLoadedSkill("human-writer"))
+    t.check(turn.events, notLoadedSkill("improve-prompt"))
+    t.check(turn.events, notLoadedSkill("human-writer"))
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

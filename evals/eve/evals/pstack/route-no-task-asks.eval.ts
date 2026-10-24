@@ -18,7 +18,7 @@ export default defineEval({
   async test(t) {
     const turn = await t.send("pstack plan")
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(turn.status, satisfies((s: unknown) => s !== "failed", "turn did not fail"))
 
     const asked = [turn.message ?? "", ...turn.inputRequests.map((r) => r.prompt)]

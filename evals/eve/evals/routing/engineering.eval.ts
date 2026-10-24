@@ -17,10 +17,10 @@ export default defineEval({
       ),
     )
     t.loadedSkill("engineering")
-    t.check(turn.toolCalls, notLoadedSkill("harness"))
-    t.check(turn.toolCalls, notLoadedSkill("code"))
+    t.check(turn.events, notLoadedSkill("harness"))
+    t.check(turn.events, notLoadedSkill("code"))
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

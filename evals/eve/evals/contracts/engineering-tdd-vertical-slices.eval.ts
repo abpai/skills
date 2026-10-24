@@ -50,8 +50,7 @@ export default defineEval({
     t.loadedSkill("engineering")
     // Semantic check (judge, soft): vertical slices (test1->impl1->test2->impl2->test3->impl3),
     // not horizontal slicing (test1,test2,test3 then impl1,impl2,impl3).
-    t.judge.autoevals
-      .closedQA(
+    t.judge(
         prompt(
           "Does the response implement the three rate-limiter behaviors as vertical",
           "slices — writing a failing test for ONE behavior, then the minimal",
@@ -64,7 +63,7 @@ export default defineEval({
     // Deterministic backstop: the reply actually narrates a fail-then-pass
     // cycle (RED before GREEN) at least twice, one per behavior covered.
     t.check(
-      t.reply,
+      turn.message,
       satisfies((r: unknown) => {
         if (typeof r !== "string") return false
         const redCount = (r.match(/\bred\b/gi) ?? []).length
@@ -74,6 +73,6 @@ export default defineEval({
     )
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

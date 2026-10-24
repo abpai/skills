@@ -1,5 +1,6 @@
 import { defineEval } from "eve/evals"
 import { includes } from "eve/evals/expect"
+import { turnLoadedSkill } from "../support/loaded"
 import { noFailedSkillLoads } from "../support/tools"
 
 // Contract (code/skills/code/SKILL.md:32): the router strips a leading `--`, so
@@ -24,15 +25,15 @@ export default defineEval({
     t.loadedSkill("code")
     t.check(plain.message, includes("understand"))
 
-    const dashed = t.newSession()
-    const dashedTurn = await dashed.send("Run `code --understand src/api`.")
-    dashed.succeeded()
-    dashed.loadedSkill("code")
+    // t.send starts an independent conversation; the run-level assertions above
+    // cover both, so the second one is held to the same bar per turn.
+    const dashedTurn = (await t.send("Run `code --understand src/api`.")).expectOk()
+    t.check(dashedTurn.events, turnLoadedSkill("code"))
     t.check(dashedTurn.message, includes("understand"))
     // Every load_skill call resolved, in both sessions. The blanket
     // noFailedActions gate this replaces graded sandbox probe noise — see
     // noFailedSkillLoads in support/tools.
-    t.check(plain.toolCalls, noFailedSkillLoads())
-    t.check(dashedTurn.toolCalls, noFailedSkillLoads())
+    t.check(plain.events, noFailedSkillLoads())
+    t.check(dashedTurn.events, noFailedSkillLoads())
   },
 })

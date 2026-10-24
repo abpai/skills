@@ -19,12 +19,12 @@ export default defineEval({
     t.succeeded()
     t.loadedSkill("harness")
     t.check(
-      t.reply,
+      turn.message,
       satisfies((reply: unknown) => {
         if (typeof reply !== "string") return false
         return /adopt assess/i.test(reply) && /read[-\s]?only/i.test(reply) && /do not|without|stop before/i.test(reply)
       }, "routes to adopt assess and preserves the read-only boundary"),
     )
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

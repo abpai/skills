@@ -75,8 +75,26 @@ function resolveModel() {
   }
 }
 
+// Prompt caching. Every eval case sends the same large prefix (system prompt,
+// tool definitions, skill catalog), so one cache is worth sharing across cases.
+// - OpenAI: eve's default `promptCacheKey` is a hash of the session id, which
+//   routes each case to its own cache. An authored key takes precedence, so use
+//   one constant key. (`promptCacheRetention` is not supported by GPT-6 models.)
+// - Anthropic: eve places cache breakpoints itself for this provider, with the
+//   default 5-minute lifetime that each hit refreshes; a suite run keeps it warm.
+//   Set `promptCache: { anthropic: { ttl: "1h" } }` only if cases are spread out.
+const modelOptions =
+  provider === "openai"
+    ? {
+        providerOptions: {
+          openai: { promptCacheKey: "abpai-skills-evals" },
+        },
+      }
+    : undefined
+
 export default defineAgent({
   model: resolveModel(),
+  ...(modelOptions ? { modelOptions } : {}),
   // The mock model has no context-window metadata, so give the runtime an
   // explicit window (skips the metadata lookup that otherwise fails agent
   // compaction at boot). Under a real model this is left to the provider.

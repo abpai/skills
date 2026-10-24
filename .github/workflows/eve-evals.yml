@@ -142,11 +142,6 @@ jobs:
           # Defaults to openai for the label path, which has no inputs.
           EVE_EVAL_PROVIDER: ${{ inputs.provider || 'openai' }}
           EVAL_FILTER: ${{ inputs.filter }}
-          # Judge assertions are soft yes/no closedQA verdicts recorded as
-          # evidence — a mini-tier judge is enough. The subject model is
-          # unaffected. Judges are also the only calls a frontier default
-          # would double-bill per assertion (criteria + full reply each time).
-          EVE_JUDGE_MODEL: gpt-5.4-mini
         # Reaching this job means someone asked for it, so a missing key is a
         # misconfigured secret, never an expected condition. This used to exit 0
         # with a notice, which painted the lane green while running nothing — the

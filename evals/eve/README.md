@@ -88,7 +88,7 @@ repeated runs the way `ablate --runs 3` already does (one run is not a
 verdict), or replace a phrasing regex with a content match. Do not retag on a
 lucky green run.
 
-Judge (`t.judge.autoevals.closedQA`) assertions are **soft** across the suite
+Judge (`t.judge(criteria)`) assertions are **soft** across the suite
 — eve's default severity, deliberately not overridden with `.gate()`. Three
 different evals flipped a single-sample judge verdict across four CI runs on
 2026-07-30 with skill text unchanged; at that rate, nine judge-gated live
@@ -159,15 +159,27 @@ spend levers, in order:
 
 1. **Run count.** Filtered dispatches while iterating; one full labeled run at
    the end. This is why the label is single-shot.
-2. **The judge model.** `EVE_JUDGE_MODEL=gpt-5.4-mini` in CI — judge verdicts
-   are soft yes/no evidence and do not need the frontier subject model.
+2. **The judge model.** Fixed at `gpt-6-luna` in `evals/evals.config.ts`, with
+   no env override. A cheaper `gpt-5.4-mini` judge was tried and misread
+   multi-clause criteria (it scored reports that met every clause at 0), so it
+   is not a safe saving; keep each criterion to one question if you try a
+   smaller judge again.
 3. Keep same-eval repeats back-to-back when vote-across-runs lands: votes 2-3
    re-send an identical prefix and first message, so they are near-total cache
    hits if they run consecutively.
 
-Anthropic runs are the exception on caching: `@ai-sdk/anthropic` needs explicit
-`cache_control` breakpoints that eve does not set, so `eval:live:claude` gets
-no cache discount today — one more reason those stay deliberate one-offs.
+Since eve 0.83 sets a per-session `promptCacheKey` (a hash of the session id)
+on direct OpenAI calls, which would send every case to its own cache and undo
+the shared prefix above. `agent/agent.ts` therefore authors one constant key
+(an authored key takes precedence) plus 24-hour retention, so cases and
+back-to-back reruns share the cache. Re-measure the cache-read share after any
+eve upgrade.
+
+Anthropic runs: eve now places `cache_control` breakpoints for the Anthropic
+provider itself (5-minute lifetime, refreshed by each hit), so `eval:live:claude`
+gets prefix caching too. Setting `modelOptions.promptCache.anthropic.ttl` to
+`"1h"` costs more per write and only pays off when cases are spread out; it is
+unmeasured here, so it is left at the default.
 
 Fork and Dependabot PRs can never reach the live job: GitHub withholds secrets
 from them, the label path requires a same-repo head, and the workflow uses

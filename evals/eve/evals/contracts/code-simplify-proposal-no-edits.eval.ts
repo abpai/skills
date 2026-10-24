@@ -45,16 +45,15 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("code")
-    t.check(t.reply, includes(/propos/i))
+    t.check(turn.message, includes(/propos/i))
     // Names the skill's specific artifact shape (a "ranked" batch/proposal),
     // not a generic "suggestions" or "recommendations" list.
-    t.check(t.reply, includes(/ranked/i))
+    t.check(turn.message, includes(/ranked/i))
     // Defense in depth: must not reach for a write tool while merely explaining
     // what an omitted-scope run would do.
     t.check(turn.toolCalls, noWrites())
     t.check(turn.toolCalls, noFailedCalls())
-    t.judge.autoevals
-      .closedQA(
+    t.judge(
         prompt(
           "Does the response explain that running `code simplify` with no path,",
           "file, directory, or symbol scope produces a ranked proposal (a batch of",
@@ -65,8 +64,7 @@ export default defineEval({
           "picks something, counts as NO.",
         ),
       )
-    t.judge.autoevals
-      .closedQA(
+    t.judge(
         prompt(
           "Does the response say that naming one specific file (`src/foo.ts`) is",
           "handled DIFFERENTLY from the bare, scope-omitted command — that a named",
@@ -80,6 +78,6 @@ export default defineEval({
       )
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

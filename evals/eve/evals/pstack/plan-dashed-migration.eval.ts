@@ -34,9 +34,9 @@ export default defineEval({
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-p02-ledger-client", "ledger-client")
-    await seedRepo(t, repo)
+    const session = await seedRepo(t, repo)
 
-    const turn = await t.send(
+    const turn = await session.send(
       prompt(
         "pstack --plan Move every caller off legacyRequest onto fetchJson and delete",
         "legacyRequest. src/lib/http.ts is internal to this package; nothing outside",
@@ -45,7 +45,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
 
     // Routing: `--plan` reaches the plan module.
     t.check(turn.toolCalls, readFileMatching(MODULE.plan, "read pstack/plan.md"))
@@ -80,7 +80,7 @@ export default defineEval({
     t.check(turn.message, staysShort(500))
 
     t.check(turn.message, selectsPrinciple("test-behavior-not-implementation")).soft()
-    t.judge.autoevals.closedQA(
+    t.judge(
       prompt(
         "Does this plan migrate every caller and delete legacyRequest and its",
         "types in the same change, with no adapter, shim, deprecated alias, or",
@@ -92,6 +92,6 @@ export default defineEval({
     )
 
     t.check(turn.toolCalls, noWrites())
-    checkUnchanged(t, repo, await captureState(t, repo))
+    checkUnchanged(t, repo, await captureState(session, repo))
   },
 })

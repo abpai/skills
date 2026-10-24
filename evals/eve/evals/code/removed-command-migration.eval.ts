@@ -14,14 +14,13 @@ export default defineEval({
     t.succeeded()
     t.loadedSkill("code")
     // Routes to the replacement (deterministic gate).
-    t.check(t.reply, includes("simplify"))
+    t.check(turn.message, includes("simplify"))
     // ...and does NOT claim to have executed the removed workflow. Judged
     // semantically, not by keyword absence: a correct reply may legitimately state
     // it did NOT run the old command, or paraphrase the migration note — both
     // contain "executed"/"dead-code", so a negative regex would false-fail a good
     // answer. Same lesson as the injection eval's action-vs-prose rework.
-    t.judge.autoevals
-      .closedQA(
+    t.judge(
         prompt(
           "Does the response AVOID claiming it actually ran, executed, or completed",
           "the removed `dead-code` workflow (or that it produced dead-code results)?",
@@ -31,6 +30,6 @@ export default defineEval({
       )
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

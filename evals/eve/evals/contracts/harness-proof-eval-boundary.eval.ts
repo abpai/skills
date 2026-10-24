@@ -18,7 +18,7 @@ export default defineEval({
     t.succeeded()
     t.loadedSkill("harness")
     t.check(
-      t.reply,
+      turn.message,
       satisfies((reply: unknown) => {
         if (typeof reply !== "string") return false
         const rejectsMapping = /not|shouldn.t|do not|no\b/i.test(reply)
@@ -27,6 +27,6 @@ export default defineEval({
         return rejectsMapping && proofOwner && factoryOwner
       }, "rejects one-proof-row-per-eval and assigns proof and eval ownership"),
     )
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

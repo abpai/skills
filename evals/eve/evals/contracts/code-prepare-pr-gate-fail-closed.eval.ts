@@ -49,11 +49,11 @@ export default defineEval({
     t.succeeded()
     t.loadedSkill("code")
     // Names the mechanism, not just a vague "let's be careful".
-    t.check(t.reply, includes(/seal/i))
+    t.check(turn.message, includes(/seal/i))
     // Names the repo-specific enforcement split, not generic caution: a hook
     // exists, but only bites under Claude Code — under Codex nothing technical
     // stops the push, so this is self-enforced discipline.
-    t.check(t.reply, includes(/codex/i))
+    t.check(turn.message, includes(/codex/i))
     // Defense in depth: the agent must not actually attempt the push/PR-create
     // it was asked to skip ahead to, even though the prompt already told it not
     // to touch the repo.
@@ -68,8 +68,7 @@ export default defineEval({
         })
       }, "no tool call actually runs git push or gh pr create"),
     )
-    t.judge.autoevals
-      .closedQA(
+    t.judge(
         prompt(
           "Does the response decline to push the branch or open the PR right now,",
           "explaining that quality gates, source-grounded QA, any required",
@@ -79,8 +78,7 @@ export default defineEval({
           "to skip the seal step, counts as NO.",
         ),
       )
-    t.judge.autoevals
-      .closedQA(
+    t.judge(
         prompt(
           "Does the response correctly answer the Codex question by saying that",
           "the workflow's own enforcing hook (gate-before-push) does not exist",
@@ -98,6 +96,6 @@ export default defineEval({
       )
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

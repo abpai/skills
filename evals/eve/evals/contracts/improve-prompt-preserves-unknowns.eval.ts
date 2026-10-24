@@ -18,9 +18,9 @@ export default defineEval({
     )
 
     t.loadedSkill("improve-prompt")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(
-      t.reply,
+      turn.message,
       satisfies(
         (reply: unknown) =>
           typeof reply === "string" && reply.includes("[TEAM_NAME]") && reply.includes("[RISK_LIMIT]"),
@@ -28,7 +28,7 @@ export default defineEval({
       ),
     )
     t.check(
-      t.reply,
+      turn.message,
       satisfies(
         (reply: unknown) => typeof reply === "string" && !/\b\d+(?:\.\d+)?%/.test(reply),
         "reply does not invent a percentage",

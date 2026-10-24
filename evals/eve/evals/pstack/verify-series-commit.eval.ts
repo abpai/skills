@@ -41,9 +41,9 @@ export default defineEval({
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-v10-series-commit", "devkit")
-    await seedRepo(t, repo)
+    const session = await seedRepo(t, repo)
 
-    const turn = await t.send(
+    const turn = await session.send(
       prompt(
         "pstack verify commit HEAD~1 (\"logs: add --follow to stream new lines\"). It is",
         "the second commit of a three-commit pull request: HEAD~2 and HEAD are the",
@@ -62,7 +62,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(turn.toolCalls, readFileMatching(MODULE.verify, "read pstack/verify.md"))
     t.check(turn.toolCalls, ranCommand(TEST_RUN, "ran the test suite"))
 
@@ -93,19 +93,28 @@ export default defineEval({
         "parseInterval appears at most once, as a note rather than a finding",
       ),
     ).soft()
-    t.judge.autoevals.closedQA(
+    // One question per clause: a small judge misreads the joined form (it
+    // fails an empty Decisions section). The judge sees only the prompt and the
+    // report, never the repo, so "does it invent defects" cannot be asked here.
+    t.judge(
+      "Does the report identify that `--follow` prints secrets unredacted as a defect (a finding)?",
+      { on: turn.message },
+    )
+    t.judge(
+      "Does the report question whether the unrelated symbols command belongs in this pull request?",
+      { on: turn.message },
+    )
+    t.judge(
       prompt(
-        "This report reviews one commit of a three-commit pull request. Does it",
-        "report the --follow redaction bypass as a defect, question whether the",
-        "unrelated symbols command belongs in the pull request, keep its",
-        "Decisions to choices only the requester can make (not the --grep",
-        "rejection the description already decided, and not a helper the next",
-        "commit wires up), and avoid inventing defects the code does not have?",
+        "Does the report keep its Decisions section to choices only the requester",
+        "can make, without listing the --grep rejection the description already",
+        "decided, or a helper the next commit wires up? (A Decisions section of",
+        "'None' satisfies this.)",
       ),
       { on: turn.message },
     )
 
     t.check(turn.toolCalls, noWrites())
-    checkUnchanged(t, repo, await captureState(t, repo))
+    checkUnchanged(t, repo, await captureState(session, repo))
   },
 })

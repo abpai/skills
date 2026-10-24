@@ -17,6 +17,7 @@
  * any tool the model called that is missing from this list.
  */
 import { satisfies } from "eve/evals/expect"
+import { skillLoadsOf } from "./loaded"
 
 /** Every tool Eve advertises to the harness agent. */
 export const KNOWN_TOOLS = [
@@ -24,7 +25,6 @@ export const KNOWN_TOOLS = [
   "bash",
   "glob",
   "grep",
-  "load_skill",
   "read_file",
   "todo",
   "web_search",
@@ -102,11 +102,10 @@ export function noFailedCalls() {
  * before the blanket gate landed).
  */
 export function noFailedSkillLoads() {
-  return satisfies((value: unknown) => {
-    const calls = asCalls(value)
-    if (calls === null) return false
-    return !calls.some((c) => c.name === "load_skill" && c.status === "failed")
-  }, "every load_skill call resolved")
+  return satisfies((events: unknown) => {
+    const loads = skillLoadsOf(events)
+    return loads !== null && !loads.some((l) => l.status === "failed")
+  }, "every skill load resolved")
 }
 
 /**

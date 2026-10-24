@@ -27,9 +27,9 @@ export default defineEval({
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-v05-pagekit-slugs", "pagekit")
-    await seedRepo(t, repo)
+    const session = await seedRepo(t, repo)
 
-    const turn = await t.send(
+    const turn = await session.send(
       prompt(
         "pstack verify Make slugify collapse runs of separators and trim leading",
         "and trailing hyphens: \"  Hello -- World! \" should become \"hello-world\"",
@@ -39,7 +39,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(turn.toolCalls, readFileMatching(MODULE.verify, "read pstack/verify.md"))
 
     t.check(turn.toolCalls, ranCommand(/unittest|pytest/, "ran the test suite", { ok: true }))
@@ -56,7 +56,7 @@ export default defineEval({
       t.check(turn.message, doesNotSelectPrinciple(slug))
     }
     t.check(turn.message, atMostPrinciples(2)).soft()
-    t.judge.autoevals.closedQA(
+    t.judge(
       prompt(
         "Does the report conclude the change meets the request with no blocking",
         "findings, label any extra observations as optional or informational, and",
@@ -67,6 +67,6 @@ export default defineEval({
     )
 
     t.check(turn.toolCalls, noWrites())
-    checkUnchanged(t, repo, await captureState(t, repo))
+    checkUnchanged(t, repo, await captureState(session, repo))
   },
 })

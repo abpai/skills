@@ -33,7 +33,7 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, wri
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { satisfies } from "eve/evals/expect"
-import type { EveEvalContext, EveEvalTurn } from "eve/evals"
+import type { EveEvalContext, EveEvalSession, EveEvalTurn } from "eve/evals"
 import { FIXTURE_ROOT, runIsolated } from "./outcome"
 import { prompt } from "./text"
 
@@ -195,10 +195,13 @@ function commandOf(call: Call): string {
 /**
  * Setup turn: extract the attached fixture, nothing else. Gated so a broken
  * setup fails loudly instead of grading pstack against an empty workspace.
+ * Returns the session: every `t.send` starts a new conversation (and sandbox),
+ * so the task turn and captureState must go through this one.
  */
-export async function seedRepo(t: EveEvalContext, repo: PstackRepo): Promise<EveEvalTurn> {
+export async function seedRepo(t: EveEvalContext, repo: PstackRepo): Promise<EveEvalSession> {
   const name = repo.dir.split("/").pop()
-  const turn = await t.sendFile(
+  const session = await t.session()
+  const turn = await session.sendFile(
     prompt(
       "Setup step only; no skill is needed for it. The attached archive is a git",
       `repository. Extract it with \`mkdir -p /workspace && tar -xzf ${repo.stagedPath} -C /workspace\``,
@@ -218,7 +221,7 @@ export async function seedRepo(t: EveEvalContext, repo: PstackRepo): Promise<Eve
       ),
     `setup extracted ${name} into the sandbox`),
   )
-  return turn
+  return session
 }
 
 export type RepoState = {
@@ -250,11 +253,11 @@ function parseState(turn: EveEvalTurn): RepoState {
  * covers a mangled transcription (a model once ran it as `bash cd ...`), which
  * is harness noise, not pstack behavior.
  */
-export async function captureState(t: EveEvalContext, repo: PstackRepo): Promise<RepoState> {
+export async function captureState(session: EveEvalSession, repo: PstackRepo): Promise<RepoState> {
   const ask = (lead: string) =>
     prompt(lead, "", "```bash", stateCommand(repo), "```")
   let state = parseState(
-    await t.send(
+    await session.send(
       ask(
         "Housekeeping, separate from the task above: run exactly this bash command, unchanged, and reply only `done`.",
       ),
@@ -262,7 +265,7 @@ export async function captureState(t: EveEvalContext, repo: PstackRepo): Promise
   )
   if (!state.captured) {
     state = parseState(
-      await t.send(
+      await session.send(
         ask("That did not print an EVE_TREE line. Run exactly this command as the whole bash input, and reply only `done`."),
       ),
     )

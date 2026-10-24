@@ -18,7 +18,7 @@ export default defineEval({
     t.succeeded()
     t.loadedSkill("harness")
     t.check(
-      t.reply,
+      turn.message,
       satisfies((reply: unknown) => {
         if (typeof reply !== "string") return false
         return (
@@ -30,6 +30,6 @@ export default defineEval({
         )
       }, "describes the adoption lifecycle and its human baseline gate"),
     )
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

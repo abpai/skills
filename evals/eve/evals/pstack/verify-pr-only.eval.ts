@@ -27,9 +27,9 @@ export default defineEval({
   timeoutMs: 600_000,
   async test(t) {
     const repo = packRepo("pstack-v04-webhook-retries", "webhook-retries")
-    await seedRepo(t, repo)
+    const session = await seedRepo(t, repo)
 
-    const turn = await t.send(
+    const turn = await session.send(
       prompt(
         "pstack verify this pull request. Its change is the uncommitted diff in the",
         "working tree.",
@@ -43,7 +43,7 @@ export default defineEval({
     )
     t.succeeded()
     t.loadedSkill("pstack")
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
     t.check(turn.toolCalls, readFileMatching(MODULE.verify, "read pstack/verify.md"))
     t.check(turn.toolCalls, readFileMatching(/src\/dispatch\.ts/, "inspected src/dispatch.ts"))
 
@@ -56,7 +56,7 @@ export default defineEval({
         "says the requirements come from the pull request's description",
       ),
     )
-    t.judge.autoevals.closedQA(
+    t.judge(
       prompt(
         "Does the report review the change without asking for a plan or a separate",
         "statement of the request, and does it note that the pull request's own",
@@ -66,6 +66,6 @@ export default defineEval({
     )
 
     t.check(turn.toolCalls, noWrites())
-    checkUnchanged(t, repo, await captureState(t, repo))
+    checkUnchanged(t, repo, await captureState(session, repo))
   },
 })

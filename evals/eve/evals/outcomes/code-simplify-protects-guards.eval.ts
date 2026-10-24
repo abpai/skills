@@ -113,7 +113,7 @@ export default defineEval({
     t.loadedSkill("code")
     t.check(turn.toolCalls, noFailedCalls())
 
-    const result = verifyPruning(FIXTURE, t.reply ?? "", {
+    const result = verifyPruning(FIXTURE, turn.message ?? "", {
       requiredMarkers: REQUIRED_MARKERS,
       noiseNames: NOISE_NAMES,
     })
@@ -172,6 +172,6 @@ export default defineEval({
         `the redundant tests are gone (still present: ${result.noiseKept.join(", ") || "none"})`,
       ),
     )
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })

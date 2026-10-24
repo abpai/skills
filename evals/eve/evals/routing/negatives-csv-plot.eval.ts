@@ -18,11 +18,11 @@ export default defineEval({
       turn.status,
       satisfies((s: unknown) => s !== "failed", "run completed or parked, not failed"),
     )
-    t.check(turn.toolCalls, notLoadedSkill("hexagon-audit"))
-    t.check(turn.toolCalls, notLoadedSkill("distill"))
-    t.check(turn.toolCalls, notLoadedSkill("lateral-thinking"))
+    t.check(turn.events, notLoadedSkill("hexagon-audit"))
+    t.check(turn.events, notLoadedSkill("distill"))
+    t.check(turn.events, notLoadedSkill("lateral-thinking"))
     // Every load_skill call resolved. The blanket noFailedActions gate this
     // replaces graded sandbox probe noise — see noFailedSkillLoads in support/tools.
-    t.check(turn.toolCalls, noFailedSkillLoads())
+    t.check(turn.events, noFailedSkillLoads())
   },
 })
