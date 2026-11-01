@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "No back-compat"
+  short_description: "Drop backward compatibility for now."
+  default_prompt: "Use $no-back."

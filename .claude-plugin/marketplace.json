@@ -170,6 +170,13 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "status-update" },
       "category": "productivity",
       "keywords": ["status", "progress", "agents", "blockers", "handoff", "operations"]
+    },
+    {
+      "name": "yo",
+      "description": "Quick prompts to steer a multi-turn conversation: /yo:recap, /yo:tldr, /yo:explain, /yo:check, and more.",
+      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "yo" },
+      "category": "productivity",
+      "keywords": ["prompts", "snippets", "conversation", "recap", "tldr"]
     }
   ]
 }

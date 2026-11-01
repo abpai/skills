@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "ASCII"
+  short_description: "Plain-ASCII flow diagram or task status board."
+  default_prompt: "Use $ascii."

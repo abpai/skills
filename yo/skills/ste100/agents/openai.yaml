@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "STE100"
+  short_description: "Answer in ASD-STE100 Simplified Technical English from here on."
+  default_prompt: "Use $ste100."

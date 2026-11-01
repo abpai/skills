@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Readback"
+  short_description: "Read back what I want before starting."
+  default_prompt: "Use $readback."

@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Status"
+  short_description: "Done and remaining, in short plain-language bullets."
+  default_prompt: "Use $status."

@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Tasks"
+  short_description: "The full list of next steps."
+  default_prompt: "Use $tasks."

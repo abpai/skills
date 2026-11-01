@@ -1,0 +1,22 @@
+{
+  "name": "yo",
+  "version": "1.0.0",
+  "description": "Quick prompts to steer a multi-turn conversation: /yo:recap, /yo:tldr, /yo:explain, /yo:check, and more.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "repository": "https://github.com/abpai/skills",
+  "license": "MIT",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "yo",
+    "shortDescription": "Quick prompts for multi-turn conversations.",
+    "longDescription": "Short prompts you drop between turns to steer a conversation: recap, status, tldr, readback, explain, educate, check, clean-room, and more.",
+    "developerName": "Andy Pai",
+    "category": "Productivity",
+    "capabilities": [
+      "Skills"
+    ],
+    "defaultPrompt": "Use $recap to remind me where we are."
+  }
+}

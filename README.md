@@ -130,6 +130,7 @@ marketplace flow above.
 |--------|-------------|
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
 | **harness** | Prepare a repository for agent-driven development with `/harness adopt`, audit readiness or a change with `/harness doctor`, and protect uncertain behavior with `/harness capture` |
+| **yo** | Quick prompts to steer a multi-turn conversation: `/yo:recap`, `/yo:status`, `/yo:tldr`, `/yo:readback`, `/yo:explain`, `/yo:check`, `/yo:clean-room`, and more |
 | **status-update** | Turn long-running agent work into a concise, evidence-backed snapshot of what is done, active, left, slowing progress, or newly surprising |
 
 Migration aliases are documented rather than silently executed: `review-and-commit`

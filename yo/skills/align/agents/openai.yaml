@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Align"
+  short_description: "Check we're aligned, with short answers."
+  default_prompt: "Use $align."

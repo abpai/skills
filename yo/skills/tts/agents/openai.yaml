@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "TTS"
+  short_description: "An easy-to-listen summary, written for text-to-speech."
+  default_prompt: "Use $tts."
