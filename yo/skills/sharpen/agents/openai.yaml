@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Sharpen"
+  short_description: "Frame the task the way an expert would, then do it."
+  default_prompt: "Use $sharpen."

@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Facts"
+  short_description: "The few critical facts and their implications."
+  default_prompt: "Use $facts."

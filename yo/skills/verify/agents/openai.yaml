@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Verify"
+  short_description: "Correct my mental model and name the major step I'm missing."
+  default_prompt: "Use $verify."

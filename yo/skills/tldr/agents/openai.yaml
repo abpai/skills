@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "TL;DR"
+  short_description: "Keep answers strictly TL;DR from here on."
+  default_prompt: "Use $tldr."

@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Clean room"
+  short_description: "Unbiased verdict from a fresh agent."
+  default_prompt: "Use $clean-room."

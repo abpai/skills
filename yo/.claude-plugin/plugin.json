@@ -1,0 +1,9 @@
+{
+  "name": "yo",
+  "version": "1.0.0",
+  "description": "Quick prompts to steer a multi-turn conversation: /yo:recap, /yo:tldr, /yo:explain, /yo:check, and more.",
+  "author": {
+    "name": "Andy Pai"
+  },
+  "license": "MIT"
+}

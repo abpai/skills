@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Too complex?"
+  short_description: "Is the complexity justified?"
+  default_prompt: "Use $too-complex."

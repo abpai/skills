@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Explain"
+  short_description: "Plain-language explanation of a change, feature, or concept."
+  default_prompt: "Use $explain."

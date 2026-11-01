@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Educate"
+  short_description: "Teach it step by step so I can reason about it myself."
+  default_prompt: "Use $educate."

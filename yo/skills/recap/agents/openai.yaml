@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Recap"
+  short_description: "Two or three sentences on where we are."
+  default_prompt: "Use $recap."

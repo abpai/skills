@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Check"
+  short_description: "Fresh-eyes check of the work or reasoning, without editing."
+  default_prompt: "Use $check."

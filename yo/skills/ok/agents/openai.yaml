@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "OK"
+  short_description: "Go ahead with what you recommended."
+  default_prompt: "Use $ok."
