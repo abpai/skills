@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: false
+interface:
+  display_name: "Close"
+  short_description: "Is it safe to close this thread?"
+  default_prompt: "Use $close."
