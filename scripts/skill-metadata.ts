@@ -304,12 +304,16 @@ export function planManifestSync(root = process.cwd()): ManifestUpdate[] {
   const updates: ManifestUpdate[] = [];
 
   for (const plugin of listPlugins(root)) {
+    // Without a public skill the Claude manifest is the version source (see
+    // pluginVersionSource), so only the Codex manifest follows it.
     const skillVersion = firstPublicSkillVersion(plugin);
-    if (!skillVersion) {
+    const sourceVersion = skillVersion ?? manifestVersion(plugin.claudeManifest);
+    if (!sourceVersion) {
       continue;
     }
-    const targetVersion = normalizeManifestVersion(skillVersion);
-    for (const manifest of [plugin.claudeManifest, plugin.codexManifest]) {
+    const targetVersion = normalizeManifestVersion(sourceVersion);
+    const followers = skillVersion ? [plugin.claudeManifest, plugin.codexManifest] : [plugin.codexManifest];
+    for (const manifest of followers) {
       if (!existsSync(manifest)) {
         continue;
       }
