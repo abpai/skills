@@ -369,6 +369,18 @@ metadata:
     ]);
     expect(readFileSync(join(root, "widget", ".claude-plugin", "plugin.json"), "utf8")).toBe(before);
   });
+
+  test("syncs the Codex manifest to the Claude manifest when every skill is internal", () => {
+    const root = makeRoot();
+    writeManifest(root, "widget", "1.0.0");
+    writeSkill(root, "widget", "widget", `description: Widget\nmetadata:\n  version: "1.0.0"\n  internal: true\n`);
+    const claude = join(root, "widget", ".claude-plugin", "plugin.json");
+    writeFileSync(claude, readFileSync(claude, "utf8").replace('"1.0.0"', '"1.0.1"'));
+
+    expect(planManifestSync(root)).toEqual([
+      { path: "widget/.codex-plugin/plugin.json", from: "1.0.0", to: "1.0.1" },
+    ]);
+  });
 });
 
 describe("version arithmetic", () => {
