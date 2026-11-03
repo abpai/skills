@@ -1,12 +1,12 @@
 ---
 name: pstack
-description: Plan, verify, or carry out coding tasks with relevant engineering principles. Use plan for a concise researched plan, verify for an evidence-backed review of an implementation against the original request, and auto to plan, implement, verify, and fix within scope.
-disable-model-invocation: true
+description: Plan, verify, or carry out coding tasks with relevant engineering principles. Use plan when the user wants a concise researched plan before coding, verify when they want finished work checked against the original request or ticket with evidence (not a bug hunt over a diff), and auto when they hand off a task to be planned, implemented, verified, and fixed end to end within scope. Not for small edits, conceptual questions, or debugging a single failure.
+disable-model-invocation: false
 argument-hint: "plan|verify|auto [task] - e.g. plan fix login retry, verify, auto add CSV export"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "0.4.5"
+  version: "0.4.6"
   upstream_skill: "https://github.com/ericlitman/open-pstack/tree/9046eecb4ec4461374b1fd8cda7bd60abbaa6d9e/plugins/pstack/skills"
 ---
 

@@ -234,7 +234,7 @@ Every skill entrypoint in this marketplace is explicit-only: humans invoke it
 with `$skill` in Codex or `/skill` in Claude. `SKILL.md` sets
 `disable-model-invocation: true` for Claude and the skill-local
 `agents/openai.yaml` sets `policy.allow_implicit_invocation: false` for Codex.
-The exceptions: `show-me` and `visual-pr` may be started by the model in both
+The exceptions: `pstack`, `show-me` and `visual-pr` may be started by the model in both
 Claude and Codex, and `codex-exec` may be started by Claude to delegate within
 a user-authorized task (it stays explicit-only in Codex).
 

@@ -19,8 +19,8 @@ const NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const SEMVER_RE = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 
 // Skills the model may start on its own. Every other entrypoint is explicit-only.
-export const CLAUDE_MODEL_INVOCABLE = new Set(["codex-exec", "show-me", "visual-pr"]);
-export const CODEX_IMPLICIT_INVOCABLE = new Set(["show-me", "visual-pr"]);
+export const CLAUDE_MODEL_INVOCABLE = new Set(["codex-exec", "pstack", "show-me", "visual-pr"]);
+export const CODEX_IMPLICIT_INVOCABLE = new Set(["pstack", "show-me", "visual-pr"]);
 
 type Json = Record<string, unknown>;
 
