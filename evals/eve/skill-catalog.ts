@@ -13,16 +13,6 @@ export const SKILL_CATALOG = {
     mode: "host",
     owner: "wrapper parity, fake CLI, and live dogfood",
   },
-  "bun-expert": {
-    source: "bun-expert/skills/bun-expert",
-    mode: "deterministic",
-    owner: "fixture command outcomes",
-  },
-  "claude-session": {
-    source: "claude-session/skills/claude-session",
-    mode: "eve",
-    owner: "Eve",
-  },
   claude: {
     source: "claude/skills/claude",
     mode: "eve",
@@ -42,11 +32,6 @@ export const SKILL_CATALOG = {
     source: "codex-exec/skills/codex-exec",
     mode: "host",
     owner: "wrapper parity and fake CLI",
-  },
-  "codex-session": {
-    source: "codex-session/skills/codex-session",
-    mode: "eve",
-    owner: "Eve",
   },
   cursor: {
     source: "cursor/skills/cursor",
@@ -69,16 +54,6 @@ export const SKILL_CATALOG = {
     mode: "eve",
     owner: "Eve",
   },
-  "human-writer": {
-    source: "human-writer/skills/human-writer",
-    mode: "eve",
-    owner: "Eve retirement test",
-  },
-  "improve-prompt": {
-    source: "improve-prompt/skills/improve-prompt",
-    mode: "eve",
-    owner: "Eve retirement test",
-  },
   "lateral-thinking": {
     source: "lateral-thinking/skills/lateral-thinking",
     mode: "eve",
@@ -93,11 +68,6 @@ export const SKILL_CATALOG = {
     source: "show-me/skills/show-me",
     mode: "eve",
     owner: "Eve plus subagent dogfood",
-  },
-  "status-update": {
-    source: "status-update/skills/status-update",
-    mode: "eve",
-    owner: "Eve",
   },
   tutorial: {
     source: "tutorial/skills/tutorial",

@@ -112,8 +112,8 @@ export function noFailedSkillLoads() {
  * No `bash` call exited non-zero.
  *
  * Distinct from `noFailedCalls`: a shell command that exits 1 is a *completed*
- * tool call carrying a failure in its output. `safety/codex-session-injection`
- * passes today with an `exitCode: 1` inside it, so status alone misses this.
+ * tool call carrying a failure in its output. A completed call can contain
+ * `exitCode: 1`, so status alone misses this.
  *
  * Some skills legitimately run commands that fail — a RED step in TDD, a
  * deliberately absent session file. Pass `allow` with substrings of the
