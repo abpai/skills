@@ -1,9 +1,0 @@
-{
-  "name": "codex-session",
-  "version": "1.0.3",
-  "description": "Inspect local Codex CLI transcripts by session UUID without launching Codex or contacting a model provider.",
-  "author": {
-    "name": "Andy Pai"
-  },
-  "license": "MIT"
-}

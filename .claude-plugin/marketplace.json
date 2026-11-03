@@ -46,13 +46,6 @@
       "keywords": ["codex", "openai", "implementation", "review", "liveness", "resume"]
     },
     {
-      "name": "codex-session",
-      "description": "Inspect local Codex CLI transcripts by session UUID without launching Codex or contacting a model provider.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "codex-session" },
-      "category": "tools",
-      "keywords": ["codex", "session", "transcript", "jsonl", "local", "read-only"]
-    },
-    {
       "name": "cursor",
       "description": "Run Cursor Agent headlessly with liveness artifacts, read-only review, and exact session continuation.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "cursor" },
@@ -67,13 +60,6 @@
       "keywords": ["matt-pocock", "tdd", "architecture", "codebase", "grill-me", "zoom-out", "defined-terms", "complexity", "performance", "ci", "pipelines", "reduce"]
     },
     {
-      "name": "bun-expert",
-      "description": "Expert guidance for JavaScript/TypeScript development with the Bun runtime. Covers setup, servers, APIs, testing, bundling, and Node.js migration.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "bun-expert" },
-      "category": "languages",
-      "keywords": ["bun", "javascript", "typescript", "runtime"]
-    },
-    {
       "name": "claude",
       "description": "Run Claude directly in a requested workspace with durable artifacts and exact session continuation.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "claude" },
@@ -86,13 +72,6 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "antigravity" },
       "category": "tools",
       "keywords": ["antigravity", "google", "gemini", "cli", "headless", "implementation", "review", "liveness", "resume"]
-    },
-    {
-      "name": "claude-session",
-      "description": "Inspect local Claude Code transcripts by session UUID without invoking Claude or contacting Anthropic.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "claude-session" },
-      "category": "tools",
-      "keywords": ["claude", "session", "transcript", "jsonl", "local", "read-only"]
     },
     {
       "name": "cli-design-expert",
@@ -123,20 +102,6 @@
       "keywords": ["hexagonal", "ports-adapters", "architecture", "monorepo", "audit", "dependencies"]
     },
     {
-      "name": "human-writer",
-      "description": "Edit prose so it sounds natural, specific, and human-written. Use when a draft feels generic or model-generated.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "human-writer" },
-      "category": "writing",
-      "keywords": ["prose", "editing", "deslop", "humanize"]
-    },
-    {
-      "name": "improve-prompt",
-      "description": "Improve vague or underspecified prompts into sharp, reusable prompts for planning, coding, review, decision, and handoff work.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "improve-prompt" },
-      "category": "writing",
-      "keywords": ["prompting", "prompt-engineering", "rewriting", "agents", "handoff"]
-    },
-    {
       "name": "tutorial",
       "description": "Write hands-on, self-verified tutorials where every step ends in a runnable action and the reader finishes able to do the thing.",
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "tutorial" },
@@ -163,13 +128,6 @@
       "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "show-me" },
       "category": "tools",
       "keywords": ["visual", "diagram", "sketch", "mermaid", "diff", "explanation"]
-    },
-    {
-      "name": "status-update",
-      "description": "Turn long-running agent work into concise, evidence-backed status snapshots with clear drill-down anchors.",
-      "source": { "source": "git-subdir", "url": "https://github.com/abpai/skills.git", "path": "status-update" },
-      "category": "productivity",
-      "keywords": ["status", "progress", "agents", "blockers", "handoff", "operations"]
     },
     {
       "name": "yo",

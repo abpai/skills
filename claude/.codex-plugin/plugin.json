@@ -1,6 +1,6 @@
 {
   "name": "claude",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Run Claude directly in a requested workspace with durable artifacts and exact session continuation.",
   "author": {
     "name": "Andy Pai"

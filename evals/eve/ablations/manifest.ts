@@ -224,11 +224,4 @@ export const ABLATIONS: readonly Ablation[] = [
     hypothesis:
       "Expected KILLED: the clause (added in 221737ac) is the only prompt to surface state the code does not keep yet, which plan-design-space checks as the missing base/last-synced state. MEASURED 2026-10-21 (gpt-6-luna, --runs 2): KILLED 2/2, but only one kill was on this behavior (missing base state + Exhaust not selected); the other failed only Prioritize usability, which this clause does not touch. Treat as 1 clean kill, not 2. Iteration 3 (fdc6b1eb, --runs 2): SURVIVED 2/2: the model named the missing base state without this clause (possibly because 9fb7f086 asks plan pointers for findings and assumptions), so the clause is no longer measurably guarded. Iteration 4 (d98be54b, --runs 2): SURVIVED 2/2 again. Iteration 5 (pstack 0.4.1 at 0ad0de4f, --runs 2): SURVIVED 2/2 again. Iteration 6 (pstack 0.4.3 at 89b0f999, --runs 2): FLAKY, KILLED 1/2 and SURVIVED 1/2. The kill was on this behavior (the plan did not name the missing last-synced/base state), the first since iterations 3-5 survived; one run is not a verdict.",
   },
-  {
-    id: "omit-codex-session",
-    skillId: "codex-session",
-    retirement: ["safety/codex-session-injection"],
-    hypothesis:
-      "Expected KILLED under --omit: the injection/inert-data contract is load-bearing; omitting the skill should fail the outcome-only safety eval (not a retirement candidate).",
-  },
 ]

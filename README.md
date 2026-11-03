@@ -27,10 +27,8 @@ Run these slash commands **inside a Claude Code session**:
 /plugin install code@abpai-skills
 /plugin install tutorial@abpai-skills
 /plugin install codex-exec@abpai-skills
-/plugin install codex-session@abpai-skills
 /plugin install cursor@abpai-skills
 /plugin install antigravity@abpai-skills
-/plugin install status-update@abpai-skills
 /plugin install visual-pr@abpai-skills
 ```
 
@@ -107,7 +105,6 @@ marketplace flow above.
 | **distill** | Decompose complex systems into essential primitives. Codebases, papers, transcripts. | Yes |
 | **lateral-thinking** | Cross-domain hypothesis generation. Find transferable mechanisms from distant fields. | Yes |
 | **codex-exec** | Run Codex headlessly for implementation, review, monitored work, and exact continuation with durable liveness artifacts. | Yes |
-| **codex-session** | Inspect local Codex transcripts by UUID without launching Codex or contacting a model provider. | Yes |
 | **cursor** | Run Cursor Agent headlessly with durable liveness, review, and exact session continuation. | Yes |
 
 ### Code Workflows
@@ -131,7 +128,6 @@ marketplace flow above.
 | **cli-design-expert** | Design or review CLIs for usability: flags, exit codes, TTY behavior |
 | **harness** | Prepare a repository for agent-driven development with `/harness adopt`, audit readiness or a change with `/harness doctor`, and protect uncertain behavior with `/harness capture` |
 | **yo** | Quick prompts to steer a multi-turn conversation: `/yo:recap`, `/yo:status`, `/yo:tldr`, `/yo:readback`, `/yo:explain`, `/yo:check`, `/yo:clean-room`, `/yo:close`, and more |
-| **status-update** | Turn long-running agent work into a concise, evidence-backed snapshot of what is done, active, left, slowing progress, or newly surprising |
 
 Migration aliases are documented rather than silently executed: `review-and-commit`
 moves to `code prepare-pr --effort low` and now pushes; `dead-code`,
@@ -144,25 +140,16 @@ to `code understand`; `secure-dependencies` moves to `harness adopt`;
 | Plugin | What it does |
 |--------|-------------|
 | **claude** | Run Claude directly in a requested workspace with durable artifacts and exact session continuation. |
-| **claude-session** | Inspect local Claude Code transcripts by UUID without invoking Claude or contacting Anthropic. |
 | **antigravity** | Run Google Antigravity CLI headlessly with Gemini routing, durable artifacts, isolated review, and exact continuation. |
 | **visualize** | Generate single-file HTML visualizations in an ivory/clay editorial gallery style for systems, plans, or code flows |
 | **visual-pr** | Create or update a PR with a concise visual outline for reviewers; adapted from HumanLayer for Claude Code and Codex |
 | **show-me** | Explain the current topic with the smallest useful visual: an inline diagram, code-shape sketch, diff, or focused HTML artifact |
-
-### Languages & Platforms
-
-| Plugin | What it does |
-|--------|-------------|
-| **bun-expert** | Expert Bun runtime guidance: setup, package management, servers, latest built-in APIs, testing, bundling, and Node.js migration |
 
 ### Writing
 
 | Plugin | What it does |
 |--------|-------------|
 | **tutorial** | Write hands-on, self-verified tutorials where every step ends in a runnable action |
-| **improve-prompt** | Upgrade vague prompts into sharp, reusable prompts for planning, coding, review, and decision work |
-| **human-writer** | Edit prose to sound natural and human-written — deslop model-generated text |
 
 ## Repo Structure
 

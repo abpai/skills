@@ -313,8 +313,8 @@ finds a section under any heading style without running into the next one.
   coverage controls and outcome verifier isolation test pass, all evals
   discover, and the mock smoke eval boots the server and passes.
 - **Proven (live, `OPENAI_API_KEY`):** the original contract evals
-  (`code/argument-form-equivalence`, `code/removed-command-migration`,
-  `safety/codex-session-injection`) were live-green under `gpt-5.6-luna`,
+  (`code/argument-form-equivalence`, `code/removed-command-migration`)
+  were live-green under `gpt-5.6-luna`,
   measured before the default moved to `gpt-6-luna`. The routing matrix +
   negatives extend that gate; `bun run eval:live` is the
   whole-lane acceptance check.

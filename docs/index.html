@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>abpai/skills — AI Workflow Plugins</title>
-  <meta name="description" content="Curated marketplace of 23 AI agent workflow plugins across Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
+  <meta name="description" content="Curated marketplace of 17 AI agent workflow plugins across Claude Code and Codex. Cross-domain thinking, multi-model tooling, and developer productivity.">
   <meta property="og:title" content="abpai/skills — AI Workflow Plugins">
-  <meta property="og:description" content="23 AI workflow plugins across Claude Code and Codex.">
+  <meta property="og:description" content="17 AI workflow plugins across Claude Code and Codex.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -785,8 +785,8 @@
         Cross-domain thinking, multi-model tooling, and developer productivity plugins for Claude Code and Codex.
       </p>
       <div class="hero-stats">
-        <span class="stat-pill"><strong id="pluginCount">23</strong>&ensp;Plugins</span>
-        <span class="stat-pill"><strong>6</strong>&ensp;Categories</span>
+        <span class="stat-pill"><strong id="pluginCount">17</strong>&ensp;Plugins</span>
+        <span class="stat-pill"><strong>5</strong>&ensp;Categories</span>
         <span class="stat-pill"><strong>2</strong>&ensp;Runtimes</span>
         <span class="stat-pill">MIT</span>
       </div>
@@ -802,7 +802,7 @@
           <label class="search-label" for="searchInput">Search plugins</label>
           <input type="text" class="search-input" id="searchInput" placeholder="Search by name or workflow..." autocomplete="off" spellcheck="false">
         </div>
-        <span class="result-count" id="resultCount" role="status" aria-live="polite">23 / 23</span>
+        <span class="result-count" id="resultCount" role="status" aria-live="polite">17 / 17</span>
       </div>
       <div class="category-filters" id="categoryFilters">
         <button class="filter-pill active" data-category="All" aria-pressed="true">All</button>
@@ -810,7 +810,6 @@
         <button class="filter-pill" data-category="Code Quality" aria-pressed="false">Code Quality</button>
         <button class="filter-pill" data-category="Developer Productivity" aria-pressed="false">Developer Productivity</button>
         <button class="filter-pill" data-category="Tools" aria-pressed="false">Tools</button>
-        <button class="filter-pill" data-category="Languages & Platforms" aria-pressed="false">Languages & Platforms</button>
         <button class="filter-pill" data-category="Writing" aria-pressed="false">Writing</button>
       </div>
     </div>
@@ -847,18 +846,8 @@
           <h3 class="card-name">codex-exec</h3>
           <p class="card-description">Run Codex headlessly for implementation, review, monitored work, and exact continuation with durable liveness artifacts.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>2.3.0</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>2.3.1</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/codex-exec" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Tools" data-keywords="codex session transcript jsonl local read-only">
-          <span class="card-category">Tools</span>
-          <h3 class="card-name">codex-session</h3>
-          <p class="card-description">Inspect local Codex CLI transcripts by session UUID without launching Codex or contacting a model provider.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.0.3</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/codex-session" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -933,16 +922,6 @@
         </article>
 
 
-        <article class="skill-card" data-category="Developer Productivity" data-keywords="status progress agents blockers handoff operations long-running">
-          <span class="card-category">Developer Productivity</span>
-          <h3 class="card-name">status-update</h3>
-          <p class="card-description">Turn long-running agent work into a concise, evidence-backed snapshot of what is done, active, left, slowing progress, or newly surprising.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1.1</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/status-update" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
         <article class="skill-card" data-category="Developer Productivity" data-keywords="prompts snippets conversation recap tldr readback">
           <span class="card-category">Developer Productivity</span>
           <h3 class="card-name">yo</h3>
@@ -958,7 +937,7 @@
           <h3 class="card-name">claude</h3>
           <p class="card-description">Run Claude directly in a requested workspace with durable artifacts and exact session continuation.</p>
           <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>3.0.1</strong></span></div>
+            <div class="card-meta"><span class="card-version">v <strong>3.0.2</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/claude" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
@@ -970,16 +949,6 @@
           <div class="card-footer">
             <div class="card-meta"><span class="card-version">v <strong>1.0.1</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/antigravity" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Tools" data-keywords="claude session transcript jsonl local read-only">
-          <span class="card-category">Tools</span>
-          <h3 class="card-name">claude-session</h3>
-          <p class="card-description">Inspect local Claude Code transcripts by session UUID without invoking Claude or contacting Anthropic.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.1.3</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/claude-session" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 
@@ -1010,36 +979,6 @@
           <div class="card-footer">
             <div class="card-meta"><span class="card-version">v <strong>1.0.3</strong></span></div>
             <a href="https://github.com/abpai/skills/tree/main/show-me" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Languages & Platforms" data-keywords="bun javascript typescript runtime">
-          <span class="card-category">Languages & Platforms</span>
-          <h3 class="card-name">bun-expert</h3>
-          <p class="card-description">Expert Bun runtime guidance: setup, package management, servers, latest built-in APIs, testing, bundling, and Node.js migration.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.4.7</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/bun-expert" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Writing" data-keywords="prose editing deslop humanize">
-          <span class="card-category">Writing</span>
-          <h3 class="card-name">human-writer</h3>
-          <p class="card-description">Edit prose so it sounds natural, specific, and human-written. Deslop model-generated text.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.4.4</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/human-writer" target="_blank" rel="noopener" class="card-link">Source</a>
-          </div>
-        </article>
-
-        <article class="skill-card" data-category="Writing" data-keywords="prompting prompt-engineering rewriting agents handoff summary">
-          <span class="card-category">Writing</span>
-          <h3 class="card-name">improve-prompt</h3>
-          <p class="card-description">Upgrade vague prompts into sharp, reusable prompts for planning, coding, review, decision, and handoff work.</p>
-          <div class="card-footer">
-            <div class="card-meta"><span class="card-version">v <strong>1.4.0</strong></span></div>
-            <a href="https://github.com/abpai/skills/tree/main/improve-prompt" target="_blank" rel="noopener" class="card-link">Source</a>
           </div>
         </article>
 

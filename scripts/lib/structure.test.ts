@@ -25,7 +25,7 @@ function tempFile(name: string, content: string): string {
 }
 
 describe("agents/openai.yaml", () => {
-  function validate(content: string, skillName = "status-update") {
+  function validate(content: string, skillName = "example-skill") {
     const rep = captureReporter();
     validateOpenaiYaml(tempFile("openai.yaml", content), "openai.yaml", skillName, rep);
     return { failed: rep.failed, output: rep.lines.join("\n") };
@@ -36,7 +36,7 @@ describe("agents/openai.yaml", () => {
 interface:
   display_name: "Status Update"
   short_description: "Understand long-running agent work quickly."
-  default_prompt: "Use $status-update to summarize this task."
+  default_prompt: "Use $example-skill to summarize this task."
 `;
 
   test("accepts a complete interface", () => {
@@ -44,9 +44,9 @@ interface:
   });
 
   test("rejects a default_prompt without the skill reference", () => {
-    const { failed, output } = validate(complete.replace("Use $status-update to summarize", "Summarize"));
+    const { failed, output } = validate(complete.replace("Use $example-skill to summarize", "Summarize"));
     expect(failed).toBe(true);
-    expect(output).toContain("must mention '$status-update'");
+    expect(output).toContain("must mention '$example-skill'");
   });
 
   test("rejects unquoted interface values", () => {
