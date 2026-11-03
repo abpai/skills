@@ -10,7 +10,7 @@ const repoRoot = resolve(
   "..",
   "..",
 );
-const MODEL_INVOCABLE = new Set(["codex-exec", "show-me", "visual-pr"]);
+const MODEL_INVOCABLE = new Set(["codex-exec", "pstack", "show-me", "visual-pr"]);
 const publicSkills = readdirSync(repoRoot, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
