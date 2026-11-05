@@ -19,7 +19,7 @@ work. Open each selected file: a row gives only the trigger, not the guidance.
 | Trusting, reporting, or acting on a measured number: a speedup, regression, throughput, latency, or eval result | [Explain the number](principles/principle-explain-the-number.md) |
 | Dead code, redundant checks, or unneeded layers sit where an addition or refactor will land | [Subtract before you add](principles/principle-subtract-before-you-add.md) |
 | Code is hard to follow because of extra layers, changing values, or copies kept in sync by hand | [Minimize reader load](principles/principle-minimize-reader-load.md) |
-| State is spread across flags or many branches, one shape assumption repeats across files, or core types and data structures are being chosen | [Model the domain](principles/principle-model-the-domain.md) |
+| State is spread across flags or branches, a lifecycle spans callbacks, timers or components, a shape assumption repeats across files, or core types and data structures are being chosen | [Model the domain](principles/principle-model-the-domain.md) |
 | Investigating a defect or proposing a workaround | [Fix root causes](principles/principle-fix-root-causes.md) |
 | Deciding how to show a task works, or verifying it before declaring completion | [Prove it works](principles/principle-prove-it-works.md) |
 | Work splits into dependent stages, such as a sweep, migration, or stacked commits, that each need a check before the next | [Sequence verifiable units](principles/principle-sequence-verifiable-units.md) |

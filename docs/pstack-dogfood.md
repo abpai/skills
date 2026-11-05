@@ -1,5 +1,23 @@
 # pstack dogfood record
 
+## Lifecycle guidance, 0.4.7 (2026-11-05)
+
+Two fresh Codex subagents independently used the changed skill in plan mode on
+the real Eve process runner: improve cancellation and timeout handling so
+interrupted runs retain output and leave no owned child processes alive.
+Both inspected the current runner, callers and tests read-only; neither was
+given the expected diagnosis or selected principles. The orchestrator reviewed
+both final plans and their execution records.
+
+| Observation | Evidence | Suspected skill cause |
+| --- | --- | --- |
+| First run selected and applied the lifecycle guidance without prompting. No instruction friction reported. | `dogfood_lifecycle`: opened the router, plan module, index and selected principles; distinguished stop requested from confirmed cleanup, assigned one lifecycle owner, and covered leader-exits-first and close/timeout races. | None observed. |
+| Second fresh run independently reached the same lifecycle obligations. No instruction friction reported. | `dogfood_lifecycle_repeat`: selected Model the domain; planned running → stopping → finished, one settlement path, repeated signals, and descendant cleanup. Opened idempotency, then dropped it because the retained checks covered this scope. | None observed. A guessed CLI path failed, then source discovery found the entrypoint; this was task navigation. |
+
+No repair was indicated by these two consecutive clean reports. This is focused
+plan-mode dogfood of lifecycle selection and application, not implementation
+proof, all-mode qualification, or a comparison against the previous wording.
+
 Short record of how pstack was dogfooded and where each mode stands at
 0.4.4. The full round-by-round history (every run, its evidence and suspected
 cause) is in the pull request description and in git history at `c208f986`
