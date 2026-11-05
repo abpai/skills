@@ -21,6 +21,8 @@ and data structures are being chosen:
   transitions may be retried or resumed after a crash.
 - Use the smallest representation that enforces the rules: a type, transition
   function, or ownership token may be enough.
+- Keep simple code when another helper or layer would only make it harder
+  to follow.
 
 Example: a cancellation request moves a job to `cancelling`; confirmation that
 its process stopped permits `cancelled` and replacement work. A late callback

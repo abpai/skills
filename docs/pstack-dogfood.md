@@ -17,10 +17,6 @@ both final plans and their execution records.
 No repair was indicated by these two consecutive clean reports. This is focused
 plan-mode dogfood of lifecycle selection and application, not implementation
 proof, all-mode qualification, or a comparison against the previous wording.
-The human cheat sheet is linked from the README and stays outside the agent's
-required reading path. A separate read-only subagent review compared its 22
-examples with all 21 canonical principle files: complete coverage, resolving
-links, no added obligations, and accurate lifecycle/idempotency distinctions.
 
 Short record of how pstack was dogfooded and where each mode stands at
 0.4.4. The full round-by-round history (every run, its evidence and suspected
