@@ -41,6 +41,9 @@ plans, implements, verifies, and fixes within scope. Use
 `$pstack plan|verify|auto [task]` in Codex or `/pstack plan|verify|auto [task]`
 in Claude Code.
 
+For concrete breaches and corrections, see the
+[principle cheat sheet](pstack/skills/pstack/CHEAT_SHEET.md).
+
 ### pstack upstream
 
 `pstack` is adapted from [poteto](https://x.com/poteto)'s pstack, which
