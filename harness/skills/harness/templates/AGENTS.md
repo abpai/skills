@@ -4,14 +4,13 @@ Code, tests, and runtime behavior are the source of truth. Docs route you to the
 
 ## Operating model
 
-- Specs come from intake against `docs/SPEC_CONTRACT.md`; you own implementation through end-to-end proof.
+- Specs are written against `docs/SPEC_CONTRACT.md`; you own implementation through end-to-end proof.
 - Identify the validation command before editing. Escalate per the spec contract; otherwise execute end-to-end.
 
 ## Where to look
 
 - Spec contract: `docs/SPEC_CONTRACT.md`
-- Index: `docs/INDEX.md` · Architecture: `docs/ARCHITECTURE.md`
-- Commands: `docs/engineering/commands.md` · Validation: `docs/engineering/testing.md`
+- Index: `docs/index.md` (if present) · Architecture, commands, and validation: <paths that exist in this repo>
 
 ## Rules
 

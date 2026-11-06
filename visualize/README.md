@@ -22,7 +22,7 @@ git clone https://github.com/abpai/skills.git ~/.claude/skills/visualize --no-ch
 > diagram the deployment architecture
 ```
 
-Output goes to `~/.agent/diagrams/` and opens in the browser automatically.
+Output goes to a location you name, or a task-local artifact directory, and opens in the browser.
 
 ## How It Works
 
@@ -33,7 +33,7 @@ templates/base.html         ← agent reads before each generation
 references/design-system.md ← HTML-effectiveness color/type/layout tokens
 references/mermaid-tips.md  ← syntax + theming for diagrams
     ↓
-~/.agent/diagrams/filename.html → opens in browser
+<output path>/filename.html → opens in browser
 ```
 
 The agent reads the base template to absorb the Preact + CSS + HTML-effectiveness structure, then adapts it for the specific visualization type (module map, annotated diff, comparison grid, Mermaid diagram, table, timeline, editor, etc.).

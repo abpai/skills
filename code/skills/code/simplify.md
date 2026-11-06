@@ -45,7 +45,7 @@ only when that evidence is genuinely ambiguous.
    every file uniformly.
 3. When Python is available and a selected non-test target contains supported
    JS/TS or Python, run the bundled scanner. For an explicit test-pruning scope,
-   start with the test rubric and behavioral census; run the generic scanner only
+   start with `references/test-deslop-rubric.md` and an inventory of tests by area; run the generic scanner only
    when survivor-readability work makes its style leads useful.
 
    ```bash
@@ -68,10 +68,10 @@ only when that evidence is genuinely ambiguous.
    the target language make those principles relevant.
 4. For changed code or deletion candidates, load
    `review-patterns/refactor-safety-check.md`. In scoped execution, use its
-   quick pass and run the deep dead-code gauntlet before deleting a file, module,
-   public symbol, or its tests. In whole-repository proposal mode, record the
-   gauntlet as a proof obligation for a proposed slice; do not perform the full
-   census, scorecard, or deletion proof until the user selects that slice.
+   quick pass and run its deep pass before deleting a file, module, public
+   symbol, or its tests. In whole-repository proposal mode, record that deep pass
+   as a proof obligation for a proposed slice; do not run it until the user
+   selects that slice.
 5. When the requested scope is a test suite, test directory, or test-pruning
    request, read `references/test-deslop-rubric.md`. For a large approved scope,
    also read `references/test-deslop-fan-out.md` before partitioning work.

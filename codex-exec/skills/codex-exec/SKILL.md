@@ -10,7 +10,7 @@ description: >
 license: MIT
 metadata:
   author: Andy Pai
-  version: "2.3.1"
+  version: "2.3.2"
 ---
 
 # Codex CLI
@@ -55,16 +55,8 @@ from the source checkout.
 
 ## Preflight
 
-Before a long run, verify:
-
-```bash
-codex --version
-codex exec --version
-git rev-parse --show-toplevel
-git status --short
-```
-
-Stop on missing/broken CLI or auth. Outside a trusted Git repository, either
+The wrapper records `codex --version`, the repository root, and `git status` in
+`preflight.log` on every run; read it and stop on a missing or broken CLI or auth. Outside a trusted Git repository, either
 move into the target repository or explicitly pass `--skip-git-repo-check` and
 close stdin. Do not let Codex wait on an invisible trust prompt.
 

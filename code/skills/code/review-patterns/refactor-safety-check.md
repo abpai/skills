@@ -70,7 +70,7 @@ registration, or deletions:
 - enumerate all callsites and non-code references;
 - compare base and branch outputs with the same inputs;
 - run snapshot/invariant checks when exact examples are insufficient;
-- complete the dead-code gauntlet for every deletion candidate;
+- complete the deep pass for every deletion candidate;
 - run the full validation gate required by the blast radius.
 
 ## Evidence to record

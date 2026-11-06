@@ -12,8 +12,8 @@ The canonical setup recipe for durable local and CI enforcement of
    A repo with no `package.json` has no place to pin this scanner. Do not add
    one to a Python, Go, or Rust repo to hold a dev tool. Stop, say the pinned
    setup does not apply, and offer the unpinned `npx @andypai/harness-doctor@latest`
-   audit — invoked from CI as a step, not as a repo dependency — under the same
-   confirmation rule as **Fast path**.
+   audit — invoked from CI as a step, not as a repo dependency — after asking
+   first, as `doctor.md` requires for the network-backed fallback.
 2. After the user approves dependency and config edits, run the one add-dev-dependency
    command matching the detected manager (`bun add -d`, `pnpm add -D`,
    `yarn add -D`, or `npm install -D` `@andypai/harness-doctor`). Do not present
@@ -32,8 +32,7 @@ The canonical setup recipe for durable local and CI enforcement of
 
    Only write fields that exist on `HarnessDoctorConfig` for the pinned
    version — an unknown key fails typecheck. Re-check the pinned type and
-   `--help` rather than assuming a field from a past version (see the baseline
-   note under **Fast path** in `doctor.md`).
+   `--help` rather than assuming a field from a past version.
 
    Knip-backed dead-code discovery requires a released
    `@andypai/harness-doctor >= 2.0.0` — a source worktree may report a
@@ -98,8 +97,8 @@ The canonical setup recipe for durable local and CI enforcement of
 
 Setup is done when a clean checkout installs the pinned dependency and the
 same `harness:check` script passes locally and in CI. CI runs this
-deterministic scanner only; it never runs `harness baseline`, `harness
-compliant`, or another agent workflow.
+deterministic scanner only; it never runs `harness adopt`, `harness
+baseline`, or another agent workflow.
 
 Dead-code output is a lead, not deletion proof. For each candidate, inspect its
 callers, package exports, runtime loading, and nearby tests, then classify it

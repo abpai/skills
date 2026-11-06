@@ -15,7 +15,7 @@ allowed-tools:
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # Tutorial
@@ -54,8 +54,7 @@ again whenever a reader needs a separate action, observation, or concept.
 
 Use direct language appropriate to the audience. Show the action before its
 explanation when that helps the reader act, keep names consistent, and define
-unfamiliar terms at first use. Do not sacrifice correctness or necessary
-context to sentence-length or voice rules.
+unfamiliar terms at first use.
 
 ## Structure
 

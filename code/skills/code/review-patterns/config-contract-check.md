@@ -18,12 +18,12 @@ surface.
 
 ## Gotchas
 
-1. **Version bump is a FOUR-file fan-out, not one manifest.** A plugin version
-   lives in `<plugin>/.claude-plugin/plugin.json`,
-   `<plugin>/.codex-plugin/plugin.json`, the public `SKILL.md`
-   `metadata.version` (when the plugin has one), AND root `versions.json`. Miss
-   any one and users *silently never receive the update*. "Versions agree" is not
-   enough — open all four files and confirm each carries the bump. A one-manifest
+1. **Version bump is a fan-out, not one manifest.** A plugin version lives in
+   `<plugin>/.claude-plugin/plugin.json`, `<plugin>/.codex-plugin/plugin.json`,
+   the public `SKILL.md` `metadata.version` (when the plugin has one), root
+   `versions.json`, and the `docs/index.html` card. Miss any one and users
+   *silently never receive the update*. `bin/skills bump <plugin>` writes them
+   and `bin/skills gate surfaces` verifies they agree. A one-manifest
    bump that passes a casual diff is the single most common failure this gate
    exists to catch.
 2. **Codex manifests are real and must stay paired.** Every Claude plugin keeps a
@@ -40,7 +40,7 @@ surface.
    two-vs-three-component format. This is exactly what `bin/skills fix`
    encodes.
 4. **Namespaced commands MUST be `skills/<name>/SKILL.md`, never `commands/`.** A
-   namespaced command like `/code:review` only registers from a skill
+   namespaced command like `/pstack:plan` only registers from a skill
    subdirectory. A flat `commands/*.md` file parses fine but *never acquires the
    plugin namespace and never appears in the `/` menu*. Any diff that
    (re)introduces a plugin-root `commands/` dir, or moves a skill out of
@@ -62,14 +62,12 @@ surface.
    - `metadata.internal: true` — hides the wrapper from flat-list installers like
      `npx skills` (which Codex uses); overridable with `INSTALL_INTERNAL_SKILLS=1`.
 
-   A wrapper that sets one flag but not the others may be deliberate (see `pi`)
-   or a mistake — check for an umbrella sibling to decide.
-6. **`pi` is the named exception — do not flag it.** `pi` has NO umbrella; its
-   phase commands (`/pi:plan`, `/pi:execute`, …) are the primary interface, so
-   they stay `user-invocable` and are exempt from the `user-invocable: false`
-   rule. They still set `metadata.internal: true`. The validator encodes this as
-   "only require `user-invocable: false` when an umbrella sibling exists," so a
-   reviewer applying the invariant blindly would wrongly flag `pi`.
+   A wrapper that sets one flag but not the others is a mistake unless its pack
+   has no umbrella sibling (Gotcha 6).
+6. **A pack with no umbrella is exempt from `user-invocable: false`.** Its
+   commands are the primary interface, so they stay `user-invocable`; they still
+   set `metadata.internal: true`. The validator encodes this as "only require
+   `user-invocable: false` when an umbrella sibling exists."
 7. **Paths must stay inside the owning plugin — because installs copy into a
    runtime cache.** A repo-relative or cross-plugin path resolves at author time
    in the checkout and *breaks after install*, when the plugin is copied into a
@@ -86,13 +84,13 @@ surface.
 1. List changed config files and the contract files they reference (manifests,
    `versions.json`, `SKILL.md`, loader paths).
 2. Run `bin/skills check`; record the command and exit status.
-3. Confirm the four-file version fan-out agrees, treating `X.Y` ↔ `X.Y.0` as
+3. Run `bin/skills gate surfaces` to confirm the version fan-out agrees, treating `X.Y` ↔ `X.Y.0` as
    equal (Gotcha 3).
 4. Confirm `.codex-plugin/plugin.json` exists and is version-synced with the
    Claude manifest.
 5. Resolve each changed command to `skills/<name>/SKILL.md` → `/<plugin>:<name>`,
    and each referenced path inside its plugin root.
-6. Check wrapper frontmatter against the three-flag invariant, skipping `pi`.
+6. Check wrapper frontmatter against the three-flag invariant (Gotcha 6 exemption).
 7. Report drift with `file:line`, or record a concrete skip.
 
 ## Deep pass
@@ -131,8 +129,8 @@ real CI checkers.
 - **Demanding byte-for-byte equality between the Claude and Codex manifests.**
   They legitimately differ (e.g. Codex has no Claude hooks); require version +
   description parity and that the Codex manifest EXISTS, not identical bytes.
-- **Flagging `pi`'s `user-invocable` phase commands.** Exempt (Gotcha 6); the
-  invariant only requires `user-invocable: false` when an umbrella sibling exists.
+- **Flagging `user-invocable` commands in a pack with no umbrella.** Exempt
+  (Gotcha 6); the invariant only requires `user-invocable: false` when an umbrella sibling exists.
 - **Treating a path that works in the checkout as proven.** It can still break
   post-install (Gotcha 7) — the passing local check is not evidence.
 - Do not normalize unrelated metadata, and do not defer invalid JSON/YAML/TOML to
@@ -143,7 +141,7 @@ real CI checkers.
 In your review notes and the PR text: the validator command + exit status, the
 files reviewed, the four-file version chain and where (if anywhere) it diverges, the
 `.codex-plugin` parity decision, the namespaced-registration check per changed
-command, the wrapper three-flag decision (and any `pi`-style exemption), each
+command, the wrapper three-flag decision (and any Gotcha 6 exemption), each
 mismatch with `file:line`, and any check intentionally skipped with rationale.
 Stop early on an invalid structured file — semantic checks are unreliable until
 parsing is fixed.

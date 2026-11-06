@@ -11,7 +11,7 @@ Review CLI / script / dev-tool surfaces as the first *blind* invocation by an ag
 
 ## Gotchas
 
-The heart of this lens. Hunt these named failure modes; each maps to a verbatim axiom/operator from the source skill.
+The heart of this lens. Hunt these named failure modes.
 
 1. **Silent-fail is the single worst outcome — auto-P0.** A command that fails but exits 0 with empty stdout is "the agent's worst nightmare — they can't even *detect* the failure to retry." Hunt this first; it outranks every other finding regardless of scores. Every failure path (crash, network error, lock conflict, missing prereq) must hit stderr with a non-zero exit. (`🚫 Never-Silent-Fail`)
 
@@ -57,7 +57,7 @@ Fast scan — **the 8 hard signs of an agent-hostile CLI:** (1) bare invocation 
 
 Escalate for agent-facing or CI-invoked CLIs and any destructive surface.
 
-- **Rank findings: `priority = frequency × score_gap × blast_radius`** where `score_gap = (1000 − weighted_score)/1000` and `blast_radius = 0.10` (cosmetic) / `0.50` (workflow) / `1.00` (blocker). Fix the worst-scoring high-traffic surfaces first.
+- **Rank findings by frequency, how far the surface falls short, and blast radius** (cosmetic, workflow, blocker). Fix the worst high-traffic surfaces first.
 - Run the non-TTY/`CI`/`NO_COLOR` matrix, JSON-schema validation, a failure matrix mapping inputs→exit codes, dry-run output checks, idempotence on re-run, and a destructive-op safety review (Gotcha 8).
 - Re-run the binary twice and byte-diff (Gotcha 10). Compare changed README command/flag claims directly with the real `--help` output.
 - **The 8 universal recs** (default top-N for almost any agent CLI audit): U-1 `capabilities --json` · U-2 `robot-docs guide` · U-3 `--robot-*`/`--json` on read verbs · U-4 levenshtein-1 typo correction · U-5 schema-pin `capabilities` regression test · U-6 `recommended_action` field on `doctor`/`health` output · U-7 `meta._provenance`/`--robot-meta` for fallback-mode detection · U-8 AGENT/AUTOMATION footer in every subcommand's `--help`.

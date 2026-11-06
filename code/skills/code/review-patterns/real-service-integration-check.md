@@ -54,7 +54,7 @@ Escalate when auth, billing, webhooks, or data-loss paths changed, or any Score 
 ## Scripts
 
 - [`scripts/audit-riskiest-mocks.sh`](scripts/audit-riskiest-mocks.sh) — rank files by `vi.mock`/`jest.mock` density (Score-≥-8 candidates first): `./scripts/audit-riskiest-mocks.sh tests src`.
-- [`scripts/assert-test-mode.ts`](scripts/assert-test-mode.ts) — production-safety blocklist (`sk_live_`/`pk_live_`/`production` + `NODE_ENV` + prod-URL denylist) as a pre-flight gate: `bun review-patterns/scripts/assert-test-mode.ts` (exit 1 = unsafe target).
+- [`scripts/assert-test-mode.ts`](scripts/assert-test-mode.ts) — production-safety blocklist (`sk_live_`/`pk_live_`/`production` + `NODE_ENV` + prod-URL denylist) as a pre-flight gate: `bun scripts/assert-test-mode.ts` (exit 1 = unsafe target).
 
 Use the target repository's ORM, webhook SDK, and cleanup utilities. A bundled
 reference harness is intentionally not shipped: copied example code can silently

@@ -34,9 +34,7 @@ candidate_root="/absolute/path/to/candidate-worktree"
 ```
 
 Choose `--reasoning high`, a custom output schema, or a shorter hard timeout
-explicitly when the task needs them. The deprecated `generate` command is an
-exact alias for `run --write`; it no longer carries hidden defaults or prompt
-rewrites.
+explicitly when the task needs them.
 
 ## Competing candidates
 
