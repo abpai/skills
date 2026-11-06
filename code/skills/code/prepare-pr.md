@@ -119,7 +119,7 @@ From the script's flat suggested-lens list and `changed-files.txt`, decide gates
 (anti-railroad): accept the suggestion, override with a concrete reason, or add a
 gate the defaults missed. For each selected gate, load **only** that
 `review-patterns/<lens>.md` (progressive disclosure — never read all lenses up
-front), run its quick pass, escalate to the deep pass only when diff risk
+front; `scripts/` paths inside a lens are relative to `review-patterns/`), run its quick pass, escalate to the deep pass only when diff risk
 justifies it, and record evidence or a skip rationale in context.
 
 - At `low`, load only lenses required by concrete risk; a focused diff review
@@ -191,7 +191,7 @@ The review must cover the **full PR scope** (`<base>...HEAD` plus uncommitted) �
 by Phase 4 the work is often already committed on a clean tree, so a review of
 only uncommitted changes sees an empty diff and passes vacuously.
 
-- **Under Claude Code:** spawn a fresh no-context sub-agent (the Task tool) under
+- **Under Claude Code:** spawn a fresh no-context sub-agent (the Agent tool) under
   a read-only sandbox to read the full scope diff, or run `codex review` against
   the detected base (e.g. `codex review --base <base>`) if the Codex CLI is
   installed — not `codex review --uncommitted`, which misses committed scope.

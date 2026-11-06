@@ -1,6 +1,6 @@
 # Reduce
 
-Workflow module for `/engineering:reduce`.
+Workflow module for `/engineering reduce`.
 
 Inspiration: Elon Musk's five-step design algorithm — question the requirements,
 delete, simplify/optimize, accelerate, automate. Applied to a plan so we never
@@ -92,5 +92,5 @@ and the `visualize` skill is available.
   the repo.
 - If a question can be answered by inspecting the codebase, inspect it instead of
   asking me.
-- When in doubt, prefer deleting over keeping, and prefer keeping-and-questioning
-  over silently optimizing.
+- When unsure whether a task is needed, propose deleting it at Step 2's gate and
+  let me decide; do not silently optimize it or silently keep it.

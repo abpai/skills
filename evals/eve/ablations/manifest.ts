@@ -118,7 +118,7 @@ export const ABLATIONS: readonly Ablation[] = [
     skillId: "engineering",
     span: {
       file: "reduce.md",
-      heading: "Step 2 — Delete the task ⟨GATE · debate⟩",
+      heading: "Step 2 — Delete the task ⟨GATE⟩",
     },
     guardedBy: ["contracts/engineering-reduce-gate-before-cutting"],
     hypothesis:

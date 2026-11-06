@@ -1,6 +1,6 @@
 # Zoom Out
 
-Workflow module for `/engineering:zoom-out`.
+Workflow module for `/engineering zoom-out`.
 
 Upstream inspiration: https://github.com/mattpocock/skills/tree/main/skills/engineering/zoom-out
 

@@ -1,6 +1,6 @@
 # Defined Terms
 
-Workflow module for `/engineering:defined-terms` — the ubiquitous-language / DDD glossary workflow.
+Workflow module for `/engineering defined-terms` — the ubiquitous-language / DDD glossary workflow.
 
 Extract and formalize domain terminology from the current conversation into a
 consistent DDD-style glossary, saved to a local file, so you and the agent share
@@ -23,7 +23,7 @@ harden terminology, create a ubiquitous language, or mentions "domain model" or
 
 ## Output Format
 
-Write `DEFINED_TERMS.md` with:
+Write the canonical vocabulary file (`DEFINED_TERMS.md` when none exists) with:
 
 - One or more **term tables** (`Term | Definition | Aliases to avoid`).
   Group into multiple tables with their own heading when natural clusters
@@ -50,7 +50,7 @@ See [a full worked example](references/defined-terms-example.md).
 
 When invoked again in the same conversation:
 
-1. Read the existing `DEFINED_TERMS.md`.
+1. Read the canonical vocabulary file.
 2. Incorporate any new terms from subsequent discussion.
 3. Update definitions if understanding has evolved.
 4. Re-flag any new ambiguities.

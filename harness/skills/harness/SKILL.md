@@ -4,7 +4,7 @@ disable-model-invocation: true
 description: "Prepare a repository for reliable agent-driven development. Adopt builds the behavior baseline, agent guidance, proof contract, and enforcement; doctor audits readiness or a diff; capture protects one uncertain behavior before it changes."
 argument-hint: "[adopt [assess]|doctor|capture] [scope]"
 metadata:
-  version: "1.10.1"
+  version: "1.10.2"
 ---
 
 # Harness
@@ -34,8 +34,8 @@ the target repository.
 ## Routing
 
 Accept `harness <workflow> ...` and `harness --<workflow> ...`. Strip a leading
-`--` from the first token, load exactly one module, and pass it the remaining
-input. `compliant` and `overhaul` are compatibility aliases for `adopt`;
+`--` from the first token, load the one module it names as the entry point (it
+may load its own sub-modules), and pass it the remaining input. `compliant` and `overhaul` are compatibility aliases for `adopt`;
 `secure-dependencies` routes directly to the dependency phase for migration
 compatibility without becoming a main workflow.
 

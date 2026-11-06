@@ -96,8 +96,7 @@ there, filtering out the benign environmental noise listed below (the
 captured verdict stays clean. JSON stdout is not copied into `final.md`; when
 `final_source=empty-json-stdout`, read `events.jsonl` instead. Inspect
 `status.env`'s `final_source` field to see which artifact supplied `final.md`.
-The deprecated `generate` command is an exact alias for `run --write`; choose
-reasoning, timeout, and output-schema overrides explicitly.
+Choose reasoning, timeout, and output-schema overrides explicitly.
 
 For follow-up review, prefer:
 

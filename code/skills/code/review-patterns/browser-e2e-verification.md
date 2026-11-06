@@ -27,13 +27,13 @@ Pick by the evidence needed, not by a fixed tool ranking:
 
 3. **Don't build the whole page before looking — the #1 failure mode.** Errors compound, and you can't tell which change caused which problem. Use the **Edit-Reload-Verify micro-loop** with one focused change per cycle: change → reload → bounded DOM/state assertions → screenshot for visual judgment → next. Each verified state becomes the next baseline.
 
-4. **Run programmatic diagnostics FIRST, screenshot SECOND.** Agents don't need to "see" every bug. `domHealthCheck()` (one `page.evaluate()`) returns severity-ranked JSON for 10 mechanical bug classes vision misses: page horizontal scroll (critical), element beyond viewport (major), clipped overflow w/o ellipsis, 0×0 elements with text, sub-44px touch targets, images without dimensions (CLS), missing alt, text-color==bg (major), overlapping interactives >30% area (major), unwanted scroll containers. Fix mechanical issues before spending vision on aesthetics.
+4. **Run programmatic diagnostics FIRST, screenshot SECOND.** Agents don't need to "see" every bug. Query these 10 mechanical bug classes with one read-only script on the active browser surface (bounding rects plus computed style; an accessibility snapshot alone cannot see them, and neither can vision): page horizontal scroll (critical), element beyond viewport (major), clipped overflow w/o ellipsis, 0×0 elements with text, sub-44px touch targets, images without dimensions (CLS), missing alt, text-color==bg (major), overlapping interactives >30% area (major), unwanted scroll containers. Fix mechanical issues before spending vision on aesthetics.
 
 5. **Structural vs aesthetic split.** Record a small render intent: what should change and what must not. Compare before/after DOM bounds and computed state for those elements, then use screenshots for visual judgment. Do not dump or diff the entire DOM; normal scrolling/filtering creates noisy false positives.
 
-6. **Peripheral vision check — a local fix commonly breaks a neighbor.** After fixing component A (width change → sibling reflow, margin → sibling shift, z-index → new overlap), also snapshot/screenshot adjacent components and compare to the pre-fix state. Simplest form: full-page before/after screenshots compared by the agent's vision. The layout-snapshot diff (gotcha 5) automates this.
+6. **Peripheral vision check — a local fix commonly breaks a neighbor.** After fixing component A (width change → sibling reflow, margin → sibling shift, z-index → new overlap), also snapshot/screenshot adjacent components and compare to the pre-fix state. Simplest form: full-page before/after screenshots compared by the agent's vision.
 
-7. **State Matrix Sweep — agents test only `desktop + happy-path + light + logged-in`.** The high-value combinations that catch the most bugs with the fewest tests: `mobile+empty`, `mobile+overflow`, `desktop+empty`, `dark+error`, `tablet+many-items`, and `mobile+dark+logged-out` (**the least-tested combination; often completely broken**). Pair with a breakpoint sweep (320→1920) running `domHealthCheck()` at each width.
+7. **State Matrix Sweep — agents test only `desktop + happy-path + light + logged-in`.** The high-value combinations that catch the most bugs with the fewest tests: `mobile+empty`, `mobile+overflow`, `desktop+empty`, `dark+error`, `tablet+many-items`, and `mobile+dark+logged-out` (**the least-tested combination; often completely broken**). Pair with a breakpoint sweep (320→1920) running the gotcha 4 checks at each width.
 
 8. **Failure injection is a SEPARATE pass, run AFTER the happy path is confirmed.** "Testing error handling on broken code just generates noise." Minimum-viable pass: (1) use the active browser tool to abort the changed API request and check for a blank page; (2) clear storage, reload, and check for a crash. Escalate with 500/503/401/429, empty, malformed, slow, or partial responses only when relevant. Judge graceful degradation per failure: blank page / raw `TypeError` / crash = **critical (fix now)**; error message + retry with data preserved = **acceptable**. Grade A–F.
 
@@ -65,7 +65,7 @@ Pick by the evidence needed, not by a fixed tool ranking:
 
 Risk-gated escalation when the gate triggers flag auth, multi-page journeys, responsive/visual-regression risk, or payment/order flows:
 
-- **State Matrix Sweep + breakpoint sweep** (gotcha 7) — run `domHealthCheck` at the high-value combinations and at widths 320→1920; review failing combos first.
+- **State Matrix Sweep + breakpoint sweep** (gotcha 7) — run the gotcha 4 checks at the high-value combinations and at widths 320→1920; review failing combos first.
 - **Failure-injection pass** (gotcha 8) — abort the changed endpoint first, then add relevant response/state corruption modes; grade A–F.
 - **Double-submit + input stress** (gotchas 9, 10) on changed forms using real controls and network observation.
 - **Auth test users** (gotcha 15) for protected routes; persistent Playwright sessions with trace/video for multi-step flows.
@@ -81,7 +81,7 @@ false positives for intentionally hidden cards and scroll containers.
 
 - **`evaluate()` "pass."** A green result obtained via `page.evaluate()`, forced client state, or a direct DB write is a diagnostic, never proof — never cite it for signoff (gotcha 1). A `.click()` that fails is a finding, not a false positive to route around (gotcha 2).
 - **Known-safe console noise.** Suppress only the allowlist (react devtools, fast refresh, ResizeObserver loop, analytics, sentry); do not extend the allowlist to silence a real `hydration`/`runtime` error (gotcha 11).
-- **Pixel-diff noise.** Font-rendering and ≤2px-move pixel diffs are not findings; trust agent vision over pixel equality (gotcha 13). Subpixel layout-snapshot moves ≤3px are filtered by threshold.
+- **Pixel-diff noise.** Font-rendering and ≤2px-move pixel diffs are not findings; trust agent vision over pixel equality (gotcha 13).
 - **Server-side dedup.** Multiple POSTs that the server deduplicates is still a client warning — the button should prevent the dupe (gotcha 9).
 - **"Scroll metrics look clean."** Not a pass when a required region is clipped per `getBoundingClientRect()` (gotcha 12).
 - **Unstabilized comparison.** Diffs from animations/fonts/loading are false positives — stabilize first (gotcha 14), don't report them as defects.

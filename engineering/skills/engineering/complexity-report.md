@@ -1,6 +1,6 @@
 # Complexity Report
 
-Workflow module for `/engineering:complexity-report`.
+Workflow module for `/engineering complexity-report`.
 
 Upstream inspiration: https://github.com/Kappaemme-git/codex-complexity-optimizer/tree/6a1f9674d706a06d462296e53a40f668299e8893
 
@@ -19,12 +19,8 @@ artifacts, or test fixtures in this workflow.
 3. Use the bundled scanner as lead generation when it helps:
 
    ```bash
-   python3 engineering/skills/engineering/scripts/complexity_scan.py . --format markdown
-   python3 engineering/skills/engineering/scripts/complexity_scan.py . --format json
+   python3 <directory containing this module>/scripts/complexity_scan.py <repo> --format markdown|json
    ```
-
-   If the skill is installed as a plugin, locate this `complexity-report.md`
-   module beside `SKILL.md`; run `python3 <that-directory>/scripts/complexity_scan.py <repo>`.
 4. Promote a scanner lead to a finding only after inspecting surrounding code
    enough to understand behavior, data shape, and path importance.
 5. Rank by expected impact, not smell count: hot path frequency, input size,

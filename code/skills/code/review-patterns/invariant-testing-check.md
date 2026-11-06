@@ -66,8 +66,8 @@ correct and broken code.
    walk the buckets: **Equivalence** `f(T(x))=f(x)`, **Additive**
    `f(x+c)=f(x)+g(c)`, **Multiplicative** `f(k·x)=h(k)·f(x)`, **Permutative**
    `f(permute(x))=permute(f(x))`, **Inclusive/Exclusive** (subset / superset /
-   disjoint), **Invertive** `f(T(T(x)))=f(x)`. For an unfamiliar domain paste
-   explicitly enumerate candidate relations with category,
+   disjoint), **Invertive** `f(T(T(x)))=f(x)`. For an unfamiliar domain,
+   enumerate candidate relations explicitly with category,
    exact `T(x)`, exact relation `R`, bug class, and ALWAYS-vs-sometimes
    confidence.
 
@@ -103,8 +103,8 @@ correct and broken code.
    relation-only. **Use the sharpest** — exact assertion if computable,
    differential test against a reference impl, golden if output is reviewable.
    MRs only when none of those exist.
-2. Enumerate 1-3 candidate relations by walking the six categories (use the
-   elicitation prompt for unfamiliar domains); drop tautologies and
+2. Enumerate 1-3 candidate relations by walking the six categories (for an
+   unfamiliar domain, enumerate as in gotcha 8); drop tautologies and
    implementation-derived ones on sight.
 3. Score on the strength matrix; keep only Score ≥ 2.0.
 4. For each kept relation, fix: input domain, `T(x)`, expected
