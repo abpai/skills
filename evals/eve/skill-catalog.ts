@@ -84,6 +84,11 @@ export const SKILL_CATALOG = {
     mode: "browser",
     owner: "browser rendering and accessibility",
   },
+  yo: {
+    source: "yo/skills/yo",
+    mode: "host",
+    owner: "subagent dogfood of the router",
+  },
 } as const satisfies Record<string, SkillCatalogEntry>;
 
 export const EVE_SKILLS = Object.fromEntries(

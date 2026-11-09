@@ -19,8 +19,12 @@ const NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const SEMVER_RE = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 
 // Skills the model may start on its own. Every other entrypoint is explicit-only.
-export const CLAUDE_MODEL_INVOCABLE = new Set(["codex-exec", "pstack", "show-me", "visual-pr"]);
-export const CODEX_IMPLICIT_INVOCABLE = new Set(["pstack", "show-me", "visual-pr"]);
+export const CLAUDE_MODEL_INVOCABLE = new Set(["codex-exec", "pstack", "show-me", "visual-pr", "yo"]);
+export const CODEX_IMPLICIT_INVOCABLE = new Set(["pstack", "show-me", "visual-pr", "yo"]);
+
+// Packs whose per-command skills stay in the `/` menu next to the umbrella, so
+// `/yo:recap` keeps working while the model gets one routed `yo` entry.
+export const MENU_LEAF_PACKS = new Set(["yo"]);
 
 type Json = Record<string, unknown>;
 
@@ -248,7 +252,12 @@ export function validateSkillMd(
   // command-only exception: its phase skills retain metadata.internal for
   // flat-installer packaging but stay human-invocable because it has no
   // umbrella router.
-  if (hasUmbrella && !isUmbrella) {
+  if (hasUmbrella && !isUmbrella && MENU_LEAF_PACKS.has(pluginName)) {
+    // Leaves stay human-only and menu-visible; the other umbrella-wrapper rules do not apply.
+    if (!disableMi) {
+      rep.fail(`${label}: pack skill must set 'disable-model-invocation: true'`);
+    }
+  } else if (hasUmbrella && !isUmbrella) {
     if (hasAllowedTools) {
       rep.fail(
         `${label}: per-command wrapper in an umbrella pack must not set ` +

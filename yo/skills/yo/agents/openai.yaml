@@ -1,0 +1,6 @@
+policy:
+  allow_implicit_invocation: true
+interface:
+  display_name: "yo"
+  short_description: "Run a quick steering prompt: recap, tldr, check, and more."
+  default_prompt: "Use $yo recap."
