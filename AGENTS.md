@@ -16,7 +16,7 @@ most of them.
 - Every skill entrypoint is human-invocable only:
   `disable-model-invocation: true` in `SKILL.md` and
   `policy.allow_implicit_invocation: false` in `agents/openai.yaml`. The
-  exceptions are `pstack`, `show-me` and `visual-pr` (model-invocable in both
+  exceptions are `pstack`, `show-me`, `visual-pr` and `yo` (model-invocable in both
   products)
   and `codex-exec` (Claude only), listed in `scripts/lib/structure.ts`.
 - No runtime self-update checks or installer side effects in skill bodies.

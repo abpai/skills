@@ -117,7 +117,7 @@ exceptions, but document the reason.
 - Write frontmatter `description` as the blurb a human reads in the `/` and `$`
   menus. Explicit-only entrypoints set `disable-model-invocation: true`, so their
   descriptions never trigger the model or enter context. The model-invocable
-  exceptions (`pstack`, `show-me`, `visual-pr`, Claude `codex-exec`) use their
+  exceptions (`pstack`, `show-me`, `visual-pr`, `yo`, Claude `codex-exec`) use their
   descriptions for automatic selection, so say when to reach for them. Say what the
   skill does and when to reach for it. For explicit-only skills, trigger keywords
   and synonym lists are dead weight.
