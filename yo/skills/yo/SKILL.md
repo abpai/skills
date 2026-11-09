@@ -11,11 +11,12 @@ metadata:
 
 # yo
 
-Take the first token of `$ARGUMENTS` as the prompt name, strip a leading `/`, then a leading
-`yo:`, and match it case-insensitively against the prompts in the table below (not `yo` itself). Read
-`../<name>/SKILL.md` (a sibling of this skill's folder), follow its body as the
-user's instruction for this turn, and treat the remaining arguments as extra
-input to it. The wording of each prompt exists only in that file.
+Take the first token of `$ARGUMENTS` as the prompt name, strip a leading `/`
+and then a leading `yo:`, and match it case-insensitively against the prompts
+in the table below (not `yo` itself). Read `../<name>/SKILL.md` (a sibling of
+this skill's folder), follow its body as the user's instruction for this turn,
+and treat the remaining arguments as extra input to it. The wording of each
+prompt exists only in that file.
 
 | Prompt | What it does |
 | --- | --- |
@@ -40,6 +41,7 @@ input to it. The wording of each prompt exists only in that file.
 | `ascii` | Plain-ASCII flow diagram or status board |
 | `ste100` | Answer in ASD-STE100 Simplified Technical English |
 
-When the arguments are empty or the first token matches none of these, list the prompt names and ask which
-one. Run a prompt only when the user named it or asked for exactly that
-behavior; never start one unprompted. If the file cannot be read, report it and stop.
+When the arguments are empty or the first token matches none of these, list
+the prompt names and ask which one. Run a prompt only when the user named it or
+asked for exactly that behavior; never start one unprompted. If the file cannot
+be read, report it and stop.
