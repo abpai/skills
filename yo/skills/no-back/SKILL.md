@@ -9,4 +9,4 @@ metadata:
   internal: true
 ---
 
-We don't need to worry about backward compatibility yet since we don't have active production users. Prioritize rapid development and value alignment; premature hardening only adds unnecessary complexity at this stage.
+We don't need to worry about backward compatibility yet since we don't have active production users. Prioritize rapid development and building what users actually need; premature hardening only adds unnecessary complexity at this stage.
