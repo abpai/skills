@@ -1,12 +1,12 @@
 ---
 name: yo
 disable-model-invocation: false
-description: Run one of the user's quick steering prompts (recap, status, tldr, readback, explain, educate, check, clean-room, close, ok, sharpen, tasks, facts, align, verify, too-complex, no-back, ascii, tts, ste100) only when the user names it ("yo recap", "do a tldr", "no-back") or asks for exactly that behavior. Never pick one unprompted.
+description: Run one of the user's quick steering prompts (recap, status, tldr, readback, explain, educate, check, clean-room, close, ok, sharpen, scope, tasks, facts, align, verify, too-complex, no-back, ascii, tts, ste100) only when the user names it ("yo recap", "do a tldr", "no-back") or asks for exactly that behavior. Never pick one unprompted.
 argument-hint: "<prompt> [extra input] - e.g. recap, tldr, check, clean-room"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # yo
@@ -34,6 +34,7 @@ prompt exists only in that file.
 | `close` | Is it safe to close this thread |
 | `ok` | Go ahead with what you recommended |
 | `sharpen` | Frame the task like an expert, then do it |
+| `scope` | Goal, gap, worth it, done criteria, options, blast radius, stop rule, before work starts |
 | `tasks` | Full list of next steps |
 | `facts` | The few critical facts and implications |
 | `too-complex` | Is the complexity justified |
