@@ -13,7 +13,7 @@ Give me a TL;DR recap.
 
 Done
 - List completed work.
-- Mention key safeguards.
+- Mention safeguards added, such as tests, guards, or rollback paths.
 
 Remaining
 - List unfinished work.
