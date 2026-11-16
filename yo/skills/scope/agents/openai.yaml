@@ -2,5 +2,5 @@ policy:
   allow_implicit_invocation: false
 interface:
   display_name: "Scope"
-  short_description: "Scope the work first, with done criteria and a stop rule."
+  short_description: "Scope the work first: key questions with recommended answers."
   default_prompt: "Use $scope."

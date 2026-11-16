@@ -1,7 +1,7 @@
 ---
 name: scope
 disable-model-invocation: true
-description: "Scope the work before it starts: goal, gap, worth it, done criteria, options, blast radius, stop rule."
+description: "Scope the work before it starts: ask me the key questions, each with a recommended answer, and build a Goal / Problems / Solutions / Validations / Impact outline."
 license: MIT
 metadata:
   author: Andy Pai
@@ -9,14 +9,29 @@ metadata:
   internal: true
 ---
 
-Before doing the work, inspect the relevant context and scope it in a short brief, in this order. It applies to any work: a bug, a feature, a decision, or a request to respond to.
+Before doing the work, inspect the relevant context, then help me scope it with this outline. It applies to any work: a bug, a feature, a decision, or a request to respond to.
 
-1. **Goal.** The outcome in one sentence and who it is for. Add non-goals: what this work will not touch.
-2. **Gap.** What stands between now and the goal, with evidence. For a defect, separate root cause from symptom. For a decision, name what must be decided and the constraints. Keep only gaps that block the goal.
-3. **Worth it.** Expected payoff against cost, and an appetite: how much time or effort this deserves. Doing nothing is an option.
-4. **Done means.** Pass/fail checks that someone other than the author could observe.
-5. **Options.** The approach you recommend, the alternatives you rejected and why, then the specific changes or actions. Each one traces to a gap in step 2, or it is cut.
-6. **Blast radius.** What else this touches, and what could break or be left unowned.
-7. **Stop rule.** Stop when the checks in step 4 pass. New ideas go to a parking lot, not into this work. After two attempts that do not pass the checks, return to step 2 instead of trying a third. When the appetite is spent, return to step 3 instead of continuing. State these in the task's own terms.
+```
+# Goal
+## Problems
+## Solutions
+### Big picture
+### Specific changes
+## Validations
+## Impact
+```
 
-Scale the brief to the task: for a small one, one line per step is enough, and a step with nothing to say gets "none". When a step cannot be filled from what you know, say what is missing instead of guessing; a blocked step is a finding. Do not start the work in this response. End with what you need from me, if anything, and ask whether I agree. Once I agree, hold the work to this brief and apply the stop rule.
+What each section holds:
+
+- **Goal.** The outcome in one sentence, and who it is for.
+- **Problems.** What stands between now and the goal, with evidence. For a defect, the root cause and not the symptom.
+- **Big picture.** The approach, and the main alternative you would turn down.
+- **Specific changes.** The concrete changes or actions. Each one answers a problem above, or it is cut.
+- **Validations.** Pass/fail checks that someone other than the author could observe.
+- **Impact.** What gets better if this works, and what else it touches or could break.
+
+Scoping is a conversation, and the calls are mine. Under each section, write what the context already settles as a plain statement. Where a section turns on a choice that is mine to make, ask it as a question in that section instead of deciding it for me. Give every question your recommended answer and a one-line reason, so I can reply "yes" or correct it. Put each question in the section where it first matters, after that section's statements, and number the questions across the whole outline so I can answer by number.
+
+Ask only the questions whose answer would change the outline. A section the context fully settles gets no question; a section you cannot fill gets a question, not a guess. Keep the outline short enough to read in a minute: a few lines per section, and one line where one line says it.
+
+Do not start the work in this response. When I have answered, return the finished outline with my answers folded in and no open questions, then wait for my go-ahead.
