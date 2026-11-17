@@ -34,7 +34,7 @@ prompt exists only in that file.
 | `close` | Is it safe to close this thread |
 | `ok` | Go ahead with what you recommended |
 | `sharpen` | Frame the task like an expert, then do it |
-| `scope` | Ask the key scoping questions with recommended answers, into a Goal / Problems / Solutions / Validations / Impact outline |
+| `scope` | Ask the key scoping questions with recommended answers, into a Goal / Gap / Approach / Proof / Impact outline |
 | `tasks` | Full list of next steps |
 | `facts` | The few critical facts and implications |
 | `too-complex` | Is the complexity justified |
