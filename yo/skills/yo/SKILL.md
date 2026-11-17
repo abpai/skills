@@ -6,7 +6,7 @@ argument-hint: "<prompt> [extra input] - e.g. recap, tldr, check, clean-room"
 license: MIT
 metadata:
   author: Andy Pai
-  version: "1.2.0"
+  version: "1.2.1"
 ---
 
 # yo
@@ -34,7 +34,7 @@ prompt exists only in that file.
 | `close` | Is it safe to close this thread |
 | `ok` | Go ahead with what you recommended |
 | `sharpen` | Frame the task like an expert, then do it |
-| `scope` | Goal, gap, worth it, done criteria, options, blast radius, stop rule, before work starts |
+| `scope` | Ask the key scoping questions with recommended answers, into a Goal / Gap / Approach / Proof / Impact outline |
 | `tasks` | Full list of next steps |
 | `facts` | The few critical facts and implications |
 | `too-complex` | Is the complexity justified |
